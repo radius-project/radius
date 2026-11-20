@@ -191,15 +191,22 @@ func Test_WorkspaceServiceAccount_Busy(t *testing.T) {
 }
 
 // Test_WorkspaceServiceAccount_TakenName checks that a create with a name another service account has, or one that
-// Grafana takes as the same, fails as a conflict whose message names the cause, and changes nothing.
+// Grafana takes as the same, fails as a conflict whose message names the cause, and changes nothing. Names Grafana
+// takes as different are made.
 func Test_WorkspaceServiceAccount_TakenName(t *testing.T) {
 	h, api := newHandler()
 	createAccount(t, h, serviceAccount("CI Reader"))
-	for _, name := range []string{"CI Reader", "ci-reader"} {
+	for _, name := range []string{"CI Reader", "ci-reader", "ci reader"} {
+		api.busy[workspace] = 0
 		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: serviceAccount(name)})
 		requireFailure(t, err, true, "another service account may have this name")
 	}
 	require.Len(t, api.store.List(serviceAccountType), 1)
+	for _, name := range []string{"ci.reader", "ci_reader", "çi-reader"} {
+		api.busy[workspace] = 0
+		createAccount(t, h, serviceAccount(name))
+	}
+	require.Len(t, api.store.List(serviceAccountType), 4)
 }
 
 // Test_WorkspaceServiceAccount_Find checks that Find finds a lost create by its name, and only by its exact name, and

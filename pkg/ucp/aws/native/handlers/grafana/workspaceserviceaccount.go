@@ -253,7 +253,14 @@ func template(properties map[string]any) (account, error) {
 	return a, nil
 }
 
-// Create makes the service account.
+// noRetry stops the SDK from sending a call again after an error. AWS may have made the service account before a create
+// fails, and the create takes no token, so a retry would fail because the name is taken, and UCP would drop the record
+// of a service account AWS has. The error alone leaves the outcome unknown, so the next deploy finds it by its name.
+func noRetry(o *grafana.Options) {
+	o.RetryMaxAttempts = 1
+}
+
+// Create makes the service account. The SDK never sends it again (see noRetry).
 func (h *WorkspaceServiceAccount) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	a, err := template(request.Properties)
 	if err != nil {
@@ -263,7 +270,7 @@ func (h *WorkspaceServiceAccount) Create(ctx context.Context, request native.Cre
 		WorkspaceId: aws.String(a.workspace),
 		Name:        aws.String(a.name),
 		GrafanaRole: a.role,
-	}, inRegion(request.Region))
+	}, inRegion(request.Region), noRetry)
 	if err != nil {
 		err = callError(err, a.workspace)
 		var failure *native.Failure
@@ -272,7 +279,7 @@ func (h *WorkspaceServiceAccount) Create(ctx context.Context, request native.Cre
 			return "", invalid("the Grafana workspace %q doesn't exist", a.workspace)
 		case errors.As(err, &failure) && failure.Conflict:
 			// The page names no error for a taken name, so it may be this one.
-			failure.Message += ". If the workspace is active, another service account may have this name, or one that differs only in case or punctuation"
+			failure.Message += ". If the workspace is active, another service account may have this name, or one that differs only in case or in spaces for dashes"
 		}
 		return "", err
 	}

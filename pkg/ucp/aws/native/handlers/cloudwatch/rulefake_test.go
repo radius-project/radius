@@ -78,6 +78,10 @@ var (
 	// ruleNamePattern is the documented pattern of a Contributor Insights rule's name.
 	ruleNamePattern = regexp.MustCompile(`^[\x20-\x7E]+$`)
 
+	// fakeTagPattern matches the characters CloudWatch allows in a tag's key and value: letters, numbers, spaces, and
+	// . : + = @ _ / -.
+	fakeTagPattern = regexp.MustCompile(`^[\p{L}\p{N}\p{Z}.:+=@_/\-]*$`)
+
 	// ruleARNPattern matches a Contributor Insights rule's ARN, and gives its name.
 	ruleARNPattern = regexp.MustCompile(`^arn:aws:cloudwatch:` + ruleRegion + `:` + fakeAccount + `:insight-rule/(.+)$`)
 )
@@ -222,7 +226,8 @@ func checkRuleNames(names []string) error {
 	return nil
 }
 
-// checkTagList checks tags: at most maxRuleTags, with a Key of 1 to 128 characters and a Value of up to 256.
+// checkTagList checks tags a call sets: at most maxRuleTags, with a Key of 1 to 128 characters and a Value of up to
+// 256, of the allowed characters, and no key with the aws: prefix.
 func checkTagList(tags []types.Tag) error {
 	if len(tags) > maxRuleTags {
 		return ruleFault(invalidValue, "a rule can have at most %d tags", maxRuleTags)
@@ -234,8 +239,22 @@ func checkTagList(tags []types.Tag) error {
 		if n := utf8.RuneCountInString(*tag.Key); n < 1 || n > maxTagKey || utf8.RuneCountInString(*tag.Value) > maxTagValue {
 			return ruleFault(invalidValue, "a tag's Key must be 1 to 128 characters and its Value at most 256")
 		}
+		if !fakeTagPattern.MatchString(*tag.Key) || !fakeTagPattern.MatchString(*tag.Value) || strings.HasPrefix(*tag.Key, "aws:") {
+			return ruleFault(invalidValue, "the tag %q has a character or a prefix AWS doesn't allow", *tag.Key)
+		}
 	}
 	return nil
+}
+
+// userTags counts the tags that count toward a rule's limit: those without the aws: prefix.
+func userTags(tags []types.Tag) int {
+	n := 0
+	for _, tag := range tags {
+		if !strings.HasPrefix(aws.ToString(tag.Key), "aws:") {
+			n++
+		}
+	}
+	return n
 }
 
 // checkARN checks a ResourceARN parameter, which must be 1 to 1024 characters.
@@ -554,7 +573,7 @@ func (f *fakeRuleAPI) TagResource(ctx context.Context, in *cloudwatch.TagResourc
 			tags = append(tags, tag)
 		}
 	}
-	if len(tags) > maxRuleTags {
+	if userTags(tags) > maxRuleTags {
 		return nil, ruleFault(invalidValue, "a rule can have at most %d tags", maxRuleTags)
 	}
 	if err := f.change(func() {
@@ -578,6 +597,11 @@ func (f *fakeRuleAPI) UntagResource(ctx context.Context, in *cloudwatch.UntagRes
 	for _, key := range in.TagKeys {
 		if n := utf8.RuneCountInString(key); n < 1 || n > maxTagKey {
 			return nil, ruleFault(invalidValue, "a tag key must be 1 to 128 characters")
+		}
+	}
+	for _, key := range in.TagKeys {
+		if strings.HasPrefix(key, "aws:") {
+			return nil, ruleFault(invalidValue, "a tag with the aws: prefix can't be removed")
 		}
 	}
 	identifier, p, err := f.ruleByARN(in.ResourceARN)

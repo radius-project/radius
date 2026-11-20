@@ -58,8 +58,14 @@ const (
 // bounds a wait that should be short.
 const ruleTimeout = 10 * time.Minute
 
-// templateNamePattern is the documented pattern of a managed rule's TemplateName.
-var templateNamePattern = regexp.MustCompile(`^[0-9A-Za-z][\-\.\_0-9A-Za-z]{0,126}[0-9A-Za-z]$`)
+var (
+	// templateNamePattern is the documented pattern of a managed rule's TemplateName.
+	templateNamePattern = regexp.MustCompile(`^[0-9A-Za-z][\-\.\_0-9A-Za-z]{0,126}[0-9A-Za-z]$`)
+
+	// tagPattern matches the characters CloudWatch allows in a tag's key and value: letters, numbers, spaces, and
+	// . : + = @ _ / -.
+	tagPattern = regexp.MustCompile(`^[\p{L}\p{N}\p{Z}.:+=@_/\-]*$`)
+)
 
 // InsightRuleAPI is the part of the CloudWatch client the managed Contributor Insights rule handler uses.
 type InsightRuleAPI interface {
@@ -144,8 +150,8 @@ func checkTemplateName(value string) error {
 }
 
 // checkRuleTags returns a client failure for Tags that aren't a list of at most 50 tags with distinct keys of 1 to 128
-// characters and values of up to 256. AWS reserves keys that start with aws:, and Read leaves them out, so a template
-// can't set one.
+// characters and values of up to 256, of the characters CloudWatch allows. Read leaves out keys that start with aws:,
+// which AWS reserves, and the key radius-operation-id, so a template can't set one.
 func checkRuleTags(properties map[string]any) error {
 	value, present := properties["Tags"]
 	if !present || value == nil {
@@ -163,11 +169,14 @@ func checkRuleTags(properties map[string]any) error {
 		if !ok || !okKey || !okValue || utf8.RuneCountInString(key) < 1 || utf8.RuneCountInString(key) > maxTagKey || utf8.RuneCountInString(tagValue) > maxTagValue {
 			return ruleInvalid("each tag needs a Key of 1 to %d characters and a Value of up to %d", maxTagKey, maxTagValue)
 		}
+		if !tagPattern.MatchString(key) || !tagPattern.MatchString(tagValue) {
+			return ruleInvalid("the tag %q can have only letters, numbers, spaces, and . : + = @ _ / -", key)
+		}
 		if keys[key] {
 			return ruleInvalid("Tags has the key %q more than once", key)
 		}
-		if strings.HasPrefix(key, "aws:") {
-			return ruleInvalid("AWS reserves tag keys that start with aws:, so Tags can't have %q", key)
+		if strings.HasPrefix(key, "aws:") || key == awsapi.OperationTag {
+			return ruleInvalid("Tags can't have the key %q, which AWS or Radius reserves", key)
 		}
 		keys[key] = true
 	}
@@ -402,7 +411,7 @@ func changes(request native.UpdateRequest, name string) bool {
 }
 
 // Update changes the rule's State and Tags, the properties the patch changes, from what AWS has now: it enables or
-// disables the rule, and sets and removes tags. A State the template no longer sets goes back to ENABLED.
+// disables the rule, and removes and sets tags. A State the template no longer sets goes back to ENABLED.
 func (h *ManagedInsightRule) Update(ctx context.Context, request native.UpdateRequest) error {
 	id, err := parseRuleID(request.Identifier)
 	if err != nil {
@@ -438,15 +447,16 @@ func (h *ManagedInsightRule) Update(ctx context.Context, request native.UpdateRe
 			return beforeRuleChange(err)
 		}
 		set, remove := awsapi.TagChanges(awsapi.Tags(map[string]any{"Tags": awsapi.TagListOf(current)}), awsapi.Tags(request.Desired))
-		if len(set) > 0 {
-			calls = append(calls, func() error {
-				_, err := h.api.TagResource(ctx, &cloudwatch.TagResourceInput{ResourceARN: aws.String(ruleARN), Tags: awsapi.SDKTags[types.Tag](set)}, inRegion(request.Region))
-				return err
-			})
-		}
+		// Removing first keeps the rule within AWS's 50 tags while a key is replaced.
 		if len(remove) > 0 {
 			calls = append(calls, func() error {
 				_, err := h.api.UntagResource(ctx, &cloudwatch.UntagResourceInput{ResourceARN: aws.String(ruleARN), TagKeys: remove}, inRegion(request.Region))
+				return err
+			})
+		}
+		if len(set) > 0 {
+			calls = append(calls, func() error {
+				_, err := h.api.TagResource(ctx, &cloudwatch.TagResourceInput{ResourceARN: aws.String(ruleARN), Tags: awsapi.SDKTags[types.Tag](set)}, inRegion(request.Region))
 				return err
 			})
 		}

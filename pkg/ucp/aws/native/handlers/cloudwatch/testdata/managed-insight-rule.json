@@ -40,12 +40,12 @@
     {
       "service": "STS",
       "operation": "GetCallerIdentity",
-      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "request": "Action=GetCallerIdentity&Version=2011-06-15",
       "status": 200,
       "headers": {
         "Content-Type": "text/xml"
       },
-      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e00000000-0000-0000-0000-000000000000\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+      "body": "<GetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\">\n  <GetCallerIdentityResult>\n    <Arn>arn:aws:iam::123456789012:user/radius-recording</Arn>\n    <UserId>AIDAREPLAY</UserId>\n    <Account>123456789012</Account>\n  </GetCallerIdentityResult>\n  <ResponseMetadata>\n    <RequestId>00000000-0000-0000-0000-000000000000</RequestId>\n  </ResponseMetadata>\n</GetCallerIdentityResponse>\n"
     },
     {
       "service": "CloudWatch",
@@ -72,12 +72,12 @@
     {
       "service": "STS",
       "operation": "GetCallerIdentity",
-      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "request": "Action=GetCallerIdentity&Version=2011-06-15",
       "status": 200,
       "headers": {
         "Content-Type": "text/xml"
       },
-      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e00000000-0000-0000-0000-000000000000\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+      "body": "<GetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\">\n  <GetCallerIdentityResult>\n    <Arn>arn:aws:iam::123456789012:user/radius-recording</Arn>\n    <UserId>AIDAREPLAY</UserId>\n    <Account>123456789012</Account>\n  </GetCallerIdentityResult>\n  <ResponseMetadata>\n    <RequestId>00000000-0000-0000-0000-000000000000</RequestId>\n  </ResponseMetadata>\n</GetCallerIdentityResponse>\n"
     },
     {
       "service": "CloudWatch",
@@ -103,7 +103,7 @@
     },
     {
       "service": "CloudWatch",
-      "operation": "TagResource",
+      "operation": "UntagResource",
       "status": 200,
       "headers": {
         "Content-Type": "application/cbor",
@@ -114,7 +114,7 @@
     },
     {
       "service": "CloudWatch",
-      "operation": "UntagResource",
+      "operation": "TagResource",
       "status": 200,
       "headers": {
         "Content-Type": "application/cbor",
@@ -137,12 +137,12 @@
     {
       "service": "STS",
       "operation": "GetCallerIdentity",
-      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "request": "Action=GetCallerIdentity&Version=2011-06-15",
       "status": 200,
       "headers": {
         "Content-Type": "text/xml"
       },
-      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e00000000-0000-0000-0000-000000000000\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+      "body": "<GetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\">\n  <GetCallerIdentityResult>\n    <Arn>arn:aws:iam::123456789012:user/radius-recording</Arn>\n    <UserId>AIDAREPLAY</UserId>\n    <Account>123456789012</Account>\n  </GetCallerIdentityResult>\n  <ResponseMetadata>\n    <RequestId>00000000-0000-0000-0000-000000000000</RequestId>\n  </ResponseMetadata>\n</GetCallerIdentityResponse>\n"
     },
     {
       "service": "CloudWatch",

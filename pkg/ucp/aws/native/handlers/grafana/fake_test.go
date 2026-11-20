@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -67,13 +66,12 @@ var workspaceVersions = map[string]string{
 	oldWorkspace:   "8.4",
 }
 
-// slugPattern matches what Grafana drops from a name when it makes a service account's login from it.
-var slugPattern = regexp.MustCompile(`[^a-z0-9]+`)
-
-// slug returns the login Grafana makes from a service account's name. Two names with the same slug can't both be in a
-// workspace.
-func slug(name string) string {
-	return strings.Trim(slugPattern.ReplaceAllString(strings.ToLower(name), "-"), "-")
+// login returns the login Grafana's GenerateLogin (pkg/services/serviceaccounts/utils.go) makes from a service
+// account's name, in the workspace's organization. Two names with the same login can't both be in a workspace.
+func login(name string) string {
+	generated := "sa-1-" + strings.ToLower(name)
+	generated = strings.Replace(generated, "--", "-", 1)
+	return strings.ReplaceAll(generated, " ", "-")
 }
 
 // fakeAPI is an in-memory Amazon Managed Grafana API for workspace service accounts. It keeps them in an awsfake
@@ -86,8 +84,8 @@ func slug(name string) string {
 //   - A deleted service account stays in the list for settleReads lists of its workspace, and with listLag set, a
 //     created one stays out of it for that many. listLag is off by default, because UCP takes a create AWS doesn't
 //     list as one that never reached AWS (see Test_WorkspaceServiceAccount_ListLag).
-//   - A name that differs from another service account's only in case or punctuation is taken, as in Grafana, and a
-//     create with a taken name fails with ConflictException.
+//   - A name that gives the same login as another service account's, such as one that differs only in case or in spaces
+//     for dashes, is taken, as in Grafana, and a create with a taken name fails with ConflictException.
 type fakeAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
@@ -216,7 +214,7 @@ func (f *fakeAPI) CreateWorkspaceServiceAccount(ctx context.Context, in *grafana
 	}
 	ws := aws.ToString(in.WorkspaceId)
 	for _, identifier := range f.accounts(ws) {
-		if slug(aws.ToString(summary(f.store.Resource(serviceAccountType, identifier)).Name)) == slug(name) {
+		if login(aws.ToString(summary(f.store.Resource(serviceAccountType, identifier)).Name)) == login(name) {
 			return nil, fault(conflictCode, "a service account with the login of %q already exists", name)
 		}
 	}

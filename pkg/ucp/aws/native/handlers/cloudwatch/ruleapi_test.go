@@ -34,6 +34,7 @@ import (
 const (
 	managedRuleDoc = apiReference + "API_ManagedRule.html"
 	tagDoc         = apiReference + "API_Tag.html"
+	taggingDoc     = "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Tagging.html#tagging-restrictions"
 	quotasDoc      = "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html"
 
 	// ruleNamesUnclear is what the calls that take rule names leave unclear.
@@ -257,6 +258,12 @@ var ruleAPI = map[string]nativetest.Call{
 				Code: invalidValue,
 			},
 			{
+				Rule:  "a tag has only letters, numbers, spaces, and . : + = @ _ / -",
+				Doc:   taggingDoc,
+				Break: ruleCalls(putRule(newConnections, func(r *types.ManagedRule) { r.Tags = []types.Tag{tag("team", "a#b")} })),
+				Code:  invalidValue,
+			},
+			{
 				Rule: "the call makes the rule enabled",
 				Check: ruleCalls(putRule(newConnections), settleRules, ruleState(newConnections, ruleEnabled),
 					ruleTags(newConnections, map[string]string{})),
@@ -372,6 +379,29 @@ var ruleAPI = map[string]nativetest.Call{
 				Code:  ruleNotFound,
 			},
 			{
+				Rule:  "a tag has only letters, numbers, spaces, and . : + = @ _ / -",
+				Doc:   taggingDoc,
+				Break: ruleCalls(putRule(newConnections), tagRule(newConnections, tag("team!", "a"))),
+				Code:  invalidValue,
+			},
+			{
+				Rule:  "the aws: prefix is reserved for AWS",
+				Doc:   taggingDoc,
+				Break: ruleCalls(putRule(newConnections), tagRule(newConnections, tag("aws:team", "a"))),
+				Code:  invalidValue,
+			},
+			{
+				Rule: "tags with the aws: prefix don't count toward the 50",
+				Doc:  taggingDoc,
+				Check: ruleCalls(putRule(newConnections), func(ctx context.Context, f *fakeRuleAPI) error {
+					identifier := endpointService + "|" + newConnections
+					p := f.store.Resource(managedInsightRuleType, identifier)
+					p["Tags"] = []any{map[string]any{"Key": "aws:created-by", "Value": "aws"}}
+					f.store.Put(managedInsightRuleType, identifier, p)
+					return nil
+				}, tagRule(newConnections, manyTags(50)...)),
+			},
+			{
 				Rule:  "a tag with a key the resource has replaces its value, and other tags stay",
 				Check: ruleCalls(putRule(newConnections), tagRule(newConnections, tag("a", "1"), tag("b", "2")), tagRule(newConnections, tag("a", "3")), ruleTags(newConnections, map[string]string{"a": "3", "b": "2"})),
 			},
@@ -399,7 +429,8 @@ var ruleAPI = map[string]nativetest.Call{
 				Code: ruleNotFound,
 			},
 		},
-		Unclear: "What removing a key the rule doesn't have does: the fake changes nothing.",
+		Unclear: "What removing a key the rule doesn't have does: the fake changes nothing. What removing a key with the aws: " +
+			"prefix does: the tagging guide says it can't be done, and the fake fails with InvalidParameterValue.",
 	},
 	"ListTagsForResource": {
 		Doc: apiReference + "API_ListTagsForResource.html",

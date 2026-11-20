@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -88,6 +89,9 @@ func Test_Suite_ManagedInsightRule(t *testing.T) {
 			with(properties, map[string]any{"State": "enabled"}),
 			with(properties, map[string]any{"Tags": tags("a", "1", "a", "2")}),
 			with(properties, map[string]any{"Tags": tags("aws:team", "network")}),
+			with(properties, map[string]any{"Tags": tags("team!", "network")}),
+			with(properties, map[string]any{"Tags": tags("team", "net#work")}),
+			with(properties, map[string]any{"Tags": tags("radius-operation-id", "x")}),
 			with(properties, map[string]any{"Tags": tooManyTags}),
 		},
 		IdentifierProperties: func(identifier string) map[string]any {
@@ -366,8 +370,10 @@ func Test_ManagedInsightRule_Update(t *testing.T) {
 func Test_ManagedInsightRule_AWSTags(t *testing.T) {
 	h, api := newRuleHandler()
 	id := createRule(t, h, ruleTemplate(newConnections))
-	_, err := api.TagResource(t.Context(), tagInput(ruleARNOf(newConnections), tag("aws:cloudformation:stack-name", "s")))
-	require.NoError(t, err)
+	// Only AWS can add a tag with the aws: prefix, so it goes straight into the store.
+	stored := api.store.Resource(managedInsightRuleType, id)
+	stored["Tags"] = tags("aws:cloudformation:stack-name", "s")
+	api.store.Put(managedInsightRuleType, id, stored)
 	got, err := h.Read(t.Context(), region, id)
 	require.NoError(t, err)
 	require.NotContains(t, got, "Tags")
@@ -475,4 +481,25 @@ func Test_ManagedInsightRule_InvalidInputs(t *testing.T) {
 	api.errs["ListManagedInsightRules"] = errors.New("list down")
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(disabled, map[string]any{"TemplateName": rejectedConnections})})
 	requireRuleFailure(t, err, native.OutcomePartial, "list down")
+}
+
+// Test_ManagedInsightRule_FullTags checks that an update of a rule with 50 tags that replaces a key removes the old key
+// before it adds the new one, so the rule never has more than AWS allows. Tags AWS adds don't count.
+func Test_ManagedInsightRule_FullTags(t *testing.T) {
+	h, api := newRuleHandler()
+	full := []any{}
+	for i := range maxRuleTags {
+		full = append(full, map[string]any{"Key": fmt.Sprintf("k%02d", i), "Value": "v"})
+	}
+	properties := with(ruleTemplate(newConnections), map[string]any{"Tags": full})
+	id := createRule(t, h, properties)
+	stored := api.store.Resource(managedInsightRuleType, id)
+	stored["Tags"] = append(stored["Tags"].([]any), map[string]any{"Key": "aws:created-by", "Value": "aws"})
+	api.store.Put(managedInsightRuleType, id, stored)
+
+	replaced := append(slices.Clone(full[1:]), map[string]any{"Key": "new", "Value": "v"})
+	require.NoError(t, h.Update(t.Context(), ruleUpdate(t, h, id, with(properties, map[string]any{"Tags": replaced}))))
+	got, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+	require.ElementsMatch(t, replaced, got["Tags"])
 }

@@ -149,7 +149,7 @@ var accountAPI = map[string]nativetest.Call{
 			},
 		},
 		Unclear: "The error for a name another service account has: the fake returns ConflictException, and also for a name " +
-			"that differs only in case or punctuation, because Grafana makes the account's login from the name." + busyNote +
+			"that gives the same login, such as one that differs only in case or in spaces for dashes, as Grafana's GenerateLogin makes it." + busyNote +
 			" The service quota of service accounts per workspace: the fake has none." + constraintNote,
 	},
 	"ListWorkspaceServiceAccounts": {
