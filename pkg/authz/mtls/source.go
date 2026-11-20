@@ -47,15 +47,8 @@ const (
 	maxReadAttempts = 5
 )
 
-type sourceKind int
-
-const (
-	certAndTrust sourceKind = iota
-	trustOnly
-	servingPairOnly
-)
-
-// material is one consistent snapshot of the files required by the source kind.
+// material is one consistent set of certificate, key, and CA bundle. cert is nil for a
+// trust-only Source, and pool is nil for a certificate-only Source.
 type material struct {
 	cert *tls.Certificate
 	pool *x509.CertPool
@@ -66,11 +59,12 @@ type material struct {
 // updates Secret volumes by swapping a symlink, so Source polls file contents
 // rather than watching individual files.
 type Source struct {
-	dir      string
-	caDir    string
-	kind     sourceKind
-	now      func() time.Time
-	readFile func(string) ([]byte, error)
+	dir       string
+	caDir     string
+	trustOnly bool
+	certOnly  bool
+	now       func() time.Time
+	readFile  func(string) ([]byte, error)
 
 	mu      sync.Mutex
 	digest  [sha256.Size]byte
@@ -80,26 +74,31 @@ type Source struct {
 // NewSource loads the certificate, key, and CA bundle from dir. It returns an error if
 // any file is missing or invalid, or if the certificate has expired. Servers use it.
 func NewSource(dir string) (*Source, error) {
-	return newSource(dir, dir, certAndTrust)
+	return newSource(dir, dir, false)
 }
 
 // NewSourceWithCA loads the certificate and key from dir and the CA bundle (ca.crt) from
 // caDir. Radius receivers use it because their <receiver>-spiffe Secret volume projects only
 // tls.crt and tls.key; the Radius CA bundle is mounted separately from the radius-ca Secret.
 func NewSourceWithCA(dir, caDir string) (*Source, error) {
-	return newSource(dir, caDir, certAndTrust)
+	return newSource(dir, caDir, false)
 }
 
-// NewTrustSource loads only the CA bundle (ca.crt) from dir. Clients use it to verify
-// servers; they do not present a certificate.
-func NewTrustSource(dir string) (*Source, error) {
-	return newSource(dir, dir, trustOnly)
+// NewCertificateSource loads only the certificate and key (tls.crt and tls.key) from dir. A
+// server that verifies no peer against a Radius CA, such as UCP's aggregated API server, uses
+// it, so its directory needs no ca.crt.
+func NewCertificateSource(dir string) (*Source, error) {
+	s := &Source{dir: dir, certOnly: true, now: time.Now, readFile: os.ReadFile}
+	if _, err := s.Reload(); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // NewServingConfig loads only tls.crt and tls.key and reloads them until ctx is
 // canceled. Peer trust (including request-header client CAs) belongs to base.
 func NewServingConfig(ctx context.Context, dir string, base *tls.Config) (*tls.Config, error) {
-	s, err := newSource(dir, "", servingPairOnly)
+	s, err := NewCertificateSource(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +106,14 @@ func NewServingConfig(ctx context.Context, dir string, base *tls.Config) (*tls.C
 	return s.ServerConfigFrom(base), nil
 }
 
-func newSource(dir, caDir string, kind sourceKind) (*Source, error) {
-	s := &Source{dir: dir, caDir: caDir, kind: kind, now: time.Now, readFile: os.ReadFile}
+// NewTrustSource loads only the CA bundle (ca.crt) from dir. Clients use it to verify
+// servers; they do not present a certificate.
+func NewTrustSource(dir string) (*Source, error) {
+	return newSource(dir, dir, true)
+}
+
+func newSource(dir, caDir string, trustOnly bool) (*Source, error) {
+	s := &Source{dir: dir, caDir: caDir, trustOnly: trustOnly, now: time.Now, readFile: os.ReadFile}
 	if _, err := s.Reload(); err != nil {
 		return nil, err
 	}
@@ -118,14 +123,13 @@ func newSource(dir, caDir string, kind sourceKind) (*Source, error) {
 // files returns the paths of the files the Source reads, in the order parse expects.
 func (s *Source) files() []string {
 	ca := filepath.Join(s.caDir, CAFile)
-	if s.kind == trustOnly {
+	if s.trustOnly {
 		return []string{ca}
 	}
-	pair := []string{filepath.Join(s.dir, CertFile), filepath.Join(s.dir, KeyFile)}
-	if s.kind == servingPairOnly {
-		return pair
+	if s.certOnly {
+		return []string{filepath.Join(s.dir, CertFile), filepath.Join(s.dir, KeyFile)}
 	}
-	return append(pair, ca)
+	return []string{filepath.Join(s.dir, CertFile), filepath.Join(s.dir, KeyFile), ca}
 }
 
 // Reload reads the files and, if they changed and are valid, replaces the current
@@ -179,15 +183,24 @@ func (s *Source) readStable() ([][]byte, [sha256.Size]byte, error) {
 
 // parse builds material from the file contents read in the order of files.
 func (s *Source) parse(raw [][]byte) (*material, error) {
-	var pool *x509.CertPool
-	if s.kind != servingPairOnly {
-		pool = x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(raw[len(raw)-1]) {
-			return nil, errors.New("failed to load CA bundle: no certificates found")
+	if s.certOnly {
+		cert, err := tls.X509KeyPair(raw[0], raw[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to load certificate and key: %w", err)
 		}
-		if s.kind == trustOnly {
-			return &material{pool: pool}, nil
+		if err := s.checkExpiry(&cert); err != nil {
+			return nil, err
 		}
+		return &material{cert: &cert}, nil
+	}
+
+	caPEM := raw[len(raw)-1]
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caPEM) {
+		return nil, errors.New("failed to load CA bundle: no certificates found")
+	}
+	if s.trustOnly {
+		return &material{pool: pool}, nil
 	}
 
 	cert, err := tls.X509KeyPair(raw[0], raw[1])
@@ -196,9 +209,6 @@ func (s *Source) parse(raw [][]byte) (*material, error) {
 	}
 	if err := s.checkExpiry(&cert); err != nil {
 		return nil, err
-	}
-	if s.kind == servingPairOnly {
-		return &material{cert: &cert}, nil
 	}
 
 	// The certificate must chain to the CA bundle it is loaded with, so peers that trust

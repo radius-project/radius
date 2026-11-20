@@ -58,6 +58,7 @@ spec:
   ca:
     secretName: radius-ca
 {{- $trustDomain := include "radius.authz.spiffe.trustDomain" . }}
+{{- include "radius.authz.validateSecretNames" . }}
 {{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray }}
 ---
 # Server certificate for internal calls to {{ $receiver }}. Its only SAN is the SPIFFE ID of the

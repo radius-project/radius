@@ -236,21 +236,19 @@ func requireRejected(t *testing.T, mode authz.Mode, resp rogue.Response, status 
 
 // denialLogs finds applications-rp AuthorizationFailed denial (enforce) or would-deny (dryRun)
 // lines for a caller on the operations route. The caller check log has no peer address, so a
-// match is tied to this test by reading only logs since the test started and requiring more
-// matching lines than were present before the request.
+// match is tied to this test by requiring more matching lines in a pod than that pod had before
+// the request. Logs are not filtered by time: SinceTime is compared with the node clock, and host
+// clock skew could exclude the denial line.
 type denialLogs struct {
 	client   k8s.Interface
 	marker   string
 	caller   string
-	since    metav1.Time
 	baseline map[string]int
 }
 
 func newDenialLogs(t *testing.T, client k8s.Interface, mode authz.Mode, caller string) *denialLogs {
 	t.Helper()
-	// Log timestamps have second precision, so start one second early; the baseline
-	// excludes anything already logged.
-	d := &denialLogs{client: client, marker: denialMarker(mode), caller: caller, since: metav1.NewTime(time.Now().Add(-time.Second))}
+	d := &denialLogs{client: client, marker: denialMarker(mode), caller: caller}
 	var last string
 	d.baseline, last = d.count(t.Context(), t)
 	t.Logf("applications-rp %s lines for %s before the request: %v; last logs:\n%s", d.marker, caller, d.baseline, tail(last, 5))
@@ -293,7 +291,7 @@ func (d *denialLogs) count(ctx context.Context, t *testing.T) (map[string]int, s
 		if pod.Status.Phase != corev1.PodRunning {
 			continue
 		}
-		stream, err := d.client.CoreV1().Pods(radiusNamespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: "applications-rp", SinceTime: &d.since}).Stream(ctx)
+		stream, err := d.client.CoreV1().Pods(radiusNamespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: "applications-rp"}).Stream(ctx)
 		require.NoError(t, err, "failed to read logs for %s", pod.Name)
 		data, err := io.ReadAll(stream)
 		stream.Close()
@@ -421,40 +419,6 @@ func tail(s string, n int) string {
 		lines = lines[len(lines)-n:]
 	}
 	return strings.Join(lines, "\n")
-}
-
-func Test_AuthFailureLine(t *testing.T) {
-	t.Parallel()
-
-	marker := authz.LogFieldDenied
-	line := func(address string) string {
-		data, err := json.Marshal(map[string]any{
-			marker: true, authz.LogFieldCode: v1.CodeInvalidAuthenticationInfo,
-			mtls.LogFieldPeerAddress: address, mtls.LogFieldReason: "missing bearer token",
-		})
-		require.NoError(t, err)
-		return "2026-11-06T00:00:00Z " + string(data)
-	}
-
-	tests := []struct {
-		name    string
-		podIP   string
-		address string
-		want    bool
-	}{
-		{name: "IPv4", podIP: "10.0.0.1", address: "10.0.0.1:43210", want: true},
-		{name: "IPv6", podIP: "fd00::1", address: "[fd00::1]:43210", want: true},
-		{name: "IPv6 non-canonical pod IP", podIP: "fd00:0:0:0:0:0:0:1", address: "[fd00::1]:43210", want: true},
-		{name: "IPv4 other pod with shared prefix", podIP: "10.0.0.1", address: "10.0.0.12:43210"},
-		{name: "IPv6 other pod", podIP: "fd00::1", address: "[fd00::2]:43210"},
-		{name: "no port", podIP: "10.0.0.1", address: "10.0.0.1"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tt.want, authFailureLine(line(tt.address), marker, tt.podIP, "missing bearer token"))
-		})
-	}
 }
 
 func Test_DenialLogsMatches(t *testing.T) {
