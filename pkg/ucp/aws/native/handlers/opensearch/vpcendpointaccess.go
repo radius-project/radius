@@ -19,6 +19,7 @@ package opensearch
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
@@ -234,8 +235,29 @@ func serviceOptions(properties map[string]any) (*types.ServiceOptions, error) {
 	return &types.ServiceOptions{SupportedRegions: regions}, nil
 }
 
+// sameServiceOptions returns a rejected client failure when the domain already authorizes the principal with other
+// Regions than the template's, so a create never takes another authorization as the template's.
+func sameServiceOptions(id accessID, want *types.ServiceOptions, got *types.ServiceOptions) error {
+	regions := func(o *types.ServiceOptions) []string {
+		if o == nil {
+			return []string{}
+		}
+		return slices.Sorted(slices.Values(o.SupportedRegions))
+	}
+	if slices.Equal(regions(want), regions(got)) {
+		return nil
+	}
+	return &native.Failure{
+		Message: fmt.Sprintf("%s: the domain %q already authorizes %s with the SupportedRegions %v, not the template's %v. Set ServiceOptions to match, or revoke the authorization first",
+			vpcEndpointAccessType, id.domain, id.principal, regions(got), regions(want)),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
 // Create authorizes the principal. AWS lists an authorization as soon as it makes it, so Create reads the domain's
-// list first and sends nothing when the principal is already there, such as after a create whose response was lost.
+// list first and sends nothing when the principal is already there with the template's options, such as after a
+// create whose response was lost.
 func (h *VpcEndpointAccess) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	id, ok, err := parseAccess(request.Properties)
 	if err != nil {
@@ -248,11 +270,11 @@ func (h *VpcEndpointAccess) Create(ctx context.Context, request native.CreateReq
 	if err != nil {
 		return "", err
 	}
-	switch _, err := h.find(ctx, request.Region, id); {
+	switch p, err := h.find(ctx, request.Region, id); {
 	case err == nil:
-		return id.String(), nil
+		return id.String(), sameServiceOptions(id, options, p.ServiceOptions)
 	case !errors.Is(err, native.ErrNotFound):
-		return "", err
+		return "", beforeChange(err)
 	}
 	input := &opensearch.AuthorizeVpcEndpointAccessInput{DomainName: aws.String(id.domain), ServiceOptions: options}
 	if id.kind == types.PrincipalTypeAwsAccount {
@@ -280,7 +302,7 @@ func (h *VpcEndpointAccess) Delete(ctx context.Context, region string, identifie
 	}
 	p, err := h.find(ctx, region, id)
 	if err != nil {
-		return err
+		return beforeChange(err)
 	}
 	input := &opensearch.RevokeVpcEndpointAccessInput{DomainName: aws.String(id.domain), ServiceOptions: p.ServiceOptions}
 	if id.kind == types.PrincipalTypeAwsAccount {

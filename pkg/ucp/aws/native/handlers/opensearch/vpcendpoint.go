@@ -165,9 +165,9 @@ func vpcOptions(properties map[string]any) (options map[string]any, subnets []st
 }
 
 // busy returns the conflict of a change AWS can't make now because it is changing the endpoint, another endpoint of
-// the domain, or the domain itself. UCP answers 409 and sends nothing more, so the caller deploys again later.
+// the domain, or the domain itself. UCP answers 409 and sends nothing more, so the caller tries again later.
 func busy(what string, cause error) error {
-	message := fmt.Sprintf("AWS is changing %s, so it changed nothing. Deploy again once the domain and its VPC endpoints are active, "+
+	message := fmt.Sprintf("AWS is changing %s, so nothing was changed. Try again once the domain and its VPC endpoints are active, "+
 		"and give VPC endpoints of one domain dependsOn on each other and on the domain", what)
 	if cause != nil {
 		message += ": " + cause.Error()
@@ -236,7 +236,7 @@ func (h *VpcEndpoint) Update(ctx context.Context, request native.UpdateRequest) 
 	}
 	e, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
-		return err
+		return beforeChange(err)
 	}
 	if changing(e.Status) {
 		return busy(fmt.Sprintf("the VPC endpoint %q (%s)", request.Identifier, e.Status), nil)
@@ -254,7 +254,7 @@ func (h *VpcEndpoint) Update(ctx context.Context, request native.UpdateRequest) 
 	if groups == nil {
 		if touches(request, "/VpcOptions/SecurityGroupIds") {
 			if groups, err = h.defaultSecurityGroup(ctx, request.Region, aws.ToString(current.VPCId)); err != nil {
-				return err
+				return beforeChange(err)
 			}
 		} else {
 			groups = current.SecurityGroupIds
@@ -293,7 +293,7 @@ func (h *VpcEndpoint) defaultSecurityGroup(ctx context.Context, region string, v
 func (h *VpcEndpoint) Delete(ctx context.Context, region string, identifier string) error {
 	e, err := h.describe(ctx, region, identifier)
 	if err != nil {
-		return err
+		return beforeChange(err)
 	}
 	switch e.Status {
 	case types.VpcEndpointStatusDeleting:
@@ -324,6 +324,12 @@ func (h *VpcEndpoint) List(ctx context.Context, region string) ([]native.Resourc
 			described, err := h.api.DescribeVpcEndpoints(ctx, &opensearch.DescribeVpcEndpointsInput{VpcEndpointIds: ids}, inRegion(region))
 			if err != nil {
 				return nil, err
+			}
+			// An endpoint deleted since the list is reported not found, and any other error would leave it out.
+			for _, e := range described.VpcEndpointErrors {
+				if e.ErrorCode != types.VpcEndpointErrorCodeEndpointNotFound {
+					return nil, fmt.Errorf("AWS failed to describe the OpenSearch Service VPC endpoint %q (%s): %s", aws.ToString(e.VpcEndpointId), e.ErrorCode, aws.ToString(e.ErrorMessage))
+				}
 			}
 			for i := range described.VpcEndpoints {
 				e := &described.VpcEndpoints[i]

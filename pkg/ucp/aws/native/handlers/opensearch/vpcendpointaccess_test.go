@@ -223,6 +223,33 @@ func Test_VpcEndpointAccess_CreateInput(t *testing.T) {
 	boom := errors.New("boom")
 	api.errs["ListVpcEndpointAccess"] = boom
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"DomainName": "logs", "Account": otherAccount}})
-	require.ErrorIs(t, err, boom)
+	requireRejectedBefore(t, err, boom.Error())
 	require.Zero(t, api.calls["AuthorizeVpcEndpointAccess"])
+}
+
+// Test_VpcEndpointAccess_OtherServiceOptions checks that a create that finds the service already authorized with other
+// Regions fails instead of taking it as the template's.
+func Test_VpcEndpointAccess_OtherServiceOptions(t *testing.T) {
+	h, api := newAccessHandler()
+	properties := map[string]any{"DomainName": "logs", "Service": service, "ServiceOptions": map[string]any{"SupportedRegions": list("us-east-1")}}
+	createAccess(t, h, with(properties, map[string]any{"ServiceOptions": map[string]any{"SupportedRegions": list("eu-west-1")}}))
+	for _, template := range []map[string]any{properties, {"DomainName": "logs", "Service": service}} {
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template})
+		requireRejectedBefore(t, err, "SupportedRegions")
+	}
+
+	// The same Regions in another order are the same options.
+	createAccess(t, h, with(properties, map[string]any{"ServiceOptions": map[string]any{"SupportedRegions": list("eu-west-1")}}))
+	require.Equal(t, 1, api.calls["AuthorizeVpcEndpointAccess"])
+}
+
+// Test_VpcEndpointAccess_FailsBeforeChange checks that a list that fails before a create or delete sends anything is
+// reported as rejected.
+func Test_VpcEndpointAccess_FailsBeforeChange(t *testing.T) {
+	h, api := newAccessHandler()
+	id := createAccess(t, h, map[string]any{"DomainName": "logs", "Account": otherAccount})
+	api.errs["ListVpcEndpointAccess"] = errors.New("list down")
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"DomainName": "logs", "Account": account}})
+	requireRejectedBefore(t, err, "list down")
+	requireRejectedBefore(t, h.Delete(t.Context(), region, id), "list down")
 }

@@ -381,8 +381,8 @@ func Test_VpcEndpoint_AWSErrors(t *testing.T) {
 	api.errs["DescribeVpcEndpoints"] = boom
 	_, err := h.Read(t.Context(), region, id)
 	require.ErrorIs(t, err, boom)
-	require.ErrorIs(t, h.Update(t.Context(), request), boom)
-	require.ErrorIs(t, h.Delete(t.Context(), region, id), boom)
+	requireRejectedBefore(t, h.Update(t.Context(), request), "boom")
+	requireRejectedBefore(t, h.Delete(t.Context(), region, id), "boom")
 	_, err = h.List(t.Context(), region)
 	require.ErrorIs(t, err, boom)
 	require.Zero(t, api.calls["UpdateVpcEndpoint"]+api.calls["DeleteVpcEndpoint"])
@@ -453,4 +453,51 @@ func Test_VpcEndpoint_OddAnswers(t *testing.T) {
 	resources, err := h.List(t.Context(), region)
 	require.NoError(t, err)
 	require.Empty(t, resources, "an endpoint AWS started deleting after the list is left out")
+}
+
+// requireRejectedBefore checks that err is a failure from before any change, so UCP drops the pending values, and
+// that it names cause.
+func requireRejectedBefore(t *testing.T, err error, cause string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome, "%v", err)
+	require.Contains(t, failure.Message, cause)
+}
+
+// Test_VpcEndpoint_FailsBeforeChange checks that a read that fails before an update or delete sends anything is
+// reported as rejected, so UCP doesn't count the update's values as possibly applied.
+func Test_VpcEndpoint_FailsBeforeChange(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewVpcEndpoint(api, api)
+	id := createEndpointWith(t, h, endpointTemplate(list("subnet-a"), list("sg-web")), "a")
+	removeGroups := updateRequest(t, h, id, endpointTemplate(list("subnet-a"), nil))
+
+	requireRejectedBefore(t, NewVpcEndpoint(api, fixedGroups{err: errors.New("ec2 down")}).Update(t.Context(), removeGroups), "ec2 down")
+	api.errs["DescribeVpcEndpoints"] = errors.New("describe down")
+	requireRejectedBefore(t, h.Update(t.Context(), removeGroups), "describe down")
+	requireRejectedBefore(t, h.Delete(t.Context(), region, id), "describe down")
+	require.Zero(t, api.calls["UpdateVpcEndpoint"]+api.calls["DeleteVpcEndpoint"])
+}
+
+// serverErrors is an OpenSearch API whose DescribeVpcEndpoints reports every endpoint as a server error.
+type serverErrors struct {
+	*fakeAPI
+}
+
+func (s serverErrors) DescribeVpcEndpoints(_ context.Context, in *opensearch.DescribeVpcEndpointsInput, _ ...func(*opensearch.Options)) (*opensearch.DescribeVpcEndpointsOutput, error) {
+	out := &opensearch.DescribeVpcEndpointsOutput{}
+	for _, id := range in.VpcEndpointIds {
+		out.VpcEndpointErrors = append(out.VpcEndpointErrors, types.VpcEndpointError{VpcEndpointId: aws.String(id), ErrorCode: types.VpcEndpointErrorCodeServerError, ErrorMessage: aws.String("try later")})
+	}
+	return out, nil
+}
+
+// Test_VpcEndpoint_ListServerError checks that List fails, rather than leaving an endpoint out, when AWS can't
+// describe it.
+func Test_VpcEndpoint_ListServerError(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	createEndpointWith(t, NewVpcEndpoint(api, api), endpointTemplate(list("subnet-a"), nil), "a")
+	_, err := NewVpcEndpoint(serverErrors{api}, api).List(t.Context(), region)
+	require.ErrorContains(t, err, "try later")
 }
