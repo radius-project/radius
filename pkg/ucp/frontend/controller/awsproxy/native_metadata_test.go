@@ -19,6 +19,7 @@ package awsproxy
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -588,6 +589,21 @@ func Test_handleError(t *testing.T) {
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, boom)
 	})
+}
+
+func Test_startError(t *testing.T) {
+	retried := retriedCreateError(t)
+	var failure *native.Failure
+	require.ErrorAs(t, startError(retried), &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "the first attempt of the create may have reached AWS")
+
+	read := &smithy.OperationError{ServiceID: "LakeFormation", OperationName: "GetDataLakeSettings", Err: &awsretry.MaxAttemptsError{Attempt: 3, Err: answer(http.StatusBadRequest, "AccessDeniedException")}}
+	require.Same(t, read, startError(read), "a read before any change applied nothing, however the SDK retried it")
+	notFound := fmt.Errorf("%w: %w", native.ErrNotFound, retried)
+	require.Same(t, notFound, startError(notFound))
+	once := answer(http.StatusBadRequest, "ValidationException")
+	require.Same(t, once, startError(once), "without a retry, AWS's answer shows it changed nothing")
+	require.NoError(t, startError(nil))
 }
 
 func Test_outcomeOf(t *testing.T) {

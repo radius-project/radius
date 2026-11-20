@@ -36,6 +36,7 @@ import (
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/smithy-go"
 	"github.com/wI2L/jsondiff"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -781,14 +782,27 @@ func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AW
 }
 
 // startError returns err, from a native handler's start call or resend, as awsapi.Rejected reports it when the SDK
-// retried a call an earlier attempt of which may have reached AWS, so a 4xx on the last attempt, such as an
-// AlreadyExists for a create whose first response was lost, isn't taken as AWS rejecting the operation. A handler's
-// own failure, and any other error, stays as it is.
+// retried a call that changes AWS and an earlier attempt may have reached AWS, so a 4xx on the last attempt, such as an
+// AlreadyExists for a create whose first response was lost, isn't taken as AWS rejecting the operation. An error of a
+// read the handler makes before any change, a not found error, a handler's own failure, and any other error stay as
+// they are.
 func startError(err error) error {
-	if err != nil && awsapi.Retried(err) {
-		return awsapi.Rejected(err)
+	if err == nil || isNotFound(err) || !awsapi.Retried(err) || isRead(err) {
+		return err
 	}
-	return err
+	return awsapi.Rejected(err)
+}
+
+// isRead reports whether err is the error of an AWS call that only reads, by the operation's name, such as
+// DescribeDBClusters. AWS names its read operations this way across services.
+func isRead(err error) bool {
+	var op *smithy.OperationError
+	if !errors.As(err, &op) {
+		return false
+	}
+	return slices.ContainsFunc([]string{"Get", "Describe", "List", "Head"}, func(prefix string) bool {
+		return strings.HasPrefix(op.Operation(), prefix)
+	})
 }
 
 // identifierError returns the response for an error computing the identifier from a template's properties, including
