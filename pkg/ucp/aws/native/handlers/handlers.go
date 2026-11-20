@@ -33,6 +33,7 @@ import (
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	redshiftsdk "github.com/aws/aws-sdk-go-v2/service/redshift"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
@@ -54,6 +55,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/redshift"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
 )
@@ -89,6 +91,8 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		redshift.NewDataShareAuthorization(redshiftsdk.NewFromConfig(cfg)),
+		redshift.NewDataShareConsumerAssociation(redshiftsdk.NewFromConfig(cfg)),
 	}
 }
 

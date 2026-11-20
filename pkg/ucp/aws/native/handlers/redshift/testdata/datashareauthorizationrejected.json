@@ -1,0 +1,28 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_DATASHARE_ARN": "arn:aws:redshift:us-west-2:123456789012:datashare:99bb655c-5538-4fc0-b161-0774338456a2/radius_rec_auth"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "AuthorizeDataShare",
+      "request": "Action=AuthorizeDataShare\u0026AllowWrites=false\u0026ConsumerIdentifier=111122223333\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A99bb655c-5538-4fc0-b161-0774338456a2%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidDataShareFault\u003c/Code\u003e\n    \u003cMessage\u003eThe data share isn't available because it doesn't exist.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003e3dc31a45-3b87-47b1-9184-9c18599bf8b0\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "AuthorizeDataShare",
+      "request": "Action=AuthorizeDataShare\u0026AllowWrites=false\u0026ConsumerIdentifier=not-an-account\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A99bb655c-5538-4fc0-b161-0774338456a2%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidParameterValue\u003c/Code\u003e\n    \u003cMessage\u003eThe consumer identifier isn't valid.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003ebaaf304e-2bd7-4986-82f5-e827adf3d570\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    }
+  ]
+}
