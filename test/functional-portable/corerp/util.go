@@ -30,6 +30,12 @@ import (
 	"github.com/radius-project/radius/test/rp"
 )
 
+// RunRegression runs the direct Applications.Core API regressions in both the
+// ordinary Core RP suite and the authorization mode suite.
+func RunRegression(t *testing.T) {
+	t.Run("secretStores", testSecretStores)
+}
+
 // TestSecretDeletion tests that the secret is deleted after the resource is deleted
 func TestSecretDeletion(t *testing.T, ctx context.Context, test rp.RPTest, appName, envName, resourceID string, secretNamespace string, secretPrefix string) {
 	secretSuffix, err := GetSecretSuffix(resourceID, envName, appName)
