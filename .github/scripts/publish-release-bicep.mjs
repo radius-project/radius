@@ -124,6 +124,10 @@ export function selectSnapshot(artifacts, source, reuseRequested = false) {
   );
   assert.ok(matches.length <= 1, "Ambiguous release snapshot");
   if (matches.length) {
+    assert.ok(
+      source.generationAttempt > 1 || reuseRequested,
+      "Unexpected snapshot on initial non-recovery attempt"
+    );
     verifySnapshot(matches[0], source);
     return matches[0].id;
   }
@@ -178,6 +182,21 @@ export async function prepareRelease(
     captures[0].status === "completed" && captures[0].conclusion === "success",
     "Original snapshot generation did not succeed"
   );
+  for (const name of [
+    "Capture native Bicep OCI snapshot",
+    "Retain original native snapshot"
+  ]) {
+    const steps = captures[0].steps?.filter((step) => step.name === name);
+    assert.equal(
+      steps?.length,
+      1,
+      `Original snapshot step missing or ambiguous: ${name}`
+    );
+    assert.ok(
+      steps[0].status === "completed" && steps[0].conclusion === "success",
+      `Original snapshot step did not succeed: ${name}`
+    );
+  }
   const created = Date.parse(artifact.created_at);
   assert.ok(
     created >= Date.parse(captures[0].started_at) &&

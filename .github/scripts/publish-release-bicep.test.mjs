@@ -72,7 +72,19 @@ const job = {
   status: "completed",
   conclusion: "success",
   started_at: "2026-10-01T10:00:00Z",
-  completed_at: "2026-10-01T10:02:00Z"
+  completed_at: "2026-10-01T10:02:00Z",
+  steps: [
+    {
+      name: "Capture native Bicep OCI snapshot",
+      status: "completed",
+      conclusion: "success"
+    },
+    {
+      name: "Retain original native snapshot",
+      status: "completed",
+      conclusion: "success"
+    }
+  ]
 };
 const workflowRun = {
   id: 123,
@@ -86,7 +98,11 @@ const workflowRun = {
 };
 function client(run = workflowRun, jobs = [job]) {
   return {
-    paginate: async () => jobs,
+    paginate: async (_method, args) => {
+      assert.equal(args.run_id, run.id);
+      assert.equal(args.attempt_number, run.run_attempt);
+      return jobs;
+    },
     rest: {
       repos: {
         getCommit: async () => ({ data: { sha: source.commit } })
@@ -213,6 +229,11 @@ test("run and snapshot evidence reject wrong source, workflow, attempt, ownershi
   ])
     assert.throws(() => verifySnapshot({ ...artifact, ...override }, source));
   assert.equal(selectSnapshot([], source), "");
+  assert.throws(
+    () => selectSnapshot([artifact], source),
+    /Unexpected snapshot on initial/
+  );
+  assert.equal(selectSnapshot([artifact], source, true), artifact.id);
   assert.equal(
     selectSnapshot([artifact], { ...source, generationAttempt: 2 }),
     7
@@ -317,8 +338,22 @@ test("original snapshot produces the exact Radius-only R1 record and preserves i
     f.directory,
     f.run
   );
+  const retryClient = client();
+  const attempts = [];
+  retryClient.paginate = async (_method, args) => {
+    attempts.push(args.attempt_number);
+    return [
+      {
+        ...job,
+        steps:
+          args.attempt_number === 1 ?
+            job.steps
+          : job.steps.map((step) => ({ ...step, conclusion: "skipped" }))
+      }
+    ];
+  };
   const retry = await prepareRelease(
-    client(),
+    retryClient,
     f.archive,
     { ...source, generationAttempt: 3 },
     expected,
@@ -326,6 +361,7 @@ test("original snapshot produces the exact Radius-only R1 record and preserves i
     f.directory,
     f.run
   );
+  assert.deepEqual(attempts, [1]);
   assert.deepEqual(first, retry);
   assert.deepEqual(first.record, {
     ...expected,
@@ -398,6 +434,50 @@ test("cross-run recovery authenticates and preserves the explicitly selected ori
     ),
     /does not match/
   );
+});
+
+test("a successful generation job must actually complete capture and upload on its recorded attempt", async (t) => {
+  for (const name of job.steps.map((step) => step.name)) {
+    for (const outcome of [
+      "skipped",
+      "failure",
+      "missing",
+      "duplicate",
+      "in_progress"
+    ]) {
+      await t.test(`${name}: ${outcome}`, async (t) => {
+        const f = await fixture(t);
+        const steps = job.steps.flatMap((step) => {
+          if (step.name !== name) return [step];
+          if (outcome === "missing") return [];
+          if (outcome === "duplicate") return [step, step];
+          return [
+            {
+              ...step,
+              status: outcome === "in_progress" ? "in_progress" : "completed",
+              conclusion: outcome === "in_progress" ? "success" : outcome
+            }
+          ];
+        });
+        await assert.rejects(
+          prepareRelease(
+            client(workflowRun, [{ ...job, steps }]),
+            f.archive,
+            { ...source, generationAttempt: 3 },
+            expected,
+            artifact,
+            f.directory,
+            f.run
+          ),
+          /Original snapshot step/
+        );
+        await assert.rejects(
+          readFile(join(f.directory, "receipt.json")),
+          /ENOENT/
+        );
+      });
+    }
+  }
 });
 
 test("corrupt archives, source substitution, failed or forged generation attempts fail before publication", async (t) => {
@@ -629,6 +709,9 @@ test("reusable workflow stays preparatory, separates generation credentials, and
     "utf8"
   );
   const [, bundle, publisher] = yaml.split(/^  (?:bundle|publish):\s*$/m);
+  for (const step of job.steps) {
+    assert.ok(bundle.includes(`- name: ${step.name}\n`));
+  }
   assert.doesNotMatch(active, /uses:.*__publish-release-bicep/);
   assert.doesNotMatch(
     yaml,
