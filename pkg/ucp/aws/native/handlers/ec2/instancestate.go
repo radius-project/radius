@@ -106,8 +106,12 @@ func (h *InstanceState) instance(ctx context.Context, region string, id string) 
 			}
 		}
 	}
-	if instance == nil || instance.State == nil || instance.State.Name == types.InstanceStateNameShuttingDown || instance.State.Name == types.InstanceStateNameTerminated {
+	if instance == nil || (instance.State != nil && (instance.State.Name == types.InstanceStateNameShuttingDown || instance.State.Name == types.InstanceStateNameTerminated)) {
 		return nil, native.ErrNotFound
+	}
+	if instance.State == nil {
+		// The state is optional in the API, and without it UCP can't tell whether the instance can run.
+		return nil, fmt.Errorf("EC2 returned the instance %q without its state. Deploy again", id)
 	}
 	return instance, nil
 }
@@ -181,9 +185,9 @@ func (h *InstanceState) Update(ctx context.Context, request native.UpdateRequest
 // and its state.
 //
 // before is the instance as it was before the update, or nil. An instance back in the state it had then, with another
-// reason or launch time, shows that an earlier attempt of this update reached AWS and ended, such as a start whose
-// response UCP lost and that stopped again. apply calls nothing then, and UpdateProgress reports the attempt's
-// outcome, so a read that doesn't show a new start yet can't be taken for it.
+// reason or launch time (see endedAttempt), shows that an earlier attempt of this update reached AWS and ended, such
+// as a start whose response UCP lost and that stopped again. apply calls nothing then, and UpdateProgress reports the
+// attempt's outcome, so a read that doesn't show a new start yet can't be taken for it.
 func (h *InstanceState) apply(ctx context.Context, region string, id string, desired string, before *instanceBefore) error {
 	instance, err := h.instance(ctx, region, id)
 	if errors.Is(err, native.ErrNotFound) {
@@ -192,7 +196,7 @@ func (h *InstanceState) apply(ctx context.Context, region string, id string, des
 		return err
 	}
 	current := instance.State.Name
-	if instanceTarget(current) == desired || (before != nil && string(current) == before.State && beforeOf(instance) != *before) {
+	if instanceTarget(current) == desired || (before != nil && endedAttempt(*before, beforeOf(instance))) {
 		return nil
 	}
 	verb := "start"
@@ -284,6 +288,14 @@ func beforeOf(instance *types.Instance) instanceBefore {
 	return before
 }
 
+// endedAttempt reports whether now, an instance in the state it had before an update, shows that an attempt of the
+// update reached AWS and ended: its reason or launch time differs from before. DescribeInstances may leave out both,
+// so a value missing on either side is unknown, not a difference.
+func endedAttempt(before instanceBefore, now instanceBefore) bool {
+	differs := func(a, b string) bool { return a != "" && b != "" && a != b }
+	return now.State == before.State && (differs(before.Reason, now.Reason) || differs(before.Launched, now.Launched))
+}
+
 // UpdateState returns the instance as it is before the update, as JSON.
 func (h *InstanceState) UpdateState(ctx context.Context, region string, identifier string) (string, error) {
 	instance, err := h.instance(ctx, region, identifier)
@@ -295,9 +307,9 @@ func (h *InstanceState) UpdateState(ctx context.Context, region string, identifi
 }
 
 // UpdateProgress waits for the state the update moves the instance to (see updateTarget), given the instance as it
-// was before the update in state. A read that still shows the instance as it was before, with the same state, reason,
-// and launch time, doesn't show the change yet. Any other running or stopped instance means the update failed, such
-// as a start that ran out of capacity, or whose operating system shut down at once, and stopped again.
+// was before the update in state. A read that still shows the state from before, with no sign of an ended attempt
+// (see endedAttempt), doesn't show the change yet. Any other running or stopped instance means the update failed,
+// such as a start that ran out of capacity, or whose operating system shut down at once, and stopped again.
 func (h *InstanceState) UpdateProgress(ctx context.Context, region string, identifier string, state string) (native.Progress, error) {
 	var before instanceBefore
 	if err := json.Unmarshal([]byte(state), &before); err != nil {
@@ -312,7 +324,7 @@ func (h *InstanceState) UpdateProgress(ctx context.Context, region string, ident
 	switch {
 	case current == target:
 		return native.Progress{Done: true, State: current}, nil
-	case instanceTarget(instance.State.Name) != current, beforeOf(instance) == before:
+	case instanceTarget(instance.State.Name) != current, current == before.State && !endedAttempt(before, beforeOf(instance)):
 		return native.Progress{State: current, Waiting: target}, nil
 	}
 	message := fmt.Sprintf("the EC2 instance %q is %s, not %s", identifier, current, target)

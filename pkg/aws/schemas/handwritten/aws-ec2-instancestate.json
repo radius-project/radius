@@ -4,7 +4,7 @@
   "properties": {
     "InstanceId": {
       "type": "string",
-      "description": "The ID of the instance, such as i-1234567890abcdef0. EC2 can stop only an instance whose root volume is an Amazon EBS volume."
+      "description": "The ID of the instance, such as i-1234567890abcdef0. EC2 can stop only an instance whose root volume is an Amazon EBS volume. To start an instance whose EBS volumes are encrypted with a customer managed key, the caller needs kms:CreateGrant on that key, with the condition kms:GrantIsForAWSResource set to true."
     },
     "State": {
       "type": "string",
@@ -27,7 +27,8 @@
       "permissions": [
         "ec2:DescribeInstances",
         "ec2:StartInstances",
-        "ec2:StopInstances"
+        "ec2:StopInstances",
+        "kms:CreateGrant"
       ]
     }
   }

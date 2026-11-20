@@ -1211,6 +1211,10 @@ type fakeInstances struct {
 
 	// launches counts the launches of instances, which each get a later LaunchTime.
 	launches int
+
+	// noMetadata makes the next DescribeInstances leave out StateReason and LaunchTime, and noState leaves out State.
+	// The API reference marks each of them optional.
+	noMetadata, noState bool
 }
 
 var _ InstanceAPI = (*fakeInstances)(nil)
@@ -1328,9 +1332,16 @@ func (f *fakeInstances) DescribeInstances(ctx context.Context, in *awsec2.Descri
 		if awsapi.String(props, "SpotRequestType") != "" {
 			instance.InstanceLifecycle = types.InstanceLifecycleTypeSpot
 		}
+		if f.noMetadata {
+			instance.StateReason, instance.LaunchTime = nil, nil
+		}
+		if f.noState {
+			instance.State = nil
+		}
 		reservation.Instances = append(reservation.Instances, instance)
 		f.settle(props)
 	}
+	f.noMetadata, f.noState = false, false
 	return &awsec2.DescribeInstancesOutput{Reservations: []types.Reservation{reservation}}, nil
 }
 

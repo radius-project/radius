@@ -18,6 +18,7 @@ package ec2
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"testing"
@@ -366,6 +367,37 @@ func Test_InstanceState_UpdateProgress(t *testing.T) {
 		require.Contains(t, api.calls, "StartInstances", "the instance is as it was, so the start is sent")
 	})
 
+	// A describe that leaves out the optional StateReason and LaunchTime shows nothing about an earlier attempt. The
+	// start is sent, and the update waits.
+	t.Run("an incomplete describe of an instance as it was before", func(t *testing.T) {
+		h, api := newInstanceState(types.InstanceStateNameStopped, map[string]any{"StateReason": "Client.UserInitiatedShutdown"})
+		request := update(t, h, "running")
+		api.calls, api.noMetadata = nil, true
+		require.NoError(t, h.Update(t.Context(), request))
+		require.Contains(t, api.calls, "StartInstances", "missing metadata isn't evidence of an earlier attempt")
+
+		h, api = newInstanceState(types.InstanceStateNameStopped, map[string]any{"StateReason": "Client.UserInitiatedShutdown"})
+		request = update(t, h, "running")
+		api.noMetadata = true
+		progress, err := h.UpdateProgress(t.Context(), testRegion, testInstance, request.State)
+		require.NoError(t, err)
+		require.Equal(t, native.Progress{State: "stopped", Waiting: "running"}, progress, "it waits instead of failing")
+	})
+
+	// A describe that leaves out State can't tell UCP whether the instance exists or which state it is in.
+	t.Run("a describe without State", func(t *testing.T) {
+		h, api := newInstanceState(types.InstanceStateNameStopped, nil)
+		state, err := h.UpdateState(t.Context(), testRegion, testInstance)
+		require.NoError(t, err)
+		api.noState = true
+		_, err = h.UpdateProgress(t.Context(), testRegion, testInstance, state)
+		require.ErrorContains(t, err, "EC2 returned the instance \"i-0123456789abcdef0\" without its state")
+		require.NotErrorIs(t, err, native.ErrNotFound, "the instance isn't gone")
+		api.noState = true
+		_, err = h.Read(t.Context(), testRegion, testInstance)
+		require.NotErrorIs(t, err, native.ErrNotFound)
+	})
+
 	t.Run("a running instance with no reason, as before", func(t *testing.T) {
 		h, _ := newInstanceState(types.InstanceStateNameRunning, nil)
 		state, err := h.UpdateState(t.Context(), testRegion, testInstance)
@@ -434,4 +466,18 @@ func Test_InstanceState_DescribeFails(t *testing.T) {
 	require.ErrorContains(t, err, "EC2 failed")
 	_, err = h.Create(t.Context(), createRequest(instanceState("stopped")))
 	require.ErrorContains(t, err, "EC2 failed")
+}
+
+// Test_InstanceState_KMSPermission checks the schema lists kms:CreateGrant for an update. EC2 creates a grant on the
+// customer managed key of an encrypted EBS volume as the caller of StartInstances, and without the permission the
+// instance stops again with Client.InternalError. Test_SchemaPermissionsCoverAWSCalls checks only the SDK calls the
+// handler makes, so it can't see this.
+func Test_InstanceState_KMSPermission(t *testing.T) {
+	var schema struct {
+		Handlers map[string]struct {
+			Permissions []string `json:"permissions"`
+		} `json:"handlers"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(handWrittenSchema(t, "aws-ec2-instancestate.json")), &schema))
+	require.Contains(t, schema.Handlers["update"].Permissions, "kms:CreateGrant")
 }

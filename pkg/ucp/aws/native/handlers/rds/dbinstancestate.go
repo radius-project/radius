@@ -138,6 +138,10 @@ func (h *DBInstanceState) describe(ctx context.Context, region string, identifie
 		return nil, native.ErrNotFound
 	}
 	instance := &out.DBInstances[i]
+	if instance.DBInstanceStatus == nil {
+		// The status is optional in the API, and without it UCP can't tell which state the DB instance is in.
+		return nil, fmt.Errorf("RDS returned the DB instance %q without its status. Deploy again", identifier)
+	}
 	if engine := aws.ToString(instance.Engine); slices.Contains(otherProducts, engine) {
 		return nil, &native.OtherProductError{Identifier: identifier, Product: engine}
 	}

@@ -216,6 +216,7 @@ EMR and FSx tag a create with `radius-operation-id`, so they can find it if UCP 
 - An Auto Scaling group replaces an instance of the group that is stopped, so the next deploy finds the instance gone and gets `400`. Set the group's capacity instead.
 - RDS starts a stopped DB instance on its own after 7 days. It stays stopped until then, and the next deploy finds it running and stops it again. Nothing watches the instance between deploys, as for any change made outside Radius, so a start or stop made in the console stays until the next deploy undoes it.
 - A stop never hibernates the instance. Starting an instance that was hibernated outside Radius resumes it.
+- Starting an EC2 instance whose EBS volumes are encrypted with a customer managed key needs `kms:CreateGrant` on that key, because EC2 creates a grant for the volumes as the caller of `StartInstances`. Without it, the instance stops again with `Client.InternalError`. The schema lists the action for an update. Grant it on the key's ARN only, with the condition `kms:GrantIsForAWSResource` set to `true`, so the grant can only be made for an AWS service. See [EBS encryption requirements](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-encryption-requirements.html).
 - Before an update, the handler saves the instance's state on the record (`native.UpdatePreparer`), so the update waits for the other state. A start that ends with the instance stopped again, such as when EC2 has no capacity for it, fails the deploy with AWS's reason.
 
 #### Testing native handlers

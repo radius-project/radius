@@ -53,6 +53,9 @@ type fakeDBInstances struct {
 	// errs maps a method name to an error the call returns instead of acting.
 	errs  map[string]error
 	calls []string
+
+	// incomplete makes the next DescribeDBInstances leave out DBInstanceStatus, which the API reference marks optional.
+	incomplete bool
 }
 
 var _ DBInstanceAPI = (*fakeDBInstances)(nil)
@@ -161,9 +164,14 @@ func (f *fakeDBInstances) DescribeDBInstances(ctx context.Context, in *rds.Descr
 	out := &rds.DescribeDBInstancesOutput{}
 	for _, id := range ids {
 		props := f.store.Resource(dbInstanceStateType, id)
-		out.DBInstances = append(out.DBInstances, *dbInstanceOf(props))
+		instance := dbInstanceOf(props)
+		if f.incomplete {
+			instance.DBInstanceStatus = nil
+		}
+		out.DBInstances = append(out.DBInstances, *instance)
 		f.settle(props)
 	}
+	f.incomplete = false
 	return out, nil
 }
 

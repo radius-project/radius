@@ -367,6 +367,18 @@ func Test_DBInstanceState_UpdateProgress(t *testing.T) {
 		require.Equal(t, native.Progress{Done: true, State: "backing-up"}, progress, "a DB instance that backs up runs")
 	})
 
+	// A describe that leaves out DBInstanceStatus can't tell UCP which state the DB instance is in.
+	t.Run("a describe without DBInstanceStatus", func(t *testing.T) {
+		h, api := newDBInstanceState("available", nil)
+		require.NoError(t, h.Update(t.Context(), dbUpdateRequest(t, "available", "stopped")))
+		api.incomplete = true
+		_, err := h.UpdateProgress(t.Context(), dbRegion, testDBInstance, "available")
+		require.ErrorContains(t, err, `RDS returned the DB instance "app-db" without its status`)
+		api.incomplete = true
+		_, err = h.Read(t.Context(), dbRegion, testDBInstance)
+		require.ErrorContains(t, err, "without its status")
+	})
+
 	t.Run("state UCP can't read", func(t *testing.T) {
 		h, _ := newDBInstanceState("stopping", nil)
 		progress, err := h.UpdateProgress(t.Context(), dbRegion, testDBInstance, "")
