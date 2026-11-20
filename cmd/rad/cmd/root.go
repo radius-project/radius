@@ -134,10 +134,14 @@ var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
-	if new := clientv2.TryUnfoldResponseError(err); new != nil {
-		m, err := prettyPrintJSON(new)
-		if err == nil {
-			return m
+	if details := clientv2.TryUnfoldResponseError(err); details != nil {
+		// A Kubernetes Status body unmarshals into empty ErrorDetails (no "error"
+		// field). Prefer the original response error so the HTTP status and message
+		// stay visible instead of printing empty code/message JSON.
+		if details.Code != "" || details.Message != "" {
+			if m, jsonErr := prettyPrintJSON(details); jsonErr == nil {
+				return m
+			}
 		}
 	}
 
