@@ -22,6 +22,7 @@ import (
 	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
 	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	codebuildsdk "github.com/aws/aws-sdk-go-v2/service/codebuild"
+	connectsdk "github.com/aws/aws-sdk-go-v2/service/connect"
 	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
 	daxsdk "github.com/aws/aws-sdk-go-v2/service/dax"
 	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
@@ -36,6 +37,7 @@ import (
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
+	snssdk "github.com/aws/aws-sdk-go-v2/service/sns"
 	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
@@ -43,6 +45,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/connect"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
@@ -56,6 +59,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sns"
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
@@ -89,6 +93,8 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		sns.NewPlatformApplication(snssdk.NewFromConfig(cfg)),
+		connect.NewPhoneNumberContactFlowAssociation(connectsdk.NewFromConfig(cfg)),
 	}
 }
 

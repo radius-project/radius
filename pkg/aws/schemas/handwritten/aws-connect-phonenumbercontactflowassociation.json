@@ -1,0 +1,55 @@
+{
+  "typeName": "AWS::Connect::PhoneNumberContactFlowAssociation",
+  "description": "The flow that answers calls to a phone number claimed to an Amazon Connect instance. Set it with AssociatePhoneNumberContactFlow. A phone number has at most one flow. Deleting the resource removes the flow from the phone number.",
+  "additionalProperties": false,
+  "properties": {
+    "PhoneNumberId": {
+      "type": "string",
+      "description": "The ARN of the phone number, such as the PhoneNumberArn of an AWS::Connect::PhoneNumber. AWS finds a number claimed to a traffic distribution group only by its ARN in the group's other Region.",
+      "pattern": "^arn:aws[a-z-]*:connect:[a-z0-9-]+:[0-9]{12}:phone-number/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "InstanceId": {
+      "type": "string",
+      "description": "The ID of the Amazon Connect instance, such as the Id of an AWS::Connect::Instance. The phone number is claimed to it, or to a traffic distribution group of it.",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "ContactFlowId": {
+      "type": "string",
+      "description": "The ID or ARN of the flow, such as the ContactFlowArn of an AWS::Connect::ContactFlow. AWS returns the flow's ARN.",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["PhoneNumberId", "InstanceId", "ContactFlowId"],
+  "createOnlyProperties": [
+    "/properties/PhoneNumberId",
+    "/properties/InstanceId"
+  ],
+  "primaryIdentifier": ["/properties/PhoneNumberId", "/properties/InstanceId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "connect:AssociatePhoneNumberContactFlow",
+        "connect:ListFlowAssociations"
+      ]
+    },
+    "read": {
+      "permissions": ["connect:ListFlowAssociations"]
+    },
+    "update": {
+      "permissions": [
+        "connect:AssociatePhoneNumberContactFlow",
+        "connect:ListFlowAssociations"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "connect:DisassociatePhoneNumberContactFlow",
+        "connect:ListFlowAssociations"
+      ]
+    }
+  }
+}

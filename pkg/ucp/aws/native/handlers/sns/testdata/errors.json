@@ -1,0 +1,95 @@
+{
+  "source": "recorded",
+  "interactions": [
+    {
+      "service": "SNS",
+      "operation": "CreatePlatformApplication",
+      "request": "Action=CreatePlatformApplication\u0026Attributes.entry.1.key=PlatformCredential\u0026Attributes.entry.1.value=not-a-firebase-key\u0026Name=radius-rec-platform-app\u0026Platform=GCM\u0026Version=2010-03-31",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidParameter\u003c/Code\u003e\n    \u003cMessage\u003eInvalid parameter: Attributes Reason: Platform credentials are invalid\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003eb9263faa-4ffc-5a97-bd20-5cd0eb74549f\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "CreatePlatformApplication",
+      "request": "Action=CreatePlatformApplication\u0026Attributes.entry.1.key=ApplePlatformBundleID\u0026Attributes.entry.1.value=com.example.radius\u0026Attributes.entry.2.key=ApplePlatformTeamID\u0026Attributes.entry.2.value=ABCDE12345\u0026Attributes.entry.3.key=PlatformCredential\u0026Attributes.entry.3.value=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u0026Attributes.entry.4.key=PlatformPrincipal\u0026Attributes.entry.4.value=ABC123DEFG\u0026Name=radius-rec-platform-app\u0026Platform=APNS_SANDBOX\u0026Version=2010-03-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cCreatePlatformApplicationResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cCreatePlatformApplicationResult\u003e\n    \u003cPlatformApplicationArn\u003earn:aws:sns:us-west-2:123456789012:app/APNS_SANDBOX/radius-rec-platform-app\u003c/PlatformApplicationArn\u003e\n  \u003c/CreatePlatformApplicationResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ec94c3823-d6fc-5263-bd1b-5b5972741c6b\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/CreatePlatformApplicationResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "ListPlatformApplications",
+      "request": "Action=ListPlatformApplications\u0026Version=2010-03-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cListPlatformApplicationsResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cListPlatformApplicationsResult\u003e\n    \u003cPlatformApplications\u003e\n      \u003cmember\u003e\n        \u003cPlatformApplicationArn\u003earn:aws:sns:us-west-2:123456789012:app/APNS_SANDBOX/radius-rec-platform-app\u003c/PlatformApplicationArn\u003e\n        \u003cAttributes\u003e\n          \u003centry\u003e\n            \u003ckey\u003eEnabled\u003c/key\u003e\n            \u003cvalue\u003etrue\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eAuthenticationMethod\u003c/key\u003e\n            \u003cvalue\u003eToken\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformTeamID\u003c/key\u003e\n            \u003cvalue\u003eABCDE12345\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformBundleID\u003c/key\u003e\n            \u003cvalue\u003ecom.example.radius\u003c/value\u003e\n          \u003c/entry\u003e\n        \u003c/Attributes\u003e\n      \u003c/member\u003e\n    \u003c/PlatformApplications\u003e\n  \u003c/ListPlatformApplicationsResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e111ca86d-0248-56b7-bec6-cb17a6c1a8bf\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/ListPlatformApplicationsResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "CreatePlatformApplication",
+      "request": "Action=CreatePlatformApplication\u0026Attributes.entry.1.key=ApplePlatformBundleID\u0026Attributes.entry.1.value=com.example.other\u0026Attributes.entry.2.key=ApplePlatformTeamID\u0026Attributes.entry.2.value=ABCDE12345\u0026Attributes.entry.3.key=PlatformCredential\u0026Attributes.entry.3.value=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u0026Attributes.entry.4.key=PlatformPrincipal\u0026Attributes.entry.4.value=ABC123DEFG\u0026Name=radius-rec-platform-app\u0026Platform=APNS_SANDBOX\u0026Version=2010-03-31",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidParameter\u003c/Code\u003e\n    \u003cMessage\u003eInvalid parameter: Name Reason: An application with the same name but different properties already exists\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003ed6afe931-703f-5146-ac0f-8a4bd4b65f4e\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "ListPlatformApplications",
+      "request": "Action=ListPlatformApplications\u0026Version=2010-03-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cListPlatformApplicationsResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cListPlatformApplicationsResult\u003e\n    \u003cPlatformApplications\u003e\n      \u003cmember\u003e\n        \u003cPlatformApplicationArn\u003earn:aws:sns:us-west-2:123456789012:app/APNS_SANDBOX/radius-rec-platform-app\u003c/PlatformApplicationArn\u003e\n        \u003cAttributes\u003e\n          \u003centry\u003e\n            \u003ckey\u003eEnabled\u003c/key\u003e\n            \u003cvalue\u003etrue\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eAuthenticationMethod\u003c/key\u003e\n            \u003cvalue\u003eToken\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformTeamID\u003c/key\u003e\n            \u003cvalue\u003eABCDE12345\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformBundleID\u003c/key\u003e\n            \u003cvalue\u003ecom.example.radius\u003c/value\u003e\n          \u003c/entry\u003e\n        \u003c/Attributes\u003e\n      \u003c/member\u003e\n    \u003c/PlatformApplications\u003e\n  \u003c/ListPlatformApplicationsResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ec92e03cd-1ea0-5ba8-9021-60b7ba2995a0\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/ListPlatformApplicationsResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "DeletePlatformApplication",
+      "request": "Action=DeletePlatformApplication\u0026PlatformApplicationArn=arn%3Aaws%3Asns%3Aus-west-2%3A123456789012%3Aapp%2FAPNS_SANDBOX%2Fradius-rec-platform-app\u0026Version=2010-03-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDeletePlatformApplicationResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e29da192e-88c8-58a5-bbd4-7a542c41c6ad\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DeletePlatformApplicationResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "ListPlatformApplications",
+      "request": "Action=ListPlatformApplications\u0026Version=2010-03-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cListPlatformApplicationsResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cListPlatformApplicationsResult\u003e\n    \u003cPlatformApplications\u003e\n      \u003cmember\u003e\n        \u003cPlatformApplicationArn\u003earn:aws:sns:us-west-2:123456789012:app/APNS_SANDBOX/radius-rec-platform-app\u003c/PlatformApplicationArn\u003e\n        \u003cAttributes\u003e\n          \u003centry\u003e\n            \u003ckey\u003eEnabled\u003c/key\u003e\n            \u003cvalue\u003etrue\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eAuthenticationMethod\u003c/key\u003e\n            \u003cvalue\u003eToken\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformTeamID\u003c/key\u003e\n            \u003cvalue\u003eABCDE12345\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformBundleID\u003c/key\u003e\n            \u003cvalue\u003ecom.example.radius\u003c/value\u003e\n          \u003c/entry\u003e\n        \u003c/Attributes\u003e\n      \u003c/member\u003e\n    \u003c/PlatformApplications\u003e\n  \u003c/ListPlatformApplicationsResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eb5d898d3-ecea-5ed1-b95d-fba9486360d9\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/ListPlatformApplicationsResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "ListPlatformApplications",
+      "request": "Action=ListPlatformApplications\u0026Version=2010-03-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cListPlatformApplicationsResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cListPlatformApplicationsResult\u003e\n    \u003cPlatformApplications\u003e\n      \u003cmember\u003e\n        \u003cPlatformApplicationArn\u003earn:aws:sns:us-west-2:123456789012:app/APNS_SANDBOX/radius-rec-platform-app\u003c/PlatformApplicationArn\u003e\n        \u003cAttributes\u003e\n          \u003centry\u003e\n            \u003ckey\u003eEnabled\u003c/key\u003e\n            \u003cvalue\u003etrue\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eAuthenticationMethod\u003c/key\u003e\n            \u003cvalue\u003eToken\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformTeamID\u003c/key\u003e\n            \u003cvalue\u003eABCDE12345\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformBundleID\u003c/key\u003e\n            \u003cvalue\u003ecom.example.radius\u003c/value\u003e\n          \u003c/entry\u003e\n        \u003c/Attributes\u003e\n      \u003c/member\u003e\n    \u003c/PlatformApplications\u003e\n  \u003c/ListPlatformApplicationsResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eb2cfa8fa-52bf-5458-9491-cb80f6369a50\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/ListPlatformApplicationsResponse\u003e\n"
+    },
+    {
+      "service": "SNS",
+      "operation": "ListPlatformApplications",
+      "request": "Action=ListPlatformApplications\u0026Version=2010-03-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cListPlatformApplicationsResponse xmlns=\"http://sns.amazonaws.com/doc/2010-03-31/\"\u003e\n  \u003cListPlatformApplicationsResult\u003e\n    \u003cPlatformApplications\u003e\n      \u003cmember\u003e\n        \u003cPlatformApplicationArn\u003earn:aws:sns:us-west-2:123456789012:app/APNS_SANDBOX/radius-rec-platform-app\u003c/PlatformApplicationArn\u003e\n        \u003cAttributes\u003e\n          \u003centry\u003e\n            \u003ckey\u003eEnabled\u003c/key\u003e\n            \u003cvalue\u003etrue\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eAuthenticationMethod\u003c/key\u003e\n            \u003cvalue\u003eToken\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformTeamID\u003c/key\u003e\n            \u003cvalue\u003eABCDE12345\u003c/value\u003e\n          \u003c/entry\u003e\n          \u003centry\u003e\n            \u003ckey\u003eApplePlatformBundleID\u003c/key\u003e\n            \u003cvalue\u003ecom.example.radius\u003c/value\u003e\n          \u003c/entry\u003e\n        \u003c/Attributes\u003e\n      \u003c/member\u003e\n    \u003c/PlatformApplications\u003e\n  \u003c/ListPlatformApplicationsResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e7413f41e-4781-5e1e-b7d8-9764e308e016\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/ListPlatformApplicationsResponse\u003e\n"
+    }
+  ]
+}

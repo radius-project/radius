@@ -1,0 +1,50 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CONNECT_FLOW_ID": "0bec67e5-a52d-45c2-a8a1-343e5205c61c",
+    "RADIUS_REC_CONNECT_INSTANCE_ARN": "arn:aws:connect:us-west-2:123456789012:instance/ad62c690-7d1c-4fbb-8a3f-7ea619a21c75",
+    "RADIUS_REC_CONNECT_INSTANCE_ID": "ad62c690-7d1c-4fbb-8a3f-7ea619a21c75"
+  },
+  "interactions": [
+    {
+      "service": "Connect",
+      "operation": "AssociatePhoneNumberContactFlow",
+      "request": "{\"ContactFlowId\":\"0bec67e5-a52d-45c2-a8a1-343e5205c61c\",\"InstanceId\":\"ad62c690-7d1c-4fbb-8a3f-7ea619a21c75\"}",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"Message\":\"Phone number not found: 00000000-0000-4000-8000-000000000000\"}"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\n\"FlowAssociationSummaryList\" : [\n] }"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"Message\":\"Resource not found\"}"
+    },
+    {
+      "service": "Connect",
+      "operation": "DisassociatePhoneNumberContactFlow",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"Message\":\"Phone number not found: 00000000-0000-4000-8000-000000000000\"}"
+    }
+  ]
+}
