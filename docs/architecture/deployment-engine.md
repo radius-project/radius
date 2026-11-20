@@ -281,6 +281,12 @@ executes the recipe by:
 5. Polling until the deployment completes
 6. Garbage-collecting output resources that are no longer needed from previous deployments
 
+If recipe execution fails after submission, the Bicep driver uses a final, explicit owned-resource inventory from polling when available. Otherwise, including an unknown submission outcome, it reads the deployment's inventory with `ResourceDeploymentsClient.Get`. The recipe engine and resource controller retain these resource IDs alongside any previous output resources, while reporting the original deployment error. If a later image-build hook or garbage collection fails, known resource IDs from the successful deployment are also retained. Failed template outputs are not used as connection values or secrets.
+
+If that inventory is missing, invalid, or not yet final, Radius saves the deployment ID in `status.pendingRecipeDeployments`. Deletion must recover a final, explicit `outputResources` list for each pending deployment before it deletes output resources or removes the Radius resource. A missing or null list is not an empty inventory. This requires a deployment engine that reports partial owned-resource inventory for failed and canceled deployments; older engines leave deletion blocked rather than reporting false success.
+
+PUT retries preserve stored cleanup state. During deletion, Radius saves each recovered inventory and clears its pending deployment ID before it deletes infrastructure. If a later delete step fails, the next attempt uses the saved resource IDs without reading that deployment again.
+
 ## Component Interaction Diagram
 
 ```mermaid

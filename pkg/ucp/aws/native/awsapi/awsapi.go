@@ -23,11 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
@@ -53,6 +55,22 @@ func NotFound(err error, codes ...string) error {
 		return fmt.Errorf("%w: %w", native.ErrNotFound, err)
 	}
 	return err
+}
+
+// Rejected returns err as a client failure AWS applied none of when AWS answered the call with a 4xx status, and err
+// otherwise. The SDK leaves the fault of an error a service's model doesn't list unknown, such as RDS's
+// InvalidParameterValue, so without this UCP would answer 500 and count a call AWS rejected as possibly applied. A not
+// found error stays ErrNotFound, and a native.Failure stays as it is.
+func Rejected(err error) error {
+	var response *smithyhttp.ResponseError
+	var failure *native.Failure
+	if err == nil || errors.Is(err, native.ErrNotFound) || errors.As(err, &failure) || !errors.As(err, &response) {
+		return err
+	}
+	if status := response.HTTPStatusCode(); status < http.StatusBadRequest || status >= http.StatusInternalServerError {
+		return err
+	}
+	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
 // Decode sets out, a pointer to an AWS SDK struct, from properties. Property names match the SDK's field names,
@@ -236,6 +254,22 @@ func CaseInsensitive(paths ...string) func(path string, template any, aws any) b
 		t, okT := template.(string)
 		a, okA := aws.(string)
 		return okT && okA && slices.Contains(paths, path) && strings.EqualFold(t, a)
+	}
+}
+
+// TagLimit returns a rejected failure when the template's Tags and the radius tags a handler adds to the resource are
+// more than limit, the most tags AWS allows on it, and nil otherwise. A handler calls it before any AWS call, so the
+// message says how many tags the template can set instead of AWS's error after a partial change. resource names the
+// resource in the message, such as "an FSx file system".
+func TagLimit(properties map[string]any, limit int, radius int, resource string) error {
+	n := len(Tags(properties))
+	if n+radius <= limit {
+		return nil
+	}
+	return &native.Failure{
+		Message:     fmt.Sprintf("AWS allows %d tags on %s, and Radius needs %d of them, so Tags can have at most %d. The template sets %d.", limit, resource, radius, limit-radius, n),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
 	}
 }
 

@@ -154,6 +154,7 @@ ExecHealthProbeProperties
 ExtenderListSecretResponse
 ExtenderProperties
 ExtenderResource
+FIPS
 Fairfax
 Fargate
 FindSecretIDs
@@ -988,6 +989,7 @@ persistentVolumes
 pfx
 pgvector
 pgvector's
+pg_trgm
 pkgs
 plaidResource
 plainHTTP

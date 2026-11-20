@@ -634,6 +634,12 @@
     "$type": "StringType"
   },
   {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/53"
+    }
+  },
+  {
     "$type": "StringType"
   },
   {
@@ -641,7 +647,22 @@
     "sensitive": true
   },
   {
+    "$type": "StringType",
+    "sensitive": true
+  },
+  {
     "$type": "IntegerType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/59"
+    },
+    "name": "serverSettings",
+    "properties": {}
   },
   {
     "$type": "StringLiteralType",
@@ -659,13 +680,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/57"
+        "$ref": "#/61"
       },
       {
-        "$ref": "#/58"
+        "$ref": "#/62"
       },
       {
-        "$ref": "#/59"
+        "$ref": "#/63"
       }
     ]
   },
@@ -681,10 +702,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/61"
+        "$ref": "#/65"
       },
       {
-        "$ref": "#/62"
+        "$ref": "#/66"
       }
     ]
   },
@@ -730,53 +751,67 @@
           "$ref": "#/52"
         }
       },
+      "extensions": {
+        "description": "(Optional) PostgreSQL extension names, such as pg_trgm or vector. Azure allow-lists them; the application must create them in each database. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for list merging and operator overrides. Kubernetes creates them on first database initialization; the container image must include each extension.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/54"
+        }
+      },
       "host": {
         "description": "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/55"
         }
       },
       "initSql": {
-        "description": "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data.",
+        "description": "(Optional) SQL script for users, schemas, and seed data. Radius encrypts it at rest and redacts it on reads. Azure runs it after provisioning with a deployment script; it can run again after SQL changes or deployment-script retention expires. Use SQL that is safe to repeat. Kubernetes Bicep mounts it into /docker-entrypoint-initdb.d/ and runs it when PGDATA is empty; changes do not run against existing volumes. Platform script and environment-variable size limits apply. See the Azure Recipe documentation for execution limits.",
         "flags": 0,
         "type": {
-          "$ref": "#/54"
+          "$ref": "#/56"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the PostgreSQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/55"
+          "$ref": "#/57"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `5432`, the standard PostgreSQL port that every Recipe in this repository provisions and the port PostgreSQL flexible server is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 0,
         "type": {
-          "$ref": "#/56"
+          "$ref": "#/58"
+        }
+      },
+      "serverSettings": {
+        "description": "(Optional) PostgreSQL server parameter names and string values. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for operator overrides and protected settings. Kubernetes passes settings to postgres with -c, but reserves ssl, ssl_cert_file, ssl_key_file, and hba_file for TLS without regard to case. Both platforms keep the server on 5432. Invalid or unavailable settings fail deployment or startup. Do not put credentials in this object.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/60"
         }
       },
       "size": {
         "description": "(Optional) The size of the PostgreSQL database. Defaults to `S` if not provided.",
         "flags": 0,
         "type": {
-          "$ref": "#/60"
+          "$ref": "#/64"
         }
       },
       "tls": {
-        "description": "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_POSTGRESQL_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS.",
+        "description": "(Optional) The requested transport policy for database connections. Defaults to `required`, rejecting plaintext TCP connections in the Kubernetes Recipes. `optional` permits plaintext but keeps TLS available. Kubernetes Recipes generate a self-signed development certificate when `\u003cresource-name\u003e-tls` is absent or empty; a supplied operator certificate takes precedence and invalid material fails initialization. Configure clients using `CONNECTION_POSTGRESQL_TLS` and separately trust the server CA and verify its hostname; generated certificates are not trusted automatically. Use `optional` only when the server is not publicly reachable. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for operator overrides.",
         "flags": 0,
         "type": {
-          "$ref": "#/63"
+          "$ref": "#/67"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the PostgreSQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/64"
+          "$ref": "#/68"
         }
       }
     }
@@ -806,7 +841,7 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/72"
         }
       },
       "application": {
@@ -844,88 +879,102 @@
           "$ref": "#/52"
         }
       },
+      "extensions": {
+        "description": "(Optional) PostgreSQL extension names, such as pg_trgm or vector. Azure allow-lists them; the application must create them in each database. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for list merging and operator overrides. Kubernetes creates them on first database initialization; the container image must include each extension.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/54"
+        }
+      },
       "host": {
         "description": "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/55"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/70"
+          "$ref": "#/74"
         }
       },
       "initSql": {
-        "description": "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data.",
+        "description": "(Optional) SQL script for users, schemas, and seed data. Radius encrypts it at rest and redacts it on reads. Azure runs it after provisioning with a deployment script; it can run again after SQL changes or deployment-script retention expires. Use SQL that is safe to repeat. Kubernetes Bicep mounts it into /docker-entrypoint-initdb.d/ and runs it when PGDATA is empty; changes do not run against existing volumes. Platform script and environment-variable size limits apply. See the Azure Recipe documentation for execution limits.",
         "flags": 2,
         "type": {
-          "$ref": "#/54"
+          "$ref": "#/56"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/71"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/66"
+          "$ref": "#/70"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the PostgreSQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/55"
+          "$ref": "#/57"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `5432`, the standard PostgreSQL port that every Recipe in this repository provisions and the port PostgreSQL flexible server is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 2,
         "type": {
-          "$ref": "#/56"
+          "$ref": "#/58"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/69"
+        }
+      },
+      "serverSettings": {
+        "description": "(Optional) PostgreSQL server parameter names and string values. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for operator overrides and protected settings. Kubernetes passes settings to postgres with -c, but reserves ssl, ssl_cert_file, ssl_key_file, and hba_file for TLS without regard to case. Both platforms keep the server on 5432. Invalid or unavailable settings fail deployment or startup. Do not put credentials in this object.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/60"
         }
       },
       "size": {
         "description": "(Optional) The size of the PostgreSQL database. Defaults to `S` if not provided.",
         "flags": 2,
         "type": {
-          "$ref": "#/60"
+          "$ref": "#/64"
         }
       },
       "tls": {
-        "description": "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_POSTGRESQL_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS.",
+        "description": "(Optional) The requested transport policy for database connections. Defaults to `required`, rejecting plaintext TCP connections in the Kubernetes Recipes. `optional` permits plaintext but keeps TLS available. Kubernetes Recipes generate a self-signed development certificate when `\u003cresource-name\u003e-tls` is absent or empty; a supplied operator certificate takes precedence and invalid material fails initialization. Configure clients using `CONNECTION_POSTGRESQL_TLS` and separately trust the server CA and verify its hostname; generated certificates are not trusted automatically. Use `optional` only when the server is not publicly reachable. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for operator overrides.",
         "flags": 2,
         "type": {
-          "$ref": "#/63"
+          "$ref": "#/67"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/69"
+          "$ref": "#/73"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the PostgreSQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/64"
+          "$ref": "#/68"
         }
       }
     }
@@ -933,7 +982,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/71"
+      "$ref": "#/75"
     },
     "name": "Radius.Data/postgreSqlDatabases@2025-08-01-preview",
     "readableScopes": 0,
@@ -963,7 +1012,7 @@
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/75"
+          "$ref": "#/79"
         }
       }
     }
@@ -971,7 +1020,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/76"
+      "$ref": "#/80"
     },
     "name": "connections",
     "properties": {}
@@ -995,6 +1044,9 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
     "$type": "ObjectType",
     "name": "secrets",
     "properties": {
@@ -1002,21 +1054,28 @@
         "description": "(Read Only) The access key on its own, for clients that take host, port, and password separately instead of parsing a URL — it is the password such a client authenticates with. Mapped from the recipe module's `primaryAccessKey` output; delivered via the managed secret. Declared by recipes that provision an authenticated cache — a recipe provisioning a cache that needs no credential (such as the in-cluster Kubernetes recipe) does not map this key.",
         "flags": 2,
         "type": {
-          "$ref": "#/81"
+          "$ref": "#/85"
+        }
+      },
+      "connectionString": {
+        "description": "(Read Only) The StackExchange.Redis connection string, including the access key and TLS settings. The Azure Recipe maps this key from `primaryStackExchangeRedisConnectionString`; delivered via the managed secret. For clients that require a URL, construct one from host, port, and accessKey with a percent-encoded password. The Kubernetes Recipe does not map this key.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/86"
         }
       },
       "name": {
         "description": "(Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.",
         "flags": 2,
         "type": {
-          "$ref": "#/82"
+          "$ref": "#/87"
         }
       },
       "url": {
-        "description": "(Read Only) The full TLS connection URL (`rediss://:\u003caccess-key\u003e@\u003chost\u003e:\u003cport\u003e`) used to connect to the cache, including the access key. Mapped from the recipe module's `primaryConnectionString` output; delivered via the managed secret.",
+        "description": "(Read Only) The Redis connection URL, delivered via the managed secret. The Azure Recipe maps `primaryConnectionString` as `rediss://:\u003caccess-key\u003e@\u003chost\u003e:\u003cport\u003e` without percent-encoding the key. Prefer separate host, port, and accessKey values with TLS, or construct a URL at runtime with a percent-encoded password. The Kubernetes Recipe returns `redis://\u003chost\u003e:\u003cport\u003e` without a password.",
         "flags": 2,
         "type": {
-          "$ref": "#/83"
+          "$ref": "#/88"
         }
       }
     }
@@ -1037,13 +1096,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/85"
+        "$ref": "#/90"
       },
       {
-        "$ref": "#/86"
+        "$ref": "#/91"
       },
       {
-        "$ref": "#/87"
+        "$ref": "#/92"
       }
     ]
   },
@@ -1055,56 +1114,56 @@
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/77"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/74"
+          "$ref": "#/78"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/81"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/82"
         }
       },
       "host": {
         "description": "(Read Only) The host name used to connect to the cache. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/79"
+          "$ref": "#/83"
         }
       },
       "port": {
-        "description": "(Read Only) The TLS port number used to connect to the cache. Mapped from the recipe module's `port` output (Azure Managed Redis uses 10000).",
+        "description": "(Read Only) The port number used to connect to the cache. Azure Managed Redis uses TLS on port 10000; the Kubernetes Recipe uses port 6379 without TLS.",
         "flags": 2,
         "type": {
-          "$ref": "#/80"
+          "$ref": "#/84"
         }
       },
       "secrets": {
         "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the Recipe's `result.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
         "flags": 0,
         "type": {
-          "$ref": "#/84"
+          "$ref": "#/89"
         }
       },
       "size": {
         "description": "(Optional) The size of the Redis cache. Defaults to `S` if not provided. The recipe maps the size onto a concrete cloud SKU.",
         "flags": 0,
         "type": {
-          "$ref": "#/88"
+          "$ref": "#/93"
         }
       }
     }
@@ -1134,98 +1193,98 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/97"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/77"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/74"
+          "$ref": "#/78"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/81"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/82"
         }
       },
       "host": {
         "description": "(Read Only) The host name used to connect to the cache. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/79"
+          "$ref": "#/83"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/94"
+          "$ref": "#/99"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/91"
+          "$ref": "#/96"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/90"
+          "$ref": "#/95"
         }
       },
       "port": {
-        "description": "(Read Only) The TLS port number used to connect to the cache. Mapped from the recipe module's `port` output (Azure Managed Redis uses 10000).",
+        "description": "(Read Only) The port number used to connect to the cache. Azure Managed Redis uses TLS on port 10000; the Kubernetes Recipe uses port 6379 without TLS.",
         "flags": 2,
         "type": {
-          "$ref": "#/80"
+          "$ref": "#/84"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/89"
+          "$ref": "#/94"
         }
       },
       "secrets": {
         "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the Recipe's `result.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
         "flags": 2,
         "type": {
-          "$ref": "#/84"
+          "$ref": "#/89"
         }
       },
       "size": {
         "description": "(Optional) The size of the Redis cache. Defaults to `S` if not provided. The recipe maps the size onto a concrete cloud SKU.",
         "flags": 2,
         "type": {
-          "$ref": "#/88"
+          "$ref": "#/93"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/93"
+          "$ref": "#/98"
         }
       }
     }
@@ -1233,7 +1292,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/95"
+      "$ref": "#/100"
     },
     "name": "Radius.Data/redisCaches@2025-08-01-preview",
     "readableScopes": 0,
@@ -1263,7 +1322,7 @@
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/99"
+          "$ref": "#/104"
         }
       }
     }
@@ -1271,7 +1330,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/100"
+      "$ref": "#/105"
     },
     "name": "connections",
     "properties": {}
@@ -1303,63 +1362,63 @@
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/102"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/103"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/106"
         }
       },
       "database": {
         "description": "(Required) The SQL database name to create on the server. Defaults to `appdb` in the sample application.",
         "flags": 1,
         "type": {
-          "$ref": "#/102"
+          "$ref": "#/107"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/103"
+          "$ref": "#/108"
         }
       },
       "host": {
         "description": "(Read Only) The SQL Server fully qualified domain name. Mapped from the recipe module's `fullyQualifiedDomainName` output.",
         "flags": 2,
         "type": {
-          "$ref": "#/104"
+          "$ref": "#/109"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the SQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/105"
+          "$ref": "#/110"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `1433`, the standard SQL Server port that every Recipe in this repository provisions and the port Azure SQL Database is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 0,
         "type": {
-          "$ref": "#/106"
+          "$ref": "#/111"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the SQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/107"
+          "$ref": "#/112"
         }
       }
     }
@@ -1389,105 +1448,105 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/111"
+          "$ref": "#/116"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/102"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/103"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/106"
         }
       },
       "database": {
         "description": "(Required) The SQL database name to create on the server. Defaults to `appdb` in the sample application.",
         "flags": 2,
         "type": {
-          "$ref": "#/102"
+          "$ref": "#/107"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/103"
+          "$ref": "#/108"
         }
       },
       "host": {
         "description": "(Read Only) The SQL Server fully qualified domain name. Mapped from the recipe module's `fullyQualifiedDomainName` output.",
         "flags": 2,
         "type": {
-          "$ref": "#/104"
+          "$ref": "#/109"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/113"
+          "$ref": "#/118"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/110"
+          "$ref": "#/115"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/109"
+          "$ref": "#/114"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the SQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/105"
+          "$ref": "#/110"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `1433`, the standard SQL Server port that every Recipe in this repository provisions and the port Azure SQL Database is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 2,
         "type": {
-          "$ref": "#/106"
+          "$ref": "#/111"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/108"
+          "$ref": "#/113"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/112"
+          "$ref": "#/117"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the SQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/107"
+          "$ref": "#/112"
         }
       }
     }
@@ -1495,7 +1554,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/114"
+      "$ref": "#/119"
     },
     "name": "Radius.Data/sqlServerDatabases@2025-08-01-preview",
     "readableScopes": 0,

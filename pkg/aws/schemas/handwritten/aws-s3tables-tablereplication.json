@@ -1,0 +1,112 @@
+{
+  "typeName": "AWS::S3Tables::TableReplication",
+  "description": "The replication configuration of one S3 table, which replicates it to up to five table buckets. It overrides the table bucket's replication configuration for this table. Deleting the resource deletes the table's replication configuration; replicas already made stay in their table buckets.",
+  "additionalProperties": false,
+  "properties": {
+    "TableArn": {
+      "type": "string",
+      "description": "The ARN of the source table.",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^arn:aws[-a-z0-9]*:[a-z0-9]+:[-a-z0-9]*:[0-9]{12}:bucket/[a-z0-9_-]{3,63}/table/[a-zA-Z0-9-_]{1,255}$"
+    },
+    "Configuration": {
+      "$ref": "#/definitions/TableReplicationConfiguration"
+    }
+  },
+  "definitions": {
+    "TableReplicationConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Role": {
+          "type": "string",
+          "description": "The ARN of the IAM role S3 Tables assumes to replicate the table.",
+          "minLength": 20,
+          "maxLength": 2048,
+          "pattern": "^arn:.+:iam::[0-9]{12}:role/.+$"
+        },
+        "Rules": {
+          "type": "array",
+          "description": "The replication rules. AWS takes exactly one.",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/definitions/TableReplicationRule"
+          }
+        }
+      },
+      "required": ["Role", "Rules"]
+    },
+    "TableReplicationRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Destinations": {
+          "type": "array",
+          "description": "The table buckets to replicate the table to.",
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/definitions/ReplicationDestination"
+          }
+        }
+      },
+      "required": ["Destinations"]
+    },
+    "ReplicationDestination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DestinationTableBucketARN": {
+          "type": "string",
+          "description": "The ARN of the destination table bucket.",
+          "pattern": "^arn:aws[-a-z0-9]*:[a-z0-9]+:[-a-z0-9]*:[0-9]{12}:bucket/[a-z0-9_-]{3,63}$"
+        }
+      },
+      "required": ["DestinationTableBucketARN"]
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["TableArn", "Configuration"],
+  "createOnlyProperties": ["/properties/TableArn"],
+  "primaryIdentifier": ["/properties/TableArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "s3tables:PutTableReplication",
+        "s3tables:GetTableReplication",
+        "s3tables:GetTable",
+        "s3tables:CreateTable",
+        "s3tables:CreateNamespace",
+        "s3tables:GetTableMaintenanceConfiguration",
+        "s3tables:PutTableMaintenanceConfiguration",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["s3tables:GetTableReplication"]
+    },
+    "update": {
+      "permissions": [
+        "s3tables:PutTableReplication",
+        "s3tables:GetTableReplication",
+        "s3tables:GetTable",
+        "s3tables:CreateTable",
+        "s3tables:CreateNamespace",
+        "s3tables:GetTableMaintenanceConfiguration",
+        "s3tables:PutTableMaintenanceConfiguration",
+        "iam:PassRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "s3tables:GetTableReplication",
+        "s3tables:DeleteTableReplication"
+      ]
+    }
+  }
+}

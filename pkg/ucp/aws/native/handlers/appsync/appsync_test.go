@@ -58,6 +58,7 @@ func Test_Suite_GraphQLSchema(t *testing.T) {
 		},
 		IdentifierProperty: "ApiId",
 		WriteOnly:          []string{"Definition", "DefinitionS3Location"},
+		API:                graphQLSchemaAPI,
 		Properties:         properties,
 		Identifier:         apiID,
 		Changed:            map[string]any{"ApiId": apiID, "Definition": "type Query { hello: String, bye: String }"},
@@ -118,6 +119,11 @@ func Test_BadDefinitionS3Location(t *testing.T) {
 	}
 
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"ApiId": apiID, "DefinitionS3Location": "s3://schemas/missing.graphql"}})
+	require.ErrorContains(t, err, "DefinitionS3Location")
+	require.ErrorContains(t, err, "NoSuchBucket")
+
+	api.objects["schemas/other.graphql"] = "type Query { other: String }"
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"ApiId": apiID, "DefinitionS3Location": "s3://schemas/missing.graphql"}})
 	require.ErrorContains(t, err, "DefinitionS3Location")
 	require.ErrorContains(t, err, "NoSuchKey")
 

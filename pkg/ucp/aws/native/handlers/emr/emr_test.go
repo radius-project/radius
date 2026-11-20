@@ -19,6 +19,7 @@ package emr
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"strings"
@@ -28,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/emr"
 	"github.com/aws/aws-sdk-go-v2/service/emr/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -170,6 +172,7 @@ func Test_Suite_Cluster(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: clusterAPI,
 		RecordedForm: &nativetest.RecordedForm{
 			Property: "Configurations",
 			Template: []any{sparkDefaults(map[string]any{"spark.executor.memory": "4g"})},
@@ -385,9 +388,10 @@ func Test_Update(t *testing.T) {
 			calls: []string{"ModifyInstanceGroups"},
 		},
 		{
+			// EMR turns unhealthy node replacement on when RunJobFlow leaves it out, so the update turns it off.
 			name: "termination protection and unhealthy node replacement",
 			desired: with(base, map[string]any{"Instances": instances(1, map[string]any{
-				"TaskInstanceGroups": tasks, "TerminationProtected": true, "UnhealthyNodeReplacement": true,
+				"TaskInstanceGroups": tasks, "TerminationProtected": true, "UnhealthyNodeReplacement": false,
 			})}),
 			calls: []string{"SetTerminationProtection", "SetUnhealthyNodeReplacement"},
 		},
@@ -961,6 +965,52 @@ func Test_ScaledCounts(t *testing.T) {
 	})
 }
 
+// Test_FleetDefaults checks that values EMR gives an instance type configuration the template leaves out aren't
+// removals: once managed scaling changes a task fleet's capacity, a redeploy of the same template changes nothing. A
+// value the template no longer sets that isn't EMR's default still can't be cleared.
+func Test_FleetDefaults(t *testing.T) {
+	fleets := func(weight any) map[string]any {
+		config := map[string]any{"InstanceType": "m5.xlarge"}
+		if weight != nil {
+			config["WeightedCapacity"] = weight
+		}
+		return map[string]any{
+			"MasterInstanceFleet": map[string]any{"Name": "master", "TargetOnDemandCapacity": 1, "InstanceTypeConfigs": []any{map[string]any{"InstanceType": "m5.xlarge"}}},
+			"TaskInstanceFleets":  []any{map[string]any{"Name": "task", "TargetSpotCapacity": 2, "InstanceTypeConfigs": []any{config}}},
+			"Ec2SubnetIds":        []any{"subnet-0a1"},
+		}
+	}
+	scaling := map[string]any{"ComputeLimits": map[string]any{"MaximumCapacityUnits": 8, "MinimumCapacityUnits": 2, "UnitType": "Instances"}}
+	tests := []struct {
+		name   string
+		weight any
+		err    string
+	}{
+		{name: "EMR's defaults"},
+		{name: "a weighted capacity the template no longer sets", weight: 2, err: "Instances/TaskInstanceFleets"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			h := NewCluster(api)
+			base := with(clusterProperties(), map[string]any{"ManagedScalingPolicy": scaling, "Instances": fleets(tt.weight)})
+			id := create(t, h, base)
+			setInstances(api, id, func(inst map[string]any) {
+				asMap(asList(inst["TaskInstanceFleets"])[0])["TargetSpotCapacity"] = 5.0
+			})
+			changes(api)
+			desired := with(base, map[string]any{"Instances": fleets(nil)})
+			err := update(t, h, id, desired, awsoperations.RemovedPaths(jsonValue(t, base), jsonValue(t, desired))...)
+			if tt.err != "" {
+				require.ErrorContains(t, err, tt.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Empty(t, changes(api))
+		})
+	}
+}
+
 // Test_RemovedAutoScalingPolicy checks that a template that no longer sets a group's automatic scaling policy removes
 // it in AWS, and then sets the template's count, for the core group and a task group. A change inside the policy is
 // still rejected.
@@ -1030,4 +1080,92 @@ func Test_ReservedTags(t *testing.T) {
 	require.ErrorAs(t, update(t, h, id, reserved), &failure)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Empty(t, changes(api), "nothing changed in AWS")
+}
+
+// Test_Cleanup checks that Cleanup removes the operation tag once the create is saved, so Find no longer matches the
+// cluster, and that it makes no change when the tag is gone.
+func Test_Cleanup(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	id := create(t, h, clusterProperties())
+	request := native.CreateRequest{Region: testRegion, Properties: jsonValue(t, clusterProperties()), ClientToken: "token-1"}
+	found, err := h.Find(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, id, found, "until the cleanup, a lost create is found by its tag")
+	before, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, ""))
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, "token-other"))
+	found, err = h.Find(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, id, found, "the tag of another alias's create stays, so that alias still finds it")
+
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, "token-1"))
+	found, err = h.Find(t.Context(), request)
+	require.NoError(t, err)
+	require.Empty(t, found)
+	after, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	require.Equal(t, before, after, "Read never showed the tag")
+
+	api.calls = nil
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, "token-1"))
+	require.NotContains(t, api.calls, "RemoveTags")
+
+	require.ErrorIs(t, h.Cleanup(t.Context(), testRegion, "j-missing", "token-1"), native.ErrNotFound)
+}
+
+// Test_TagLimit checks that a template whose tags, with the operation tag, are more than EMR's 50 fails with 400
+// before any AWS call.
+func Test_TagLimit(t *testing.T) {
+	many := func(n int) []any {
+		out := []any{}
+		for i := range n {
+			out = append(out, map[string]any{"Key": fmt.Sprintf("key-%02d", i), "Value": "v"})
+		}
+		return out
+	}
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, with(clusterProperties(), map[string]any{"Tags": many(50)})), ClientToken: "token-1"})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Contains(t, failure.Message, "AWS allows 50 tags on an EMR cluster, and Radius needs 1 of them, so Tags can have at most 49. The template sets 50.")
+	require.NotContains(t, api.calls, "RunJobFlow")
+
+	id := create(t, h, with(clusterProperties(), map[string]any{"Tags": many(49)}))
+	full := with(clusterProperties(), map[string]any{"Tags": many(50)})
+	err = update(t, h, id, full)
+	require.ErrorAs(t, err, &failure)
+	require.Contains(t, failure.Message, "so Tags can have at most 49", "the operation tag is still there")
+
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, "token-1"))
+	require.NoError(t, update(t, h, id, full), "once the operation tag is gone, the template gets all 50")
+	replaced := with(full, map[string]any{"Tags": append(many(49), map[string]any{"Key": "replaced", "Value": "v"})})
+	require.NoError(t, update(t, h, id, replaced), "a tag is removed before its replacement is added")
+
+	_, err = api.AddTags(t.Context(), &emr.AddTagsInput{ResourceId: aws.String(id), Tags: []types.Tag{{Key: aws.String("one-more"), Value: aws.String("v")}}})
+	var apiErr smithy.APIError
+	require.ErrorAs(t, err, &apiErr)
+	require.Equal(t, "ValidationException", apiErr.ErrorCode(), "the fake rejects a 51st tag")
+}
+
+func Test_ValueAt(t *testing.T) {
+	v := map[string]any{"Instances": map[string]any{"a/b": []any{map[string]any{"WeightedCapacity": 1.0}}}}
+	tests := []struct {
+		pointer string
+		want    any
+	}{
+		{"/Instances/a~1b/0/WeightedCapacity", 1.0},
+		{"/Instances/a~1b/1/WeightedCapacity", nil},
+		{"/Instances/a~1b/x", nil},
+		{"/Instances/a~1b/0/WeightedCapacity/deeper", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pointer, func(t *testing.T) {
+			require.Equal(t, tt.want, valueAt(v, tt.pointer))
+		})
+	}
 }

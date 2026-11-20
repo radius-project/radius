@@ -381,7 +381,8 @@ func merge(dst map[string]any, src map[string]any) {
 // success.
 func ApplyPending(rec *datamodel.AWSResource) {
 	applyPendingValues(rec)
-	rec.Properties.ClientToken = ""
+	FinishCreate(rec)
+	ClearUpdateToken(rec)
 	finish(rec, nil)
 	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
 }
@@ -413,8 +414,20 @@ func Settle(rec *datamodel.AWSResource, outcome native.Outcome) {
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties
 // and fingerprints stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports
-// the same error.
+// the same error. The update token is cleared, because AWS finished the update, so the next update is a new one (see
+// FailUnfinished).
 func Fail(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
+	ClearPending(rec)
+	ClearUpdateToken(rec)
+	finish(rec, failure)
+	rec.SetProvisioningState(v1.ProvisioningStateFailed)
+}
+
+// FailUnfinished finishes an update UCP stopped waiting for before AWS finished it, such as at the timeout, as Fail
+// does, but keeps the update token and the handler's state for it. AWS accepted the update and may still run it, so a
+// deploy of the same values sends it again with its token, and AWS answers with the update it has, instead of taking
+// it as a new one.
+func FailUnfinished(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	ClearPending(rec)
 	finish(rec, failure)
 	rec.SetProvisioningState(v1.ProvisioningStateFailed)
@@ -424,6 +437,25 @@ func finish(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	rec.Properties.LastRequestToken = rec.Properties.RequestToken
 	rec.Properties.LastRequestError = failure
 	rec.Properties.RequestToken = ""
+}
+
+// FinishCreate marks the first create as finished: it clears the client token, and keeps it as the create token, so a
+// native handler's cleanup can tell the marks of this create from another alias's (see native.Cleaner). The new
+// resource isn't cleaned up yet, even when one this record had before was. It changes nothing for a record whose
+// first create already finished.
+func FinishCreate(rec *datamodel.AWSResource) {
+	if rec.Properties.ClientToken != "" {
+		rec.Properties.CreateToken = rec.Properties.ClientToken
+		rec.Properties.CleanedUpAt = nil
+	}
+	rec.Properties.ClientToken = ""
+}
+
+// ClearUpdateToken clears the update token and the handler's state for it, so the next update is a new one.
+func ClearUpdateToken(rec *datamodel.AWSResource) {
+	rec.Properties.UpdateToken = ""
+	rec.Properties.UpdateState = ""
+	rec.Properties.UpdateIntent = ""
 }
 
 // AliasOf returns the alias, the last segment, of a record's resource ID.
