@@ -32,7 +32,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
-	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
 // pkgHTTP is an HTTP client that answers each request with the next of its answers: a connection error, or a
@@ -99,15 +98,17 @@ func Test_Package_NoSDKRetry(t *testing.T) {
 // has another VendingEnabled, because UCP keeps an identifier Find returns with an error, and a later DELETE would
 // delete that package.
 func Test_Package_FindMismatchKeepsNoID(t *testing.T) {
-	h, _ := newPackageHandler()
-	createPackage(t, h, dictionaryTemplate())
+	h, api := newPackageHandler()
+	api.echoOptional = true
+	createPackage(t, h, withProps(dictionaryTemplate(), map[string]any{"PackageVendingOptions": map[string]any{"VendingEnabled": false}}))
 	id, err := h.Find(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{
 		"PackageName": "dictionary", "PackageType": "TXT-DICTIONARY", "PackageVendingOptions": map[string]any{"VendingEnabled": true},
 	}})
 	requirePkgRejectedBefore(t, err, "VendingEnabled")
 	require.Empty(t, id)
 
-	a, _ := newAssociationHandler()
+	a, aapi := newAssociationHandler()
+	aapi.echoOptional = true
 	createAssociation(t, a, pluginTemplate)
 	createAssociation(t, a, licenseTemplate)
 	id, err = a.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{"DomainName": "logs", "PackageID": license}})
@@ -170,71 +171,6 @@ func Test_Package_UpdateReplacedOutside(t *testing.T) {
 	require.True(t, p.Done)
 	require.NotNil(t, p.Failure)
 	require.Contains(t, p.Failure.Message, "another update")
-}
-
-// Test_Package_EmptyValuesRead checks that values a template can set empty read back as set, so an unchanged
-// redeploy changes nothing: an empty description, an empty prerequisite list, and an empty association configuration.
-func Test_Package_EmptyValuesRead(t *testing.T) {
-	h, _ := newPackageHandler()
-	id := createPackage(t, h, withProps(dictionaryTemplate(), map[string]any{"PackageDescription": ""}))
-	read, err := h.Read(t.Context(), pkgRegion, id)
-	require.NoError(t, err)
-	require.Contains(t, read, "PackageDescription")
-	require.Equal(t, "", read["PackageDescription"])
-
-	a, _ := newAssociationHandler()
-	id = createAssociation(t, a, map[string]any{
-		"DomainName": "logs", "PackageID": "F111111111", "PrerequisitePackageIDList": []any{}, "AssociationConfiguration": map[string]any{},
-	})
-	read, err = a.Read(t.Context(), pkgRegion, id)
-	require.NoError(t, err)
-	require.Equal(t, []any{}, read["PrerequisitePackageIDList"])
-	require.Equal(t, map[string]any{}, read["AssociationConfiguration"])
-}
-
-// Test_Suite_PackageEmptyDescription runs the suite with an empty description, so its redeploy cases check that an
-// unchanged template changes nothing.
-func Test_Suite_PackageEmptyDescription(t *testing.T) {
-	properties := withProps(dictionaryTemplate(), map[string]any{"PackageDescription": ""})
-	nativetest.Run(t, nativetest.Suite{
-		TypeName:    packageType,
-		Schema:      readSchemaFile(t, "aws-opensearchservice-package.json"),
-		Metadata:    readSchemaFile(t, "aws-opensearchservice-package.metadata.json"),
-		HandWritten: true,
-		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			api := newPkgFake(store)
-			return NewPackage(api, api)
-		},
-		IdentifierProperty: "PackageID",
-		WriteOnly:          []string{"PackageSource", "PackageConfiguration"},
-		Properties:         properties,
-		Changed:            withProps(properties, map[string]any{"PackageDescription": "Synonyms"}),
-		API:                packageAPI,
-	})
-}
-
-// Test_Suite_PackageAssociationEmptyValues runs the suite with an empty prerequisite list and configuration, which are
-// create-only, so its redeploy cases check that an unchanged template isn't taken as a create-only change.
-func Test_Suite_PackageAssociationEmptyValues(t *testing.T) {
-	properties := map[string]any{"DomainName": "logs", "PackageID": "F111111111", "PrerequisitePackageIDList": []any{}, "AssociationConfiguration": map[string]any{}}
-	nativetest.Run(t, nativetest.Suite{
-		TypeName:    packageAssociationType,
-		Schema:      readSchemaFile(t, "aws-opensearchservice-packageassociation.json"),
-		Metadata:    readSchemaFile(t, "aws-opensearchservice-packageassociation.metadata.json"),
-		HandWritten: true,
-		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			return NewPackageAssociation(newPkgFake(store))
-		},
-		Properties: properties,
-		Identifier: "logs|F111111111",
-		Changed:    properties,
-		IdentifierProperties: func(identifier string) map[string]any {
-			id, err := parseAssociationID(identifier)
-			require.NoError(t, err)
-			return map[string]any{"DomainName": id.domain, "PackageID": id.packageID}
-		},
-		API: associationAPI,
-	})
 }
 
 // Test_Package_HistoryFails checks that an update sent again, and the wait for an update, fail when AWS can't list the

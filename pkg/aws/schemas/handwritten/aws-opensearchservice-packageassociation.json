@@ -23,7 +23,7 @@
     },
     "AssociationConfiguration": {
       "type": "object",
-      "description": "The configuration of the association.",
+      "description": "The configuration of the association. AWS may not return it, or may return the role in another form, so it is write-only.",
       "properties": {
         "KeyStoreAccessOption": {
           "$ref": "#/definitions/KeyStoreAccessOption"
@@ -47,7 +47,7 @@
     },
     "PrerequisitePackageIDList": {
       "type": "array",
-      "description": "The IDs of packages that must be associated with the domain first, such as the plugin of a license or configuration package.",
+      "description": "The IDs of packages that must be associated with the domain first, such as the plugin of a license or configuration package. AWS may not return them, so they are write-only.",
       "insertionOrder": false,
       "items": {
         "type": "string",
@@ -97,6 +97,10 @@
   "createOnlyProperties": [
     "/properties/DomainName",
     "/properties/PackageID",
+    "/properties/PrerequisitePackageIDList",
+    "/properties/AssociationConfiguration"
+  ],
+  "writeOnlyProperties": [
     "/properties/PrerequisitePackageIDList",
     "/properties/AssociationConfiguration"
   ],

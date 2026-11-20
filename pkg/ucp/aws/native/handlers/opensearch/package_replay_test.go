@@ -78,7 +78,7 @@ func Test_Replay_Package(t *testing.T) {
 // Test_Replay_PackageErrors runs AWS's errors through the SDK: a create of a name AWS already has, 409
 // ResourceAlreadyExistsException, and an update AWS answers with 400 ValidationException, must be rejected, so UCP
 // answers 400; a delete of a package a domain uses, 409 ConflictException, must be a conflict; and a read AWS answers
-// with 409 ResourceNotFoundException must be not found. An update sent again reads the package's version history.
+// with 400 ValidationException "Package not found", as other AWS clients see, must be not found. An update sent again reads the package's version history.
 func Test_Replay_PackageErrors(t *testing.T) {
 	s := awsreplay.New(t, "testdata/packageerrors.json")
 	cfg := s.Config(t.Context())
@@ -137,7 +137,8 @@ func Test_Replay_PackageAssociation(t *testing.T) {
 // Test_Replay_PackageAssociationErrors runs AWS's errors through the SDK: an association while AWS is changing the
 // domain, 409 ConflictException, must be a conflict; one with a domain that doesn't exist, 409
 // ResourceNotFoundException, must be rejected, not not found, while a read of it is not found; and a dissociation AWS
-// refuses because the package is in use must be a conflict.
+// refuses because the package is in use must be a conflict, and one AWS answers with 400 ValidationException because
+// the package is no longer associated is not found.
 func Test_Replay_PackageAssociationErrors(t *testing.T) {
 	s := awsreplay.New(t, "testdata/packageassociationerrors.json")
 	h := NewPackageAssociation(opensearch.NewFromConfig(s.Config(t.Context())))
@@ -153,4 +154,7 @@ func Test_Replay_PackageAssociationErrors(t *testing.T) {
 	require.ErrorIs(t, err, native.ErrNotFound)
 
 	requireReplayFailure(t, h.Delete(t.Context(), awsreplay.Region, domain+"|"+packageID), true, "index uses the package")
+
+	// A package dissociated since the list, which AWS answers with 400 ValidationException, is gone.
+	require.ErrorIs(t, h.Delete(t.Context(), awsreplay.Region, domain+"|"+packageID), native.ErrNotFound)
 }

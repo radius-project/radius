@@ -114,7 +114,7 @@ func Test_PackageAssociation_FirstLook(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, withProps(properties, map[string]any{
 		"DomainPackageStatus": "ACTIVE", "PackageName": "synonyms", "PackageType": "TXT-DICTIONARY", "PackageVersion": "v1",
-		"ReferencePath": "analyzers/F111111111", "PrerequisitePackageIDList": []any{}, "AssociationConfiguration": map[string]any{},
+		"ReferencePath": "analyzers/F111111111",
 	}), read)
 	p, err = h.Progress(t.Context(), pkgRegion, id, native.OperationUpdate)
 	require.NoError(t, err)
@@ -127,6 +127,7 @@ func Test_PackageAssociation_FirstLook(t *testing.T) {
 // differ from what AWS has fails instead of taking the association as the template's.
 func Test_PackageAssociation_CreateFindsExisting(t *testing.T) {
 	h, api := newAssociationHandler()
+	api.echoOptional = true
 	createAssociation(t, h, pluginTemplate)
 	id := createAssociation(t, h, licenseTemplate)
 	again, err := h.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: licenseTemplate})
@@ -134,6 +135,10 @@ func Test_PackageAssociation_CreateFindsExisting(t *testing.T) {
 	require.Equal(t, id, again)
 	require.Equal(t, 2, api.calls["AssociatePackage"])
 
+	stored := api.store.Resource(packageAssociationType, id)
+	api.store.Put(packageAssociationType, id, withProps(stored, map[string]any{
+		"AssociationConfiguration": map[string]any{"KeyStoreAccessOption": map[string]any{"KeyStoreAccessEnabled": false}},
+	}))
 	for _, other := range []map[string]any{
 		{"DomainName": "logs", "PackageID": license},
 		withProps(licenseTemplate, map[string]any{"AssociationConfiguration": map[string]any{"KeyStoreAccessOption": map[string]any{"KeyStoreAccessEnabled": true}}}),
@@ -143,7 +148,8 @@ func Test_PackageAssociation_CreateFindsExisting(t *testing.T) {
 	}
 	require.Equal(t, 2, api.calls["AssociatePackage"])
 
-	// The same prerequisites in another order are the same association.
+	// The same prerequisites in another order are the same association, and so is a configuration AWS doesn't return.
+	api.store.Put(packageAssociationType, id, stored)
 	reordered := withProps(licenseTemplate, map[string]any{"PrerequisitePackageIDList": []any{plugin}})
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: reordered})
 	require.NoError(t, err)

@@ -68,7 +68,10 @@ func dictionaryTemplate() map[string]any {
 }
 
 func Test_Suite_Package(t *testing.T) {
-	properties := dictionaryTemplate()
+	properties := withProps(dictionaryTemplate(), map[string]any{
+		"PackageEncryptionOptions": map[string]any{"EncryptionEnabled": true, "KmsKeyIdentifier": "alias/packages"},
+		"PackageVendingOptions":    map[string]any{"VendingEnabled": false},
+	})
 	nativetest.Run(t, nativetest.Suite{
 		TypeName:    packageType,
 		Schema:      readSchemaFile(t, "aws-opensearchservice-package.json"),
@@ -79,7 +82,7 @@ func Test_Suite_Package(t *testing.T) {
 			return NewPackage(api, api)
 		},
 		IdentifierProperty: "PackageID",
-		WriteOnly:          []string{"PackageSource", "PackageConfiguration"},
+		WriteOnly:          []string{"PackageSource", "PackageConfiguration", "PackageDescription", "PackageEncryptionOptions", "PackageVendingOptions"},
 		Properties:         properties,
 		Changed:            withProps(properties, map[string]any{"PackageDescription": "Synonyms, version 2"}),
 		ChangedWriteOnly:   withProps(properties, map[string]any{"PackageSource": source("synonyms-2.txt")}),
@@ -105,9 +108,13 @@ func Test_Suite_Package(t *testing.T) {
 }
 
 func Test_Suite_PackageAssociation(t *testing.T) {
-	properties := map[string]any{"DomainName": "logs", "PackageID": "F111111111"}
+	properties := map[string]any{
+		"DomainName": "logs", "PackageID": "F111111111",
+		"AssociationConfiguration": map[string]any{"KeyStoreAccessOption": map[string]any{"KeyStoreAccessEnabled": false}},
+	}
 	nativetest.Run(t, nativetest.Suite{
 		TypeName:    packageAssociationType,
+		WriteOnly:   []string{"PrerequisitePackageIDList", "AssociationConfiguration"},
 		Schema:      readSchemaFile(t, "aws-opensearchservice-packageassociation.json"),
 		Metadata:    readSchemaFile(t, "aws-opensearchservice-packageassociation.metadata.json"),
 		HandWritten: true,
@@ -257,9 +264,9 @@ func Test_Package_FirstLook(t *testing.T) {
 	properties, err := h.Read(t.Context(), pkgRegion, id)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{
-		"PackageID": id, "PackageName": "dictionary", "PackageType": "TXT-DICTIONARY", "PackageDescription": "Synonyms",
+		"PackageID": id, "PackageName": "dictionary", "PackageType": "TXT-DICTIONARY",
 		"PackageOwner": pkgAccount, "PackageStatus": "AVAILABLE", "AvailablePackageVersion": "v1",
-	}, properties, "PackageSource is write-only, so Read leaves it out")
+	}, properties, "AWS doesn't return PackageSource, and may not return PackageDescription")
 }
 
 // Test_Package_ImportFails checks that a package AWS can't copy or validate fails the create with AWS's details, and
@@ -323,6 +330,7 @@ func Test_Package_UpdateFails(t *testing.T) {
 // removing the description sends an empty one, which clears it.
 func Test_Package_UpdateDescription(t *testing.T) {
 	h, api := newPackageHandler()
+	api.echoOptional = true
 	id := createPackage(t, h, dictionaryTemplate())
 	updates := &updateInputs{pkgFake: api}
 	h = NewPackage(updates, updates)
@@ -336,9 +344,7 @@ func Test_Package_UpdateDescription(t *testing.T) {
 	require.Nil(t, updatePackage(t, h, packageUpdate(t, h, id, without)).Failure)
 	require.Equal(t, "", aws.ToString(updates.inputs[1].PackageDescription))
 	require.NotNil(t, updates.inputs[1].PackageDescription)
-	properties, err := h.Read(t.Context(), pkgRegion, id)
-	require.NoError(t, err)
-	require.Equal(t, "", properties["PackageDescription"], "AWS has no description, which reads as an empty one")
+	require.Equal(t, "", api.store.Resource(packageType, id)["PackageDescription"])
 
 	// A description AWS has that the template never set isn't removed.
 	api.store.Resource(packageType, id)["PackageDescription"] = "outside"
@@ -363,6 +369,7 @@ func (u *updateInputs) UpdatePackage(ctx context.Context, in *opensearch.UpdateP
 // is rejected before any AWS call, because AWS doesn't say how.
 func Test_Package_UpdateEncryption(t *testing.T) {
 	h, api := newPackageHandler()
+	api.echoOptional = true
 	encrypted := withProps(dictionaryTemplate(), map[string]any{"PackageEncryptionOptions": map[string]any{"EncryptionEnabled": true, "KmsKeyIdentifier": "alias/a"}})
 	id := createPackage(t, h, encrypted)
 	changed := withProps(encrypted, map[string]any{"PackageEncryptionOptions": map[string]any{"EncryptionEnabled": true, "KmsKeyIdentifier": "alias/b"}})
@@ -424,7 +431,8 @@ func Test_Package_Find(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, found)
 
-	id := createPackage(t, h, dictionaryTemplate())
+	api.echoOptional = true
+	id := createPackage(t, h, withProps(dictionaryTemplate(), map[string]any{"PackageVendingOptions": map[string]any{"VendingEnabled": false}}))
 	found, err = find(withoutSource(dictionaryTemplate()))
 	require.NoError(t, err)
 	require.Equal(t, id, found)

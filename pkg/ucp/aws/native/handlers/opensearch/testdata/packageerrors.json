@@ -55,12 +55,12 @@
     {
       "service": "OpenSearch",
       "operation": "DescribePackages",
-      "status": 409,
+      "status": 400,
       "headers": {
         "Content-Type": "application/json",
-        "X-Amzn-Errortype": "ResourceNotFoundException"
+        "X-Amzn-Errortype": "ValidationException"
       },
-      "body": "{\"message\": \"Package F999999999 not found\"}"
+      "body": "{\"message\": \"Package not found\"}"
     },
     {
       "service": "OpenSearch",

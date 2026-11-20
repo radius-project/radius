@@ -72,6 +72,25 @@
         "X-Amzn-Errortype": "ConflictException"
       },
       "body": "{\"message\": \"Package F123456789 is in use by an index\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"DomainPackageStatus\": \"ACTIVE\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DissociatePackage",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException"
+      },
+      "body": "{\"message\": \"Package is not associated to this domain\"}"
     }
   ]
 }

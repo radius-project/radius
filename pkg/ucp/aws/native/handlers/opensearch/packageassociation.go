@@ -201,7 +201,7 @@ func (h *PackageAssociation) Read(ctx context.Context, region string, identifier
 	if err != nil {
 		return nil, err
 	}
-	properties, err := awsapi.EncodeObject(map[string]any{
+	return awsapi.EncodeObject(map[string]any{
 		"DomainName":                id.domain,
 		"PackageID":                 id.packageID,
 		"PrerequisitePackageIDList": d.PrerequisitePackageIDList,
@@ -212,19 +212,6 @@ func (h *PackageAssociation) Read(ctx context.Context, region string, identifier
 		"PackageVersion":            d.PackageVersion,
 		"ReferencePath":             d.ReferencePath,
 	})
-	if err != nil {
-		return nil, err
-	}
-	// A template can set an empty list of prerequisites, or an empty configuration, which are create-only, and AWS may
-	// return them empty or not at all. They are always read, so a deploy of such a template doesn't count them as a
-	// change.
-	if _, ok := properties["PrerequisitePackageIDList"]; !ok {
-		properties["PrerequisitePackageIDList"] = []any{}
-	}
-	if _, ok := properties["AssociationConfiguration"]; !ok {
-		properties["AssociationConfiguration"] = map[string]any{}
-	}
-	return properties, nil
 }
 
 // associationBusy returns the conflict of a change AWS can't make now because it is changing the domain or another of
@@ -244,13 +231,19 @@ func keyStoreAccess(c *types.PackageAssociationConfiguration) (bool, string) {
 }
 
 // sameAssociation returns a rejected client failure when the domain already has the package with other prerequisites
-// or another configuration than the template's, so a create never takes another association as the template's.
+// or another configuration than the template's, so a create never takes another association as the template's. AWS
+// may not return either, so only values AWS returns are compared.
 func sameAssociation(id associationID, want *opensearch.AssociatePackageInput, got *types.DomainPackageDetails) error {
-	wantPrerequisites := slices.Sorted(slices.Values(want.PrerequisitePackageIDList))
-	gotPrerequisites := slices.Sorted(slices.Values(got.PrerequisitePackageIDList))
-	wantEnabled, wantRole := keyStoreAccess(want.AssociationConfiguration)
-	gotEnabled, gotRole := keyStoreAccess(got.AssociationConfiguration)
-	if slices.Equal(wantPrerequisites, gotPrerequisites) && wantEnabled == gotEnabled && wantRole == gotRole {
+	same := true
+	if len(got.PrerequisitePackageIDList) > 0 {
+		same = slices.Equal(slices.Sorted(slices.Values(want.PrerequisitePackageIDList)), slices.Sorted(slices.Values(got.PrerequisitePackageIDList)))
+	}
+	if got.AssociationConfiguration != nil && got.AssociationConfiguration.KeyStoreAccessOption != nil {
+		wantEnabled, wantRole := keyStoreAccess(want.AssociationConfiguration)
+		gotEnabled, gotRole := keyStoreAccess(got.AssociationConfiguration)
+		same = same && wantEnabled == gotEnabled && (gotRole == "" || wantRole == gotRole)
+	}
+	if same {
 		return nil
 	}
 	return &native.Failure{
@@ -328,7 +321,7 @@ func (h *PackageAssociation) Delete(ctx context.Context, region string, identifi
 	if awsapi.HasCode(err, "ConflictException") {
 		return associationBusy(fmt.Sprintf("the domain %q or another of its packages, or an index uses the package", id.domain), err)
 	}
-	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))
+	return awsapi.Rejected(packageNotFound(err))
 }
 
 // List returns nothing, because AWS lists associations only by domain or by package.

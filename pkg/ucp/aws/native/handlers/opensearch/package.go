@@ -19,6 +19,7 @@ package opensearch
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -29,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go"
 	"github.com/google/uuid"
 	"github.com/wI2L/jsondiff"
 
@@ -224,6 +226,18 @@ func checkEncryptionOptions(o *types.PackageEncryptionOptions) error {
 	return nil
 }
 
+// packageNotFound returns err wrapped with native.ErrNotFound when it says AWS has no such package or association:
+// ResourceNotFoundException, which the API reference lists, or the ValidationException AWS answers instead, which
+// other AWS clients also take as not found, such as for a DescribePackages filter by ID that matches nothing.
+func packageNotFound(err error) error {
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) && apiErr.ErrorCode() == "ValidationException" &&
+		(strings.Contains(apiErr.ErrorMessage(), "Package not found") || strings.Contains(apiErr.ErrorMessage(), "not associated to this domain")) {
+		return fmt.Errorf("%w: %w", native.ErrNotFound, err)
+	}
+	return awsapi.NotFound(err, "ResourceNotFoundException")
+}
+
 // checkPackageID returns a client failure for an identifier that isn't a package ID, so it is never sent.
 func checkPackageID(identifier string) error {
 	if !packageIDPattern.MatchString(identifier) {
@@ -258,7 +272,7 @@ func (h *Package) describe(ctx context.Context, region string, identifier string
 		Value: []string{identifier},
 	})
 	if err != nil {
-		return nil, awsapi.NotFound(err, "ResourceNotFoundException")
+		return nil, packageNotFound(err)
 	}
 	for i := range found {
 		if aws.ToString(found[i].PackageID) != identifier {
@@ -272,10 +286,11 @@ func (h *Package) describe(ctx context.Context, region string, identifier string
 	return nil, native.ErrNotFound
 }
 
-// packageProperties returns the package's properties. PackageSource and PackageConfiguration are write-only, because
-// AWS doesn't return them as sent.
+// packageProperties returns the package's properties. PackageSource, PackageConfiguration, PackageDescription,
+// PackageEncryptionOptions, and PackageVendingOptions are write-only, because AWS doesn't return them as sent, or the
+// API reference doesn't promise it returns them, so UCP compares them by fingerprint.
 func packageProperties(p *types.PackageDetails) (map[string]any, error) {
-	properties, err := awsapi.EncodeObject(map[string]any{
+	return awsapi.EncodeObject(map[string]any{
 		"PackageID":                p.PackageID,
 		"PackageName":              p.PackageName,
 		"PackageType":              string(p.PackageType),
@@ -287,13 +302,6 @@ func packageProperties(p *types.PackageDetails) (map[string]any, error) {
 		"PackageStatus":            string(p.PackageStatus),
 		"AvailablePackageVersion":  p.AvailablePackageVersion,
 	})
-	if err != nil {
-		return nil, err
-	}
-	// A template can set an empty description, and AWS may return it empty or not at all, so the description is
-	// always read, as "" when there is none. Otherwise every deploy of such a template would import the file again.
-	properties["PackageDescription"] = aws.ToString(p.PackageDescription)
-	return properties, nil
 }
 
 // Read returns the package's properties.
@@ -338,6 +346,9 @@ func (h *Package) Find(ctx context.Context, request native.CreateRequest) (strin
 		Name:  types.DescribePackagesFilterNamePackageName,
 		Value: []string{name},
 	})
+	if errors.Is(packageNotFound(err), native.ErrNotFound) {
+		return "", nil
+	}
 	if err != nil {
 		return "", err
 	}
@@ -380,11 +391,15 @@ func (h *Package) Find(ctx context.Context, request native.CreateRequest) (strin
 // sameVending returns a rejected client failure when the package's vending option, which is create-only, differs
 // from the template's, so a lost create never takes another package as the template's.
 func sameVending(properties map[string]any, p *types.PackageDetails) error {
+	if p.PackageVendingOptions == nil || p.PackageVendingOptions.VendingEnabled == nil {
+		// AWS may not return the option, so a package without it can't be told apart.
+		return nil
+	}
 	want := false
 	if o, ok := properties["PackageVendingOptions"].(map[string]any); ok {
 		want, _ = o["VendingEnabled"].(bool)
 	}
-	got := p.PackageVendingOptions != nil && aws.ToBool(p.PackageVendingOptions.VendingEnabled)
+	got := aws.ToBool(p.PackageVendingOptions.VendingEnabled)
 	if want == got {
 		return nil
 	}
@@ -460,7 +475,7 @@ func (h *Package) Update(ctx context.Context, request native.UpdateRequest) erro
 		input.CommitMessage = aws.String(commitMessage(before.Commit))
 	}
 	_, err = h.api.UpdatePackage(ctx, input, inRegion(request.Region), sendOnce)
-	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))
+	return awsapi.Rejected(packageNotFound(err))
 }
 
 // updatable returns a conflict for a package AWS is still importing, and a rejected client failure for one it is
@@ -489,7 +504,7 @@ func (h *Package) committed(ctx context.Context, region string, identifier strin
 	for {
 		page, err := h.api.GetPackageVersionHistory(ctx, input, inRegion(region))
 		if err != nil {
-			return nil, false, awsapi.NotFound(err, "ResourceNotFoundException")
+			return nil, false, packageNotFound(err)
 		}
 		versions = append(versions, page.PackageVersionHistoryList...)
 		if input.NextToken = page.NextToken; aws.ToString(input.NextToken) == "" {
@@ -637,7 +652,7 @@ func (h *Package) Delete(ctx context.Context, region string, identifier string) 
 		return packageBusy(fmt.Sprintf("AWS can't delete the OpenSearch Service package %q while a domain uses it, so it wasn't deleted. "+
 			"Delete its package associations first, and give each AWS::OpenSearchService::PackageAssociation dependsOn on the package", identifier), err)
 	}
-	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))
+	return awsapi.Rejected(packageNotFound(err))
 }
 
 // List returns nothing: the type can't be listed (see Options).

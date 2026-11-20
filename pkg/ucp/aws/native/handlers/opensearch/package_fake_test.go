@@ -180,6 +180,11 @@ type pkgFake struct {
 	// DISSOCIATION_FAILED, as when an index still uses the package.
 	failAssociate, failDissociate bool
 
+	// echoOptional makes the fake return the optional fields a template sets that no example shows AWS returning:
+	// PackageDescription, PackageEncryptionOptions, PackageVendingOptions, PrerequisitePackageIDList, and
+	// AssociationConfiguration. By default it leaves them out.
+	echoOptional bool
+
 	// calls counts the calls that reached the fake, by method.
 	calls map[string]int
 
@@ -279,18 +284,22 @@ func (f *pkgFake) details(id string, p map[string]any) *types.PackageDetails {
 		return nil
 	}
 	d := &types.PackageDetails{
-		PackageID:          aws.String(id),
-		PackageName:        str(p, "PackageName"),
-		PackageType:        types.PackageType(aws.ToString(str(p, "PackageType"))),
-		EngineVersion:      str(p, "EngineVersion"),
-		PackageDescription: str(p, "PackageDescription"),
-		PackageOwner:       str(p, "PackageOwner"),
-		PackageStatus:      f.statusOf(id),
-		LastUpdatedAt:      aws.Time(f.updated[id]),
+		PackageID:     aws.String(id),
+		PackageName:   str(p, "PackageName"),
+		PackageType:   types.PackageType(aws.ToString(str(p, "PackageType"))),
+		EngineVersion: str(p, "EngineVersion"),
+		PackageOwner:  str(p, "PackageOwner"),
+		PackageStatus: f.statusOf(id),
+		LastUpdatedAt: aws.Time(f.updated[id]),
 	}
 	if v := f.versions[id]; v > 0 {
 		d.AvailablePackageVersion = aws.String(fmt.Sprintf("v%d", v))
 	}
+	if !f.echoOptional {
+		// The API reference marks these optional, and no example shows them, so the fake leaves them out.
+		return f.withErrors(id, d)
+	}
+	d.PackageDescription = str(p, "PackageDescription")
 	if o, ok := p["PackageEncryptionOptions"].(map[string]any); ok {
 		enabled, _ := o["EncryptionEnabled"].(bool)
 		d.PackageEncryptionOptions = &types.PackageEncryptionOptions{EncryptionEnabled: aws.Bool(enabled), KmsKeyIdentifier: str(o, "KmsKeyIdentifier")}
@@ -299,6 +308,11 @@ func (f *pkgFake) details(id string, p map[string]any) *types.PackageDetails {
 		enabled, _ := o["VendingEnabled"].(bool)
 		d.PackageVendingOptions = &types.PackageVendingOptions{VendingEnabled: aws.Bool(enabled)}
 	}
+	return f.withErrors(id, d)
+}
+
+// withErrors adds the error details of a package whose import failed.
+func (f *pkgFake) withErrors(id string, d *types.PackageDetails) *types.PackageDetails {
 	if d.PackageStatus == types.PackageStatusCopyFailed || d.PackageStatus == types.PackageStatusValidationFailed {
 		d.ErrorDetails = f.failed[id]
 	}
@@ -564,6 +578,13 @@ func (f *pkgFake) DescribePackages(ctx context.Context, in *opensearch.DescribeP
 		}
 		list = append(list, *p)
 	}
+	if len(list) == 0 && slices.ContainsFunc(in.Filters, func(filter types.DescribePackagesFilter) bool {
+		return filter.Name == types.DescribePackagesFilterNamePackageID || filter.Name == types.DescribePackagesFilterNamePackageName
+	}) {
+		// Other AWS clients treat this ValidationException as not found, so AWS answers a filter by ID or name that
+		// matches nothing with it, not with an empty list.
+		return nil, pkgFault(pkgValidationCode, "Package not found")
+	}
 	items, next := pkgPage(list, in.NextToken)
 	for _, p := range items {
 		id := aws.ToString(p.PackageID)
@@ -731,12 +752,12 @@ func (f *pkgFake) assocDetails(key string) types.DomainPackageDetails {
 		ReferencePath:       str("ReferencePath"),
 		DomainPackageStatus: f.assocStatus(key),
 	}
-	if list, ok := p["PrerequisitePackageIDList"].([]any); ok {
+	if list, ok := p["PrerequisitePackageIDList"].([]any); ok && f.echoOptional {
 		for _, v := range list {
 			d.PrerequisitePackageIDList = append(d.PrerequisitePackageIDList, fmt.Sprint(v))
 		}
 	}
-	if c, ok := p["AssociationConfiguration"].(map[string]any); ok {
+	if c, ok := p["AssociationConfiguration"].(map[string]any); ok && f.echoOptional {
 		d.AssociationConfiguration = &types.PackageAssociationConfiguration{}
 		if o, ok := c["KeyStoreAccessOption"].(map[string]any); ok {
 			enabled, _ := o["KeyStoreAccessEnabled"].(bool)
@@ -770,7 +791,7 @@ func (f *pkgFake) settleAssoc(key string) {
 		// The docs say dissociating a plugin also removes its configuration and license packages.
 		domain, id, _ := strings.Cut(key, "|")
 		for _, other := range f.associations(domain) {
-			if slices.Contains(f.assocDetails(other).PrerequisitePackageIDList, id) {
+			if list, _ := f.store.Resource(packageAssociationType, other)["PrerequisitePackageIDList"].([]any); slices.Contains(list, any(id)) {
 				delete(f.assocChanges, other)
 				f.store.Remove(packageAssociationType, other)
 			}
@@ -901,7 +922,8 @@ func (f *pkgFake) DissociatePackage(ctx context.Context, in *opensearch.Dissocia
 	}
 	key := domain + "|" + id
 	if f.store.Resource(packageAssociationType, key) == nil {
-		return nil, pkgFault("ResourceNotFoundException", "the domain %q doesn't have the package %q", domain, id)
+		// Other AWS clients treat this ValidationException as not found.
+		return nil, pkgFault(pkgValidationCode, "Package is not associated to this domain")
 	}
 	if f.domainBusy(domain) {
 		return nil, pkgFault("ConflictException", "the domain %q is processing a change", domain)

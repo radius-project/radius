@@ -51,7 +51,7 @@
     },
     "PackageEncryptionOptions": {
       "type": "object",
-      "description": "How AWS encrypts the package. AWS doesn't say how to remove these options, so a deploy that removes them fails with 400 Bad Request: set EncryptionEnabled to false instead.",
+      "description": "How AWS encrypts the package. AWS may not return these options, or may return the key in another form, so they are write-only. AWS doesn't say how to remove them, so a deploy that removes them fails with 400 Bad Request: set EncryptionEnabled to false instead.",
       "properties": {
         "EncryptionEnabled": {
           "type": "boolean",
@@ -69,7 +69,7 @@
     },
     "PackageVendingOptions": {
       "type": "object",
-      "description": "Whether other accounts can use the package.",
+      "description": "Whether other accounts can use the package. AWS may not return it, so it is write-only.",
       "properties": {
         "VendingEnabled": {
           "type": "boolean",
@@ -108,7 +108,7 @@
     },
     "PackageDescription": {
       "type": "string",
-      "description": "The description of the package.",
+      "description": "The description of the package. AWS may not return it, so it is write-only.",
       "maxLength": 1024
     },
     "PackageConfiguration": {
@@ -165,7 +165,10 @@
   ],
   "writeOnlyProperties": [
     "/properties/PackageSource",
-    "/properties/PackageConfiguration"
+    "/properties/PackageConfiguration",
+    "/properties/PackageDescription",
+    "/properties/PackageEncryptionOptions",
+    "/properties/PackageVendingOptions"
   ],
   "handlers": {
     "create": {

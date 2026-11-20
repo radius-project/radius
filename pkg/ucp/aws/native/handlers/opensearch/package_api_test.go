@@ -374,7 +374,9 @@ var packageAPI = map[string]nativetest.Call{
 				}),
 			},
 		},
-		Unclear: "Whether the list has packages AWS owns, such as optional plugins, and packages other accounts share: the fake " +
+		Unclear: "What a filter by ID or name that matches nothing returns: other AWS clients take a ValidationException " +
+			"\"Package not found\" as not found, so the fake answers with it instead of an empty list. " +
+			"Whether the list has packages AWS owns, such as optional plugins, and packages other accounts share: the fake " +
 			"has an AWS plugin. Whether AWS reports a deleted package as DELETED, and for how long: the fake does for two " +
 			"reads. Whether a filter value's * and ? are wildcards: the fake matches values exactly. The page size: the fake " +
 			"returns two packages a page." + pkgConstraintNote,
@@ -690,7 +692,8 @@ var associationAPI = map[string]nativetest.Call{
 					}),
 			},
 		},
-		Unclear: "What dissociating a package the domain doesn't have does: the fake fails with ResourceNotFoundException. " +
+		Unclear: "What dissociating a package the domain doesn't have does: other AWS clients take a ValidationException " +
+			"\"Package is not associated to this domain\" as not found, so the fake answers with it. " +
 			"Whether AWS takes a dissociation while it is changing the domain or another of its packages: the fake rejects " +
 			"it with ConflictException. The developer guide says a dissociation fails while an index uses the package, but " +
 			"not how: the fake can end it DISSOCIATION_FAILED." + pkgConstraintNote,
