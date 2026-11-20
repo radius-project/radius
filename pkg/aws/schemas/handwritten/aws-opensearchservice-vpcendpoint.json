@@ -1,0 +1,150 @@
+{
+  "typeName": "AWS::OpenSearchService::VpcEndpoint",
+  "description": "An OpenSearch Service-managed interface VPC endpoint to a VPC domain, made with CreateVpcEndpoint. A domain in another account must first authorize this account with an AWS::OpenSearchService::VpcEndpointAccess. AWS changes one endpoint of a domain at a time, so a deploy that creates or updates an endpoint while AWS is changing another endpoint of the domain, or the domain itself, fails with 409 Conflict. Give endpoints of one domain dependsOn on each other, and on the domain.",
+  "definitions": {
+    "VpcOptions": {
+      "type": "object",
+      "description": "The subnets and security groups of the endpoint.",
+      "properties": {
+        "SubnetIds": {
+          "type": "array",
+          "description": "The subnets to put the endpoint's network interfaces in. They must be in one VPC.",
+          "insertionOrder": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "SecurityGroupIds": {
+          "type": "array",
+          "description": "The security groups of the endpoint's network interfaces. When left out, AWS uses the VPC's default security group.",
+          "insertionOrder": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "VPCId": {
+          "type": "string",
+          "description": "The VPC of the subnets."
+        },
+        "AvailabilityZones": {
+          "type": "array",
+          "description": "The Availability Zones of the subnets.",
+          "insertionOrder": false,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "DomainArn": {
+      "type": "string",
+      "description": "The ARN of the OpenSearch Service domain the endpoint connects to. It must be a VPC domain in the same Region.",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^arn:aws[a-z\\-]*:[a-z]+:[a-z0-9\\-]+:[0-9]+:domain/[a-z0-9\\-]+$"
+    },
+    "VpcOptions": {
+      "$ref": "#/definitions/VpcOptions"
+    },
+    "VpcEndpointId": {
+      "type": "string",
+      "description": "The ID AWS assigns to the endpoint, such as aos-0123456789abcdef.",
+      "minLength": 5,
+      "maxLength": 256,
+      "pattern": "^aos-[a-zA-Z0-9]*$"
+    },
+    "VpcEndpointOwner": {
+      "type": "string",
+      "description": "The account that created the endpoint."
+    },
+    "Endpoint": {
+      "type": "string",
+      "description": "The endpoint's DNS name, which AWS sets once the endpoint is active."
+    },
+    "Status": {
+      "type": "string",
+      "description": "The status of the endpoint.",
+      "enum": [
+        "CREATING",
+        "CREATE_FAILED",
+        "ACTIVE",
+        "UPDATING",
+        "UPDATE_FAILED",
+        "DELETING",
+        "DELETE_FAILED"
+      ]
+    }
+  },
+  "required": ["DomainArn", "VpcOptions"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/VpcEndpointId"],
+  "createOnlyProperties": ["/properties/DomainArn"],
+  "readOnlyProperties": [
+    "/properties/VpcEndpointId",
+    "/properties/VpcEndpointOwner",
+    "/properties/Endpoint",
+    "/properties/Status",
+    "/properties/VpcOptions/VPCId",
+    "/properties/VpcOptions/AvailabilityZones"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "es:CreateVpcEndpoint",
+        "es:DescribeVpcEndpoints",
+        "ec2:CreateVpcEndpoint",
+        "ec2:DescribeVpcEndpoints",
+        "ec2:ModifyVpcEndpoint",
+        "ec2:DeleteVpcEndpoints",
+        "ec2:CreateTags",
+        "ec2:DescribeTags",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs"
+      ],
+      "timeoutInMinutes": 30
+    },
+    "read": {
+      "permissions": ["es:DescribeVpcEndpoints"]
+    },
+    "update": {
+      "permissions": [
+        "es:UpdateVpcEndpoint",
+        "es:DescribeVpcEndpoints",
+        "ec2:CreateVpcEndpoint",
+        "ec2:DescribeVpcEndpoints",
+        "ec2:ModifyVpcEndpoint",
+        "ec2:DeleteVpcEndpoints",
+        "ec2:CreateTags",
+        "ec2:DescribeTags",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs"
+      ],
+      "timeoutInMinutes": 30
+    },
+    "delete": {
+      "permissions": [
+        "es:DeleteVpcEndpoint",
+        "es:CreateVpcEndpoint",
+        "es:DescribeVpcEndpoints",
+        "ec2:CreateVpcEndpoint",
+        "ec2:DescribeVpcEndpoints",
+        "ec2:ModifyVpcEndpoint",
+        "ec2:DeleteVpcEndpoints",
+        "ec2:CreateTags",
+        "ec2:DescribeTags",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs"
+      ],
+      "timeoutInMinutes": 30
+    },
+    "list": {
+      "permissions": ["es:ListVpcEndpoints", "es:DescribeVpcEndpoints"]
+    }
+  }
+}

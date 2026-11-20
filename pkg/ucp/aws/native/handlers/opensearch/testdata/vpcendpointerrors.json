@@ -1,0 +1,38 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_OPENSEARCH_DOMAIN_ARN": "arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs",
+    "RADIUS_REC_SUBNET_ID": "subnet-0aaa1111bbbb2222c"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "CreateVpcEndpoint",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ConflictException"
+      },
+      "body": "{\"message\": \"Domain arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs is processing a configuration change. Try again later.\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"ACTIVE\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0web1111aaaa2222b\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "UpdateVpcEndpoint",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException"
+      },
+      "body": "{\"message\": \"1 validation error detected: Value at 'vpcOptions.subnetIds' failed to satisfy constraint: Member must have length greater than or equal to 1\"}"
+    }
+  ]
+}
