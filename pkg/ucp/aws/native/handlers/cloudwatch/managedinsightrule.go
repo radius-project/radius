@@ -525,9 +525,9 @@ func (h *ManagedInsightRule) unlisted(ctx context.Context, region string, id rul
 		return native.ErrNotFound
 	}
 	return &native.Failure{
-		Message: fmt.Sprintf("AWS can't list the managed Contributor Insights rules of %q, which may have been deleted, so Radius can't tell which rule of the template %q is this one: %v. "+
+		Message: fmt.Sprintf("AWS can't list the managed Contributor Insights rules of the resource %q, which may have been deleted, so Radius can't tell which rule of the template %q is this one: %v. "+
 			"The Region has these managed rules: %s. Delete this resource's rule in CloudWatch with DeleteInsightRules, or create the resource again, then delete again. "+
-			"Radius removes the record once AWS lists the resource's rules again, or the Region has no managed rule left",
+			"If you already deleted the rule, the record stays until the resource exists again or the Region has no managed rules",
 			id.resourceARN, id.template, err, strings.Join(managed, ", ")),
 		ClientError: true,
 		Outcome:     native.OutcomeRejected,

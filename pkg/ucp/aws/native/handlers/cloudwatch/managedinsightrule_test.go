@@ -516,6 +516,9 @@ func Test_ManagedInsightRule_ResourceDeleted(t *testing.T) {
 
 	err := h.Delete(t.Context(), region, id)
 	requireRuleFailure(t, err, native.OutcomeRejected, ruleNameOf(newConnections))
+	for _, want := range []string{endpointService, newConnections, "the record stays until the resource exists again"} {
+		require.Contains(t, err.Error(), want)
+	}
 	require.NotErrorIs(t, err, native.ErrNotFound, "the rule may still exist")
 	require.NotContains(t, err.Error(), "custom-rule", "a rule that isn't managed can't be this one")
 	require.Len(t, api.store.List(managedInsightRuleType), 1)
