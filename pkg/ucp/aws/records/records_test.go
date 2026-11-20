@@ -103,6 +103,53 @@ func Test_Store_Errors(t *testing.T) {
 	require.ErrorContains(t, err, "failed to read the record")
 }
 
+// Test_Store_LegacyUnresolvedPaths reads a record that UCP saved before it escaped keys in paths. Its unresolved paths
+// stay as they are, apart from new ones, until AWS has the values of a deploy.
+func Test_Store_LegacyUnresolvedPaths(t *testing.T) {
+	db := inmemory.NewClient()
+	data := map[string]any{
+		"id":   vpcID,
+		"name": "app-vpc",
+		"type": "AWS.EC2/VPC",
+		"properties": map[string]any{
+			"owner":           "owner",
+			"lastApplied":     map[string]any{"Labels": map[string]any{"tenant/id": "a"}},
+			"unresolvedPaths": []any{"Labels/tenant/id", "Labels/a~1b"},
+		},
+	}
+	require.NoError(t, db.Save(t.Context(), &database.Object{Metadata: database.Metadata{ID: vpcID}, Data: data}))
+	store := NewStore(db)
+
+	rec, etag, err := store.Get(t.Context(), parse(t, vpcID))
+	require.NoError(t, err)
+	require.Equal(t, []string{"Labels/tenant/id", "Labels/a~1b"}, rec.Properties.LegacyUnresolvedPaths)
+	require.Empty(t, rec.Properties.UnresolvedPaths)
+	require.True(t, HasUnresolved(rec))
+
+	// An interrupted update adds new paths in the escaped form and keeps the legacy ones.
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "b"}}
+	KeepPending(rec)
+	_, err = store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+	obj, err := db.Get(t.Context(), vpcID)
+	require.NoError(t, err)
+	properties := obj.Data.(map[string]any)["properties"].(map[string]any)
+	require.Equal(t, []any{"Labels/tenant/id", "Labels/a~1b"}, properties["unresolvedPaths"])
+	require.Equal(t, []any{"Labels/tenant~1id"}, properties["unresolvedPropertyPaths"])
+
+	others, err := store.Others(t.Context(), parse(t, otherID), schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Len(t, others, 1)
+	require.Equal(t, []string{"Labels/tenant/id", "Labels/a~1b"}, others[0].Properties.LegacyUnresolvedPaths)
+
+	// A deploy AWS applied clears both.
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "c"}}
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.UnresolvedPaths)
+	require.Nil(t, rec.Properties.LegacyUnresolvedPaths)
+	require.False(t, HasUnresolved(rec))
+}
+
 func Test_FindByIdentifier(t *testing.T) {
 	db := inmemory.NewClient()
 	store := NewStore(db)
@@ -368,6 +415,12 @@ func Test_KeepPending_Unresolved(t *testing.T) {
 	KeepPending(rec)
 	require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths, "changed paths are added to earlier ones, sorted, once each")
 
+	// A map key that holds "/" or "~" stays one segment of its path.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "a", "a~b": "x"}}
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "b", "a~b": "y"}}
+	KeepPending(rec)
+	require.Equal(t, []string{"Labels/a~0b", "Labels/tenant~1id"}, rec.Properties.UnresolvedPaths)
 	for _, outcome := range []native.Outcome{native.OutcomePartial, native.OutcomeUnknown} {
 		rec = interrupted()
 		Settle(rec, outcome)

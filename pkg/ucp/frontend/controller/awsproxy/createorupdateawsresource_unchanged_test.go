@@ -217,3 +217,131 @@ func Test_UpdateAWSResource_DefaultInListItem(t *testing.T) {
 		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
 	})
 }
+
+// Test_UpdateAWSResource_MapKeyWithSlash redeploys a resource whose map properties have keys that hold "/" and "~".
+// Each key stays one key: an unchanged redeploy, even of a create-only map, calls nothing but GetResource, and a
+// changed or removed key is patched at that key.
+func Test_UpdateAWSResource_MapKeyWithSlash(t *testing.T) {
+	const (
+		typeName   = "AWS::Test::Grant"
+		identifier = "grant-1"
+		schema     = `{
+			"typeName": "AWS::Test::Grant",
+			"properties": {
+				"Name": {"type": "string"},
+				"Context": {"type": "object", "patternProperties": {".*": {"type": "string"}}},
+				"Labels": {"type": "object"},
+				"Config": {}
+			},
+			"createOnlyProperties": ["/properties/Name", "/properties/Context"],
+			"primaryIdentifier": ["/properties/Name"]
+		}`
+	)
+	path := providers + "AWS.Test/Grant/app-grant"
+	properties := func(labels map[string]any) map[string]any {
+		return map[string]any{
+			"Name":    identifier,
+			"Context": map[string]any{"tenant/id": "a", "a~1b": "b"},
+			"Labels":  labels,
+		}
+	}
+	labels := map[string]any{"team/owner": "web", "cost~center": "42"}
+	factory := func(h *harness) controllerFactory {
+		return func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+			clients.CloudFormation = &awsfake.CloudFormation{Schemas: map[string]string{typeName: schema}}
+			return h.putController(opts, clients)
+		}
+	}
+	seed := func(h *harness) {
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = identifier
+			rec.Properties.LastApplied = properties(labels)
+		})
+		h.cc.Put(typeName, identifier, properties(labels))
+	}
+
+	t.Run("an unchanged redeploy calls nothing in AWS", func(t *testing.T) {
+		h := newHarness(t)
+		seed(h)
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(labels)})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+	})
+
+	t.Run("a changed and a removed key are patched at their keys", func(t *testing.T) {
+		h := newHarness(t)
+		seed(h)
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(map[string]any{"team/owner": "api"})})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		h.finish()
+
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls)[:2])
+		patch := []map[string]any{}
+		require.NoError(t, json.Unmarshal([]byte(calls[1].Document), &patch))
+		ops := []string{}
+		for _, op := range patch {
+			ops = append(ops, op["op"].(string)+" "+op["path"].(string))
+		}
+		require.ElementsMatch(t, []string{"replace /Labels/team~1owner", "remove /Labels/cost~0center"}, ops)
+		require.Equal(t, properties(map[string]any{"team/owner": "api"}), h.cc.Resource(typeName, identifier))
+		require.Equal(t, properties(map[string]any{"team/owner": "api"}), h.record(path).Properties.LastApplied)
+	})
+
+	t.Run("a legacy unresolved path of a key with ~ doesn't remove a key with /", func(t *testing.T) {
+		h := newHarness(t)
+		seed(h)
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			// UCP saved the path of the key a~1b as it is before it escaped keys.
+			rec.Properties.LegacyUnresolvedPaths = []string{"Labels/a~1b"}
+		})
+		outside := map[string]any{"team/owner": "web", "cost~center": "42", "a/b": "set outside Radius"}
+		h.cc.Put(typeName, identifier, properties(outside))
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(labels)})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Equal(t, properties(outside), h.cc.Resource(typeName, identifier))
+		require.Empty(t, h.record(path).Properties.UnresolvedPaths)
+	})
+
+	t.Run("a legacy unresolved path of a key with / doesn't remove a nested key set outside Radius", func(t *testing.T) {
+		h := newHarness(t)
+		withTenant := map[string]any{"team/owner": "web", "cost~center": "42", "tenant/id": "a"}
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = identifier
+			rec.Properties.LastApplied = properties(withTenant)
+			// UCP saved the path of the key tenant/id as it is before it escaped keys.
+			rec.Properties.LegacyUnresolvedPaths = []string{"Labels/tenant/id"}
+		})
+		outside := map[string]any{"team/owner": "web", "cost~center": "42", "tenant/id": "a", "tenant": map[string]any{"id": "set outside Radius"}}
+		h.cc.Put(typeName, identifier, properties(outside))
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(withTenant)})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Equal(t, properties(outside), h.cc.Resource(typeName, identifier))
+	})
+
+	t.Run("a legacy unresolved path of an emptied object removes the value Radius set", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = identifier
+			// A failed update from a list to an empty object left the empty object as last applied.
+			applied := properties(labels)
+			applied["Config"] = map[string]any{}
+			rec.Properties.LastApplied = applied
+			rec.Properties.LegacyUnresolvedPaths = []string{"Config"}
+		})
+		stored := properties(labels)
+		stored["Config"] = []any{"set by Radius"}
+		h.cc.Put(typeName, identifier, stored)
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(labels)})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		h.finish()
+		require.Equal(t, properties(labels), h.cc.Resource(typeName, identifier))
+	})
+}

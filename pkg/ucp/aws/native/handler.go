@@ -405,7 +405,8 @@ type Options struct {
 	// Equivalent, when set, reports whether a value AWS returns means the same as the template's, for values AWS
 	// returns in another form that the schema's propertyTransform can't express, such as an engine version 5.0 that
 	// comes back as 5.0.0. Such values don't count as changes. path is the property's path relative to the properties
-	// object, with "/" between segments, such as EngineVersion or Config/Version. UCP uses the schema's
+	// object, with "/" between segments, such as EngineVersion or Config/Version. A map key that holds "/" or "~" is
+	// escaped as in a JSON Pointer (see awsoperations.PathSegments). UCP uses the schema's
 	// propertyTransform first, so prefer it where it can express the rule. UCP doesn't call Equivalent for a value that
 	// leaves out something the last deploy set, such as a field inside a list item, so a rule that lets AWS's value
 	// hold more than the template, such as defaults AWS fills in, never hides a removal.

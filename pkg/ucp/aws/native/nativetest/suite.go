@@ -199,6 +199,12 @@ type Suite struct {
 	// that sets Options.ReadyTimeout must give it. It is nil for other handlers.
 	Busy func(handler native.Handler, store *awsfake.CloudControl, properties map[string]any) (free func())
 
+	// AlwaysPresent is true for a setting AWS has for as long as the resource it belongs to exists, such as a bucket's
+	// Requester Pays setting, so a read never reports it missing. UCP takes it over and updates it on the first deploy,
+	// and never calls Create, so the cases that lose a create don't apply, and the worker restart case waits for that
+	// update instead.
+	AlwaysPresent bool
+
 	// API records each AWS call the handler makes, by the name of its AWS SDK client method, such as
 	// CreateDBCluster: the call's page in AWS's API reference and the rules AWS documents for it, which the fake must
 	// enforce. It is nil for a handler that makes no AWS SDK calls, such as nativefake's.
@@ -273,6 +279,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("read values have the schema's types", func(t *testing.T) { s.readTypes(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
 	t.Run("worker restart while waiting", func(t *testing.T) { s.workerRestart(t) })
+	t.Run("a setting AWS always has is taken over, not created", func(t *testing.T) { s.alwaysPresent(t) })
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
 	t.Run("identifier another alias holds in the identity scope", func(t *testing.T) { s.identifierHeld(t) })
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
@@ -724,6 +731,9 @@ func requireSegment(t *testing.T, collection string, id string) string {
 // lostCreate loses a create, after it reached AWS or before, and deploys again. The next deploy finds the resource
 // as the handler declares (native.Options.Recovery), and AWS ends with exactly one.
 func (s Suite) lostCreate(t *testing.T, reached bool) {
+	if s.AlwaysPresent {
+		t.Skip("UCP never creates a setting AWS always has")
+	}
 	h := s.newHarness(t)
 	h.handler.lose("Create", reached)
 	resp := h.put(s.Properties)
@@ -795,6 +805,9 @@ func (s Suite) resendFailsPartway(t *testing.T, method string, failure error) {
 // For a type whose onDelete is reject, the delete removes only the record when the create never reached AWS, and
 // otherwise gets 400 and keeps the resource and the record.
 func (s Suite) lostCreateDelete(t *testing.T, reached bool) {
+	if s.AlwaysPresent {
+		t.Skip("UCP never creates a setting AWS always has")
+	}
 	h := s.newHarness(t)
 	od := h.onDelete()
 	if od == schemas.OnDeleteNothing || od == schemas.OnDeleteLeave {
@@ -967,14 +980,18 @@ func (s Suite) generatedNameRetry(t *testing.T, nameProperty string, reached boo
 	require.Equal(t, name, h.cc.Resource(s.TypeName, identifier)[nameProperty])
 }
 
-// workerRestart stops the worker while it waits for a create, and runs it again. Waiting only reads AWS, so the
-// second run finishes the create without calling Create again.
+// workerRestart stops the worker while it waits for the first deploy, a create or, for a setting AWS always has, an
+// update, and runs it again. Waiting only reads AWS, so the second run finishes it without sending it again.
 func (s Suite) workerRestart(t *testing.T) {
 	h := s.newHarness(t)
 	h.handler.holdProgress(true)
 	resp := h.put(s.Properties)
 	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
-	require.Contains(t, h.handler.reset(), "Create")
+	start := "Create"
+	if s.AlwaysPresent {
+		start = "Update"
+	}
+	require.Contains(t, h.handler.reset(), start)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	h.handler.onProgress = cancel
@@ -990,7 +1007,21 @@ func (s Suite) workerRestart(t *testing.T) {
 	require.Nil(t, result.Error)
 	require.NoError(t, h.queue.FinishMessage(t.Context(), msg))
 	require.Equal(t, v1.ProvisioningStateSucceeded, h.record().ProvisioningState())
-	require.NotContains(t, h.handler.reset(), "Create", "the restarted worker does not create again")
+	require.NotContains(t, h.handler.reset(), start, "the restarted worker does not send the operation again")
+}
+
+// alwaysPresent deploys a setting AWS always has. The first deploy reads it and updates it, and never creates it, and
+// AWS ends with the template's values.
+func (s Suite) alwaysPresent(t *testing.T) {
+	if !s.AlwaysPresent {
+		t.Skip("AWS doesn't have the resource until a deploy creates it")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	called := h.handler.reset()
+	require.Contains(t, called, "Update")
+	require.NotContains(t, called, "Create")
+	requireSubset(t, s.readable(s.Properties), h.stored())
 }
 
 // busyParent creates, updates, and deletes the resource while its parent is busy, for a handler that sets
