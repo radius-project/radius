@@ -23,11 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
@@ -53,6 +55,22 @@ func NotFound(err error, codes ...string) error {
 		return fmt.Errorf("%w: %w", native.ErrNotFound, err)
 	}
 	return err
+}
+
+// Rejected returns err as a client failure AWS applied none of when AWS answered the call with a 4xx status, and err
+// otherwise. The SDK leaves the fault of an error a service's model doesn't list unknown, such as RDS's
+// InvalidParameterValue, so without this UCP would answer 500 and count a call AWS rejected as possibly applied. A not
+// found error stays ErrNotFound, and a native.Failure stays as it is.
+func Rejected(err error) error {
+	var response *smithyhttp.ResponseError
+	var failure *native.Failure
+	if err == nil || errors.Is(err, native.ErrNotFound) || errors.As(err, &failure) || !errors.As(err, &response) {
+		return err
+	}
+	if status := response.HTTPStatusCode(); status < http.StatusBadRequest || status >= http.StatusInternalServerError {
+		return err
+	}
+	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
 // Decode sets out, a pointer to an AWS SDK struct, from properties. Property names match the SDK's field names,

@@ -1,0 +1,32 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_S3_BUCKET": "radius-rec-example-requester-pays"
+  },
+  "interactions": [
+    {
+      "service": "S3",
+      "operation": "PutBucketRequestPayment",
+      "request": "<RequestPaymentConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Payer>Requester</Payer></RequestPaymentConfiguration>",
+      "status": 200,
+      "body": ""
+    },
+    {
+      "service": "S3",
+      "operation": "GetBucketRequestPayment",
+      "request": "",
+      "status": 200,
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RequestPaymentConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Payer>Requester</Payer></RequestPaymentConfiguration>",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "service": "S3",
+      "operation": "PutBucketRequestPayment",
+      "request": "<RequestPaymentConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Payer>BucketOwner</Payer></RequestPaymentConfiguration>",
+      "status": 200,
+      "body": ""
+    }
+  ]
+}
