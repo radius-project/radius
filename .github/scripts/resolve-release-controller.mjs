@@ -16,6 +16,10 @@
 
 // @ts-check
 
+import assert from "node:assert/strict";
+import { tool } from "./bicep-types.mjs";
+import { readPublishedReleaseManifest } from "./release-assets.mjs";
+
 const versionPattern = /^v\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?$/;
 const releasePullPattern =
   /^automation\/prepare-release-(\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?)$/;
@@ -145,3 +149,53 @@ export default async function resolveReleaseController({
 }
 
 export { findReleasePull, releasePullVersion };
+
+export async function verifyReleaseBuildSource({ github, core, run = tool }) {
+  const version = core.getInput("VERSION", { required: true });
+  const sourceSha = core.getInput("SOURCE_SHA", { required: true });
+  assert.match(version, versionPattern);
+  assert.match(sourceSha, commitPattern);
+  const plan = JSON.parse(
+    await run([
+      "yq",
+      "-o=json",
+      ".",
+      core.getInput("PLAN_FILE", { required: true })
+    ])
+  );
+  assert.equal(plan.version, version);
+  const manifest = await readPublishedReleaseManifest(
+    github,
+    version,
+    sourceSha
+  );
+  if (manifest) {
+    assert.equal(manifest.channel, plan.channel);
+    assert.equal(manifest.releaseType, plan.releaseType);
+    const siblings = plan.siblingRepositories.filter(
+      (entry) => entry.name === "bicep-types-aws"
+    );
+    assert.equal(siblings.length, 1, "Expected exactly one planned AWS source");
+    assert.equal(siblings[0].repository, "radius-project/bicep-types-aws");
+    const { data: tag } = await github.rest.repos.getCommit({
+      owner: "radius-project",
+      repo: "bicep-types-aws",
+      ref: `refs/tags/${version}`
+    });
+    assert.equal(
+      tag.sha,
+      siblings[0].sourceCommit,
+      "Published release AWS tag is missing or differs from the approved source; never recreate it"
+    );
+  }
+  const args = [
+    "bash",
+    "./.github/scripts/verify-release-build-contract.sh",
+    sourceSha
+  ];
+  if (plan.changelogPolicy === "stable-only")
+    args.push("--require-sibling-releases");
+  if (!manifest) args.push("--require-current-bicep");
+  await run(args);
+  core.setOutput("published", String(Boolean(manifest)));
+}

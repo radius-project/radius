@@ -87,6 +87,7 @@ jobs:
       dashboard-commit: ${{ steps.plan.outputs.dashboard-commit }}
       bicep-types-aws-commit: ${{ steps.plan.outputs.bicep-types-aws-commit }}
       ghcr-bicep: ${{ steps.bicep-contract.outputs.ghcr }}
+      published: ${{ steps.build-contract.outputs.published }}
     steps:
       - name: Checkout trusted controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -166,15 +167,16 @@ jobs:
       # A tag runs the tagged commit's workflows, so check them before any mutation.
       - name: Verify release commit runs the release build
         if: steps.plan.outputs.ready == 'true'
+        id: build-contract
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          RELEASE_COMMIT: ${{ inputs.source-commit }}
-        run: |
-          args=("${RELEASE_COMMIT}")
-          if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
-            args+=(--require-sibling-releases)
-          fi
-          bash ./.github/scripts/verify-release-build-contract.sh \
-            "${args[@]}"
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_PLAN_FILE: ${{ runner.temp }}/release-plan.yaml
+        with:
+          script: |
+            const {verifyReleaseBuildSource} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/resolve-release-controller.mjs`)
+            await verifyReleaseBuildSource({github, core})
 
       # The approve job below is the only human gate before mutation. An
       # environment without required reviewers lets that job pass immediately.
@@ -748,6 +750,7 @@ jobs:
             dashboard "${VERSION}" "${RELEASE_BRANCH}" "${SOURCE_COMMIT}"
 
       - name: Reconcile radius-project/bicep-types-aws
+        if: needs.validate.outputs.published != 'true'
         env:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
           VERSION: ${{ needs.validate.outputs.version }}
@@ -779,6 +782,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_OPERATION: read
+          INPUT_PUBLISHED: ${{ needs.validate.outputs.published }}
           INPUT_PLAN_FILE: ${{ runner.temp }}/bicep-plan.json
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-evidence

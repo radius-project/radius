@@ -338,9 +338,9 @@ test_unknown_dispatch_summary() {
 
 test_release_build_contract() {
     assert_json "${CONTROLLER}" \
-        '[.jobs.validate.steps[] | select((.run // "") |
-        contains("verify-release-build-contract.sh")) |
-        [.if, .env.RELEASE_COMMIT]]' \
+        '[.jobs.validate.steps[] | select((.with.script // "") |
+        contains("verifyReleaseBuildSource")) |
+        [.if, .env.INPUT_SOURCE_SHA]]' \
         "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\"]]" \
         "validation must check the tag workflows of the exact release commit"
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \

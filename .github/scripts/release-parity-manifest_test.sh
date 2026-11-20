@@ -335,18 +335,14 @@ set -euo pipefail
 reference="${*: -1}"
 if [[ "${reference}" == biceptypes.azurecr.io/* &&
     -f "${FIXTURES}/plan.json" ]]; then
-    if [[ "${MISSING_DOWNSTREAM}" == "true" ]]; then
-        echo "mirror unavailable" >&2
-        exit 1
-    fi
-    target="${reference#biceptypes.azurecr.io/}"
-    target="${target%%:*}"
-    [[ "$*" == *"--registry-config"* ]] || exit 1
-    cat "${FIXTURES}/bicep-types-${target}.json"
-    [[ "${WRONG_MIRROR:-false}" != "true" ]] || printf ' '
-    exit 0
+    echo "GHCR-only verification must not request ACR: ${reference}" >&2
+    exit 1
 fi
 if [[ "${reference}" == ghcr.io/radius-project/bicep-types-* ]]; then
+    if [[ "${MISSING_DOWNSTREAM}" == "true" ]]; then
+        echo "GHCR artifact unavailable" >&2
+        exit 1
+    fi
     name="${reference##*/}"
     name="${name%%[:@]*}"
     manifest="${FIXTURES}/${name}.json"
@@ -355,6 +351,7 @@ if [[ "${reference}" == ghcr.io/radius-project/bicep-types-* ]]; then
             '{digest:$digest}'
     else
         cat "${manifest}"
+        [[ "${WRONG_GHCR:-false}" != "true" ]] || printf ' '
     fi
     exit 0
 fi
@@ -676,10 +673,10 @@ jq -e '
     and .downstream.bicepExtensionLock.version == "v0.60.0"
 ' "${OUTPUT}" >/dev/null || fail "GHCR collection did not preserve the locked pair"
 if MISSING_DOWNSTREAM=true run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
-    fail "GHCR collection accepted a missing full-version ACR mirror"
+    fail "GHCR collection accepted a missing full-version GHCR artifact"
 fi
-if WRONG_MIRROR=true run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
-    fail "GHCR collection accepted substituted ACR bytes"
+if WRONG_GHCR=true run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
+    fail "GHCR collection accepted substituted GHCR bytes"
 fi
 mv "${ASSETS}/bicep-extension-lock.json" "${FIXTURES}/saved-lock.json"
 if run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then

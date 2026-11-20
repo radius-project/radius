@@ -239,6 +239,37 @@ function fixture() {
   return { github, record, evidence, run, artifact, job, state };
 }
 
+test("published GHCR evidence cannot be regenerated when missing, substituted or unreadable", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "published-aws-evidence-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const planFile = join(directory, "plan.json");
+  await writeFile(planFile, JSON.stringify(plan));
+  for (const mode of ["missing", "substituted", "API failure"]) {
+    const f = fixture();
+    if (mode === "substituted")
+      f.state.evidence = { ...f.evidence, releaseSourceCommit: "f".repeat(40) };
+    if (mode === "API failure")
+      f.github.rest.git.getRef = async () => {
+        throw new Error("403 denied");
+      };
+    const inputs = {
+      directory,
+      plan_file: planFile,
+      source_sha: sourceSha,
+      operation: "read",
+      published: "true"
+    };
+    await assert.rejects(
+      collect({
+        github: f.github,
+        core: { getInput: (name) => inputs[name], setOutput() {} }
+      })
+    );
+    assert.equal(f.state.refWrites, 0);
+    assert.equal(f.state.pending, undefined);
+  }
+});
+
 test("trusted-main A1 authenticates distinct publication and original capture attempts", async () => {
   const f = fixture();
   assert.deepEqual(
