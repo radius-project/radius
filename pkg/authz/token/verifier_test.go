@@ -23,6 +23,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/base64"
 	"errors"
 	"maps"
 	"net/http"
@@ -333,6 +334,38 @@ func TestVerify_Leeway(t *testing.T) {
 	clock.Advance(time.Minute)
 	_, err = v.Verify(t.Context(), token)
 	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
+}
+
+// signES384WithP256 signs claims as ES384 using a P-256 key: a SHA-384 digest with r and s
+// padded to 48 bytes, which is the signature length ES384 expects. RFC 7518 section 3.4
+// requires ES384 to use P-384, so the standard signer refuses to produce this token.
+func signES384WithP256(t *testing.T, kid string, claims jwt.MapClaims) string {
+	t.Helper()
+	tok := jwt.NewWithClaims(jwt.SigningMethodES384, claims)
+	tok.Header["kid"] = kid
+	signingString, err := tok.SigningString()
+	require.NoError(t, err)
+	digest := crypto.SHA384.New()
+	digest.Write([]byte(signingString))
+	r, s, err := ecdsa.Sign(rand.Reader, ecKey, digest.Sum(nil))
+	require.NoError(t, err)
+	sig := make([]byte, 96)
+	r.FillBytes(sig[:48])
+	s.FillBytes(sig[48:])
+	return signingString + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
+
+func TestVerify_ECDSACurveMustMatchAlgorithm(t *testing.T) {
+	clock := &fakeClock{now: start}
+	v := newTestVerifier(t, newFakeSource(defaultKeys()), clock)
+	require.NoError(t, v.Refresh(t.Context()))
+
+	_, err := v.Verify(t.Context(), signES384WithP256(t, "ec", claimsFor("ucp", start)))
+	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
+
+	// The same key still verifies ES256, its matching algorithm.
+	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodES256, "ec", ecKey, claimsFor("ucp", start)))
+	require.NoError(t, err)
 }
 
 func TestVerify_ConfiguredIssuer(t *testing.T) {
