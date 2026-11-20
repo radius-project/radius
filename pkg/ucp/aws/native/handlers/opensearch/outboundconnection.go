@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -40,6 +41,14 @@ type ConnectionAPI interface {
 	DescribeOutboundConnections(ctx context.Context, params *opensearch.DescribeOutboundConnectionsInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribeOutboundConnectionsOutput, error)
 	DeleteOutboundConnection(ctx context.Context, params *opensearch.DeleteOutboundConnectionInput, optFns ...func(*opensearch.Options)) (*opensearch.DeleteOutboundConnectionOutput, error)
 }
+
+// ConnectionAccountAPI is the part of the STS client the outbound connection handler uses, to learn the current
+// account, which owns a source domain whose owner AWS leaves out.
+type ConnectionAccountAPI interface {
+	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+}
+
+var connSTSInRegion = awsapi.InRegion[sts.Options]
 
 var (
 	_ native.Handler           = (*OutboundConnection)(nil)
@@ -73,12 +82,14 @@ var liveConnectionStatuses = []types.OutboundConnectionStatusCode{
 // alias, and the destination domain, and AWS rejects a second connection with the same values, which Find relies on
 // when AWS doesn't list the connection yet.
 type OutboundConnection struct {
-	api ConnectionAPI
+	api      ConnectionAPI
+	accounts ConnectionAccountAPI
 }
 
-// NewOutboundConnection returns the handler for OpenSearch Service outbound connections.
-func NewOutboundConnection(api ConnectionAPI) *OutboundConnection {
-	return &OutboundConnection{api: api}
+// NewOutboundConnection returns the handler for OpenSearch Service outbound connections. accounts gives the current
+// account, for a connection whose source domain's owner AWS leaves out.
+func NewOutboundConnection(api ConnectionAPI, accounts ConnectionAccountAPI) *OutboundConnection {
+	return &OutboundConnection{api: api, accounts: accounts}
 }
 
 // TypeName returns AWS::OpenSearchService::OutboundConnection.
@@ -254,8 +265,9 @@ func (h *OutboundConnection) Identifier(properties map[string]any) (string, erro
 	return id, checkConnectionID(id)
 }
 
-// connections returns every outbound connection of the caller's domains in the region. DescribeOutboundConnections
-// takes filters, but AWS's API reference doesn't name them, so the handler reads every page and matches itself.
+// connections returns every outbound connection of the caller's domains in the region, with the values AWS defaults
+// filled in (see withDefaults). DescribeOutboundConnections takes filters, but AWS's API reference doesn't name them,
+// so the handler reads every page and matches itself.
 func (h *OutboundConnection) connections(ctx context.Context, region string) ([]types.OutboundConnection, error) {
 	out := []types.OutboundConnection{}
 	input := &opensearch.DescribeOutboundConnectionsInput{}
@@ -266,9 +278,66 @@ func (h *OutboundConnection) connections(ctx context.Context, region string) ([]
 		}
 		out = append(out, page.Connections...)
 		if input.NextToken = page.NextToken; aws.ToString(input.NextToken) == "" {
-			return out, nil
+			break
 		}
 	}
+	return h.withDefaults(ctx, region, out)
+}
+
+// withDefaults fills in the values the docs let AWS leave out of a connection, which every field is: the source
+// domain's owner, the current account, and its Region, the request's; the destination domain's owner and Region,
+// which default to the source domain's; the DIRECT mode; and a DISABLED SkipUnavailable. A template that sets one of
+// them then matches what AWS has, so an unchanged deploy changes nothing. It asks STS for the account only when a
+// connection leaves the owner out.
+func (h *OutboundConnection) withDefaults(ctx context.Context, region string, all []types.OutboundConnection) ([]types.OutboundConnection, error) {
+	account := ""
+	for i := range all {
+		c := &all[i]
+		local, remote := connectionInfo(c.LocalDomainInfo), connectionInfo(c.RemoteDomainInfo)
+		if local == nil || remote == nil {
+			continue
+		}
+		if aws.ToString(local.OwnerId) == "" {
+			if account == "" {
+				out, err := h.accounts.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}, connSTSInRegion(region))
+				if err != nil {
+					return nil, err
+				}
+				if account = aws.ToString(out.Account); account == "" {
+					return nil, fmt.Errorf("STS returned no account ID for the AWS credentials, so Radius can't tell which account owns the OpenSearch Service outbound connection %q", aws.ToString(c.ConnectionId))
+				}
+			}
+			local.OwnerId = aws.String(account)
+		}
+		if aws.ToString(local.Region) == "" {
+			local.Region = aws.String(region)
+		}
+		if aws.ToString(remote.OwnerId) == "" {
+			remote.OwnerId = local.OwnerId
+		}
+		if aws.ToString(remote.Region) == "" {
+			remote.Region = local.Region
+		}
+		if c.ConnectionMode == "" {
+			c.ConnectionMode = types.ConnectionModeDirect
+		}
+		if c.ConnectionProperties == nil {
+			c.ConnectionProperties = &types.ConnectionProperties{}
+		}
+		if s := c.ConnectionProperties.CrossClusterSearch; s == nil || s.SkipUnavailable == "" {
+			c.ConnectionProperties.CrossClusterSearch = &types.CrossClusterSearchConnectionProperties{SkipUnavailable: types.SkipUnavailableStatusDisabled}
+		}
+	}
+	return all, nil
+}
+
+// connectionInfo returns the domain a LocalDomainInfo or RemoteDomainInfo holds, or nil when AWS leaves out its name,
+// which the handler can't fill in.
+func connectionInfo(c *types.DomainInformationContainer) *types.AWSDomainInformation {
+	if c == nil || c.AWSDomainInformation == nil || aws.ToString(c.AWSDomainInformation.DomainName) == "" {
+		return nil
+	}
+	return c.AWSDomainInformation
 }
 
 // connection returns the connection with the identifier, in any status, or ErrNotFound when AWS doesn't list it.
@@ -356,9 +425,8 @@ func (t connectionTemplate) sameSettings(c *types.OutboundConnection) error {
 	if c.ConnectionProperties != nil {
 		props = *c.ConnectionProperties
 	}
-	if t.endpoint != "" && aws.ToString(props.Endpoint) != t.endpoint {
-		different = append(different, "ConnectionProperties.Endpoint")
-	}
+	// Endpoint isn't compared: AWS may leave it out, or return its own form of the destination's endpoint, so the
+	// schema makes it write-only.
 	if t.skipUnavailable != "" && (props.CrossClusterSearch == nil || props.CrossClusterSearch.SkipUnavailable != t.skipUnavailable) {
 		different = append(different, "ConnectionProperties.CrossClusterSearch.SkipUnavailable")
 	}
@@ -608,7 +676,9 @@ func (h *OutboundConnection) Delete(ctx context.Context, region string, identifi
 		return connectionBusy(fmt.Sprintf("the outbound connection %q (%s)", identifier, status), nil)
 	}
 	_, err = h.api.DeleteOutboundConnection(ctx, &opensearch.DeleteOutboundConnectionInput{ConnectionId: aws.String(identifier)}, inRegion(region))
-	if awsapi.HasCode(err, "ConflictException") {
+	// AWS is known to answer UnknownError for a connection it is still validating or provisioning, which it may have
+	// moved to since the read.
+	if awsapi.HasCode(err, "ConflictException", "UnknownError") {
 		return connectionBusy(fmt.Sprintf("the outbound connection %q or its domain", identifier), err)
 	}
 	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))

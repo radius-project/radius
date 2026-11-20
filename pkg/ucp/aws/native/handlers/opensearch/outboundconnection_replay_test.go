@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -48,7 +49,7 @@ func Test_Replay_OutboundConnection(t *testing.T) {
 	want := maps.Clone(properties)
 	want["ConnectionStatus"] = map[string]any{"StatusCode": "PENDING_ACCEPTANCE"}
 	nativetest.Lifecycle{
-		Handler:    NewOutboundConnection(opensearch.NewFromConfig(s.Config(t.Context()))),
+		Handler:    NewOutboundConnection(opensearch.NewFromConfig(s.Config(t.Context())), sts.NewFromConfig(s.Config(t.Context()))),
 		Session:    s,
 		Properties: properties,
 		Want:       want,
@@ -62,7 +63,7 @@ func Test_Replay_OutboundConnection(t *testing.T) {
 // answers with ResourceNotFoundException, also 409, is not found.
 func Test_Replay_OutboundConnectionErrors(t *testing.T) {
 	s := awsreplay.New(t, "testdata/outboundconnectionerrors.json")
-	h := NewOutboundConnection(opensearch.NewFromConfig(s.Config(t.Context())))
+	h := NewOutboundConnection(opensearch.NewFromConfig(s.Config(t.Context())), sts.NewFromConfig(s.Config(t.Context())))
 	request := native.CreateRequest{Region: awsreplay.Region, Properties: connReplayTemplate(s)}
 
 	_, err := h.Create(t.Context(), request)

@@ -1,6 +1,6 @@
 {
   "typeName": "AWS::OpenSearchService::OutboundConnection",
-  "description": "A cross-cluster connection from a source OpenSearch Service domain in this account and Region to a destination domain, made with CreateOutboundConnection. AWS has no call that changes a connection, so every property is create-only. The create is done once AWS has validated the connection: a connection to a domain of another owner then waits for that owner to accept it, which Radius doesn't wait for. ConnectionStatus shows where it is. The alias must be unique on the source domain, because queries name the destination domain by it, as alias:index. A delete of a resource whose create may have reached AWS, but that AWS doesn't list, sends the create again so it can delete what AWS has, so delete needs es:CreateOutboundConnection.",
+  "description": "A cross-cluster connection from a source OpenSearch Service domain in this account and Region to a destination domain, made with CreateOutboundConnection. AWS has no call that changes a connection, so every property is create-only. The create is done once AWS has validated the connection: a connection to a domain of another owner then waits for that owner to accept it, which Radius doesn't wait for. ConnectionStatus shows where it is. The alias must be unique on the source domain, because queries name the destination domain by it, as alias:index. A delete of a resource whose create may have reached AWS, but that AWS doesn't list, sends the create again so it can delete what AWS has, so delete needs es:CreateOutboundConnection. AWS may leave out values it defaults, which Radius reads as those defaults, asking STS for the account that owns the source domain. ConnectionProperties.Endpoint is write-only, because AWS may leave it out or return it in its own form.",
   "definitions": {
     "AWSDomainInformation": {
       "type": "object",
@@ -139,6 +139,7 @@
     "/properties/ConnectionMode",
     "/properties/ConnectionProperties"
   ],
+  "writeOnlyProperties": ["/properties/ConnectionProperties/Endpoint"],
   "readOnlyProperties": [
     "/properties/ConnectionId",
     "/properties/ConnectionStatus"
@@ -147,24 +148,26 @@
     "create": {
       "permissions": [
         "es:CreateOutboundConnection",
-        "es:DescribeOutboundConnections"
+        "es:DescribeOutboundConnections",
+        "sts:GetCallerIdentity"
       ]
     },
     "read": {
-      "permissions": ["es:DescribeOutboundConnections"]
+      "permissions": ["es:DescribeOutboundConnections", "sts:GetCallerIdentity"]
     },
     "update": {
-      "permissions": ["es:DescribeOutboundConnections"]
+      "permissions": ["es:DescribeOutboundConnections", "sts:GetCallerIdentity"]
     },
     "delete": {
       "permissions": [
         "es:DeleteOutboundConnection",
         "es:CreateOutboundConnection",
-        "es:DescribeOutboundConnections"
+        "es:DescribeOutboundConnections",
+        "sts:GetCallerIdentity"
       ]
     },
     "list": {
-      "permissions": ["es:DescribeOutboundConnections"]
+      "permissions": ["es:DescribeOutboundConnections", "sts:GetCallerIdentity"]
     }
   }
 }

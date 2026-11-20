@@ -100,7 +100,7 @@ func All(cfg aws.Config) []native.Handler {
 		s3.NewBucketRequestPayment(s3API),
 		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
-		opensearch.NewOutboundConnection(opensearchAPI),
+		opensearch.NewOutboundConnection(opensearchAPI, stsAPI),
 	}
 }
 

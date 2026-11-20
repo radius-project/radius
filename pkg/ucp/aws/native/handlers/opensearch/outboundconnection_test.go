@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -343,6 +344,21 @@ var connAPI = map[string]nativetest.Call{
 		Unclear: "The page doesn't name the filters it takes, so the handler sends none and reads every page; the fake rejects " +
 			"filters. It doesn't give the page size." + connConstraintNote,
 	},
+	"GetCallerIdentity": {
+		Doc: "https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html",
+		Rules: []nativetest.Rule{
+			{
+				Rule: "Returns the account of the caller's credentials",
+				Check: connAgainst(func(ctx context.Context, f *connFake) error {
+					out, err := f.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+					if err != nil || aws.ToString(out.Account) != connAccount {
+						return fmt.Errorf("got %v, %v", out, err)
+					}
+					return nil
+				}),
+			},
+		},
+	},
 	"DeleteOutboundConnection": {
 		Doc: connAPIReference + "API_DeleteOutboundConnection.html",
 		Rules: []nativetest.Rule{
@@ -352,29 +368,66 @@ var connAPI = map[string]nativetest.Call{
 				Code:  connValidationCode,
 			},
 			{
+				Rule: "AWS answers UnknownError to a delete of a connection it is still validating or provisioning",
+				Doc:  connGuide,
+				Break: connAgainst(connCreate(), connDelete(connFirstID)),
+				Code: "UnknownError",
+			},
+			{
 				Rule:  "AWS rejects a delete of a connection that doesn't exist with ResourceNotFoundException",
 				Break: connAgainst(connDelete("cc-000000000099")),
 				Code:  "ResourceNotFoundException",
 			},
 		},
-		Unclear: "The docs don't say whether AWS deletes a connection it is still validating, provisioning, rejecting, or " +
-			"deleting, or one whose source domain is processing a change; the fake rejects the call then with ConflictException. " +
+		Unclear: "The docs don't say what AWS answers to a delete of a connection it is still validating or provisioning; " +
+			"another AWS client says UnknownError, which the fake returns, also for rejecting and deleting. They don't say " +
+			"whether AWS deletes one whose source domain is processing a change; the fake rejects the call then with ConflictException. " +
 			"They don't say what a delete of a DELETED connection does; the fake answers ResourceNotFoundException." + connConstraintNote,
 	},
 }
 
-func Test_Suite_OutboundConnection(t *testing.T) {
+// Test_Suite_OutboundConnection_AllProperties runs the suite with templates that set every property, to values AWS may
+// leave out or report in another form, so an unchanged redeploy must still send nothing.
+func Test_Suite_OutboundConnection_AllProperties(t *testing.T) {
+	for name, properties := range map[string]map[string]any{
+		"defaults set": connTemplate(map[string]any{
+			"LocalDomainInfo":      connDomainProperty("logs", connAccount, connRegion),
+			"RemoteDomainInfo":     connDomainProperty("archive", connAccount, connRegion),
+			"ConnectionMode":       "DIRECT",
+			"ConnectionProperties": map[string]any{"CrossClusterSearch": map[string]any{"SkipUnavailable": "DISABLED"}},
+		}),
+		"VPC endpoint": connTemplate(map[string]any{
+			"RemoteDomainInfo":     connDomainProperty("shared", connOtherAccount, ""),
+			"ConnectionMode":       "VPC_ENDPOINT",
+			"ConnectionProperties": map[string]any{"Endpoint": "vpc-shared.us-west-2.es.amazonaws.com", "CrossClusterSearch": map[string]any{"SkipUnavailable": "ENABLED"}},
+		}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := connSuite(t)
+			s.Properties, s.Changed = properties, properties
+			s.CreateOnlyChange = maps.Clone(properties)
+			s.CreateOnlyChange["ConnectionAlias"] = "archive2"
+			s.Invalid = nil
+			nativetest.Run(t, s)
+		})
+	}
+}
+
+// connSuite returns the suite for the type, with a template for a connection named archive from logs to archive.
+func connSuite(t *testing.T) nativetest.Suite {
 	properties := connTemplate(nil)
 	next := 0
-	nativetest.Run(t, nativetest.Suite{
+	return nativetest.Suite{
 		TypeName:    outboundConnectionType,
 		Schema:      connSchemaFile(t, "aws-opensearchservice-outboundconnection.json"),
 		Metadata:    connSchemaFile(t, "aws-opensearchservice-outboundconnection.metadata.json"),
 		HandWritten: true,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			return NewOutboundConnection(newConnFake(store))
+			f := newConnFake(store)
+			return NewOutboundConnection(f, f)
 		},
 		IdentifierProperty: "ConnectionId",
+		WriteOnly:          []string{"ConnectionProperties/Endpoint"},
 		Properties:         properties,
 		// Every property is create-only, so a deploy of the same template is the only update.
 		Changed:          properties,
@@ -396,13 +449,17 @@ func Test_Suite_OutboundConnection(t *testing.T) {
 			connTemplate(map[string]any{"ConnectionProperties": map[string]any{"CrossClusterSearch": map[string]any{"SkipUnavailable": "YES"}}}),
 		},
 		API: connAPI,
-	})
+	}
+}
+
+func Test_Suite_OutboundConnection(t *testing.T) {
+	nativetest.Run(t, connSuite(t))
 }
 
 // newConnHandler returns a handler and its fake, backed by a new store.
 func newConnHandler() (*OutboundConnection, *connFake) {
 	f := newConnFake(awsfake.NewCloudControl())
-	return NewOutboundConnection(f), f
+	return NewOutboundConnection(f, f), f
 }
 
 func connRequest(properties map[string]any) native.CreateRequest {
@@ -620,7 +677,7 @@ func Test_OutboundConnection_FindSendsCreate(t *testing.T) {
 		require.NoError(t, err)
 		describe := 0
 		stub := &connFailingList{connFake: f, failAt: 2, count: &describe}
-		_, err = NewOutboundConnection(stub).Find(t.Context(), connRequest(connTemplate(nil)))
+		_, err = NewOutboundConnection(stub, stub).Find(t.Context(), connRequest(connTemplate(nil)))
 		require.ErrorContains(t, err, "connection reset")
 	})
 }
@@ -704,7 +761,6 @@ func Test_OutboundConnection_Find(t *testing.T) {
 			"SkipUnavailable": connTemplate(map[string]any{
 				"ConnectionProperties": map[string]any{"CrossClusterSearch": map[string]any{"SkipUnavailable": "ENABLED"}},
 			}),
-			"Endpoint": connTemplate(map[string]any{"ConnectionProperties": map[string]any{"Endpoint": "archive.example.com"}}),
 		} {
 			t.Run(name, func(t *testing.T) {
 				h, f := newConnHandler()
@@ -905,6 +961,12 @@ func Test_OutboundConnection_Delete(t *testing.T) {
 		requireConnRejected(t, h.Delete(t.Context(), connRegion, connFirstID), "denied")
 		require.Zero(t, f.calls["DeleteOutboundConnection"])
 	})
+	t.Run("moved on since the read", func(t *testing.T) {
+		h, f := newConnHandler()
+		connPut(f, "cc-outside00001", nil, types.OutboundConnectionStatusCodeActive)
+		f.errs["DeleteOutboundConnection"] = connFault("UnknownError", "the connection is PROVISIONING")
+		requireConnConflict(t, h.Delete(t.Context(), connRegion, "cc-outside00001"), "PROVISIONING")
+	})
 	t.Run("other error", func(t *testing.T) {
 		h, f := newConnHandler()
 		connPut(f, "cc-outside00001", nil, types.OutboundConnectionStatusCodeActive)
@@ -984,14 +1046,14 @@ func (s *connStub) DeleteOutboundConnection(ctx context.Context, in *opensearch.
 // Test_OutboundConnection_OddAnswers checks answers AWS's docs allow but the fake never gives: a create with no ID,
 // and a connection without a status or domains, which never matches a template and is never done.
 func Test_OutboundConnection_OddAnswers(t *testing.T) {
-	h := NewOutboundConnection(&connStub{create: &opensearch.CreateOutboundConnectionOutput{}})
+	h := NewOutboundConnection(&connStub{create: &opensearch.CreateOutboundConnectionOutput{}}, connAccountStub{})
 	_, err := h.Create(t.Context(), connRequest(connTemplate(nil)))
 	require.ErrorContains(t, err, "returned no ID")
 
 	h = NewOutboundConnection(&connStub{
 		create:      &opensearch.CreateOutboundConnectionOutput{ConnectionId: aws.String("cc-000000000002")},
 		connections: []types.OutboundConnection{{ConnectionId: aws.String(connFirstID), ConnectionAlias: aws.String("archive")}},
-	})
+	}, connAccountStub{})
 	found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
 	require.NoError(t, err)
 	require.Equal(t, "cc-000000000002", found, "a connection without domains never matches")
@@ -999,7 +1061,7 @@ func Test_OutboundConnection_OddAnswers(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, p.Done)
 
-	h = NewOutboundConnection(&connStub{err: connFault("AccessDeniedException", "denied")})
+	h = NewOutboundConnection(&connStub{err: connFault("AccessDeniedException", "denied")}, connAccountStub{})
 	_, err = h.Progress(t.Context(), connRegion, connFirstID, native.OperationCreate)
 	require.ErrorContains(t, err, "denied")
 	require.False(t, errors.Is(err, native.ErrNotFound))
@@ -1024,8 +1086,106 @@ func (s *connOptionsStub) CreateOutboundConnection(ctx context.Context, in *open
 // create AWS rejected, and UCP would drop the record of the connection.
 func Test_OutboundConnection_CreateNoRetry(t *testing.T) {
 	stub := &connOptionsStub{}
-	_, err := NewOutboundConnection(stub).Create(t.Context(), connRequest(connTemplate(nil)))
+	_, err := NewOutboundConnection(stub, connAccountStub{}).Create(t.Context(), connRequest(connTemplate(nil)))
 	require.NoError(t, err)
 	require.Equal(t, 1, stub.options.RetryMaxAttempts)
 	require.Equal(t, connRegion, stub.options.Region)
+}
+
+// connAccountStub is STS for the stubs, answering with the fake's caller.
+type connAccountStub struct{}
+
+func (connAccountStub) GetCallerIdentity(ctx context.Context, in *sts.GetCallerIdentityInput, _ ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+	return &sts.GetCallerIdentityOutput{Account: aws.String(connAccount)}, nil
+}
+
+// Test_OutboundConnection_Endpoint checks that Find doesn't compare the endpoint, which AWS may leave out or return in
+// its own form, so the schema makes it write-only.
+func Test_OutboundConnection_Endpoint(t *testing.T) {
+	stored := func(endpoint *string) []types.OutboundConnection {
+		return []types.OutboundConnection{{
+			ConnectionId:         aws.String(connFirstID),
+			ConnectionAlias:      aws.String("archive"),
+			ConnectionStatus:     &types.OutboundConnectionStatus{StatusCode: types.OutboundConnectionStatusCodeActive},
+			LocalDomainInfo:      connCreateInput().LocalDomainInfo,
+			RemoteDomainInfo:     connCreateInput().RemoteDomainInfo,
+			ConnectionMode:       types.ConnectionModeVpcEndpoint,
+			ConnectionProperties: &types.ConnectionProperties{Endpoint: endpoint},
+		}}
+	}
+	request := connRequest(connTemplate(map[string]any{
+		"ConnectionMode":       "VPC_ENDPOINT",
+		"ConnectionProperties": map[string]any{"Endpoint": "archive.example.com"},
+	}))
+	found, err := NewOutboundConnection(&connStub{connections: stored(nil)}, connAccountStub{}).Find(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, connFirstID, found)
+
+	found, err = NewOutboundConnection(&connStub{connections: stored(aws.String("vpc-archive.us-west-2.es.amazonaws.com"))}, connAccountStub{}).Find(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, connFirstID, found, "AWS may return its own form of the endpoint")
+}
+
+// Test_OutboundConnection_Defaults checks that Read fills in what AWS leaves out with AWS's defaults, asking STS for
+// the account only when AWS leaves out the source domain's owner, and that an STS failure fails the read.
+func Test_OutboundConnection_Defaults(t *testing.T) {
+	// bare returns a connection with only what AWS must return, new each time, because Read fills it in.
+	bare := func() types.OutboundConnection {
+		return types.OutboundConnection{
+			ConnectionId:     aws.String(connFirstID),
+			ConnectionAlias:  aws.String("archive"),
+			ConnectionStatus: &types.OutboundConnectionStatus{StatusCode: types.OutboundConnectionStatusCodeActive},
+			LocalDomainInfo:  connCreateInput().LocalDomainInfo,
+			RemoteDomainInfo: connCreateInput().RemoteDomainInfo,
+		}
+	}
+	accounts := &connCountingAccounts{}
+	got, err := NewOutboundConnection(&connStub{connections: []types.OutboundConnection{bare()}}, accounts).Read(t.Context(), connRegion, connFirstID)
+	require.NoError(t, err)
+	require.Equal(t, 1, accounts.calls)
+	require.Equal(t, connDomainProperty("logs", connAccount, connRegion), got["LocalDomainInfo"])
+	require.Equal(t, connDomainProperty("archive", connAccount, connRegion), got["RemoteDomainInfo"])
+	require.Equal(t, "DIRECT", got["ConnectionMode"])
+	require.Equal(t, map[string]any{"CrossClusterSearch": map[string]any{"SkipUnavailable": "DISABLED"}}, got["ConnectionProperties"])
+
+	// A destination of another owner keeps its owner and Region, and a source with its owner needs no STS call.
+	full := bare()
+	full.LocalDomainInfo = connCreateInput(func(in *opensearch.CreateOutboundConnectionInput) {
+		in.LocalDomainInfo.AWSDomainInformation.OwnerId = aws.String(connAccount)
+	}).LocalDomainInfo
+	full.RemoteDomainInfo = connCreateInput(func(in *opensearch.CreateOutboundConnectionInput) {
+		in.RemoteDomainInfo.AWSDomainInformation = &types.AWSDomainInformation{DomainName: aws.String("shared"), OwnerId: aws.String(connOtherAccount), Region: aws.String("us-east-1")}
+	}).RemoteDomainInfo
+	accounts = &connCountingAccounts{}
+	got, err = NewOutboundConnection(&connStub{connections: []types.OutboundConnection{full}}, accounts).Read(t.Context(), connRegion, connFirstID)
+	require.NoError(t, err)
+	require.Zero(t, accounts.calls)
+	require.Equal(t, connDomainProperty("shared", connOtherAccount, "us-east-1"), got["RemoteDomainInfo"])
+	require.Equal(t, connDomainProperty("logs", connAccount, connRegion), got["LocalDomainInfo"])
+
+	for name, accounts := range map[string]*connCountingAccounts{
+		"STS fails":      {err: errors.New("expired token")},
+		"STS no account": {empty: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := NewOutboundConnection(&connStub{connections: []types.OutboundConnection{bare()}}, accounts).Read(t.Context(), connRegion, connFirstID)
+			require.Error(t, err)
+			require.False(t, errors.Is(err, native.ErrNotFound))
+		})
+	}
+}
+
+// connCountingAccounts is STS that counts its calls, and fails with err, or answers with no account when empty.
+type connCountingAccounts struct {
+	calls int
+	err   error
+	empty bool
+}
+
+func (c *connCountingAccounts) GetCallerIdentity(ctx context.Context, in *sts.GetCallerIdentityInput, _ ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+	c.calls++
+	if c.err != nil || c.empty {
+		return &sts.GetCallerIdentityOutput{}, c.err
+	}
+	return &sts.GetCallerIdentityOutput{Account: aws.String(connAccount)}, nil
 }

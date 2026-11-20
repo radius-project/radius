@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -152,7 +153,19 @@ type connFake struct {
 	errs  map[string]error
 }
 
-var _ ConnectionAPI = (*connFake)(nil)
+var (
+	_ ConnectionAPI        = (*connFake)(nil)
+	_ ConnectionAccountAPI = (*connFake)(nil)
+)
+
+func (f *connFake) GetCallerIdentity(ctx context.Context, in *sts.GetCallerIdentityInput, _ ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.begin("GetCallerIdentity"); err != nil {
+		return nil, err
+	}
+	return &sts.GetCallerIdentityOutput{Account: aws.String(connAccount)}, nil
+}
 
 func newConnFake(store *awsfake.CloudControl) *connFake {
 	return &connFake{
@@ -380,6 +393,28 @@ func (f *connFake) connection(id string) *types.OutboundConnection {
 		panic(err)
 	}
 	c.ConnectionId = aws.String(id)
+	// The docs mark every field of a connection optional, so AWS may leave out what it defaults: a domain's owner and
+	// Region when they are the caller's, the DIRECT mode, a DISABLED SkipUnavailable, and the endpoint.
+	for _, d := range []*types.DomainInformationContainer{c.LocalDomainInfo, c.RemoteDomainInfo} {
+		if d == nil || d.AWSDomainInformation == nil {
+			continue
+		}
+		if i := d.AWSDomainInformation; aws.ToString(i.OwnerId) == connAccount && aws.ToString(i.Region) == connRegion {
+			i.OwnerId, i.Region = nil, nil
+		}
+	}
+	if c.ConnectionMode == types.ConnectionModeDirect {
+		c.ConnectionMode = ""
+	}
+	if p := c.ConnectionProperties; p != nil {
+		p.Endpoint = nil
+		if p.CrossClusterSearch != nil && p.CrossClusterSearch.SkipUnavailable == types.SkipUnavailableStatusDisabled {
+			p.CrossClusterSearch = nil
+		}
+		if p.CrossClusterSearch == nil {
+			c.ConnectionProperties = nil
+		}
+	}
 	c.ConnectionStatus = &types.OutboundConnectionStatus{StatusCode: f.statusOf(id)}
 	if c.ConnectionStatus.StatusCode == types.OutboundConnectionStatusCodeValidationFailed {
 		c.ConnectionStatus.Message = aws.String("Domains don't meet the requirements of cross-cluster search")
@@ -504,7 +539,7 @@ func (f *connFake) DeleteOutboundConnection(ctx context.Context, in *opensearch.
 		return nil, connFault("ResourceNotFoundException", "the connection %q doesn't exist", id)
 	}
 	if status := f.statusOf(id); connectionSettling(status) || status == types.OutboundConnectionStatusCodeDeleting {
-		return nil, connFault(connBusyCode, "the connection %q is %s", id, status)
+		return nil, connFault("UnknownError", "the connection %q is %s", id, status)
 	}
 	if lo, lr, ln := connDomainValues(p, "LocalDomainInfo"); f.processing[connDomainKey(lo, lr, ln)] > 0 {
 		return nil, connFault(connBusyCode, "the domain %q is processing a change", ln)
