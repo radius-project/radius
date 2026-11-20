@@ -1,0 +1,89 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CHIME_MISSING_VOICE_CONNECTOR_ID": "abcdefghijklmnopqrstuv",
+    "RADIUS_REC_CHIME_VOICE_CONNECTOR_ID": "hfocqzirpsiyuqeaqrthox"
+  },
+  "interactions": [
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorLoggingConfiguration",
+      "request": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":true}}",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find VoiceConnector with Id 'abcdefghijklmnopqrstuv'\",\"RequestId\":\"d008e082-d3d1-4bff-9277-a8064c20d1a4\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find VoiceConnector with Id 'abcdefghijklmnopqrstuv'\",\"RequestId\":\"7a5a02e8-437e-4e7d-a82e-3e447748d281\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTermination",
+      "request": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":0}}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException:"
+      },
+      "body": "{\"message\":\"1 validation error detected: Value '0' at 'termination.cpsLimit' failed to satisfy constraint: Member must have value greater than or equal to 1\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTermination",
+      "request": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/24\"]}}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "BadRequestException:"
+      },
+      "body": "{\"Code\":\"BadRequest\",\"Message\":\"Invalid CIDR address: 203.0.113.0/24 must have a minimum netmask of 27\",\"RequestId\":\"fa61f0d4-e454-4ece-8497-788b636fe5a1\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorOrigination",
+      "request": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1}]}}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "BadRequestException:"
+      },
+      "body": "{\"Code\":\"BadRequest\",\"Message\":\"Cannot have more than 10 Origination Routes\",\"RequestId\":\"9384a246-1686-4aa0-b31a-79bca9b19d33\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorStreamingConfiguration",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find StreamingConfiguration for Voice Connector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"4650562f-5499-4a51-b74a-b575ee179933\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "DeleteVoiceConnectorTermination",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find VoiceConnector or Termination for voiceConnector 'abcdefghijklmnopqrstuv'\",\"RequestId\":\"6068f6c3-4328-406e-9e9a-f56bb58e83f9\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "DeleteVoiceConnectorOrigination",
+      "status": 204,
+      "body": ""
+    }
+  ]
+}

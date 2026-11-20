@@ -20,6 +20,7 @@ package handlers
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
+	chimesdkvoicesdk "github.com/aws/aws-sdk-go-v2/service/chimesdkvoice"
 	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	codebuildsdk "github.com/aws/aws-sdk-go-v2/service/codebuild"
 	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
@@ -41,6 +42,7 @@ import (
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chime"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
@@ -61,6 +63,7 @@ import (
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
 // is in pkg/aws/schemas.
 func All(cfg aws.Config) []native.Handler {
+	chimeAPI := chimesdkvoicesdk.NewFromConfig(cfg)
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
@@ -89,6 +92,10 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		chime.NewLoggingConfiguration(chimeAPI),
+		chime.NewStreamingConfiguration(chimeAPI),
+		chime.NewOrigination(chimeAPI),
+		chime.NewTermination(chimeAPI),
 	}
 }
 
