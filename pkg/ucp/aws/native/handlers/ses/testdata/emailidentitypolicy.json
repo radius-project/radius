@@ -1,0 +1,92 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_AWS_ACCOUNT": "123456789012",
+    "RADIUS_REC_SES_IDENTITY": "radius-rec-02802@example.com"
+  },
+  "interactions": [
+    {
+      "service": "SESv2",
+      "operation": "CreateEmailIdentityPolicy",
+      "request": "{\"Policy\":\"{\\n  \\\"Version\\\": \\\"2012-10-17\\\",\\n  \\\"Statement\\\": [{\\\"Effect\\\": \\\"Allow\\\", \\\"Principal\\\": {\\\"AWS\\\": \\\"123456789012\\\"}, \\\"Action\\\": [\\\"ses:SendEmail\\\"], \\\"Resource\\\": \\\"arn:aws:ses:us-west-2:123456789012:identity/radius-rec-02802@example.com\\\"}]\\n}\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetEmailIdentityPolicies",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Policies\":{\"radius-rec\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"arn:aws:iam::123456789012:root\\\"},\\\"Action\\\":\\\"ses:SendEmail\\\",\\\"Resource\\\":\\\"arn:aws:ses:us-west-2:123456789012:identity/radius-rec-02802@example.com\\\"}]}\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetEmailIdentityPolicies",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Policies\":{\"radius-rec\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"arn:aws:iam::123456789012:root\\\"},\\\"Action\\\":\\\"ses:SendEmail\\\",\\\"Resource\\\":\\\"arn:aws:ses:us-west-2:123456789012:identity/radius-rec-02802@example.com\\\"}]}\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetEmailIdentityPolicies",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Policies\":{\"radius-rec\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"arn:aws:iam::123456789012:root\\\"},\\\"Action\\\":\\\"ses:SendEmail\\\",\\\"Resource\\\":\\\"arn:aws:ses:us-west-2:123456789012:identity/radius-rec-02802@example.com\\\"}]}\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "UpdateEmailIdentityPolicy",
+      "request": "{\"Policy\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"arn:aws:iam::123456789012:root\\\"},\\\"Action\\\":[\\\"ses:SendEmail\\\",\\\"ses:SendRawEmail\\\"],\\\"Resource\\\":\\\"arn:aws:ses:us-west-2:123456789012:identity/radius-rec-02802@example.com\\\"}]}\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetEmailIdentityPolicies",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Policies\":{\"radius-rec\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"arn:aws:iam::123456789012:root\\\"},\\\"Action\\\":[\\\"ses:SendEmail\\\",\\\"ses:SendRawEmail\\\"],\\\"Resource\\\":\\\"arn:aws:ses:us-west-2:123456789012:identity/radius-rec-02802@example.com\\\"}]}\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetEmailIdentityPolicies",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Policies\":{\"radius-rec\":\"{\\\"Version\\\":\\\"2012-10-17\\\",\\\"Statement\\\":[{\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"arn:aws:iam::123456789012:root\\\"},\\\"Action\\\":[\\\"ses:SendEmail\\\",\\\"ses:SendRawEmail\\\"],\\\"Resource\\\":\\\"arn:aws:ses:us-west-2:123456789012:identity/radius-rec-02802@example.com\\\"}]}\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "DeleteEmailIdentityPolicy",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetEmailIdentityPolicies",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Policies\":{}}"
+    }
+  ]
+}

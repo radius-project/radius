@@ -48,6 +48,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1
 	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.50.0
+	github.com/aws/aws-sdk-go-v2/service/ses v1.43.0
+	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.80.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0
 	github.com/aws/smithy-go v1.28.9
 	github.com/charmbracelet/x/ansi v0.11.9

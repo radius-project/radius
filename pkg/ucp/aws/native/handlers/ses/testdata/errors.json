@@ -1,0 +1,115 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_SES_IDENTITY": "radius-rec-02802@example.com",
+    "RADIUS_REC_SES_MISSING_IDENTITY": "radius-rec-missing@example.com",
+    "RADIUS_REC_SES_MISSING_TOPIC": "arn:aws:sns:us-west-2:123456789012:radius-rec-missing",
+    "RADIUS_REC_SES_TOPIC": "arn:aws:sns:us-west-2:123456789012:radius-rec-02802-a",
+    "RADIUS_REC_SES_UNLEASED_IP": "198.51.100.7"
+  },
+  "interactions": [
+    {
+      "service": "SESv2",
+      "operation": "CreateEmailIdentityPolicy",
+      "request": "{\"Policy\":\"{}\"}",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException"
+      },
+      "body": "{\"message\":\"Email identity \u003cradius-rec-missing@example.com\u003e does not exist.\"}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetEmailIdentityPolicies",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amzn-Errortype": "NotFoundException"
+      },
+      "body": "{\"message\":\"Email identity \u003cradius-rec-missing@example.com\u003e does not exist.\"}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "CreateEmailIdentityPolicy",
+      "request": "{\"Policy\":\"not json\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "BadRequestException"
+      },
+      "body": "{\"message\":\"Unable to parse policy.\"}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "DeleteEmailIdentityPolicy",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amzn-Errortype": "NotFoundException"
+      },
+      "body": "{\"message\":\"Policy \u003cp1\u003e does not exist\"}"
+    },
+    {
+      "service": "SES",
+      "operation": "SetIdentityNotificationTopic",
+      "request": "Action=SetIdentityNotificationTopic\u0026Identity=radius-rec-missing%40example.com\u0026NotificationType=Bounce\u0026SnsTopic=arn%3Aaws%3Asns%3Aus-west-2%3A123456789012%3Aradius-rec-02802-a\u0026Version=2010-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidParameterValue\u003c/Code\u003e\n    \u003cMessage\u003eIdentity radius-rec-missing@example.com is invalid. Must be a verified email address or domain.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003e203eb2f8-2d6c-4587-bd0e-7154977fd49e\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "SetIdentityNotificationTopic",
+      "request": "Action=SetIdentityNotificationTopic\u0026Identity=radius-rec-02802%40example.com\u0026NotificationType=Bounce\u0026SnsTopic=arn%3Aaws%3Asns%3Aus-west-2%3A123456789012%3Aradius-rec-missing\u0026Version=2010-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidParameterValue\u003c/Code\u003e\n    \u003cMessage\u003eSNS topic arn:aws:sns:us-west-2:123456789012:radius-rec-missing is invalid.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003e7ece3fb0-5318-42cb-9a60-b5d6d780d964\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-missing%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes/\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ef6cc2658-bd47-4585-981c-a8dbc5384639\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e25e1293e-fc16-4a3d-a653-9dd68e489f26\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetDedicatedIp",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amzn-Errortype": "NotFoundException"
+      },
+      "body": "{\"message\":\"Could not find dedicated IP \u003c198.51.100.7\u003e under this account.\"}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "PutDedicatedIpInPool",
+      "request": "{\"DestinationPoolName\":\"radius-rec-pool-a\"}",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException"
+      },
+      "body": "{\"message\":\"Could not find dedicated IP \u003c198.51.100.7\u003e under this account.\"}"
+    }
+  ]
+}

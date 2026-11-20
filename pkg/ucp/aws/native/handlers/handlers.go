@@ -36,6 +36,8 @@ import (
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
+	sessdk "github.com/aws/aws-sdk-go-v2/service/ses"
+	sesv2sdk "github.com/aws/aws-sdk-go-v2/service/sesv2"
 	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
@@ -56,6 +58,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/ses"
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
@@ -64,6 +67,7 @@ func All(cfg aws.Config) []native.Handler {
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
+	sesv2API := sesv2sdk.NewFromConfig(cfg)
 	stsAPI := stssdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
@@ -89,6 +93,9 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		ses.NewEmailIdentityPolicy(sesv2API),
+		ses.NewIdentityNotificationTopic(sessdk.NewFromConfig(cfg)),
+		ses.NewDedicatedIPAssignment(sesv2API),
 	}
 }
 
