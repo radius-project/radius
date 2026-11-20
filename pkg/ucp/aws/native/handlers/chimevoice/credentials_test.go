@@ -193,6 +193,17 @@ func Test_Create(t *testing.T) {
 		}
 	})
 
+	t.Run("a Put no list shows", func(t *testing.T) {
+		h := newTracked(awsfake.NewCloudControl())
+		h.api.errs["ListVoiceConnectorTerminationCredentials"] = apiError(http.StatusTooManyRequests, "ThrottledClientException", "slow down")
+		got, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: creds(testVC, "ana", "secret-ana"), ClientToken: token})
+		message := requireFailure(t, err, native.OutcomeUnknown, false)
+		require.Contains(t, message, "Deploy again")
+		require.Contains(t, message, "ThrottledClientException")
+		require.Equal(t, identifier, got, "AWS applied the Put, so UCP keeps the identifier")
+		require.Equal(t, []string{"ana"}, h.api.usernames(testVC))
+	})
+
 	t.Run("a server error that repeats a password", func(t *testing.T) {
 		h := newTracked(awsfake.NewCloudControl())
 		h.api.errs["PutVoiceConnectorTerminationCredentials"] = apiError(http.StatusInternalServerError, "ServiceFailureException", "failed for secret-ana")
@@ -233,7 +244,24 @@ func Test_ReadScoped(t *testing.T) {
 	requireFailure(t, err, native.OutcomeRejected, true)
 
 	_, err = h.Read(ctx, region, "BAD|x")
-	requireFailure(t, err, native.OutcomeRejected, true)
+	requireReadError(t, err, validationCode)
+
+	t.Run("a throttled list is an error UCP retries, not a failure", func(t *testing.T) {
+		h.api.errs["ListVoiceConnectorTerminationCredentials"] = apiError(http.StatusTooManyRequests, "ThrottledClientException", "slow down")
+		defer delete(h.api.errs, "ListVoiceConnectorTerminationCredentials")
+		_, err := h.ReadScoped(ctx, region, identifier, []map[string]any{creds(testVC, "ana", "x")})
+		requireReadError(t, err, "ThrottledClientException")
+	})
+}
+
+// requireReadError requires err, from a read, to be AWS's error with code as the SDK returns it, not a native.Failure,
+// which the worker would take from Progress as the operation's end.
+func requireReadError(t *testing.T, err error, code string) {
+	t.Helper()
+	require.ErrorContains(t, err, code)
+	var failure *native.Failure
+	require.False(t, errors.As(err, &failure), "%v", err)
+	require.False(t, errors.Is(err, native.ErrNotFound))
 }
 
 func Test_Update(t *testing.T) {
@@ -301,6 +329,26 @@ func Test_Update(t *testing.T) {
 		requireFailure(t, err, native.OutcomePartial, true)
 	})
 
+	t.Run("a delete no list shows is unknown, not rejected", func(t *testing.T) {
+		h, identifier := setup(t)
+		h.api.errs["ListVoiceConnectorTerminationCredentials"] = apiError(http.StatusTooManyRequests, "ThrottledClientException", "slow down")
+		err := h.Update(ctx, update(t, identifier, read(identifier, testVC, "ana", "bo"), creds(testVC, "bo", "secret-bo"), "bo"))
+		requireFailure(t, err, native.OutcomeUnknown, false)
+		require.Equal(t, []string{"DeleteVoiceConnectorTerminationCredentials"}, puts(h), "the Put waits for the next deploy")
+	})
+
+	t.Run("a Put no list shows after a delete is unknown", func(t *testing.T) {
+		h, identifier := setup(t)
+		api := h.api
+		h.wait = func(context.Context, time.Duration) {
+			if contains(api.calls, "PutVoiceConnectorTerminationCredentials") {
+				api.errs["ListVoiceConnectorTerminationCredentials"] = apiError(http.StatusTooManyRequests, "ThrottledClientException", "slow down")
+			}
+		}
+		err := h.Update(ctx, update(t, identifier, read(identifier, testVC, "ana", "bo"), creds(testVC, "bo", "secret-bo", "cy", "secret-cy"), "bo", "cy"))
+		requireFailure(t, err, native.OutcomeUnknown, false)
+	})
+
 	t.Run("a Put AWS rejects alone is rejected", func(t *testing.T) {
 		h, identifier := setup(t)
 		h.api.errs["PutVoiceConnectorTerminationCredentials"] = badRequest("no")
@@ -356,6 +404,16 @@ func Test_Delete(t *testing.T) {
 	require.ErrorIs(t, h.DeleteScoped(ctx, region, missingVC+"|x", []map[string]any{creds(missingVC, "ana", "x")}), native.ErrNotFound)
 	requireFailure(t, h.DeleteScoped(ctx, region, "id-1", nil), native.OutcomeRejected, true)
 
+	t.Run("a delete no list shows", func(t *testing.T) {
+		h := newTracked(awsfake.NewCloudControl())
+		identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: creds(testVC, "ana", "secret-ana"), ClientToken: token})
+		require.NoError(t, err)
+		h.api.errs["ListVoiceConnectorTerminationCredentials"] = apiError(http.StatusTooManyRequests, "ThrottledClientException", "slow down")
+		message := requireFailure(t, h.DeleteScoped(ctx, region, identifier, []map[string]any{creds(testVC, "ana", "x")}), native.OutcomeUnknown, false)
+		require.Contains(t, message, "Deploy again")
+		require.Empty(t, h.api.usernames(testVC), "AWS applied the delete")
+	})
+
 	t.Run("right after a Put whose response was lost", func(t *testing.T) {
 		h := newTracked(awsfake.NewCloudControl())
 		h.api.failer.FailOn(0, apiError(http.StatusInternalServerError, "ServiceFailureException", "lost"), true)
@@ -395,23 +453,36 @@ func Test_Redact(t *testing.T) {
 }
 
 func Test_Settle(t *testing.T) {
-	t.Run("stops after confirmReads lists", func(t *testing.T) {
+	never := func([]string) bool { return false }
+
+	t.Run("a change no list shows", func(t *testing.T) {
 		h := newTracked(awsfake.NewCloudControl())
-		h.settle(t.Context(), region, testVC, func([]string) bool { return false })
+		message := requireFailure(t, h.settle(t.Context(), region, testVC, never), native.OutcomeUnknown, false)
+		require.Contains(t, message, "Deploy again")
 		require.Len(t, h.api.calls, confirmReads)
 	})
 
-	t.Run("stops when a list fails", func(t *testing.T) {
+	t.Run("lists that keep failing", func(t *testing.T) {
 		h := newTracked(awsfake.NewCloudControl())
-		h.settle(t.Context(), region, missingVC, func([]string) bool { return false })
+		h.api.errs["ListVoiceConnectorTerminationCredentials"] = apiError(http.StatusServiceUnavailable, "ServiceUnavailableException", "down")
+		message := requireFailure(t, h.settle(t.Context(), region, testVC, func([]string) bool { return true }), native.OutcomeUnknown, false)
+		require.Contains(t, message, "The last list failed")
+		require.Contains(t, message, "ServiceUnavailableException")
+		require.Len(t, h.api.calls, confirmReads)
+	})
+
+	t.Run("a Voice Connector AWS no longer has lists no usernames", func(t *testing.T) {
+		h := newTracked(awsfake.NewCloudControl())
+		require.NoError(t, h.settle(t.Context(), region, missingVC, func(present []string) bool { return len(present) == 0 }))
 		require.Len(t, h.api.calls, 1)
 	})
 
-	t.Run("stops when the context ends", func(t *testing.T) {
+	t.Run("the context ends", func(t *testing.T) {
 		h := newTracked(awsfake.NewCloudControl())
 		ctx, cancel := context.WithCancel(t.Context())
 		h.wait = func(context.Context, time.Duration) { cancel() }
-		h.settle(ctx, region, testVC, func([]string) bool { return false })
+		message := requireFailure(t, h.settle(ctx, region, testVC, never), native.OutcomeUnknown, false)
+		require.Contains(t, message, context.Canceled.Error())
 		require.Len(t, h.api.calls, 1)
 	})
 

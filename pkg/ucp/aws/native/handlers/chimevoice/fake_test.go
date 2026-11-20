@@ -133,7 +133,7 @@ func invalid(format string, args ...any) error {
 	return apiError(http.StatusBadRequest, validationCode, fmt.Sprintf(format, args...))
 }
 
-func notFound(format string, args ...any) error {
+func notFoundError(format string, args ...any) error {
 	return apiError(http.StatusNotFound, notFoundCode, fmt.Sprintf(format, args...))
 }
 
@@ -152,7 +152,7 @@ func voiceConnector(id *string, operation string) error {
 	case !voiceConnectorIDPattern.MatchString(*id):
 		return invalid("1 validation error detected: Value '%s' at 'voiceConnectorId' failed to satisfy constraint", *id)
 	case strings.HasPrefix(*id, missingPrefix):
-		return notFound("Could not find VoiceConnector for %s", *id)
+		return notFoundError("Could not find VoiceConnector for %s", *id)
 	}
 	return nil
 }

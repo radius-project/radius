@@ -65,8 +65,15 @@ func sleep(ctx context.Context, d time.Duration) {
 	}
 }
 
+// notFound returns err as ErrNotFound for a Voice Connector AWS doesn't have, and err otherwise. Reads use it and not
+// awsapi.Rejected, because the worker takes a *native.Failure from Progress as the operation's end: a throttled read
+// must leave the operation waiting, not fail it as rejected.
+func notFound(err error) error {
+	return awsapi.NotFound(err, notFoundCode)
+}
+
 // notFoundOrRejected returns err as ErrNotFound for a Voice Connector AWS doesn't have, and otherwise as
-// awsapi.Rejected does.
+// awsapi.Rejected does, for a call that changes AWS.
 func notFoundOrRejected(err error) error {
 	return awsapi.Rejected(awsapi.NotFound(err, notFoundCode))
 }

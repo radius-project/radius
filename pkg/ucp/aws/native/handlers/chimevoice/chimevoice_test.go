@@ -17,6 +17,7 @@ limitations under the License.
 package chimevoice
 
 import (
+	"net/http"
 	"os"
 	"slices"
 	"testing"
@@ -115,9 +116,12 @@ func Test_ListAndProgress(t *testing.T) {
 	require.Equal(t, credentialsType, h.TypeName())
 	_, err := h.List(t.Context(), region)
 	require.ErrorContains(t, err, "can't be listed")
+	// A throttled list can't end an operation, because Progress doesn't read AWS: a Put or a delete waited already.
+	h.api.errs["ListVoiceConnectorTerminationCredentials"] = apiError(http.StatusTooManyRequests, "ThrottledClientException", "slow down")
 	for _, op := range []native.Operation{native.OperationCreate, native.OperationUpdate, native.OperationDelete} {
 		progress, err := h.Progress(t.Context(), region, testVC+"|x", op)
 		require.NoError(t, err)
 		require.True(t, progress.Done)
 	}
+	require.Empty(t, h.api.calls)
 }

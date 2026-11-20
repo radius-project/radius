@@ -176,27 +176,40 @@ func (h *TerminationCredentials) Identifier(properties map[string]any) (string, 
 func (h *TerminationCredentials) usernames(ctx context.Context, region string, vc string) ([]string, error) {
 	out, err := h.api.ListVoiceConnectorTerminationCredentials(ctx, &chimesdkvoice.ListVoiceConnectorTerminationCredentialsInput{VoiceConnectorId: aws.String(vc)}, inRegion(region))
 	if err != nil {
-		return nil, notFoundOrRejected(err)
+		return nil, notFound(err)
 	}
 	return out.Usernames, nil
 }
 
-// settle lists the Voice Connector's usernames until shown reports that a list shows a change. It stops early when a
-// list fails, and after confirmReads lists, because the change succeeded either way: a deploy that still reads the
-// earlier usernames sends the same change again, which changes nothing.
-func (h *TerminationCredentials) settle(ctx context.Context, region string, vc string, shown func(present []string) bool) {
+// settle lists the Voice Connector's usernames until shown reports that a list shows a change AWS accepted, for up to
+// confirmReads lists. A Voice Connector AWS no longer has lists no usernames. Until a list shows the change, a later
+// deploy could read the earlier usernames and keep one the template removed, or a delete could miss one. So when no
+// list shows it, settle returns a failure whose outcome is unknown, which keeps the template's values as possibly
+// applied, and the next deploy or delete sends the change again.
+func (h *TerminationCredentials) settle(ctx context.Context, region string, vc string, shown func(present []string) bool) error {
+	var err error
 	for i := range confirmReads {
 		if i > 0 {
 			h.wait(ctx, confirmPause)
 		}
 		if ctx.Err() != nil {
-			return
+			err = ctx.Err()
+			break
 		}
-		present, err := h.usernames(ctx, region, vc)
-		if err != nil || shown(present) {
-			return
+		var present []string
+		present, err = h.usernames(ctx, region, vc)
+		if errors.Is(err, native.ErrNotFound) {
+			present, err = nil, nil
+		}
+		if err == nil && shown(present) {
+			return nil
 		}
 	}
+	message := fmt.Sprintf("AWS accepted the change to the credentials of Voice Connector %q, but no list showed it within %s, so UCP can't tell what AWS has. Deploy again.", vc, confirmReads*confirmPause)
+	if err != nil {
+		message += " The last list failed: " + err.Error()
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
 }
 
 // Read returns every credential of the Voice Connector.
@@ -229,7 +242,8 @@ func (h *TerminationCredentials) ReadScoped(ctx context.Context, region string, 
 	return map[string]any{"Id": identifier, voiceConnectorIDProperty: vc, credentialsProperty: list}, nil
 }
 
-// put sets the credentials on the Voice Connector, in one call, and waits until a list shows their usernames.
+// put sets the credentials on the Voice Connector, in one call, and waits until a list shows their usernames. AWS
+// rejected the Put when the error is a native.Failure whose outcome is rejected, and accepted it otherwise.
 func (h *TerminationCredentials) put(ctx context.Context, region string, vc string, credentials []credential) error {
 	input := &chimesdkvoice.PutVoiceConnectorTerminationCredentialsInput{VoiceConnectorId: aws.String(vc)}
 	for _, c := range credentials {
@@ -238,10 +252,9 @@ func (h *TerminationCredentials) put(ctx context.Context, region string, vc stri
 	if _, err := h.api.PutVoiceConnectorTerminationCredentials(ctx, input, inRegion(region)); err != nil {
 		return withoutPasswords(err, credentials)
 	}
-	h.settle(ctx, region, vc, func(present []string) bool {
+	return h.settle(ctx, region, vc, func(present []string) bool {
 		return !slices.ContainsFunc(credentials, func(c credential) bool { return !slices.Contains(present, c.username) })
 	})
-	return nil
 }
 
 // withoutPasswords returns err, from a Put of credentials, as a failure whose message has none of their passwords,
@@ -295,19 +308,19 @@ func redact(message string, credentials []credential) string {
 }
 
 // remove deletes the credentials with the usernames from the Voice Connector, in one call, and waits until a list no
-// longer shows them. AWS deletes a username the Voice Connector doesn't have without an error.
+// longer shows them. AWS deletes a username the Voice Connector doesn't have without an error. It returns the delete
+// call's error as the SDK returns it, and settle's native.Failure when AWS accepted the delete.
 func (h *TerminationCredentials) remove(ctx context.Context, region string, vc string, names []string) error {
 	_, err := h.api.DeleteVoiceConnectorTerminationCredentials(ctx, &chimesdkvoice.DeleteVoiceConnectorTerminationCredentialsInput{
 		VoiceConnectorId: aws.String(vc),
 		Usernames:        names,
 	}, inRegion(region))
 	if err != nil {
-		return notFoundOrRejected(err)
+		return err
 	}
-	h.settle(ctx, region, vc, func(present []string) bool {
+	return h.settle(ctx, region, vc, func(present []string) bool {
 		return !slices.ContainsFunc(names, func(name string) bool { return slices.Contains(present, name) })
 	})
-	return nil
 }
 
 // Create sets the template's credentials on the Voice Connector and returns the identifier. AWS rejects the Put when
@@ -329,6 +342,11 @@ func (h *TerminationCredentials) Create(ctx context.Context, request native.Crea
 		return "", err
 	}
 	if err := h.put(ctx, request.Region, vc, credentials); err != nil {
+		// AWS may have applied a Put it didn't reject, so UCP keeps the identifier, and a delete removes the usernames.
+		var failure *native.Failure
+		if errors.As(err, &failure) && failure.Outcome != native.OutcomeRejected {
+			return identifier, err
+		}
 		return "", err
 	}
 	return identifier, nil
@@ -358,10 +376,16 @@ func (h *TerminationCredentials) Update(ctx context.Context, request native.Upda
 	})
 	if len(removed) > 0 {
 		calls = append(calls, func() error {
-			if err := h.remove(ctx, request.Region, vc, removed); err != nil {
-				return &native.Failure{Message: err.Error(), ClientError: isClientError(err), Outcome: native.OutcomeRejected}
+			err := h.remove(ctx, request.Region, vc, removed)
+			var accepted *native.Failure
+			if err == nil || errors.As(err, &accepted) {
+				return err
 			}
-			return nil
+			// AWS applied none of the delete, even when its response was lost, so the record keeps every username it
+			// may still have to delete.
+			var answered *native.Failure
+			client := ucp_aws.IsClientFault(err) || errors.As(awsapi.Rejected(err), &answered)
+			return &native.Failure{Message: err.Error(), ClientError: client, Outcome: native.OutcomeRejected}
 		})
 	}
 	set := slices.DeleteFunc(slices.Clone(desired), func(c credential) bool {
@@ -370,22 +394,15 @@ func (h *TerminationCredentials) Update(ctx context.Context, request native.Upda
 	if len(set) > 0 {
 		calls = append(calls, func() error {
 			err := h.put(ctx, request.Region, vc, set)
-			// The Put's failure says AWS applied none of the Put, but the delete before it changed AWS.
+			// A rejected Put applied none of the Put, but the delete before it changed AWS.
 			var failure *native.Failure
-			if len(removed) > 0 && errors.As(err, &failure) {
+			if len(removed) > 0 && errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected {
 				failure.Outcome = native.OutcomePartial
 			}
 			return err
 		})
 	}
 	return awsapi.Calls(calls...)
-}
-
-// isClientError reports whether the request caused err: AWS answered it as a client fault, or it is a native.Failure
-// the request caused.
-func isClientError(err error) bool {
-	var failure *native.Failure
-	return ucp_aws.IsClientFault(err) || errors.As(err, &failure) && failure.ClientError
 }
 
 // sentPasswords returns the usernames whose password the properties of an update hold, because UCP sends it.
@@ -419,7 +436,7 @@ func (h *TerminationCredentials) DeleteScoped(ctx context.Context, region string
 	if len(names) == 0 {
 		return native.ErrNotFound
 	}
-	return h.remove(ctx, region, vc, names)
+	return notFoundOrRejected(h.remove(ctx, region, vc, names))
 }
 
 // List fails, because credentials can't be listed by the identifiers UCP generates.

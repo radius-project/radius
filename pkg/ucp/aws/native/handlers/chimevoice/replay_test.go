@@ -109,7 +109,7 @@ func Test_Replay_Errors(t *testing.T) {
 
 	requireRejected(create(creds("BAD_ID", "radius-rec-1", pw[0])), validationCode)
 	_, err = h.Read(ctx, awsreplay.Region, "BAD_ID|x")
-	requireFailure(t, err, native.OutcomeRejected, true)
+	requireReadError(t, err, validationCode)
 
 	requireRejected(create(creds(noTermination, "radius-rec-1", pw[0])), badRequestCode)
 
