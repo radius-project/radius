@@ -207,13 +207,18 @@ func Test_Calls(t *testing.T) {
 	require.True(t, failure.ClientError)
 	require.Equal(t, []int{0, 1}, made)
 
-	for _, err := range []error{
-		&smithy.GenericAPIError{Code: "InternalFailure", Fault: smithy.FaultServer},
-		&smithy.GenericAPIError{Code: "ThrottlingException", Fault: smithy.FaultClient},
-		attempts(response(http.StatusServiceUnavailable, nil), response(http.StatusBadRequest, rejected)),
+	for _, tt := range []struct {
+		err       error
+		throttled bool
+	}{
+		{&smithy.GenericAPIError{Code: "InternalFailure", Fault: smithy.FaultServer}, false},
+		{&smithy.GenericAPIError{Code: "ThrottlingException", Fault: smithy.FaultClient}, true},
+		{attempts(response(http.StatusServiceUnavailable, nil), response(http.StatusBadRequest, rejected)), false},
+		{attempts(response(http.StatusServiceUnavailable, nil), response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "Throttling"})), true},
 	} {
-		require.ErrorAs(t, Calls(call(0, nil), call(1, err)), &failure)
-		require.False(t, failure.ClientError, "%v", err)
+		require.ErrorAs(t, Calls(call(0, nil), call(1, tt.err)), &failure)
+		require.False(t, failure.ClientError, "%v", tt.err)
+		require.Equal(t, tt.throttled, failure.Throttled, "%v", tt.err)
 		require.Equal(t, native.OutcomePartial, failure.Outcome)
 	}
 
@@ -299,6 +304,7 @@ func Test_Rejected(t *testing.T) {
 		var failure *native.Failure
 		require.ErrorAs(t, Rejected(err), &failure, "%v", err)
 		require.True(t, failure.ClientError, "%v", err)
+		require.False(t, failure.Throttled, "%v", err)
 		require.Equal(t, native.OutcomeRejected, failure.Outcome, "%v", err)
 		require.Equal(t, err.Error(), failure.Message)
 	}
@@ -313,13 +319,20 @@ func Test_Rejected(t *testing.T) {
 		var failure *native.Failure
 		require.ErrorAs(t, Rejected(err), &failure, name)
 		require.False(t, failure.ClientError, "%s: throttling isn't the request's fault", name)
+		require.True(t, failure.Throttled, name)
 		require.Equal(t, native.OutcomeRejected, failure.Outcome, "%s: AWS answered every attempt, so none applied", name)
-		require.Contains(t, failure.Message, "AWS throttled the call", name)
+		require.Contains(t, failure.Message, "AWS limited the rate of calls, so it changed nothing. Deploy again later", name)
 		require.Contains(t, failure.Message, err.Error(), name)
 	}
 
+	var failure *native.Failure
+	require.ErrorAs(t, Rejected(attempts(unavailable, throttling)), &failure)
+	require.True(t, failure.Throttled)
+	require.False(t, failure.ClientError)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "the 5xx may have reached AWS")
+	require.Contains(t, failure.Message, "AWS limited the rate of calls, and an earlier attempt may have reached AWS")
+
 	unknown := map[string]error{
-		"throttled after a 5xx":      attempts(unavailable, throttling),
 		"after a 5xx":                attempts(unavailable, exists),
 		"after a lost response":      attempts(lost, exists),
 		"after a throttle and a 5xx": attempts(throttling, unavailable, exists),
@@ -330,6 +343,7 @@ func Test_Rejected(t *testing.T) {
 		require.ErrorAs(t, Rejected(err), &failure, name)
 		require.False(t, failure.ClientError, name)
 		require.False(t, failure.Conflict, name)
+		require.False(t, failure.Throttled, "%s: an earlier attempt may have changed AWS", name)
 		require.Equal(t, native.OutcomeUnknown, failure.Outcome, name)
 		require.Contains(t, failure.Message, err.Error(), name)
 	}

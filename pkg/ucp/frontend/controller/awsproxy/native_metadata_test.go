@@ -67,7 +67,8 @@ func Test_Native_StartCallOutcomes(t *testing.T) {
 		{"the handler reports a partial update", failure(native.OutcomePartial), http.StatusBadRequest, true},
 		{"the handler reports an unknown outcome", failure(native.OutcomeUnknown), http.StatusBadRequest, true},
 		{"the handler reports an applied update", failure(native.OutcomeApplied), http.StatusBadRequest, true},
-		{"AWS throttles every attempt", awsapi.Rejected(answer(http.StatusBadRequest, "Throttling")), http.StatusInternalServerError, false},
+		{"AWS throttles every attempt", awsapi.Rejected(answer(http.StatusBadRequest, "Throttling")), http.StatusTooManyRequests, false},
+		{"AWS throttles a retry after a lost response", awsapi.Rejected(&awsretry.MaxAttemptsError{Attempt: 2, Err: answer(http.StatusBadRequest, "Throttling")}), http.StatusTooManyRequests, true},
 		{"AWS rejects a retry after a lost response", awsapi.Rejected(&awsretry.MaxAttemptsError{Attempt: 2, Err: answer(http.StatusConflict, "ConflictException")}), http.StatusInternalServerError, true},
 	}
 	for _, tt := range tests {
@@ -128,8 +129,9 @@ func Test_Native_CreateOutcomes(t *testing.T) {
 		h := newNativeHarness(t)
 		h.fake.Errors["Create"] = awsapi.Rejected(answer(http.StatusBadRequest, "Throttling"))
 		resp := h.put(nativePath, nativeProperties(1))
-		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
-		require.Contains(t, resp.message(), "AWS throttled the call")
+		require.Equal(t, http.StatusTooManyRequests, resp.status, resp.raw)
+		require.Equal(t, v1.CodeThrottled, resp.code())
+		require.Contains(t, resp.message(), "AWS limited the rate of calls, so it changed nothing. Deploy again later")
 		require.Nil(t, h.record(nativePath))
 	})
 
@@ -532,6 +534,7 @@ func Test_handleError(t *testing.T) {
 		err     error
 		status  int
 		message string
+		code    string
 	}{
 		{
 			name:    "another product",
@@ -542,6 +545,7 @@ func Test_handleError(t *testing.T) {
 		{name: "a client failure", err: &native.Failure{Message: "invalid engine", ClientError: true}, status: http.StatusBadRequest, message: "invalid engine"},
 		{name: "a server failure", err: &native.Failure{Message: "AWS failed"}, status: http.StatusInternalServerError, message: "AWS failed"},
 		{name: "a conflict", err: &native.Failure{Message: "the instance is busy", ClientError: true, Conflict: true}, status: http.StatusConflict, message: "the instance is busy"},
+		{name: "throttled", err: &native.Failure{Message: "AWS limited the rate of calls", Throttled: true}, status: http.StatusTooManyRequests, message: "AWS limited the rate of calls", code: v1.CodeThrottled},
 		{name: "an AWS error", err: nativefake.ClientError("ValidationException", "bad value"), status: http.StatusBadRequest, message: "bad value"},
 	}
 	for _, tt := range tests {
@@ -554,6 +558,9 @@ func Test_handleError(t *testing.T) {
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got.body))
 			require.Equal(t, tt.status, got.status)
 			require.Equal(t, tt.message, got.message())
+			if tt.code != "" {
+				require.Equal(t, tt.code, got.code())
+			}
 		})
 	}
 

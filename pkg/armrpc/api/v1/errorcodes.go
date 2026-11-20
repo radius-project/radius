@@ -103,4 +103,8 @@ const (
 	// Used when Radius could not read the user's permissions or the execution record, so it
 	// refused rather than guessed (503).
 	CodeAuthorizationUnavailable = "AuthorizationUnavailable"
+
+	// Used when a cloud provider limited the rate of calls Radius made for the request, so the
+	// caller tries again later (429).
+	CodeThrottled = "Throttled"
 )

@@ -68,17 +68,20 @@ func NotFound(err error, codes ...string) error {
 // A 4xx after an earlier attempt that may have reached AWS (see Retried), such as an AlreadyExists answer to a retry of a
 // create whose first response was lost, is a failure whose outcome is unknown instead, which UCP answers with 500 and
 // whose values it keeps as possibly applied. Throttling is AWS's limit, not the request's fault, so it is never a client
-// failure: UCP answers it with 500, and it applied nothing unless such an earlier attempt may have.
+// failure: UCP answers it with 429 and the code Throttled (native.Failure.Throttled), and it applied nothing unless such
+// an earlier attempt may have.
 func Rejected(err error) error {
 	var failure *native.Failure
 	if err == nil || errors.Is(err, native.ErrNotFound) || errors.As(err, &failure) || !isClientStatus(err) {
 		return err
 	}
 	switch {
+	case Retried(err) && throttled(err):
+		return &native.Failure{Message: "AWS limited the rate of calls, and an earlier attempt may have reached AWS, so UCP can't tell whether AWS applied it. Deploy again later; UCP reads AWS first and makes only the calls still needed: " + err.Error(), Throttled: true, Outcome: native.OutcomeUnknown}
 	case Retried(err):
 		return &native.Failure{Message: "AWS rejected a retry of the call, but an earlier attempt may have reached AWS, so UCP can't tell whether AWS applied it. Try again; UCP reads AWS first and makes only the calls still needed: " + err.Error(), Outcome: native.OutcomeUnknown}
 	case throttled(err):
-		return &native.Failure{Message: "AWS throttled the call, so it changed nothing. Try again later: " + err.Error(), Outcome: native.OutcomeRejected}
+		return &native.Failure{Message: "AWS limited the rate of calls, so it changed nothing. Deploy again later: " + err.Error(), Throttled: true, Outcome: native.OutcomeRejected}
 	}
 	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
 }
@@ -477,7 +480,8 @@ func containsFold(list []string, state string) bool {
 // Calls makes calls in order, such as the AWS calls of an update, and stops at the first that fails. It returns the
 // error of the first call as it is, for the handler to pass to Rejected. It returns the error of a later call as a
 // native.Failure whose outcome is partly applied, because the calls before it changed AWS, and that is a client error
-// only when the request caused it, not throttling or a retry an earlier attempt of which may have reached AWS.
+// only when the request caused it, not throttling or a retry an earlier attempt of which may have reached AWS. It is
+// throttled when AWS throttled the call.
 func Calls(calls ...func() error) error {
 	for i, call := range calls {
 		err := call()
@@ -491,7 +495,7 @@ func Calls(calls ...func() error) error {
 		if errors.As(err, &failure) {
 			return err
 		}
-		return &native.Failure{Message: err.Error(), ClientError: isClientFault(err), Outcome: native.OutcomePartial}
+		return &native.Failure{Message: err.Error(), ClientError: isClientFault(err), Throttled: throttled(err), Outcome: native.OutcomePartial}
 	}
 	return nil
 }

@@ -789,11 +789,16 @@ func failureResponse(id resources.ID, failure interface {
 	error
 	IsClientError() bool
 }) armrpc_rest.Response {
-	var busy *native.Failure
-	if errors.As(failure, &busy) && busy.Conflict {
+	var handlerFailure *native.Failure
+	isFailure := errors.As(failure, &handlerFailure)
+	if isFailure && handlerFailure.Conflict {
 		return conflict("%s", failure.Error())
 	}
 	details := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: failure.Error(), Target: id.String()}}
+	if isFailure && handlerFailure.Throttled {
+		details.Error.Code = v1.CodeThrottled
+		return armrpc_rest.NewTooManyRequestsARMResponse(details)
+	}
 	if failure.IsClientError() {
 		details.Error.Code = v1.CodeInvalid
 		return armrpc_rest.NewBadRequestARMResponse(details)

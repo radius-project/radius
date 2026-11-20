@@ -66,8 +66,9 @@ func Test_Replay_Retries(t *testing.T) {
 	var failure *native.Failure
 	require.ErrorAs(t, create(), &failure)
 	require.False(t, failure.ClientError, "throttling isn't the request's fault")
+	require.True(t, failure.Throttled)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome, "AWS throttled every attempt, so none applied")
-	require.Contains(t, failure.Message, "AWS throttled the call")
+	require.Contains(t, failure.Message, "AWS limited the rate of calls, so it changed nothing. Deploy again later")
 
 	requireUnknown(t, create(), "InvalidDBInstanceState", "an earlier attempt may have reached AWS")
 
@@ -78,8 +79,10 @@ func Test_Replay_Retries(t *testing.T) {
 
 	require.ErrorAs(t, create(), &failure)
 	require.False(t, failure.ClientError, "throttling isn't the request's fault")
+	require.True(t, failure.Throttled)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome, "a failed read of the instance sends no create, however the SDK retried it")
 	require.Contains(t, failure.Message, "Throttling")
+	require.NotContains(t, failure.Message, "earlier attempt", "the read before the create changed nothing")
 }
 
 // requireUnknown requires err to be a failure whose outcome is unknown, which UCP answers with 500 and whose values it
@@ -90,6 +93,7 @@ func requireUnknown(t *testing.T, err error, code string, why string) {
 	require.True(t, errors.As(err, &failure), "%v", err)
 	require.False(t, failure.ClientError)
 	require.False(t, failure.Conflict)
+	require.False(t, failure.Throttled)
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
 	require.Contains(t, failure.Message, code)
 	require.Contains(t, failure.Message, why)

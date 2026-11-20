@@ -87,14 +87,18 @@ func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, in
 }
 
 // unsent returns err, from the read of the instance before call, as a failure AWS applied none of, because call was
-// never sent. It is a client failure when awsapi.Rejected makes it one, and ErrNotFound stays as it is.
+// never sent. It is a client or throttled failure when awsapi.Rejected makes it one, and ErrNotFound stays as it is.
 func unsent(err error) error {
 	if errors.Is(err, native.ErrNotFound) {
 		return err
 	}
-	var failure *native.Failure
-	client := errors.As(awsapi.Rejected(err), &failure) && failure.ClientError
-	return &native.Failure{Message: err.Error(), ClientError: client, Outcome: native.OutcomeRejected}
+	failure := &native.Failure{}
+	errors.As(awsapi.Rejected(err), &failure)
+	out := &native.Failure{Message: err.Error(), ClientError: failure.ClientError, Throttled: failure.Throttled, Outcome: native.OutcomeRejected}
+	if failure.Outcome == native.OutcomeRejected && failure.Message != "" {
+		out.Message = failure.Message
+	}
+	return out
 }
 
 // instanceConflict returns the conflict of a change to a tenant database of instance, which state describes.
