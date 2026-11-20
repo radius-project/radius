@@ -21,7 +21,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "body": "{\"AuthorizedPrincipal\": {\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS_ACCOUNT\"}}"
+      "body": "{\"AuthorizedPrincipal\": {\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}}"
     },
     {
       "service": "OpenSearch",
@@ -30,7 +30,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS_ACCOUNT\"}]}"
+      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}]}"
     },
     {
       "service": "OpenSearch",
@@ -39,7 +39,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS_ACCOUNT\"}]}"
+      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}]}"
     },
     {
       "service": "OpenSearch",
@@ -48,7 +48,7 @@
       "headers": {
         "Content-Type": "application/json"
       },
-      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS_ACCOUNT\"}]}"
+      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}]}"
     },
     {
       "service": "OpenSearch",

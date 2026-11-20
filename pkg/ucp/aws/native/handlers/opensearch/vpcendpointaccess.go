@@ -163,10 +163,18 @@ func (h *VpcEndpointAccess) Identifier(properties map[string]any) (string, error
 	return id.String(), nil
 }
 
+// sameKind reports whether AWS's PrincipalType names kind. AWS documents AWS_ACCOUNT and AWS_SERVICE, but other AWS
+// clients report that it returns "AWS Account" for an account, so the comparison ignores case, spaces, and
+// underscores.
+func sameKind(reported types.PrincipalType, kind types.PrincipalType) bool {
+	fold := strings.NewReplacer(" ", "", "_", "")
+	return strings.EqualFold(fold.Replace(string(reported)), fold.Replace(string(kind)))
+}
+
 // matches reports whether AWS's principal p is the one id names. AWS's docs call Principal an IAM principal, so an
 // account may come back as its ID or as its root ARN.
 func (id accessID) matches(p types.AuthorizedPrincipal) bool {
-	if p.PrincipalType != id.kind {
+	if !sameKind(p.PrincipalType, id.kind) {
 		return false
 	}
 	principal := aws.ToString(p.Principal)

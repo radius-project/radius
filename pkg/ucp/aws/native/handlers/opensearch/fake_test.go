@@ -151,6 +151,10 @@ type fakeAPI struct {
 	// hold keeps changing endpoints changing, as for a slow change.
 	hold bool
 
+	// documentedTypes makes ListVpcEndpointAccess return the PrincipalType values the API reference documents,
+	// AWS_ACCOUNT and AWS_SERVICE, instead of the "AWS Account" form AWS returns in practice.
+	documentedTypes bool
+
 	// rootARN makes ListVpcEndpointAccess return an account principal as its root ARN instead of its ID.
 	rootARN bool
 
@@ -668,6 +672,16 @@ func (f *fakeAPI) AuthorizeVpcEndpointAccess(ctx context.Context, in *opensearch
 func (f *fakeAPI) authorizedPrincipal(id string) *types.AuthorizedPrincipal {
 	p := f.store.Resource(vpcEndpointAccessType, id)
 	out := &types.AuthorizedPrincipal{Principal: aws.String(p["Principal"].(string)), PrincipalType: types.PrincipalType(p["PrincipalType"].(string))}
+	// AWS documents AWS_ACCOUNT and AWS_SERVICE, but other AWS clients report that it returns "AWS Account" for an
+	// account, so the fake does too. A service may come back the same way, which documentedTypes switches on.
+	if !f.documentedTypes {
+		switch out.PrincipalType {
+		case types.PrincipalTypeAwsAccount:
+			out.PrincipalType = "AWS Account"
+		case types.PrincipalTypeAwsService:
+			out.PrincipalType = "AWS Service"
+		}
+	}
 	if f.rootARN && out.PrincipalType == types.PrincipalTypeAwsAccount {
 		out.Principal = aws.String("arn:aws:iam::" + aws.ToString(out.Principal) + ":root")
 	}

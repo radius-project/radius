@@ -271,3 +271,27 @@ func Test_VpcEndpointAccess_FailsBeforeChange(t *testing.T) {
 	requireRejectedBefore(t, err, "list down")
 	requireRejectedBefore(t, h.Delete(t.Context(), region, id), "list down")
 }
+
+// Test_VpcEndpointAccess_PrincipalTypes checks that a principal matches whichever form of PrincipalType AWS returns:
+// the documented AWS_ACCOUNT, or "AWS Account" as AWS returns it in practice, and never the other kind.
+func Test_VpcEndpointAccess_PrincipalTypes(t *testing.T) {
+	account := accessID{domain: "logs", principal: otherAccount, kind: types.PrincipalTypeAwsAccount}
+	svc := accessID{domain: "logs", principal: service, kind: types.PrincipalTypeAwsService}
+	for _, reported := range []types.PrincipalType{"AWS_ACCOUNT", "AWS Account", "aws account"} {
+		require.True(t, account.matches(types.AuthorizedPrincipal{Principal: aws.String(otherAccount), PrincipalType: reported}), reported)
+		require.False(t, svc.matches(types.AuthorizedPrincipal{Principal: aws.String(service), PrincipalType: reported}), reported)
+	}
+	for _, reported := range []types.PrincipalType{"AWS_SERVICE", "AWS Service"} {
+		require.True(t, svc.matches(types.AuthorizedPrincipal{Principal: aws.String(service), PrincipalType: reported}), reported)
+	}
+
+	// With the documented values, the handler works the same.
+	h, api := newAccessHandler()
+	api.documentedTypes = true
+	properties := map[string]any{"DomainName": "logs", "Account": otherAccount}
+	id := createAccess(t, h, properties)
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.NoError(t, err)
+	require.Equal(t, 1, api.calls["AuthorizeVpcEndpointAccess"])
+	require.NoError(t, h.Delete(t.Context(), region, id))
+}

@@ -502,6 +502,9 @@ var accessAPI = map[string]nativetest.Call{
 			},
 		},
 		Unclear: "Whether Principal holds an account's ID or its root ARN, since the page calls it an IAM principal: the fake " +
-			"returns the ID, and the handler's tests also run with the ARN. The page size: the fake returns two principals a page.",
+			"returns the ID, and the handler's tests also run with the ARN. PrincipalType: the page lists AWS_ACCOUNT and " +
+			"AWS_SERVICE, but other AWS clients report that AWS returns \"AWS Account\" for an account, so the fake returns " +
+			"\"AWS Account\" and \"AWS Service\", and the handler's tests also run with the documented values. The page size: " +
+			"the fake returns two principals a page.",
 	},
 }
