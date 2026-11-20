@@ -7,52 +7,57 @@
     {
       "service": "Service Catalog",
       "operation": "AcceptPortfolioShare",
-      "request": "{\"AcceptLanguage\":\"en\",\"PortfolioId\":\"port-rrecexample01\",\"PortfolioShareType\":\"IMPORTED\"}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{}"
+      "body": "v/8=",
+      "binary": true
     },
     {
       "service": "Service Catalog",
       "operation": "ListAcceptedPortfolioShares",
-      "request": "{\"PortfolioShareType\":\"IMPORTED\"}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"PortfolioDetails\":[{\"ARN\":\"arn:aws:catalog:us-west-2:123456789012:portfolio/port-rrecexample01\",\"CreatedTime\":1793059200.0,\"Description\":\"Portfolio another account shares with the recording account\",\"DisplayName\":\"radius-rec-example-portfolio\",\"Id\":\"port-rrecexample01\",\"ProviderName\":\"radius-rec-example\"}]}"
+      "body": "v3BQb3J0Zm9saW9EZXRhaWxzn79jQVJOeENhcm46YXdzOmNhdGFsb2c6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwb3J0Zm9saW8vcG9ydC1ycmVjZXhhbXBsZTAxa0NyZWF0ZWRUaW1lwftB2rf6YAAAAGtEZXNjcmlwdGlvbng7UG9ydGZvbGlvIGFub3RoZXIgYWNjb3VudCBzaGFyZXMgd2l0aCB0aGUgcmVjb3JkaW5nIGFjY291bnRrRGlzcGxheU5hbWV4HHJhZGl1cy1yZWMtZXhhbXBsZS1wb3J0Zm9saW9iSWRycG9ydC1ycmVjZXhhbXBsZTAxbFByb3ZpZGVyTmFtZXJyYWRpdXMtcmVjLWV4YW1wbGX///8=",
+      "binary": true
     },
     {
       "service": "Service Catalog",
       "operation": "ListAcceptedPortfolioShares",
-      "request": "{\"PortfolioShareType\":\"IMPORTED\"}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"PortfolioDetails\":[{\"ARN\":\"arn:aws:catalog:us-west-2:123456789012:portfolio/port-rrecexample01\",\"CreatedTime\":1793059200.0,\"Description\":\"Portfolio another account shares with the recording account\",\"DisplayName\":\"radius-rec-example-portfolio\",\"Id\":\"port-rrecexample01\",\"ProviderName\":\"radius-rec-example\"}]}"
+      "body": "v3BQb3J0Zm9saW9EZXRhaWxzn79jQVJOeENhcm46YXdzOmNhdGFsb2c6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwb3J0Zm9saW8vcG9ydC1ycmVjZXhhbXBsZTAxa0NyZWF0ZWRUaW1lwftB2rf6YAAAAGtEZXNjcmlwdGlvbng7UG9ydGZvbGlvIGFub3RoZXIgYWNjb3VudCBzaGFyZXMgd2l0aCB0aGUgcmVjb3JkaW5nIGFjY291bnRrRGlzcGxheU5hbWV4HHJhZGl1cy1yZWMtZXhhbXBsZS1wb3J0Zm9saW9iSWRycG9ydC1ycmVjZXhhbXBsZTAxbFByb3ZpZGVyTmFtZXJyYWRpdXMtcmVjLWV4YW1wbGX///8=",
+      "binary": true
     },
     {
       "service": "Service Catalog",
       "operation": "RejectPortfolioShare",
-      "request": "{\"PortfolioId\":\"port-rrecexample01\",\"PortfolioShareType\":\"IMPORTED\"}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{}"
+      "body": "v/8=",
+      "binary": true
     },
     {
       "service": "Service Catalog",
       "operation": "ListAcceptedPortfolioShares",
-      "request": "{\"PortfolioShareType\":\"IMPORTED\"}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"PortfolioDetails\":[]}"
+      "body": "v3BQb3J0Zm9saW9EZXRhaWxzn///",
+      "binary": true
     }
   ]
 }

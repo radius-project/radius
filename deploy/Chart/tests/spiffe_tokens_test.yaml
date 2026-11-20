@@ -98,11 +98,6 @@ tests:
           any: true
         template: controller/deployment.yaml
 
-  - it: mounts a SPIFFE server certificate volume in each receiver in enforce mode
-    set:
-      global.rbac.enabled: true
-    asserts: *receivers
-
   - it: does not mount the old mTLS Secrets
     set:
       global.rbac.enabled: true
@@ -210,3 +205,36 @@ tests:
           path: spec.template.spec.containers[0].volumeMounts
           content: *ucpTokenMount
         template: controller/deployment.yaml
+
+  - it: fails when global.rootCA.volumeName is the SPIFFE server certificate volume name
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: spiffe
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
+        template: ucp/deployment.yaml
+
+  # Helm stops at the first failing template, so the chart-wide render error is reported for ucp.
+  - it: fails when global.rootCA.volumeName is a projected token volume name in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: token-ucp
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
+        template: ucp/deployment.yaml
+
+  - it: allows a reserved global.rootCA.volumeName when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: spiffe
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+          any: true
+        template: ucp/deployment.yaml

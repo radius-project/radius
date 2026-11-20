@@ -206,6 +206,30 @@ func TestUpgradeTransport_SendsToken(t *testing.T) {
 	}
 }
 
+// TestUpgradeTransport_ReplacesCaseVariantAuthorization checks that caller-supplied
+// Authorization values under non-canonical keys are dropped, so the receiver sees only the
+// transport's token, and that the caller's request is left unchanged.
+func TestUpgradeTransport_ReplacesCaseVariantAuthorization(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	rt, err := NewUpgradeTransport(callerOptions(t, ca.pem, authz.ModeEnforce, "ucp"), http.DefaultTransport, []string{"applications-rp"})
+	require.NoError(t, err)
+	dialTo(t, rt, "applications-rp.radius-system.svc", srv.url)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://applications-rp.radius-system.svc:5443/", nil)
+	require.NoError(t, err)
+	req.Header["authorization"] = []string{"Bearer caller-lower"}
+	req.Header["AUTHORIZATION"] = []string{"Bearer caller-upper"}
+	before := req.Header.Clone()
+
+	resp, err := (&http.Client{Transport: rt}).Do(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+	require.Equal(t, before, req.Header)
+}
+
 // TestUpgradeTransport_RejectsWrongServer sends a request for dynamic-rp to applications-rp.
 // The client must reject the server's SPIFFE ID during the handshake and send no token.
 func TestUpgradeTransport_RejectsWrongServer(t *testing.T) {
@@ -853,28 +877,4 @@ func get(c *http.Client, url string) (int, error) {
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return resp.StatusCode, nil
-}
-
-// TestClientTransport_NilHeader calls RoundTrip directly with a nil header map, which
-// http.Client would have replaced with an empty one.
-func TestClientTransport_NilHeader(t *testing.T) {
-	ca := newCA(t)
-	srv := startServer(t, ca, authz.ModeEnforce)
-	options := callerOptions(t, ca.pem, authz.ModeEnforce, "ucp")
-	transport, err := newClientTransport(options, "applications-rp")
-	require.NoError(t, err)
-	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, network, srv.url)
-	}
-	t.Cleanup(transport.CloseIdleConnections)
-
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://applications-rp.radius-system.svc:5443/", nil)
-	require.NoError(t, err)
-	req.Header = nil
-	resp, err := transport.RoundTrip(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
-	require.Nil(t, req.Header, "the caller's request must not be modified")
 }

@@ -139,9 +139,8 @@ type HelmAction interface {
 	HelmChartFromContainerRegistry(ctx context.Context, version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error)
 
 	// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the "Reinstall" option is set.
-	// The vals map carries the user-supplied overrides to apply on top of the chart's defaults. applied is false when
-	// the chart is installed and Reinstall is not set, so the release is left unchanged.
-	ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) (applied bool, err error)
+	// The vals map carries the user-supplied overrides to apply on top of the chart's defaults.
+	ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) error
 
 	// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
 	// Returns a bool indicating if the release is deployed, the version of the release, and an error if one occurs.
@@ -308,12 +307,13 @@ func isTransientHelmStatus(status int) bool {
 	}
 }
 
-func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) (bool, error) {
-	applied, _, err := helmAction.applyHelmChartRelease(kubeContext, helmChart, helmConf, options, vals)
-	return applied, err
+func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) error {
+	_, _, err := helmAction.applyHelmChartRelease(kubeContext, helmChart, helmConf, options, vals)
+	return err
 }
 
-// applyHelmChartRelease is ApplyHelmChart that also returns the release Helm applied, or nil when it applied none.
+// applyHelmChartRelease is ApplyHelmChart that also reports whether Helm applied the chart, which it does not when
+// the chart is installed and Reinstall is not set, and returns the release Helm applied, or nil when it applied none.
 func (helmAction *HelmActionImpl) applyHelmChartRelease(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) (bool, *releasev1.Release, error) {
 	chartInstalled, _, err := helmAction.QueryRelease(kubeContext, options.ReleaseName, options.Namespace)
 	if err != nil {

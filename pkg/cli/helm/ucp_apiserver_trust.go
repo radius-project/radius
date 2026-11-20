@@ -82,6 +82,10 @@ const (
 // CAs and waits until every UCP pod serves a certificate from radius-apiserver-ca; if UCP does not move in time it
 // returns an error and leaves both CAs trusted. It then points the APIService at Secret radius-apiserver-ca and
 // deletes the trust Secret, which removes the earlier CA.
+//
+// It verifies only the current trust: rad writes the caBundle itself, so a cainjector that cannot update the
+// APIService passes. Such an injector leaves the earlier radius-apiserver-ca certificate in the caBundle after
+// cert-manager renews it, which keeps working, because the renewal keeps the key, until that certificate expires.
 func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -152,7 +156,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		return err
 	}
 	if overlap && len(trusted) > 1 {
-		output.LogInfo("Removed %d earlier CA certificate(s) from APIService %s, which now trusts %s/%s through cert-manager",
+		output.LogInfo("Removed %d earlier CA certificate(s) from APIService %s, which now trusts only %s/%s",
 			len(trusted)-1, ucpAPIServiceName, radiusNamespace, ucpAPIServerCASecretName)
 	}
 	return nil
