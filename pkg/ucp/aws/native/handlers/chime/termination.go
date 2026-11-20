@@ -80,8 +80,7 @@ func (h *Termination) put(ctx context.Context, region string, identifier string,
 	if err != nil {
 		return sendFailed(err)
 	}
-	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, terminationProperty, out.Termination))
-	return nil
+	return confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, terminationProperty, out.Termination))
 }
 
 // Create sets the Voice Connector's termination settings to the template's and returns the Voice Connector's ID.

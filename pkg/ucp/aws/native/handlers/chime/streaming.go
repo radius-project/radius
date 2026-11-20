@@ -78,8 +78,7 @@ func (h *StreamingConfiguration) put(ctx context.Context, region string, identif
 	if err != nil {
 		return sendFailed(err)
 	}
-	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, streamingProperty, out.StreamingConfiguration))
-	return nil
+	return confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, streamingProperty, out.StreamingConfiguration))
 }
 
 // Create sets the Voice Connector's streaming settings to the template's and returns the Voice Connector's ID.

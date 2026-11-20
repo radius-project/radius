@@ -152,25 +152,31 @@ func patched(request native.UpdateRequest) (map[string]any, error) {
 	return out, nil
 }
 
-// confirm reads the settings until a read returns want, what the Put returned, so the next read shows the Put. It
-// stops early when a read fails with anything but ErrNotFound, and after confirmReads reads, because the Put succeeded
-// either way: a deploy that still reads the earlier settings then sends the same Put again, which changes nothing.
-func confirm(ctx context.Context, wait pause, read reader, region string, identifier string, want map[string]any) {
+// confirm reads the settings until a read returns want, what the Put returned, so the next read shows the Put, for up
+// to confirmReads reads. AWS accepted the Put, but until a read shows it, a later deploy could read the earlier
+// settings and keep, or send again, a value the template removed. So when no read shows it, confirm returns a failure
+// whose outcome is unknown, which keeps the template's values as possibly applied: the next deploy sends the
+// template's value at each of them.
+func confirm(ctx context.Context, wait pause, read reader, region string, identifier string, want map[string]any) error {
+	var err error
 	for i := range confirmReads {
 		if i > 0 {
 			wait(ctx, confirmPause)
 		}
 		if ctx.Err() != nil {
-			return
+			err = ctx.Err()
+			break
 		}
-		got, err := read(ctx, region, identifier)
-		if err == nil && reflect.DeepEqual(got, want) {
-			return
-		}
-		if err != nil && !errors.Is(err, native.ErrNotFound) {
-			return
+		var got map[string]any
+		if got, err = read(ctx, region, identifier); err == nil && reflect.DeepEqual(got, want) {
+			return nil
 		}
 	}
+	message := fmt.Sprintf("AWS accepted the change to the settings of Voice Connector %q, but no read showed it within %s, so UCP can't tell what AWS has. Deploy again.", identifier, confirmReads*confirmPause)
+	if err != nil {
+		message += " The last read failed: " + err.Error()
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
 }
 
 // voiceConnectorExists reports whether AWS has the Voice Connector with id.

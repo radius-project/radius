@@ -106,8 +106,7 @@ func (h *LoggingConfiguration) put(ctx context.Context, region string, identifie
 	if err != nil {
 		return err
 	}
-	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, loggingProperty, loggingOf(out.LoggingConfiguration)))
-	return nil
+	return confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, loggingProperty, loggingOf(out.LoggingConfiguration)))
 }
 
 // Create sets the Voice Connector's logging to the template's and returns the Voice Connector's ID. UCP calls it only

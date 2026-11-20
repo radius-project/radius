@@ -79,8 +79,7 @@ func (h *Origination) put(ctx context.Context, region string, identifier string,
 	if err != nil {
 		return sendFailed(err)
 	}
-	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, originationProperty, out.Origination))
-	return nil
+	return confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, originationProperty, out.Origination))
 }
 
 // Create sets the Voice Connector's origination settings to the template's and returns the Voice Connector's ID.

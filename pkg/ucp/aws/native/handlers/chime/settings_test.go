@@ -225,6 +225,18 @@ func Test_Settings_EmergencyCallingBlocksDelete(t *testing.T) {
 	}
 }
 
+// requireUnconfirmed requires err to be the failure of a Put AWS accepted that no read showed: its outcome is unknown,
+// so UCP keeps the template's values as possibly applied, and it isn't the request's fault.
+func requireUnconfirmed(t *testing.T, err error, text string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.False(t, failure.ClientError)
+	require.Contains(t, failure.Message, "Deploy again")
+	require.Contains(t, failure.Message, text)
+}
+
 func Test_Confirm(t *testing.T) {
 	want := map[string]any{"VoiceConnectorId": testVC}
 	reads := 0
@@ -233,43 +245,46 @@ func Test_Confirm(t *testing.T) {
 
 	t.Run("stops once a read shows the Put", func(t *testing.T) {
 		reads, waits = 0, nil
-		confirm(t.Context(), wait, func(context.Context, string, string) (map[string]any, error) {
+		require.NoError(t, confirm(t.Context(), wait, func(context.Context, string, string) (map[string]any, error) {
 			reads++
 			if reads < 3 {
 				return nil, native.ErrNotFound
 			}
 			return want, nil
-		}, region, testVC, want)
+		}, region, testVC, want))
 		require.Equal(t, 3, reads)
 		require.Equal(t, []time.Duration{confirmPause, confirmPause}, waits)
 	})
 
-	t.Run("gives up after confirmReads reads", func(t *testing.T) {
+	t.Run("fails with an unknown outcome after confirmReads reads", func(t *testing.T) {
 		reads = 0
-		confirm(t.Context(), noWait, func(context.Context, string, string) (map[string]any, error) {
+		err := confirm(t.Context(), noWait, func(context.Context, string, string) (map[string]any, error) {
 			reads++
 			return map[string]any{"VoiceConnectorId": "other"}, nil
 		}, region, testVC, want)
 		require.Equal(t, confirmReads, reads)
+		requireUnconfirmed(t, err, "10s")
 	})
 
-	t.Run("stops at a read that fails", func(t *testing.T) {
+	t.Run("reads again after a read that fails, and names the last error", func(t *testing.T) {
 		reads = 0
-		confirm(t.Context(), noWait, func(context.Context, string, string) (map[string]any, error) {
+		err := confirm(t.Context(), noWait, func(context.Context, string, string) (map[string]any, error) {
 			reads++
 			return nil, errors.New("throttled")
 		}, region, testVC, want)
-		require.Equal(t, 1, reads)
+		require.Equal(t, confirmReads, reads)
+		requireUnconfirmed(t, err, "throttled")
 	})
 
 	t.Run("stops when the request ends", func(t *testing.T) {
 		reads = 0
 		ctx, cancel := context.WithCancel(t.Context())
-		confirm(ctx, func(context.Context, time.Duration) { cancel() }, func(context.Context, string, string) (map[string]any, error) {
+		err := confirm(ctx, func(context.Context, time.Duration) { cancel() }, func(context.Context, string, string) (map[string]any, error) {
 			reads++
 			return nil, native.ErrNotFound
 		}, region, testVC, want)
 		require.Equal(t, 1, reads)
+		requireUnconfirmed(t, err, "canceled")
 	})
 
 	t.Run("sleep returns when the request ends", func(t *testing.T) {
@@ -279,6 +294,29 @@ func Test_Confirm(t *testing.T) {
 		sleep(ctx, time.Hour)
 		require.Less(t, time.Since(start), time.Minute)
 	})
+}
+
+func Test_Settings_UnconfirmedPut(t *testing.T) {
+	ctx := t.Context()
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := withoutWait(NewLoggingConfiguration(api))
+	api.store.Put(loggingType, testVC, logging(testVC, true, false))
+	current, err := h.Read(ctx, region, testVC)
+	require.NoError(t, err)
+
+	// The template drops SIP logs. AWS accepts the Put, but every read after it still shows them on, so a later deploy
+	// must not take the removal as done.
+	api.errs["GetVoiceConnectorLoggingConfiguration"] = apiError(429, "ThrottledClientException", "slow down")
+	request := update(t, current, nil)
+	request.Desired = map[string]any{"VoiceConnectorId": testVC, "LoggingConfiguration": map[string]any{}}
+	request.Patch = jsondiff.Patch{{Type: jsondiff.OperationRemove, Path: "/LoggingConfiguration/EnableSIPLogs"}}
+	requireUnconfirmed(t, h.Update(ctx, request), "ThrottledClientException")
+	require.Equal(t, logging(testVC, false, false), api.store.Resource(loggingType, testVC), "AWS applied the Put")
+
+	// A create whose settings no read shows keeps its record, so the next deploy finds them.
+	api.errs["GetVoiceConnectorTermination"] = apiError(429, "ThrottledClientException", "slow down")
+	_, err = withoutWait(NewTermination(api)).Create(ctx, native.CreateRequest{Region: region, Properties: termination(testVC, map[string]any{"CallingRegions": []any{"US"}, "CidrAllowedList": []any{"203.0.113.0/27"}})})
+	requireUnconfirmed(t, err, "ThrottledClientException")
 }
 
 func Test_Fake_ObservedBehavior(t *testing.T) {
