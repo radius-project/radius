@@ -248,11 +248,7 @@ func (h *TerminationCredentials) put(ctx context.Context, region string, vc stri
 // because AWS's message can repeat a value it was sent, and UCP shows and logs the message. A failure AWS answered
 // with a 4xx status, or as a client fault, applied none of the Put.
 func withoutPasswords(err error, credentials []credential) error {
-	message := err.Error()
-	for _, c := range credentials {
-		message = strings.ReplaceAll(message, c.password, "***")
-	}
-	failure := &native.Failure{Message: message, ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeUnknown}
+	failure := &native.Failure{Message: redact(err.Error(), credentials), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeUnknown}
 	var answered *native.Failure
 	if errors.As(awsapi.Rejected(err), &answered) {
 		failure.ClientError = answered.ClientError
@@ -261,6 +257,41 @@ func withoutPasswords(err error, credentials []credential) error {
 		failure.Outcome = native.OutcomeRejected
 	}
 	return failure
+}
+
+// redact returns message with "***" in place of each part that is one of the credentials' passwords. It finds every
+// part in the original message before it replaces any, so a password that contains or overlaps another is hidden
+// whole.
+func redact(message string, credentials []credential) string {
+	hidden := make([]bool, len(message))
+	for _, c := range credentials {
+		if c.password == "" {
+			continue
+		}
+		for start := 0; start < len(message); start++ {
+			at := strings.Index(message[start:], c.password)
+			if at < 0 {
+				break
+			}
+			start += at
+			for i := start; i < start+len(c.password); i++ {
+				hidden[i] = true
+			}
+		}
+	}
+	var out strings.Builder
+	for i := 0; i < len(message); {
+		if !hidden[i] {
+			out.WriteByte(message[i])
+			i++
+			continue
+		}
+		out.WriteString("***")
+		for i < len(message) && hidden[i] {
+			i++
+		}
+	}
+	return out.String()
 }
 
 // remove deletes the credentials with the usernames from the Voice Connector, in one call, and waits until a list no

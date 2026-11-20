@@ -182,6 +182,17 @@ func Test_Create(t *testing.T) {
 		require.Contains(t, message, "credentials.1.member.password")
 	})
 
+	t.Run("an error that repeats passwords that contain or overlap others", func(t *testing.T) {
+		h := newTracked(awsfake.NewCloudControl())
+		h.api.errs["PutVoiceConnectorTerminationCredentials"] = invalid("Values 'prefix-RemainingSIPSecret42', 'abcXYZ', and 'prefix' were rejected")
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: creds(testVC, "ana", "prefix", "bo", "prefix-RemainingSIPSecret42", "cy", "abc", "di", "cXYZ"), ClientToken: token})
+		message := requireFailure(t, err, native.OutcomeRejected, true)
+		require.Equal(t, "Values '***', '***', and '***' were rejected", message[len(message)-len("Values '***', '***', and '***' were rejected"):])
+		for _, part := range []string{"prefix", "Remaining", "Secret42", "abc", "XYZ"} {
+			require.NotContains(t, message, part)
+		}
+	})
+
 	t.Run("a server error that repeats a password", func(t *testing.T) {
 		h := newTracked(awsfake.NewCloudControl())
 		h.api.errs["PutVoiceConnectorTerminationCredentials"] = apiError(http.StatusInternalServerError, "ServiceFailureException", "failed for secret-ana")
@@ -356,6 +367,31 @@ func Test_Delete(t *testing.T) {
 		require.NoError(t, h.DeleteScoped(ctx, region, identifier, []map[string]any{withoutPassword(creds(testVC, "ana", "x"), "ana")}))
 		require.Empty(t, h.api.usernames(testVC), "the delete doesn't trust a list that misses the Put")
 	})
+}
+
+func Test_Redact(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		message   string
+		passwords []string
+		want      string
+	}{
+		{"a password inside another, shorter first", "got prefix-rest", []string{"prefix", "prefix-rest"}, "got ***"},
+		{"a password inside another, longer first", "got prefix-rest", []string{"prefix-rest", "prefix"}, "got ***"},
+		{"passwords that overlap", "got abcdef", []string{"abcd", "cdef"}, "got ***"},
+		{"a password repeated", "aa1 and aa1", []string{"aa1"}, "*** and ***"},
+		{"a password that overlaps itself", "xaaax", []string{"aa"}, "x***x"},
+		{"passwords side by side", "onetwo!", []string{"one", "two"}, "***!"},
+		{"no password, or an empty one", "nothing here", []string{""}, "nothing here"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			credentials := []credential{}
+			for _, p := range tc.passwords {
+				credentials = append(credentials, credential{username: "u", password: p})
+			}
+			require.Equal(t, tc.want, redact(tc.message, credentials))
+		})
+	}
 }
 
 func Test_Settle(t *testing.T) {
