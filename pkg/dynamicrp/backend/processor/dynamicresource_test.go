@@ -20,12 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	azpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
@@ -725,7 +726,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		// Create a client factory that returns 404 for API version requests
 		apiVersionServer := fake.APIVersionsServer{
 			Get: func(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
-				errResp.SetError(fmt.Errorf("API version not found"))
+				errResp.SetResponseError(http.StatusNotFound, "NotFound")
 				return
 			},
 		}
@@ -745,6 +746,38 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, schema)
 		require.ErrorIs(t, err, ErrNoSchemaFound)
+	})
+
+	t.Run("error - schema service unavailable", func(t *testing.T) {
+		apiVersionServer := fake.APIVersionsServer{
+			Get: func(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
+				errResp.SetResponseError(http.StatusServiceUnavailable, "ServiceUnavailable")
+				return
+			},
+		}
+
+		clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
+			ClientOptions: azpolicy.ClientOptions{
+				Retry: azpolicy.RetryOptions{MaxRetries: -1},
+				Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+					APIVersionsServer: apiVersionServer,
+				}),
+			},
+		})
+		require.NoError(t, err)
+
+		ctx := t.Context()
+		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
+		apiVersion := "2023-10-01-preview"
+
+		schema, err := GetSchemaForResourceType(ctx, clientFactory, resourceType, apiVersion)
+		require.Error(t, err)
+		require.Nil(t, schema)
+		require.NotErrorIs(t, err, ErrNoSchemaFound)
+
+		var respErr *azcore.ResponseError
+		require.ErrorAs(t, err, &respErr)
+		require.Equal(t, http.StatusServiceUnavailable, respErr.StatusCode)
 	})
 
 	t.Run("error - no schema in response", func(t *testing.T) {
