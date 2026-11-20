@@ -84,6 +84,7 @@ var (
 //     against real AWS: the handler can't tell a slow one from none, because both read the same, so it never waits
 //     for one (see the Progress of each handler).
 //   - Describe calls return at most dataSharePageSize data shares.
+//   - ProducerAllowedWrites and ConsumerAcceptedWrites, which the API reference marks optional, are left out when false.
 type dataShareFake struct {
 	store *awsfake.CloudControl
 
@@ -197,13 +198,12 @@ func (f *dataShareFake) producerView(arn string) types.DataShare {
 		a := types.DataShareAssociation{ConsumerIdentifier: aws.String(consumer), Status: types.DataShareStatusPendingAuthorization}
 		if props := f.store.Resource(dataShareAuthorizationType, id); props != nil {
 			a.Status = types.DataShareStatusAuthorized
-			a.ProducerAllowedWrites = aws.Bool(dataShareBool(props, "AllowWrites"))
+			a.ProducerAllowedWrites = dataShareTrueOrNil(dataShareBool(props, "AllowWrites"))
 			if consumer == dataShareConsumerAccount && len(f.associations(arn)) > 0 {
 				a.Status = types.DataShareStatusActive
 			}
 		} else if status, ok := f.ended[id]; ok {
 			a.Status = status
-			a.ProducerAllowedWrites = aws.Bool(false)
 		}
 		a.Status = f.read(dataShareAuthorizationType, id, a.Status)
 		share.DataShareAssociations = append(share.DataShareAssociations, a)
@@ -224,7 +224,7 @@ func (f *dataShareFake) consumerView(arn string) types.DataShare {
 		share.DataShareType = types.DataShareTypeInternal
 	}
 	writes := dataShareBool(f.store.Resource(dataShareAuthorizationType, arn+"|"+dataShareConsumerAccount), "AllowWrites")
-	account := types.DataShareAssociation{ConsumerIdentifier: aws.String(dataShareConsumerAccount), Status: types.DataShareStatusAvailable, ProducerAllowedWrites: aws.Bool(writes)}
+	account := types.DataShareAssociation{ConsumerIdentifier: aws.String(dataShareConsumerAccount), Status: types.DataShareStatusAvailable, ProducerAllowedWrites: dataShareTrueOrNil(writes)}
 	entries := []types.DataShareAssociation{}
 	for _, id := range f.associations(arn) {
 		props := f.store.Resource(dataShareConsumerType, id)
@@ -232,8 +232,8 @@ func (f *dataShareFake) consumerView(arn string) types.DataShare {
 		a := types.DataShareAssociation{
 			ConsumerIdentifier:     aws.String(dataShareConsumerAccount),
 			Status:                 status,
-			ProducerAllowedWrites:  aws.Bool(writes),
-			ConsumerAcceptedWrites: aws.Bool(dataShareBool(props, "AllowWrites")),
+			ProducerAllowedWrites:  dataShareTrueOrNil(writes),
+			ConsumerAcceptedWrites: dataShareTrueOrNil(dataShareBool(props, "AllowWrites")),
 		}
 		switch {
 		case dataShareBool(props, "AssociateEntireAccount"):
@@ -268,6 +268,15 @@ func (f *dataShareFake) consumerView(arn string) types.DataShare {
 	}
 	share.DataShareAssociations = append([]types.DataShareAssociation{account}, entries...)
 	return share
+}
+
+// dataShareTrueOrNil returns true, or nil for false: the API reference marks ProducerAllowedWrites and
+// ConsumerAcceptedWrites optional, so the fake leaves them out when they are false, though AWS returned false in a run.
+func dataShareTrueOrNil(b bool) *bool {
+	if !b {
+		return nil
+	}
+	return aws.Bool(true)
 }
 
 // dataSharePage returns the data shares of list from the position marker names, up to maxRecords, and the marker

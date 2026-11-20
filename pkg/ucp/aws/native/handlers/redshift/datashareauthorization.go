@@ -176,12 +176,11 @@ func dataShareAuthorizationProperties(share *types.DataShare, a *types.DataShare
 		"DataShareArn":       aws.ToString(share.DataShareArn),
 		"ConsumerIdentifier": aws.ToString(a.ConsumerIdentifier),
 		"Status":             string(a.Status),
+		// The API reference marks ProducerAllowedWrites optional, so AWS may leave it out when it is false, its default.
+		"AllowWrites": aws.ToBool(a.ProducerAllowedWrites),
 	}
 	if arn := aws.ToString(share.ProducerArn); arn != "" {
 		properties["ProducerArn"] = arn
-	}
-	if a.ProducerAllowedWrites != nil {
-		properties["AllowWrites"] = *a.ProducerAllowedWrites
 	}
 	return properties
 }

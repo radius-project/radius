@@ -246,6 +246,8 @@ func dataShareConsumerProperties(share *types.DataShare, c dataShareConsumer, a 
 	properties := map[string]any{
 		"DataShareArn":           aws.ToString(share.DataShareArn),
 		"AssociateEntireAccount": c.entireAccount,
+		// The API reference marks ConsumerAcceptedWrites optional, so AWS may leave it out when it is false, its default.
+		"AllowWrites": aws.ToBool(a.ConsumerAcceptedWrites),
 	}
 	if c.arn != "" {
 		properties["ConsumerArn"] = c.arn
@@ -255,9 +257,6 @@ func dataShareConsumerProperties(share *types.DataShare, c dataShareConsumer, a 
 	}
 	if arn := aws.ToString(share.ProducerArn); arn != "" {
 		properties["ProducerArn"] = arn
-	}
-	if a.ConsumerAcceptedWrites != nil {
-		properties["AllowWrites"] = *a.ConsumerAcceptedWrites
 	}
 	return properties
 }
