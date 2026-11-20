@@ -100,23 +100,27 @@ func parseAliasID(identifier string) (aliasID, error) {
 	return aliasID{}, invalid(templateAliasType, "%q is not the identifier of a Quick Sight template alias: it must be AwsAccountId|TemplateId|AliasName, with an AliasName that doesn't start with $", identifier)
 }
 
-// templateVersion returns the template's TemplateVersionNumber, which must be a whole number of at least 1.
+// templateVersion returns the template's TemplateVersionNumber, which must be a whole number of at least 1. A
+// template's numbers arrive as float64 from JSON, which holds every whole number below 2^53 exactly.
 func templateVersion(properties map[string]any) (int64, error) {
-	var v float64
+	var v int64
 	switch n := properties["TemplateVersionNumber"].(type) {
 	case float64:
-		v = n
+		if n != math.Trunc(n) || n < 1 || n >= math.MaxInt64 {
+			return 0, invalid(templateAliasType, "TemplateVersionNumber must be a whole number of at least 1")
+		}
+		v = int64(n)
 	case int:
-		v = float64(n)
+		v = int64(n)
 	case int64:
-		v = float64(n)
+		v = n
 	default:
 		return 0, invalid(templateAliasType, "set TemplateVersionNumber to the number of a version of the template")
 	}
-	if v < 1 || v != math.Trunc(v) || v > math.MaxInt64 {
+	if v < 1 {
 		return 0, invalid(templateAliasType, "TemplateVersionNumber must be a whole number of at least 1")
 	}
-	return int64(v), nil
+	return v, nil
 }
 
 // Identifier returns AwsAccountId|TemplateId|AliasName, or "" when the properties don't give all of them. UCP calls it

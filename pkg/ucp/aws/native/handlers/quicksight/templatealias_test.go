@@ -19,6 +19,7 @@ package quicksight
 import (
 	"context"
 	"maps"
+	"math"
 	"strings"
 	"testing"
 
@@ -61,6 +62,7 @@ func Test_TemplateAlias_Identifier(t *testing.T) {
 		{"TemplateVersionNumber": float64(-1)},
 		{"TemplateVersionNumber": nil},
 		{"TemplateVersionNumber": 1e300},
+		{"TemplateVersionNumber": float64(1 << 63)},
 	} {
 		_, err := h.Identifier(with(aliasTemplate(), change))
 		requireRejected(t, err)
@@ -79,10 +81,14 @@ func Test_TemplateAlias_Identifier(t *testing.T) {
 	}
 	require.Empty(t, api.calls, "a bad template or identifier never reaches AWS")
 
-	for _, n := range []any{2, int64(2)} {
+	for n, want := range map[any]int64{2: 2, int64(9007199254740993): 9007199254740993, int64(math.MaxInt64): math.MaxInt64} {
 		version, err := templateVersion(map[string]any{"TemplateVersionNumber": n})
 		require.NoError(t, err)
-		require.Equal(t, int64(2), version)
+		require.Equal(t, want, version, "%v", n)
+	}
+	for _, n := range []any{0, int64(-1)} {
+		_, err := templateVersion(map[string]any{"TemplateVersionNumber": n})
+		requireRejected(t, err)
 	}
 }
 

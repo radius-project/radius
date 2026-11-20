@@ -36,6 +36,9 @@ const (
 
 	// maxIDLength is the documented maximum length of a folder ID and a member ID.
 	maxIDLength = 2048
+
+	// maxListResults is the most members a page of ListFolderMembers can have.
+	maxListResults = 100
 )
 
 var (
@@ -146,7 +149,7 @@ func (id membershipID) isMember(m types.MemberIdArnPair) (bool, error) {
 
 // find returns the folder's member id names, or ErrNotFound when the folder doesn't exist or doesn't list it.
 func (h *FolderMembership) find(ctx context.Context, region string, id membershipID) (*types.MemberIdArnPair, error) {
-	input := &quicksight.ListFolderMembersInput{AwsAccountId: aws.String(id.account), FolderId: aws.String(id.folder)}
+	input := &quicksight.ListFolderMembersInput{AwsAccountId: aws.String(id.account), FolderId: aws.String(id.folder), MaxResults: aws.Int32(maxListResults)}
 	for {
 		page, err := h.api.ListFolderMembers(ctx, input, inRegion(region))
 		if err != nil {

@@ -265,12 +265,23 @@ func Test_FolderMembership_Request(t *testing.T) {
 	want := struct{ account, folder, kind, member string }{account, "sales", "TOPIC", "topic-1"}
 	require.Equal(t, want, api.created)
 	require.Equal(t, want, api.deleted)
+	require.NotEmpty(t, api.pageSizes)
+	for _, size := range api.pageSizes {
+		require.Equal(t, int32(100), size, "the fewest pages AWS allows")
+	}
 }
 
-// membershipInputs records the inputs of CreateFolderMembership and DeleteFolderMembership.
+// membershipInputs records the inputs of CreateFolderMembership and DeleteFolderMembership, and the page size of
+// ListFolderMembers.
 type membershipInputs struct {
 	*fakeAPI
 	created, deleted struct{ account, folder, kind, member string }
+	pageSizes        []int32
+}
+
+func (m *membershipInputs) ListFolderMembers(ctx context.Context, in *quicksight.ListFolderMembersInput, opts ...func(*quicksight.Options)) (*quicksight.ListFolderMembersOutput, error) {
+	m.pageSizes = append(m.pageSizes, aws.ToInt32(in.MaxResults))
+	return m.fakeAPI.ListFolderMembers(ctx, in, opts...)
 }
 
 func (m *membershipInputs) CreateFolderMembership(ctx context.Context, in *quicksight.CreateFolderMembershipInput, opts ...func(*quicksight.Options)) (*quicksight.CreateFolderMembershipOutput, error) {
