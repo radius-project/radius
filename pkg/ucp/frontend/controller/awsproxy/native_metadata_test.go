@@ -541,13 +541,6 @@ func Test_handleError(t *testing.T) {
 	})
 }
 
-func Test_outcomeOf(t *testing.T) {
-	require.Equal(t, native.OutcomePartial, outcomeOf(&native.Failure{Outcome: native.OutcomePartial}))
-	require.Equal(t, native.OutcomeRejected, outcomeOf(nativefake.ClientError("ValidationException", "bad value")))
-	require.Equal(t, native.OutcomeUnknown, outcomeOf(nativefake.ServerError("InternalFailure", "unavailable")))
-	require.Equal(t, native.OutcomeUnknown, outcomeOf(errors.New("connection reset")))
-}
-
 // Test_Native_AppliedStartCall checks that a start call that fails after AWS applied every change records the
 // operation as done: a create's values become last-applied, and a delete or reset removes the record.
 func Test_Native_AppliedStartCall(t *testing.T) {

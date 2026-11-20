@@ -112,6 +112,7 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		return finishedResult(rec), nil
 	}
 	if !sameRequest(rec.Properties.RequestToken, request.OperationID) {
+		releaseDequeued(ctx, store, id)
 		return superseded(id), nil
 	}
 
@@ -126,6 +127,14 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		logger.Error(err, "Failed to save the record of a running AWS operation", "alias", id.Name())
 	}
 	stop := heartbeat(ctx, store, id, heartbeatInterval)
+	if rec.Properties.Handler == records.HandlerNative && rec.Properties.StartState != "" {
+		var result ctrl.Result
+		rec, result, err = c.sendStart(ctx, store, id, request, op)
+		if rec == nil {
+			stop()
+			return result, err
+		}
+	}
 	if rec.Properties.Handler == records.HandlerNative {
 		logger.Info("Waiting for the native AWS handler", "alias", id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier, "operation", op)
 		progress, err := c.waitNative(ctx, id, rec.Properties.AWSIdentifier, op, rec.Properties.UpdateState)
@@ -209,11 +218,17 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 // noRecord finishes an operation whose record is gone. A finished delete and a failed create remove the record, so
 // UCP stopped, or failed to save the operation's result, after it removed the record. The operation ID is the Cloud
 // Control request token, so the result is read from Cloud Control again. Cloud Control has no request for a native
-// operation, so UCP never asks it about one.
+// operation, so UCP never asks it about one: a native delete is done, and any other native operation was replaced by a
+// new request, so it ends canceled.
 func (c *AwaitController) noRecord(ctx context.Context, id resources.ID, request *ctrl.Request) (ctrl.Result, error) {
 	ucplog.FromContextOrDiscard(ctx).Info("Reading the result of an AWS operation whose record is gone", "alias", id.Name(), "requestToken", request.OperationID.String())
 	if isNative(request) {
-		return c.unknownRequest(id, request, "UCP has no record of the AWS resource %q. Deploy again."), nil
+		// UCP removes the record of a native operation only when the operation finished as a delete, or when a new
+		// request replaced a create that sent nothing to AWS.
+		if c.method == v1.OperationDelete {
+			return ctrl.Result{}, nil
+		}
+		return superseded(id), nil
 	}
 	_, err := ucp_aws.WaitForRequest(ctx, c.clients.CloudControl, id.FindScope(resources_aws.ScopeRegions), request.OperationID.String())
 
@@ -286,22 +301,32 @@ func finishedResult(rec *datamodel.AWSResource) ctrl.Result {
 // superseded returns the result of an operation that a newer operation on the record replaced, so this one is no
 // longer tracked.
 func superseded(id resources.ID) ctrl.Result {
-	return ctrl.NewCanceledResult(fmt.Sprintf("A newer operation on the AWS resource %q replaced this one.", id.Name()))
+	result := ctrl.NewCanceledResult(fmt.Sprintf("A newer operation on the AWS resource %q replaced this one.", id.Name()))
+	// The record shows the newer operation. Setting its state to Canceled would let another request start while the
+	// newer operation runs.
+	result.KeepResourceState = true
+	return result
 }
 
 // update reads the record, applies change, and saves it. When change returns true, it removes the record instead. It
-// returns errSuperseded, and changes nothing, when the record no longer shows the operation operationID. A save or
-// delete that loses a race with another write, such as the heartbeat, is tried again.
+// returns errSuperseded, and changes nothing, when the record no longer shows the operation operationID, and nil when
+// the record is gone. A save or delete that loses a race with another write, such as the heartbeat, is tried again.
 func update(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource) bool) error {
+	_, err := updateFound(ctx, store, id, operationID, change)
+	return err
+}
+
+// updateFound is update, and also returns the record it saved, or nil when the record was gone.
+func updateFound(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource) bool) (*datamodel.AWSResource, error) {
 	for range maxSaveAttempts {
 		rec, etag, err := store.Get(ctx, id)
 		if err != nil {
-			return err
+			return nil, err
 		} else if rec == nil {
-			return nil
+			return nil, nil
 		}
 		if !sameRequest(rec.Properties.RequestToken, operationID) {
-			return errSuperseded
+			return nil, errSuperseded
 		}
 		if change(rec) {
 			err = store.DeleteIfUnchanged(ctx, id, etag)
@@ -311,9 +336,25 @@ func update(ctx context.Context, store *records.Store, id resources.ID, operatio
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			continue
 		}
-		return err
+		return rec, err
 	}
-	return errors.New("the record kept changing")
+	return nil, errors.New("the record kept changing")
+}
+
+// releaseDequeued sets a record that has no operation in progress back to Canceled when the async worker marked it
+// Updating as it picked up an operation a newer request replaced, such as one that waited to send its first call.
+// Otherwise the record would look busy, and every request would get 409 until it went stale. A record a request
+// changed meanwhile is left alone.
+func releaseDequeued(ctx context.Context, store *records.Store, id resources.ID) {
+	rec, etag, err := store.Get(ctx, id)
+	if err != nil || rec == nil || rec.ProvisioningState() != v1.ProvisioningStateUpdating ||
+		rec.Properties.PendingOperation != "" || rec.Properties.RequestToken != "" {
+		return
+	}
+	rec.SetProvisioningState(v1.ProvisioningStateCanceled)
+	if _, err := store.Save(ctx, rec, etag); err != nil && !errors.Is(err, &database.ErrConcurrency{}) {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to save the record of a replaced AWS operation", "alias", id.Name())
+	}
 }
 
 // heartbeat saves the record every interval until the returned function is called.

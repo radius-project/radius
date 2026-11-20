@@ -102,6 +102,10 @@ type Handler struct {
 	ProductProperty string
 	Product         string
 
+	// OnStart, when set, runs at the start of each Create, Update, Delete, and Reset call, outside the handler's lock.
+	// Tests use it to send another request while a call is in flight.
+	OnStart func()
+
 	mu      sync.Mutex
 	calls   []Call
 	running map[string]*operation
@@ -116,6 +120,31 @@ type Handler struct {
 	// deletes counts the delete tokens DeleteTokens made, and copies are the tokens deletes took a copy with.
 	deletes int
 	copies  map[string]bool
+
+	// busy is how many more start calls report that the parent is busy (see SetBusy).
+	busy int
+}
+
+// BusyReason is the reason a busy start call gives (see SetBusy).
+const BusyReason = `the parent "parent-1" is busy`
+
+// startCalls are the methods that start an operation, which report a busy parent (see SetBusy).
+var startCalls = []string{"Create", "Update", "Delete", "Reset"}
+
+// SetBusy makes the next n start calls (Create, Update, Delete, DeleteWithToken, and Reset) return a
+// *native.NotReady with BusyReason and change nothing, like an AWS service that rejects a change while the
+// resource's parent is busy. A negative n makes every start call do so, until SetBusy(0).
+func (h *Handler) SetBusy(n int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.busy = n
+}
+
+// onStart runs OnStart.
+func (h *Handler) onStart() {
+	if h.OnStart != nil {
+		h.OnStart()
+	}
 }
 
 // Call is a call the handler received.
@@ -178,6 +207,12 @@ func (h *Handler) Calls() []Call {
 
 func (h *Handler) record(call Call) error {
 	h.calls = append(h.calls, call)
+	if h.busy != 0 && slices.Contains(startCalls, call.Method) {
+		if h.busy > 0 {
+			h.busy--
+		}
+		return &native.NotReady{Reason: BusyReason}
+	}
 	return h.Errors[call.Method]
 }
 
@@ -245,6 +280,7 @@ func (h *Handler) read(identifier string) (map[string]any, bool) {
 // Create stores the resource and starts its create. With RecoverByResend, a client token it has seen returns the
 // resource the first create made, when the store still has it.
 func (h *Handler) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	h.onStart()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if err := h.record(Call{Method: "Create", Properties: request.Properties, ClientToken: request.ClientToken}); err != nil {
@@ -307,6 +343,7 @@ func (h *Handler) Find(ctx context.Context, request native.CreateRequest) (strin
 
 // Update applies the patch to the stored resource and starts its update.
 func (h *Handler) Update(ctx context.Context, request native.UpdateRequest) error {
+	h.onStart()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	patch := []map[string]any{}
@@ -360,6 +397,7 @@ func (h *Handler) failedCall(call int, total int, err error) error {
 
 // Delete starts deleting the resource.
 func (h *Handler) Delete(ctx context.Context, region string, identifier string) error {
+	h.onStart()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if err := h.record(Call{Method: "Delete", Identifier: identifier}); err != nil {
@@ -377,6 +415,7 @@ func (h *Handler) Delete(ctx context.Context, region string, identifier string) 
 
 // Reset sets the resource to ResetTo, or removes it when ResetTo is nil, and starts a delete that keeps it.
 func (h *Handler) Reset(ctx context.Context, region string, identifier string) error {
+	h.onStart()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if err := h.record(Call{Method: "Reset", Identifier: identifier}); err != nil {

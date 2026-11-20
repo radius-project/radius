@@ -20,7 +20,9 @@ limitations under the License.
 // operation status for both, so a record works with either handler.
 //
 // A handler starts an operation and returns. UCP makes its own operation ID, and the UCP worker calls Progress until
-// the operation finishes. Progress only reads AWS, so a restarted worker can call it again.
+// the operation finishes. Progress only reads AWS, so a restarted worker can call it again. A handler whose start call
+// AWS can't take yet, because something the resource depends on is busy, returns NotReady, and the worker sends the
+// call once AWS can take it (see Options.ReadyTimeout).
 package native
 
 import (
@@ -62,6 +64,25 @@ type OtherProductError struct {
 // Error returns a message that names the identifier and the product.
 func (e *OtherProductError) Error() string {
 	return fmt.Sprintf("the AWS identifier %q belongs to another product (%s)", e.Identifier, e.Product)
+}
+
+// NotReady is returned, or wrapped, by a start call (Create, Update, Delete, DeleteWithToken, or Reset) when AWS can't
+// take the call yet because something the resource depends on is busy, such as the DB instance of a tenant database
+// while RDS backs it up. AWS changed nothing, so the same call, with the same tokens, can be sent again later. A
+// handler whose operation makes several calls returns it only before the first change, and a Failure after one.
+//
+// When the handler sets Options.ReadyTimeout, UCP accepts the request and its worker sends the call again until AWS
+// takes it or ReadyTimeout passes. UCP does that only for a call that carries no write-only or secret value, because
+// it never stores them, and only for the first attempt of an operation. Otherwise the request gets 409 with Reason.
+type NotReady struct {
+	// Reason says what is busy, such as `the DB instance "cdb1" is backing-up`. It is shown to the user, so it names
+	// resources and states, never property values.
+	Reason string
+}
+
+// Error returns the reason.
+func (e *NotReady) Error() string {
+	return e.Reason
 }
 
 // Handler serves one AWS resource type through the service's own API. Properties use the names in the type's schema,
@@ -224,7 +245,8 @@ type CreateRequest struct {
 
 	// Properties are the template's properties, including write-only values, and the name UCP generated when the
 	// template leaves out Options().NameProperty. When UCP sends a create again to find a resource before a delete,
-	// the template is not available, so Properties are those of the last create without write-only values.
+	// the template is not available, so Properties are those of the last create without write-only values. A create
+	// UCP's worker sends after it waited (see NotReady) has the template's properties, which set no write-only value.
 	Properties map[string]any
 
 	// ClientToken is a UUID saved on the record before the first create, and the same on every attempt to create
@@ -263,7 +285,8 @@ type UpdateRequest struct {
 	Identifier string
 
 	// Current is what Read returned, without write-only values, and Desired is the template's properties, including
-	// write-only values.
+	// write-only values. On an update UCP's worker sends after it waited (see NotReady), Desired has no write-only
+	// values and Current no secret ones, because UCP never stores them, and Patch changes none.
 	Current map[string]any
 	Desired map[string]any
 
@@ -417,6 +440,12 @@ type Options struct {
 	CreateTimeout time.Duration
 	UpdateTimeout time.Duration
 	DeleteTimeout time.Duration
+
+	// ReadyTimeout is how long UCP's worker waits for AWS to take a start call that returned NotReady, before it fails
+	// the operation. Zero means UCP doesn't wait, and the request gets 409. A handler whose resource is some members of
+	// a parent (ScopedReader) can't set it, because its delete needs the members other aliases hold, which UCP reads
+	// at the request.
+	ReadyTimeout time.Duration
 }
 
 // Timeout returns how long UCP waits for op.

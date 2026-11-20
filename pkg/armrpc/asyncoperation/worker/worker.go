@@ -371,7 +371,12 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 		return
 	}
 
-	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
+	var err error
+	if result.KeepResourceState {
+		err = w.updateOperationStatus(ctx, req, result.ProvisioningState(), result.Error)
+	} else {
+		err = w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
+	}
 	if err != nil {
 		logger.Error(err, "failed to update resource and/or operation status")
 		return
@@ -405,13 +410,22 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	}
 
 	// Otherwise we update the operationStatus to the result.
+	return w.updateOperationStatus(ctx, req, state, opErr)
+}
+
+// updateOperationStatus sets the status of the operation req to state, with opErr.
+func (w *AsyncRequestProcessWorker) updateOperationStatus(ctx context.Context, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
+	rID, err := resources.ParseResource(req.ResourceID)
+	if err != nil {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "failed to parse resource ID")
+		return err
+	}
 	now := time.Now().UTC()
 	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
 	if err != nil {
-		logger.Error(err, "failed to update operationstatus", "operationID", req.OperationID.String())
+		ucplog.FromContextOrDiscard(ctx).Error(err, "failed to update operationstatus", "operationID", req.OperationID.String())
 		return err
 	}
-
 	return nil
 }
 

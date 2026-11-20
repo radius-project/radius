@@ -125,6 +125,22 @@ type AWSResourceProperties struct {
 	// or nil until then. While it is nil, each deploy of the record asks the handler again.
 	CleanedUpAt *time.Time `json:"cleanedUpAt,omitempty"`
 
+	// StartState is set while a native handler's first call of the operation in progress waits for AWS to take it,
+	// because the handler reported that something the resource depends on is busy (see native.NotReady): "waiting"
+	// when nothing reached AWS, and "sending" while the worker's call may be in flight. It is empty once AWS took the
+	// call, and for an operation that never waited. StartReason is the last reason the handler gave.
+	StartState  string `json:"startState,omitempty"`
+	StartReason string `json:"startReason,omitempty"`
+
+	// StartSentAt is when a worker saved that it sends the call (StartState "sending"). Another worker that finds the
+	// call claimed waits while the claim is younger than records.StaleAfter, because its sender may still run.
+	StartSentAt *time.Time `json:"startSentAt,omitempty"`
+
+	// StartPatch and StartCurrent are the patch and the properties AWS had, without write-only or secret values, of
+	// a waiting native update, which the worker sends. They are cleared once AWS took the call.
+	StartPatch   []map[string]any `json:"startPatch,omitempty"`
+	StartCurrent map[string]any   `json:"startCurrent,omitempty"`
+
 	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
 	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling
 	// AWS again.
