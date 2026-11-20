@@ -46,15 +46,19 @@ import (
 //
 // Until the handler's ReadyTimeout passes, counted from when this worker started, it:
 //
-//  1. Saves that it sends the call (records.StartSending), checking the ETag. If the record no longer shows this
-//     operation, a new request replaced it, and the worker stops without calling AWS.
+//  1. Saves that it sends the call (records.StartSending), checking the ETag, only while the record still shows the
+//     operation waiting. If the record no longer shows this operation, a new request replaced it, and the worker stops
+//     without calling AWS. If another delivery of the operation saved that it sends the call, this one can't tell
+//     whether AWS took it, so the operation fails with an unknown outcome, and the next request recovers it. Only the
+//     delivery that saved it sends the call and saves what came of it.
 //  2. Sends the call with the tokens the request saved: the client token and generated name, the update token and
 //     state, or the delete token.
 //  3. When the handler reports NotReady again, saves that it waits (records.StartWaiting) and tries again later.
 //
 // Once AWS took the call, the record no longer waits. Any other error settles the record as a start call that failed
 // at the request does (records.StartFailed). When the timeout passes, nothing reached AWS, so the operation fails and
-// the record is settled as rejected.
+// the record is settled as rejected. A first create AWS never had keeps a record that holds no resource, instead of
+// removing it, so a redelivered operation reports the same failure (see endWith).
 //
 // A worker that finds the call may have been in flight when an earlier run stopped can't tell whether AWS took it, so
 // the operation fails with an unknown outcome, and the next request continues as after any interrupted call: it finds
@@ -94,12 +98,20 @@ func (c *AwaitController) sendStart(ctx context.Context, store *records.Store, i
 			return nil, endWaiting(ctx, store, id, request, message), nil
 		}
 
-		rec, err = saveStart(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) {
+		rec, err = saveStart(ctx, store, id, request.OperationID, records.StartWaiting, func(rec *datamodel.AWSResource) {
 			rec.Properties.StartState = records.StartSending
 		})
-		if errors.Is(err, errSuperseded) {
+		var claimed *claimTaken
+		switch {
+		case errors.As(err, &claimed) && claimed.state == "":
+			// Another delivery of this operation sent the call, and AWS took it, so this one only waits for it.
+			return claimed.rec, ctrl.Result{}, nil
+		case errors.As(err, &claimed):
+			message := fmt.Sprintf("Another attempt may be sending the %s of the AWS resource %q, so UCP can't tell whether AWS took it. Deploy again to continue.", strings.ToLower(op), id.Name())
+			return nil, endStart(ctx, store, id, request, op, native.OutcomeUnknown, "", v1.ErrorDetails{Code: v1.CodeInternal, Message: message}), nil
+		case errors.Is(err, errSuperseded):
 			return nil, superseded(id), nil
-		} else if err != nil {
+		case err != nil:
 			return nil, requeue(ctx, err), nil
 		}
 
@@ -112,7 +124,7 @@ func (c *AwaitController) sendStart(ctx context.Context, store *records.Store, i
 			// redelivered operation reads it as an interrupted call.
 			return nil, ctrl.Result{}, fmt.Errorf("stopped sending the %s of the AWS resource %q: %w", strings.ToLower(op), id.Name(), ctx.Err())
 		case err == nil:
-			rec, err = saveStart(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) {
+			rec, err = saveStart(ctx, store, id, request.OperationID, records.StartSending, func(rec *datamodel.AWSResource) {
 				records.ClearStart(rec)
 				if created != "" {
 					rec.Properties.AWSIdentifier = created
@@ -128,7 +140,7 @@ func (c *AwaitController) sendStart(ctx context.Context, store *records.Store, i
 			return rec, ctrl.Result{}, nil
 		case errors.As(err, &notReady):
 			reason := notReady.Reason
-			rec, err = saveStart(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) {
+			rec, err = saveStart(ctx, store, id, request.OperationID, records.StartSending, func(rec *datamodel.AWSResource) {
 				rec.Properties.StartState = records.StartWaiting
 				rec.Properties.StartReason = reason
 			})
@@ -188,35 +200,61 @@ func send(ctx context.Context, t *native.Type, region string, rec *datamodel.AWS
 }
 
 // saveStart applies change to the record of the operation operationID and saves it, checking the ETag, and returns
-// the record as saved. It returns errSuperseded when the record no longer shows the operation, including when a new
-// request removed it, even after an attempt that lost the race to it.
-func saveStart(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource)) (*datamodel.AWSResource, error) {
+// the record as saved. Only a record whose start state is from changes, so only one delivery of the operation, the one
+// that saved StartSending, sends the call and saves what came of it. It returns a *claimTaken when the start state is
+// another, and errSuperseded when the record no longer shows the operation, including when a new request removed it,
+// even after an attempt that lost the race to it.
+func saveStart(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, from string, change func(rec *datamodel.AWSResource)) (*datamodel.AWSResource, error) {
+	var taken *claimTaken
 	saved, err := updateFound(ctx, store, id, operationID, func(rec *datamodel.AWSResource) bool {
+		if rec.Properties.StartState != from {
+			taken = &claimTaken{state: rec.Properties.StartState, rec: rec}
+			return false
+		}
 		change(rec)
 		return false
 	})
-	if err == nil && saved == nil {
+	switch {
+	case taken != nil && err == nil:
+		return nil, taken
+	case err == nil && saved == nil:
 		return nil, errSuperseded
 	}
 	return saved, err
 }
 
-// endStart fails the operation op, whose first call AWS never took or failed, with failure. It
-// settles the record by outcome, as when the call fails at the request (records.StartFailed): a first create AWS
-// rejected, and a delete AWS fully applied, remove the record. created is the identifier a failed create returned.
+// claimTaken means the start state of the record isn't the one a delivery expected, because another delivery of the
+// operation changed it: state is the start state the record has, and rec is the record.
+type claimTaken struct {
+	state string
+	rec   *datamodel.AWSResource
+}
+
+func (c *claimTaken) Error() string {
+	return fmt.Sprintf("another delivery of the operation changed its start state to %q", c.state)
+}
+
+// endStart fails the operation op, whose first call AWS never took or failed, with failure. It settles the record by
+// outcome, as when the call fails at the request (records.StartFailed), and then as endWith says. created is the
+// identifier a failed create returned.
 func endStart(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, outcome native.Outcome, created string, failure v1.ErrorDetails) ctrl.Result {
 	return endWith(ctx, store, id, request, failure, func(rec *datamodel.AWSResource) bool {
 		return records.StartFailed(rec, op, outcome, created, false)
 	})
 }
 
-// endWith fails the operation with failure, after settle sets the record's values. When settle returns true, the
-// record is removed.
+// endWith fails the operation with failure, after settle sets the record's values. When settle returns true, AWS has
+// nothing of the operation's resource: a delete AWS fully applied removes the record, and a first create AWS never had
+// keeps a record that holds no resource (records.DropCreate), so a redelivered operation reports failure again.
 func endWith(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, failure v1.ErrorDetails, settle func(rec *datamodel.AWSResource) bool) ctrl.Result {
 	failure.Target = request.ResourceID
 	err := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
+		op := records.PendingOperation(rec)
 		if settle(rec) {
-			return true
+			if op == records.OperationDelete {
+				return true
+			}
+			records.DropCreate(rec)
 		}
 		records.FailStart(rec, &failure)
 		return false
@@ -241,7 +279,7 @@ func startError(err error) v1.ErrorDetails {
 }
 
 // endWaiting fails the operation, which waits and sent nothing to AWS, with message, and settles the record as if AWS
-// rejected the call (records.DropWaiting): a first create removes the record.
+// rejected the call (records.DropWaiting): a first create keeps a record that holds no resource.
 func endWaiting(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, message string) ctrl.Result {
 	return endWith(ctx, store, id, request, v1.ErrorDetails{Code: v1.CodeInternal, Message: message}, records.DropWaiting)
 }

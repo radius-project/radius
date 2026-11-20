@@ -589,3 +589,17 @@ func Test_OutcomeOf(t *testing.T) {
 	require.Equal(t, native.OutcomeUnknown, OutcomeOf(errors.New("connection reset")))
 	require.Equal(t, native.OutcomeRejected, OutcomeOf(&native.OtherProductError{Identifier: "id-1", Product: "aurora"}))
 }
+
+func Test_DropCreate(t *testing.T) {
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.ClientToken = "client-token"
+	rec.Properties.AWSIdentifier = "app-vpc"
+	rec.Properties.PendingOperation = OperationCreate
+	rec.Properties.PendingLastApplied = map[string]any{"Size": 1}
+	DropCreate(rec)
+	require.False(t, IsFirstCreate(rec))
+	require.Empty(t, rec.Properties.AWSIdentifier, "no other alias is kept from the identifier")
+	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Empty(t, rec.Properties.PendingOperation)
+	require.Equal(t, "owner", rec.Properties.Owner)
+}

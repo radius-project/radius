@@ -317,7 +317,7 @@ func Test_SendStart_Failures(t *testing.T) {
 		_, result, err := c.(*AwaitController).sendStart(t.Context(), f.store, f.id, &ctrl.Request{ResourceID: startID, OperationID: f.op}, records.OperationCreate)
 		require.NoError(t, err)
 		require.Contains(t, result.Error.Message, "UCP has no native handler")
-		require.Nil(t, f.record(), "nothing reached AWS")
+		requireNoResource(t, f.record())
 	})
 
 	t.Run("settling the failure finds a newer operation", func(t *testing.T) {
@@ -393,7 +393,7 @@ func Test_Run_WaitingStart(t *testing.T) {
 		f.fake.Opts.ReadyTimeout = time.Nanosecond
 		result := f.run(v1.OperationPut, f.db)
 		require.Equal(t, `UCP waited 1ns for AWS to take the create of the AWS resource "app-native", because the parent "parent-1" is busy. Nothing was sent to AWS. Deploy again.`, result.Error.Message)
-		require.Nil(t, f.record(), "nothing reached AWS")
+		requireNoResource(t, f.record())
 		require.Empty(t, f.fake.Calls())
 	})
 
@@ -530,4 +530,115 @@ func Test_SendStart_RecordRemovedDuringSave(t *testing.T) {
 	require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
 	require.Empty(t, f.fake.Calls(), "the worker never sends a create whose record a request removed")
 	require.Nil(t, f.record())
+}
+
+// Test_SendStart_OverlappingDeliveries runs a second delivery of the operation, as when the queue hands it out again
+// while the first still runs. Only one delivery can send the call.
+func Test_SendStart_OverlappingDeliveries(t *testing.T) {
+	t.Run("the other delivery claims the call after this one read it waiting", func(t *testing.T) {
+		f := newStartFixture(t, records.OperationCreate)
+		db := newSaveFails(f.db, 0)
+		// The second read is the one before this delivery saves that it sends the call.
+		db.at, db.beforeRead = 2, func() {
+			rec, etag, err := f.store.Get(t.Context(), f.id)
+			require.NoError(t, err)
+			rec.Properties.StartState = records.StartSending
+			_, err = f.store.Save(t.Context(), rec, etag)
+			require.NoError(t, err)
+		}
+		rec, result, err := f.send(t.Context(), db, records.OperationCreate)
+		require.NoError(t, err)
+		require.Nil(t, rec)
+		require.Empty(t, f.fake.Calls(), "only the delivery that claimed the call sends it")
+		require.Contains(t, result.Error.Message, "can't tell whether AWS took it")
+		kept := f.record()
+		require.NotEmpty(t, kept.Properties.ClientToken, "the next deploy finds the create the other delivery sent")
+		require.False(t, records.IsWaiting(kept))
+	})
+
+	t.Run("the other delivery already sent the call AWS took", func(t *testing.T) {
+		f := newStartFixture(t, records.OperationCreate)
+		db := newSaveFails(f.db, 0)
+		db.at, db.beforeRead = 2, func() {
+			rec, etag, err := f.store.Get(t.Context(), f.id)
+			require.NoError(t, err)
+			records.ClearStart(rec)
+			_, err = f.store.Save(t.Context(), rec, etag)
+			require.NoError(t, err)
+		}
+		rec, _, err := f.send(t.Context(), db, records.OperationCreate)
+		require.NoError(t, err)
+		require.NotNil(t, rec, "this delivery waits for the call the other one sent")
+		require.Empty(t, f.fake.Calls())
+	})
+
+	t.Run("a late busy answer never makes a call AWS took replaceable", func(t *testing.T) {
+		f := newStartFixture(t, records.OperationCreate)
+		f.fake.SetBusy(1)
+		f.fake.OnStart = func() {
+			f.fake.OnStart = nil
+			// The other delivery finds this one's claim, and ends the operation as unknown.
+			_, result, err := f.send(t.Context(), f.db, records.OperationCreate)
+			require.NoError(t, err)
+			require.NotNil(t, result.Error)
+		}
+		_, result, err := f.send(t.Context(), f.db, records.OperationCreate)
+		require.NoError(t, err)
+		require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
+		require.False(t, records.IsWaiting(f.record()))
+	})
+}
+
+// Test_Run_FailedCreateRedelivered runs a waiting create the worker fails again, as when the worker stops after it
+// saves the failure and before it saves the operation's status. The redelivered operation reports the same failure.
+func Test_Run_FailedCreateRedelivered(t *testing.T) {
+	cases := map[string]func(f *startFixture){
+		"ReadyTimeout passes": func(f *startFixture) { f.fake.Opts.ReadyTimeout = time.Nanosecond },
+		"AWS rejects it": func(f *startFixture) {
+			f.fake.Errors["Create"] = nativefake.ClientError("ValidationException", "bad size")
+		},
+	}
+	for name, setup := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newStartFixture(t, records.OperationCreate)
+			setup(f)
+			first := f.run(v1.OperationPut, f.db)
+			require.NotNil(t, first.Error)
+
+			again := f.run(v1.OperationPut, f.db)
+			require.Equal(t, v1.ProvisioningStateFailed, again.ProvisioningState())
+			require.Equal(t, first.Error.Message, again.Error.Message)
+
+			rec := f.record()
+			require.Empty(t, rec.Properties.ClientToken, "nothing of the create is in AWS")
+			require.Empty(t, rec.Properties.AWSIdentifier, "no other alias is kept from the identifier")
+			require.Nil(t, rec.Properties.PendingLastApplied)
+		})
+	}
+}
+
+// requireNoResource requires a failed record that holds no resource, as the worker leaves after a first create AWS never
+// had.
+func requireNoResource(t *testing.T, rec *datamodel.AWSResource) {
+	t.Helper()
+	require.NotNil(t, rec)
+	require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
+	require.Empty(t, rec.Properties.ClientToken)
+	require.Empty(t, rec.Properties.AWSIdentifier)
+	require.Empty(t, rec.Properties.RequestToken)
+	require.NotNil(t, rec.Properties.LastRequestError)
+	require.False(t, records.IsWaiting(rec))
+}
+
+func Test_SendStart_DeleteFullyApplied(t *testing.T) {
+	f := newStartFixture(t, records.OperationDelete)
+	f.fake.LostResponses["Delete"] = &native.Failure{Message: "removing a tag failed after the delete", Outcome: native.OutcomeApplied}
+	_, result, err := f.send(t.Context(), f.db, records.OperationDelete)
+	require.NoError(t, err)
+	require.Equal(t, "removing a tag failed after the delete", result.Error.Message)
+	require.Nil(t, f.record(), "a delete AWS fully applied removes the record")
+}
+
+func Test_ClaimTaken_Error(t *testing.T) {
+	require.EqualError(t, &claimTaken{state: records.StartSending}, `another delivery of the operation changed its start state to "sending"`)
 }

@@ -75,6 +75,17 @@ func (h *nativeHarness) requireWaiting(path string, state v1.ProvisioningState) 
 	return rec
 }
 
+// requireNoResource requires the record of path to hold no resource after the worker failed a first create AWS never
+// had: the record stays, so a redelivered operation reports the failure again.
+func (h *nativeHarness) requireNoResource(path string) {
+	h.t.Helper()
+	rec := h.requireDone(path, v1.ProvisioningStateFailed)
+	require.Empty(h.t, rec.Properties.ClientToken)
+	require.Empty(h.t, rec.Properties.AWSIdentifier)
+	require.Nil(h.t, rec.Properties.PendingLastApplied)
+	require.NotNil(h.t, rec.Properties.LastRequestError)
+}
+
 // requireDone requires the record of path to show a finished operation with nothing left of a waiting call.
 func (h *nativeHarness) requireDone(path string, state v1.ProvisioningState) *datamodel.AWSResource {
 	h.t.Helper()
@@ -229,8 +240,10 @@ func Test_Native_Wait_Timeout(t *testing.T) {
 		first := h.record(nativePath).Properties.ClientToken
 		results := h.finish()
 		require.Equal(t, timedOut("create"), results[0].Error.Message)
-		require.Nil(t, h.record(nativePath), "nothing reached AWS, so the record is removed")
+		h.requireNoResource(nativePath)
 		require.Nil(t, h.cc.Resource(nativeType, "app-native"))
+		resp := h.get(nativePath)
+		require.Equal(t, http.StatusNotFound, resp.status, resp.raw)
 
 		h.fake.SetBusy(0)
 		h.deploy(nativePath, map[string]any{"Name": "app-native", "Size": 1})
@@ -782,7 +795,12 @@ func Test_Native_Wait_WorkerFailures(t *testing.T) {
 		h.fake.Errors["Create"] = nativefake.ClientError("ValidationException", "bad size")
 		results := h.finish()
 		require.Equal(t, v1.CodeInvalid, results[0].Error.Code)
-		require.Nil(t, h.record(nativePath), "nothing exists")
+		h.requireNoResource(nativePath)
+		h.fake.Calls()
+		resp := h.delete(nativePath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(nativePath))
+		require.Empty(t, writes(h.fake.Calls()), "the DELETE calls nothing in AWS")
 	})
 
 	t.Run("a create AWS fully applied", func(t *testing.T) {
@@ -834,7 +852,7 @@ func Test_Native_Wait_WorkerFailures(t *testing.T) {
 		h.native = registry
 		results := h.finish()
 		require.Contains(t, results[0].Error.Message, "UCP has no native handler for AWS::Test::Native")
-		require.Nil(t, h.record(nativePath), "nothing reached AWS")
+		h.requireNoResource(nativePath)
 	})
 }
 

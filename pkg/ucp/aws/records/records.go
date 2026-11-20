@@ -516,8 +516,8 @@ func ClearStart(rec *datamodel.AWSResource) {
 // already had a client token, or an update with the token of an earlier attempt.
 //
 //   - create: the record keeps created. When AWS applied all of it and UCP has the identifier, the create is finished
-//     and its values are last-applied. A rejected first create leaves nothing in AWS, so it returns true: the caller
-//     removes the record. Otherwise the record keeps its client token, so the next request finds the resource.
+//     and its values are last-applied. A rejected first create leaves nothing in AWS, so it returns true: the request
+//     removes the record, and the worker clears the create from it (DropCreate). Otherwise the record keeps its client token, so the next request finds the resource.
 //   - update: the values are set by outcome (Settle). A rejected first attempt clears the update token, so the next
 //     update gets a new one. A rejected resend keeps it, because AWS may have taken an earlier attempt.
 //   - delete: the pending values are dropped. When AWS applied all of it, it returns true: the caller removes the
@@ -550,8 +550,19 @@ func StartFailed(rec *datamodel.AWSResource, op string, outcome native.Outcome, 
 	return false
 }
 
+// DropCreate clears a first create AWS never had from the record, so the record holds no resource: the next PUT
+// creates one with a new client token, a DELETE removes only the record, and no other alias is kept from the
+// identifier. UCP's worker keeps such a record, rather than removing it, so a redelivered operation still reports the
+// failure saved on it.
+func DropCreate(rec *datamodel.AWSResource) {
+	rec.Properties.ClientToken = ""
+	rec.Properties.AWSIdentifier = ""
+	ClearPending(rec)
+}
+
 // DropWaiting ends the record's waiting operation (see IsWaiting) as if AWS rejected its first call, because nothing
-// of it reached AWS: a waiting first create returns true, and the caller removes the record; an update drops its values
+// of it reached AWS: a waiting first create returns true, and the caller removes the record or clears the create from
+// it (DropCreate); an update drops its values
 // and token; a delete drops its values and its delete token, which no call took, so the next delete is a new one. It
 // leaves the provisioning state and the request token to the caller.
 func DropWaiting(rec *datamodel.AWSResource) bool {
