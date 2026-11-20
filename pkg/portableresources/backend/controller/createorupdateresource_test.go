@@ -1718,10 +1718,12 @@ func TestDeleteResource_Run_ReportsSkippedRecipeDeployments(t *testing.T) {
 				return nil
 			})
 			db.EXPECT().Delete(gomock.Any(), TestResourceID).Return(nil)
-			remove, err := NewDeleteResource(ctrl.Options{DatabaseClient: db}, successProcessorReference, eng, cfg)
+			processor := &forceRecordingProcessor{}
+			remove, err := NewDeleteResource(ctrl.Options{DatabaseClient: db}, processors.ResourceProcessor[*TestResource, TestResource](processor), eng, cfg)
 			require.NoError(t, err)
 
 			result, err := remove.Run(t.Context(), &ctrl.Request{ResourceID: TestResourceID, Force: tt.force})
+			require.Equal(t, []bool{tt.force}, processor.forced)
 			require.NoError(t, err)
 			require.Equal(t, v1.ProvisioningStateSucceeded, result.ProvisioningState())
 			if tt.skipped == nil {
@@ -1731,4 +1733,15 @@ func TestDeleteResource_Run_ReportsSkippedRecipeDeployments(t *testing.T) {
 			}
 		})
 	}
+}
+
+// forceRecordingProcessor records the Force option of each Delete call.
+type forceRecordingProcessor struct {
+	SuccessProcessor
+	forced []bool
+}
+
+func (p *forceRecordingProcessor) Delete(_ context.Context, _ *TestResource, options processors.Options) error {
+	p.forced = append(p.forced, options.Force)
+	return nil
 }

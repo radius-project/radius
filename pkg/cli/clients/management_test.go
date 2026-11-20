@@ -917,62 +917,6 @@ func Test_Resource(t *testing.T) {
 	})
 }
 
-func Test_ForceDeletePolicy(t *testing.T) {
-	t.Run("adds force=true query parameter to DELETE requests", func(t *testing.T) {
-		p := &forceDeletePolicy{}
-
-		// Create a minimal pipeline with a transport that captures the request URL.
-		var capturedURL string
-		pipeline := runtime.NewPipeline("test", "v1.0.0", runtime.PipelineOptions{
-			PerCall: []policy.Policy{p},
-		}, &policy.ClientOptions{
-			Transport: &mockTransport{
-				do: func(req *http.Request) (*http.Response, error) {
-					capturedURL = req.URL.String()
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       http.NoBody,
-					}, nil
-				},
-			},
-		})
-
-		req, err := runtime.NewRequest(t.Context(), http.MethodDelete, "http://localhost/test?api-version=2023-10-01-preview")
-		require.NoError(t, err)
-
-		_, err = pipeline.Do(req)
-		require.NoError(t, err)
-		require.Contains(t, capturedURL, "force=true")
-		require.Contains(t, capturedURL, "api-version=2023-10-01-preview")
-	})
-
-	t.Run("skips non-DELETE requests", func(t *testing.T) {
-		p := &forceDeletePolicy{}
-
-		var capturedURL string
-		pipeline := runtime.NewPipeline("test", "v1.0.0", runtime.PipelineOptions{
-			PerCall: []policy.Policy{p},
-		}, &policy.ClientOptions{
-			Transport: &mockTransport{
-				do: func(req *http.Request) (*http.Response, error) {
-					capturedURL = req.URL.String()
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       http.NoBody,
-					}, nil
-				},
-			},
-		})
-
-		req, err := runtime.NewRequest(t.Context(), http.MethodGet, "http://localhost/test?api-version=2023-10-01-preview")
-		require.NoError(t, err)
-
-		_, err = pipeline.Do(req)
-		require.NoError(t, err)
-		require.NotContains(t, capturedURL, "force=true")
-	})
-}
-
 func Test_CreateOrUpdateResource_APIVersion(t *testing.T) {
 	t.Parallel()
 

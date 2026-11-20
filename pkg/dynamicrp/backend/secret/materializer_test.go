@@ -18,6 +18,7 @@ package secret
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	genfake "github.com/radius-project/radius/pkg/cli/clients_new/generated/fake"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -194,10 +196,40 @@ func Test_Delete(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
-	require.NoError(t, m.Delete(t.Context(), testOwnerID))
+	require.NoError(t, m.Delete(t.Context(), testOwnerID, false))
 	ownerID, err := resources.ParseResource(testOwnerID)
 	require.NoError(t, err)
 	require.Equal(t, ManagedSecretName(ownerID), capturedName)
+}
+
+type transportFunc func(*http.Request) (*http.Response, error)
+
+func (f transportFunc) Do(req *http.Request) (*http.Response, error) { return f(req) }
+
+func Test_Delete_PassesForce(t *testing.T) {
+	for _, force := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force=%t", force), func(t *testing.T) {
+			fake := genfake.NewServerFactoryTransport(&genfake.ServerFactory{
+				GenericResourcesServer: genfake.GenericResourcesServer{
+					BeginDelete: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientBeginDeleteOptions) (resp azfake.PollerResponder[generated.GenericResourcesClientDeleteResponse], errResp azfake.ErrorResponder) {
+						resp.SetTerminalResponse(http.StatusOK, generated.GenericResourcesClientDeleteResponse{}, nil)
+						return
+					},
+				},
+			})
+			var deleteQuery string
+			transport := transportFunc(func(req *http.Request) (*http.Response, error) {
+				if req.Method == http.MethodDelete {
+					deleteQuery = req.URL.RawQuery
+				}
+				return fake.Do(req)
+			})
+
+			m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+			require.NoError(t, m.Delete(t.Context(), testOwnerID, force))
+			require.Equal(t, force, strings.Contains(deleteQuery, "force=true"), deleteQuery)
+		})
+	}
 }
 
 func Test_Delete_NotFoundIsIgnored(t *testing.T) {
@@ -212,7 +244,7 @@ func Test_Delete_NotFoundIsIgnored(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
-	require.NoError(t, m.Delete(t.Context(), testOwnerID))
+	require.NoError(t, m.Delete(t.Context(), testOwnerID, false))
 }
 
 func Test_Delete_RetriesOnConflict(t *testing.T) {
@@ -236,7 +268,7 @@ func Test_Delete_RetriesOnConflict(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
-	require.NoError(t, m.Delete(t.Context(), testOwnerID))
+	require.NoError(t, m.Delete(t.Context(), testOwnerID, false))
 	require.Equal(t, 3, calls)
 }
 
@@ -259,5 +291,5 @@ func Test_Delete_ConflictTimesOut(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
-	require.ErrorContains(t, m.Delete(t.Context(), testOwnerID), "failed to delete managed secret")
+	require.ErrorContains(t, m.Delete(t.Context(), testOwnerID, false), "failed to delete managed secret")
 }

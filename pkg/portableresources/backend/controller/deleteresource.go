@@ -141,6 +141,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 
 	err = c.processor.Delete(ctx, data, processors.Options{
 		RuntimeConfiguration: *runtimeConfiguration,
+		Force:                request.Force,
 	})
 	if err != nil {
 		return ctrl.Result{}, err
