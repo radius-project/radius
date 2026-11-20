@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Security Insights
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - security-insights.yml
+      - .github/workflows/validate-security-insights.yml
+  pull_request:
+    paths:
+      - security-insights.yml
+      - .github/workflows/validate-security-insights.yml
+
+permissions: {}
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      CUE_VERSION: v0.15.4
+      SCHEMA_VERSION: v2.2.0
+      SCHEMA_SHA256: 4e4b61470b5484fc8969f2a8a77ffbe0712a7c8a870c2079188f246c14cd58b1
+      PARENT_URL: https://raw.githubusercontent.com/radius-project/.github/main/security-insights.yml
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install CUE
+        run: go install "cuelang.org/go/cmd/cue@${CUE_VERSION}"
+
+      - name: Download schema
+        run: |
+          curl --fail --silent --show-error --location \
+            "https://raw.githubusercontent.com/ossf/security-insights/${SCHEMA_VERSION}/spec/schema.cue" \
+            --output "${RUNNER_TEMP}/schema.cue"
+          echo "${SCHEMA_SHA256}  ${RUNNER_TEMP}/schema.cue" | sha256sum --check -
+
+      - name: Validate child
+        run: |
+          "$(go env GOPATH)/bin/cue" vet -d '#SecurityInsights' \
+            "${RUNNER_TEMP}/schema.cue" security-insights.yml
+
+      - name: Validate parent
+        run: |
+          declared_parent=$(
+            "$(go env GOPATH)/bin/cue" export security-insights.yml \
+              -e 'header."project-si-source"' --out text
+          )
+          if [[ "${declared_parent}" != "${PARENT_URL}" ]]; then
+            echo "Unexpected project-si-source: ${declared_parent}" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error --location \
+            "${PARENT_URL}" --output "${RUNNER_TEMP}/parent-security-insights.yml"
+          "$(go env GOPATH)/bin/cue" vet -d '#SecurityInsights' \
+            "${RUNNER_TEMP}/schema.cue" \
+            "${RUNNER_TEMP}/parent-security-insights.yml"
