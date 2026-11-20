@@ -17,6 +17,7 @@ limitations under the License.
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -69,8 +70,47 @@ func Test_Validate(t *testing.T) {
 			Input:         []string{"--timeout", "-5m"},
 			ExpectedValid: false,
 		},
+		{Name: "CA files", Input: []string{"--ca-cert=cert.pem", "--ca-key=key.pem"}, ExpectedValid: true},
+		{Name: "CA Secret", Input: []string{"--ca-secret=operator-ca"}, ExpectedValid: true},
+		{Name: "partial CA flags", Input: []string{"--ca-key=key.pem"}, ExpectedValid: false},
+		{Name: "conflicting CA flags", Input: []string{"--ca-cert=cert.pem", "--ca-key=key.pem", "--ca-secret=operator-ca"}, ExpectedValid: false},
+		{Name: "empty CA Secret", Input: []string{"--ca-secret="}, ExpectedValid: false},
+		{Name: "issuer kind required", Input: []string{"--cert-issuer=issuer"}, ExpectedValid: false},
+		{Name: "external issuer", Input: []string{"--cert-issuer=Issuer/issuer", "--ca-bundle=public.pem"}, ExpectedValid: true},
+		{Name: "bundle without issuer", Input: []string{"--ca-bundle=public.pem"}, ExpectedValid: false},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+func Test_Run_CertificateFlags(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{{"--ca-secret=operator-ca"}, {"--ca-cert=ca.pem", "--ca-key=key.pem"}, {"--cert-issuer=ClusterIssuer/issuer", "--ca-bundle=public.pem"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			t.Parallel()
+			cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+			runner := r.(*Runner)
+			require.NoError(t, cmd.ParseFlags(args))
+			require.NoError(t, runner.Validate(cmd, nil))
+			helmMock := helm.NewMockInterface(gomock.NewController(t))
+			runner.Helm = helmMock
+			helmMock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{}, nil)
+			helmMock.EXPECT().InstallRadius(gomock.Any(), gomock.Any(), "").
+				DoAndReturn(func(_ context.Context, options helm.ClusterOptions, _ string) error {
+					require.Equal(t, runner.Certificates, options.Certificates)
+					require.True(t, options.Certificates.Specified())
+					return nil
+				})
+			require.NoError(t, runner.Run(t.Context()))
+		})
+	}
+}
+
+func Test_Run_CertificateFlagsInstalledRequiresReinstall(t *testing.T) {
+	t.Parallel()
+	mock := helm.NewMockInterface(gomock.NewController(t))
+	mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true}, nil)
+	runner := &Runner{Helm: mock, Output: &output.MockOutput{}, Certificates: helm.CertificateOptions{CASecret: "operator-ca"}}
+	require.ErrorContains(t, runner.Run(t.Context()), "use --reinstall")
 }
 
 // Test_TimeoutFlag covers the `--timeout` flag added so that a slow cluster can be given more
@@ -443,6 +483,7 @@ func Test_Run(t *testing.T) {
 			},
 		})
 		expectedOptions.RadiusReleaseValues = storedValues
+		expectedOptions.RadiusInstalled = true
 		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
 			Return(nil).
 			Times(1)

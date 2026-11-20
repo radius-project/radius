@@ -36,8 +36,9 @@ import (
 )
 
 type CLIClusterOptions struct {
-	Radius  ChartOptions
-	Contour ChartOptions
+	Certificates CertificateOptions
+	Radius       ChartOptions
+	Contour      ChartOptions
 
 	// ResetValues, when true, instructs `UpgradeRadius` to discard the user-supplied
 	// values stored on the previous Helm release and use only the current invocation's
@@ -48,9 +49,12 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	Radius      RadiusChartOptions
-	Contour     ContourChartOptions
-	CertManager CertManagerChartOptions
+	Certificates       CertificateOptions
+	RadiusInstalled    bool
+	RadiusReleaseChart *chart.Chart
+	Radius             RadiusChartOptions
+	Contour            ContourChartOptions
+	CertManager        CertManagerChartOptions
 
 	// ResetValues mirrors CLIClusterOptions.ResetValues. See its documentation.
 	ResetValues bool
@@ -115,6 +119,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 // ClusterOptions object with the CLI options overriding the default options if they are provided.
 func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
+	options.Certificates = cliOptions.Certificates
 
 	// If any of the Radius CLI options are provided, override the default options.
 	if cliOptions.Radius.Reinstall {
@@ -196,6 +201,7 @@ type InstallState struct {
 
 	// RadiusValues are the user-supplied values stored on the Radius release. Will be nil if Radius is not installed.
 	RadiusValues map[string]any
+	RadiusChart  *chart.Chart
 
 	// ContourStatus is the status of the latest revision of the Contour helm chart, such as deployed or failed. Will be
 	// blank if Contour is not installed.
@@ -232,6 +238,7 @@ type RevisionInfo struct {
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
+	CheckRadiusCertificates(context.Context, ClusterOptions, string) error
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
@@ -275,6 +282,7 @@ type Interface interface {
 }
 
 type Impl struct {
+	newCertificateClient func(string) (kubernetes.Interface, error)
 	// HelmClient is the Helm client used to interact with the Kubernetes cluster.
 	Helm HelmClient
 
@@ -356,6 +364,15 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
+	installed := clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil
+	// A release appearing after fresh-install preflight has not passed the installed
+	// history checks. Do not let --reinstall upgrade it as a side effect.
+	clusterOptions.Radius.Reinstall = installed && clusterOptions.Radius.Reinstall
+	target, plan, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, installed)
+	if err != nil {
+		return err
+	}
+
 	// Check Contour before installing anything, so that a Contour problem leaves the cluster unchanged.
 	var contour *contourPlan
 	if !clusterOptions.Contour.Disabled {
@@ -365,10 +382,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if _, err := radiusActionMode(radiusHelmChart, radiusValues, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.ChartOptions, clusterOptions.Radius.Reinstall); err != nil {
-		return err
-	}
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall); err != nil {
+	if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
 
@@ -394,13 +408,18 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
-	if clusterOptions.Radius.Reinstall {
+
+	reinstall := clusterOptions.Radius.Reinstall
+	if reinstall {
+		if err := plan.recheck(); err != nil {
+			return err
+		}
 		if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true); err != nil {
 			return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 		}
 	}
 	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall, render); err != nil {
+	if err := i.stageOrdinaryCertificates(ctx, clusterOptions, kubeContext, radiusHelmConf, target, plan, reinstall, render); err != nil {
 		return err
 	}
 	applied, appliedRelease, err := helmAction.applyHelmChartRelease(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
@@ -493,7 +512,7 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	helmAction := NewHelmAction(i.Helm)
 
 	// Check if Radius is installed
-	radiusInstalled, radiusVersion, radiusValues, err := helmAction.queryReleaseValues(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
+	radiusInstalled, radiusVersion, baseline, err := helmAction.queryReleaseBaseline(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
 		return InstallState{}, fmt.Errorf("failed to check Radius installation (release: %s, namespace: %s, context: %s): %w",
 			clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, kubeContext, err)
@@ -528,7 +547,9 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	state := InstallState{
 		RadiusInstalled: radiusInstalled,
 		RadiusVersion:   radiusVersion,
-		RadiusValues:    radiusValues,
+	}
+	if baseline != nil {
+		state.RadiusValues, state.RadiusChart = baseline.Config, baseline.Chart
 	}
 	if contourRelease != nil {
 		state.ContourInstalled = true
@@ -565,6 +586,11 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
+	target, plan, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true)
+	if err != nil {
+		return err
+	}
+
 	// Check the Contour upgrade before upgrading anything, so that a Contour problem leaves the cluster unchanged.
 	var contour *contourPlan
 	if !clusterOptions.Contour.Disabled {
@@ -574,19 +600,17 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if _, err := radiusActionMode(radiusHelmChart, radiusValues, storedValues, clusterOptions.Radius.ChartOptions, true); err != nil {
+	if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, storedValues, radiusValues, true); err != nil {
 		return err
 	}
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, storedValues, radiusValues, true); err != nil {
+	if err := plan.recheck(); err != nil {
 		return err
 	}
-
 	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
 		return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 	}
-
 	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, storedValues, radiusValues, true, render); err != nil {
+	if err := i.stageOrdinaryCertificates(ctx, clusterOptions, kubeContext, radiusHelmConf, target, plan, true, render); err != nil {
 		return err
 	}
 

@@ -616,6 +616,8 @@ func Test_ControllerMigrationFailurePreventsUCPTrustStaging(t *testing.T) {
 			options.Radius.ChartPath = "chart"
 			options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
 			options.ResetValues = command == "upgrade --reset-values"
+			options.RadiusInstalled = true
+			expectRadiusBaseline(t, client, options)
 			var err error
 			if command == "install --reinstall" {
 				options.Radius.Reinstall = true

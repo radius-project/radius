@@ -171,6 +171,7 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		require.True(t, state.RadiusInstalled)
 		require.False(t, state.ContourInstalled)
 		reinstall := stubClusterOptions(radiusChart, contourChart)
+		reinstall.RadiusInstalled, reinstall.RadiusReleaseChart, reinstall.RadiusReleaseValues = state.RadiusInstalled, state.RadiusChart, state.RadiusValues
 		reinstall.Radius.Reinstall = true
 		require.NoError(t, impl.InstallRadius(t.Context(), reinstall, testKubeContext))
 		release := getTestRelease(t, kubeconfig, contourReleaseName)
@@ -530,6 +531,9 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 					// rad install kubernetes --reinstall leaves a working Contour release unchanged, so an earlier failed
 					// upgrade makes it repair Contour, which waits for k3s.
 					addContourRevision(t, kubeconfig, releasecommon.StatusFailed, func(*releasev1.Release) {})
+					state, err := impl.CheckRadiusInstall(testKubeContext)
+					require.NoError(t, err)
+					options.RadiusInstalled, options.RadiusReleaseChart, options.RadiusReleaseValues = state.RadiusInstalled, state.RadiusChart, state.RadiusValues
 					options.Radius.Reinstall = true
 					require.NoError(t, impl.InstallRadius(t.Context(), options, testKubeContext))
 					release := getTestRelease(t, kubeconfig, contourReleaseName)
@@ -637,6 +641,9 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 				// An upgrade failed, so rad install kubernetes --reinstall repairs the Contour release.
 				addContourRevision(t, kubeconfig, releasecommon.StatusFailed, func(*releasev1.Release) {})
 				reinstall := options
+				state, err := impl.CheckRadiusInstall(testKubeContext)
+				require.NoError(t, err)
+				reinstall.RadiusInstalled, reinstall.RadiusReleaseChart, reinstall.RadiusReleaseValues = state.RadiusInstalled, state.RadiusChart, state.RadiusValues
 				reinstall.Radius.Reinstall = true
 				for _, command := range []struct {
 					name string

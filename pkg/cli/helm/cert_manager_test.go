@@ -657,7 +657,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockHelmClient := NewMockHelmClient(ctrl)
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
-	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(&chart.Chart{}, nil)
+	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(certificateTestChart(t), nil)
 
 	impl := &Impl{
 		Helm: mockHelmClient,
@@ -706,7 +706,10 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							release.Labels = radManagedByLabels()
 						}
 						client := NewMockHelmClient(gomock.NewController(t))
-						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(&chart.Chart{}, nil)
+						if command != "install" {
+							expectRadiusBaseline(t, client, options)
+						}
+						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(certificateTestChart(t), nil)
 						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
 						impl := &Impl{
 							Helm: client,

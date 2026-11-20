@@ -411,7 +411,6 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 
-	expectNoRadiusHistory(mockHelmClient)
 	gatewayCalls := &defaultContourGatewayCalls{}
 	impl := withoutUCPAPIService(&Impl{
 		Helm:                           mockHelmClient,
@@ -487,6 +486,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 			return contourRelease, nil
 		}).Times(1)
 
+	expectRadiusBaseline(t, mockHelmClient, options)
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 	require.Equal(t, 1, gatewayCalls.configureCalls)
@@ -504,7 +504,6 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 
-	expectNoRadiusHistory(mockHelmClient)
 	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient})
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -546,6 +545,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 
 	// No Contour-related mocks should be called since Contour is not installed
 
+	expectRadiusBaseline(t, mockHelmClient, options)
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 }
@@ -661,7 +661,6 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 
-	expectNoRadiusHistory(mockHelmClient)
 	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient})
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -692,6 +691,7 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 		Return(nil, fmt.Errorf("upgrade failed")).
 		Times(1)
 
+	expectRadiusBaseline(t, mockHelmClient, options)
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to upgrade Radius")
@@ -705,7 +705,6 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 
-	expectNoRadiusHistory(mockHelmClient)
 	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, contourCluster: staticCRDs()})
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -768,6 +767,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 		Return(nil, fmt.Errorf("contour upgrade failed")).
 		Times(1)
 
+	expectRadiusBaseline(t, mockHelmClient, options)
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to upgrade Contour")
@@ -803,6 +803,7 @@ func Test_Helm_UpgradeRadius_CheckInstallError(t *testing.T) {
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, fmt.Errorf("connection error")).Times(1)
 
+	expectRadiusBaseline(t, mockHelmClient, options)
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to check Contour installation status")
@@ -819,7 +820,6 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 
-	expectNoRadiusHistory(mockHelmClient)
 	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient})
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -863,6 +863,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)
 
+	expectRadiusBaseline(t, mockHelmClient, options)
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 }
@@ -1353,10 +1354,6 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 
 // expectNoRadiusHistory lets rad read the history of the Radius release, which it does before it upgrades Radius with
 // authorization off, and returns none, which deployedAuthzMode reads as a release with authorization off.
-func expectNoRadiusHistory(client *MockHelmClient) {
-	client.EXPECT().RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, nil).AnyTimes()
-}
-
 func TestRollbackRejectsUnsupportedEngineProviderBeforeTrustChanges(t *testing.T) {
 	client := NewMockHelmClient(gomock.NewController(t))
 	history := []*releasev1.Release{{
