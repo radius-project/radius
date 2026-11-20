@@ -1,0 +1,77 @@
+{
+  "typeName": "AWS::S3::MultiRegionAccessPointRoutes",
+  "description": "The route configuration of an S3 Multi-Region Access Point: which of its buckets are active and which are passive. Set it with SubmitMultiRegionAccessPointRoutes. List every route of the Multi-Region Access Point, so the template gives the whole configuration. Deleting the resource sets every route back to AWS's default, active (100). UCP calls S3 in the Region of the resource ID when it is one of the Regions that take route changes (us-east-1, us-west-2, ap-southeast-2, ap-northeast-1, and eu-west-1), and in us-east-1 otherwise.",
+  "additionalProperties": false,
+  "properties": {
+    "Mrap": {
+      "type": "string",
+      "description": "The ARN of the Multi-Region Access Point, such as arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap.",
+      "maxLength": 200
+    },
+    "Routes": {
+      "type": "array",
+      "description": "Every route of the Multi-Region Access Point, one for each of its buckets.",
+      "insertionOrder": false,
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/Route"
+      }
+    }
+  },
+  "definitions": {
+    "Route": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A route to one bucket of the Multi-Region Access Point. Set Bucket, Region, or both.",
+      "properties": {
+        "Bucket": {
+          "type": "string",
+          "description": "The name of the bucket.",
+          "minLength": 3,
+          "maxLength": 255
+        },
+        "Region": {
+          "type": "string",
+          "description": "The Region of the bucket.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "TrafficDialPercentage": {
+          "type": "integer",
+          "description": "100 makes the route active, so the Multi-Region Access Point sends requests to the bucket, and 0 makes it passive. S3 takes no other value. At least one route must be active.",
+          "enum": [0, 100]
+        }
+      },
+      "required": ["TrafficDialPercentage"]
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["Mrap", "Routes"],
+  "createOnlyProperties": ["/properties/Mrap"],
+  "primaryIdentifier": ["/properties/Mrap"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "s3:GetMultiRegionAccessPointRoutes",
+        "s3:SubmitMultiRegionAccessPointRoutes"
+      ]
+    },
+    "read": {
+      "permissions": ["s3:GetMultiRegionAccessPointRoutes"]
+    },
+    "update": {
+      "permissions": [
+        "s3:GetMultiRegionAccessPointRoutes",
+        "s3:SubmitMultiRegionAccessPointRoutes"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "s3:GetMultiRegionAccessPointRoutes",
+        "s3:SubmitMultiRegionAccessPointRoutes"
+      ]
+    }
+  }
+}

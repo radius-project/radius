@@ -34,6 +34,8 @@ import (
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
+	s3controlsdk "github.com/aws/aws-sdk-go-v2/service/s3control"
+	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
 	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
@@ -54,6 +56,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
 )
@@ -64,6 +68,7 @@ func All(cfg aws.Config) []native.Handler {
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
+	s3API := s3sdk.NewFromConfig(cfg)
 	stsAPI := stssdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
@@ -83,12 +88,15 @@ func All(cfg aws.Config) []native.Handler {
 		lakeformation.NewResource(lakeformationAPI),
 		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
 		medialive.NewChannel(medialivesdk.NewFromConfig(cfg)),
-		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3sdk.NewFromConfig(cfg)),
+		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3API),
 		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stsAPI),
 		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		s3.NewBucketRequestPayment(s3API),
+		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
+		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
 	}
 }
 
