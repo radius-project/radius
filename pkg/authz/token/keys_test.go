@@ -23,14 +23,19 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
+
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -82,6 +87,80 @@ func TestPublicKeys(t *testing.T) {
 	require.True(t, rsaKey.PublicKey.Equal(keys["rsa"]))
 	require.True(t, ecKey.PublicKey.Equal(keys["p256"]))
 	require.True(t, p384.PublicKey.Equal(keys["p384"]))
+}
+
+func TestOIDCKeySource_MissingKeysVersusEmptyKeys(t *testing.T) {
+	valid, err := json.Marshal(jsonWebKeySet{Keys: []jsonWebKey{rsaJWK("rsa", &rsaKey.PublicKey)}})
+	require.NoError(t, err)
+	tests := []struct {
+		body      string
+		keepsKeys bool
+	}{
+		{body: `{}`, keepsKeys: true},
+		{body: `null`, keepsKeys: true},
+		{body: `{"keys":null}`, keepsKeys: true},
+		{body: `{"keys":[]}`, keepsKeys: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.body, func(t *testing.T) {
+			var body atomic.Pointer[string]
+			body.Store(new(string(valid)))
+			mux := http.NewServeMux()
+			var srv *httptest.Server
+			mux.HandleFunc(discoveryPath, func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewEncoder(w).Encode(discoveryDocument{Issuer: testIssuer, JWKSURI: srv.URL + apiServerJWKSPath})
+			})
+			mux.HandleFunc(apiServerJWKSPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", jwkSetMediaType)
+				_, _ = w.Write([]byte(*body.Load()))
+			})
+			srv = httptest.NewTLSServer(mux)
+			t.Cleanup(srv.Close)
+
+			v := newTestVerifier(t, &OIDCKeySource{Client: srv.Client(), BaseURL: srv.URL}, &fakeClock{now: start})
+			require.NoError(t, v.Refresh(t.Context()))
+			token := sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start))
+
+			body.Store(&tt.body)
+			require.Error(t, v.Refresh(t.Context()))
+			_, err := v.Verify(t.Context(), token)
+			if tt.keepsKeys {
+				require.NoError(t, err, "a key set with no keys member is malformed, so the cached keys stay")
+			} else {
+				requireCode(t, err, v1.CodeAuthorizationUnavailable)
+			}
+		})
+	}
+}
+
+func TestPublicKeys_KeyRestrictions(t *testing.T) {
+	p384, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	require.NoError(t, err)
+	with := func(k jsonWebKey, alg string, ops ...string) jsonWebKey {
+		k.Alg, k.KeyOps = alg, ops
+		return k
+	}
+	set := jsonWebKeySet{Keys: []jsonWebKey{
+		with(rsaJWK("rs256", &rsaKey.PublicKey), "RS256"),
+		with(ecJWK(t, "es256", &ecKey.PublicKey), "ES256"),
+		with(ecJWK(t, "es384", &p384.PublicKey), "ES384"),
+		with(rsaJWK("verify", &rsaKey.PublicKey), "", "verify"),
+		with(rsaJWK("ps256", &rsaKey.PublicKey), "PS256"),
+		with(ecJWK(t, "p256-es384", &ecKey.PublicKey), "ES384"),
+		with(ecJWK(t, "p384-es256", &p384.PublicKey), "ES256"),
+		with(rsaJWK("rsa-es256", &rsaKey.PublicKey), "ES256"),
+		with(rsaJWK("sign-only", &rsaKey.PublicKey), "", "sign"),
+		with(rsaJWK("no-ops", &rsaKey.PublicKey), "", []string{}...),
+		// A restricted key may share an ID with a usable one, in either order.
+		with(rsaJWK("shared", &rsaKey.PublicKey), "PS256"),
+		with(rsaJWK("shared", &rsaKey.PublicKey), "RS256"),
+		with(rsaJWK("shared-ops", &rsaKey.PublicKey), "RS256"),
+		with(rsaJWK("shared-ops", &rsaKey.PublicKey), "", "encrypt"),
+	}}
+
+	keys, err := set.publicKeys()
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"rs256", "es256", "es384", "verify", "shared", "shared-ops"}, slices.Collect(maps.Keys(keys)))
 }
 
 func TestPublicKeys_Errors(t *testing.T) {
@@ -203,7 +282,7 @@ func TestOIDCKeySource_FetchErrors(t *testing.T) {
 	})
 
 	t.Run("no usable keys", func(t *testing.T) {
-		srv, _ := newAPIServer(t, func(base string) string { return base + apiServerJWKSPath }, jsonWebKeySet{})
+		srv, _ := newAPIServer(t, func(base string) string { return base + apiServerJWKSPath }, jsonWebKeySet{Keys: []jsonWebKey{}})
 		set, err := (&OIDCKeySource{Client: srv.Client(), BaseURL: srv.URL}).Fetch(t.Context())
 		require.NoError(t, err, "the Verifier, not the source, decides what an empty set means")
 		require.NotEmpty(t, set.Issuer)

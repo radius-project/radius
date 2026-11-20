@@ -138,10 +138,11 @@ func (t *externalTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	}
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
+	// Unlike the managed transport, the external provider also accepts a nil header map.
 	if req.Header == nil {
 		req.Header = make(http.Header)
 	}
-	req.Header.Set("Authorization", "Bearer "+value)
+	setBearer(req.Header, value)
 	return t.Transport.RoundTrip(req)
 }
 
@@ -305,15 +306,21 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	pool := t.transportForRequest()
 
-	// A shallow copy shares req.Trailer and req.Body, so trailers the caller sets while the
-	// body streams are still sent. Only the header map is replaced.
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
-	if req.Header == nil {
-		req.Header = make(http.Header)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	setBearer(req.Header, token)
 	return pool.RoundTrip(req)
+}
+
+func setBearer(header http.Header, token string) {
+	// Header.Set touches only the canonical key, and the transport sends non-canonical keys
+	// as written, so drop every case variant first.
+	for k := range header {
+		if strings.EqualFold(k, "Authorization") {
+			delete(header, k)
+		}
+	}
+	header.Set("Authorization", "Bearer "+token)
 }
 
 // closeBody closes req's body, if any, for a request that will not be sent.

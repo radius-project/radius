@@ -62,7 +62,7 @@ var ucpOffLeftoverSecrets = []ucpOffLeftoverSecret{
 type ucpOffSecretState int
 
 const (
-	// ucpOffSecretKeep: the Secret does not exist, or its Certificate still writes it, so authorization on uses it.
+	// ucpOffSecretKeep: the Secret does not exist, or its Certificate does, so authorization on still uses it.
 	ucpOffSecretKeep ucpOffSecretState = iota
 	// ucpOffSecretForeign: the Secret exists, but neither cert-manager for the expected Certificate nor rad wrote it.
 	ucpOffSecretForeign
@@ -272,11 +272,10 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 	return found, nil
 }
 
-// ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate issues
-// it, because its Certificate does not exist or now writes another Secret, and rad owns it: cert-manager issued it for
-// that Certificate, or, for radius-apiserver-trust, it holds only ca.crt and the allow-direct-injection annotation,
-// which is what rad and the chart README's plain-Helm steps write. The parent chart, for example, declares
-// Certificate ucp-cert with the Secret ucp-mtls, so a rollback to it leaves ucp-apiserver-tls unused.
+// ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when its Certificate does
+// not exist and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
+// only ca.crt and the allow-direct-injection annotation, which is what rad and the chart README's plain-Helm steps
+// write.
 func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
 	found := ucpOffLeftoverFound{ucpOffLeftoverSecret: leftover}
 	secret, err := kubeClient.CoreV1().Secrets(radiusNamespace).Get(ctx, leftover.secret, metav1.GetOptions{})
@@ -289,15 +288,12 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 	found.object = secret
 	if leftover.certificate != "" {
 		// NotFound also covers a cluster without the cert-manager CRDs.
-		certificate, err := dynamicClient.Resource(certManagerCertificatesResource).Namespace(radiusNamespace).Get(ctx, leftover.certificate, metav1.GetOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
-		}
+		_, err := dynamicClient.Resource(certManagerCertificatesResource).Namespace(radiusNamespace).Get(ctx, leftover.certificate, metav1.GetOptions{})
 		if err == nil {
-			secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName")
-			if secretName == leftover.secret {
-				return found, nil
-			}
+			return found, nil
+		}
+		if !apierrors.IsNotFound(err) {
+			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
 		}
 	}
 	found.state = ucpOffSecretForeign
