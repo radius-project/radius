@@ -48,6 +48,8 @@ var iamPrefixes = map[string]string{
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
 	"s3":                       "s3",
+	"s3control":                "s3",
+	"s3tables":                 "s3tables",
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
 	"sts":                      "sts",
@@ -126,6 +128,13 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
+	// PutTableReplication also needs these on the source and destination tables, as its API reference says.
+	tableReplication := []string{
+		"s3tables:GetTable", "s3tables:CreateTable", "s3tables:CreateNamespace",
+		"s3tables:GetTableMaintenanceConfiguration", "s3tables:PutTableMaintenanceConfiguration",
+	}
+	implied["create"] = append(implied["create"], tableReplication...)
+	implied["update"] = append(implied["update"], tableReplication...)
 	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}
