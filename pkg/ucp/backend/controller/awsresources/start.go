@@ -238,6 +238,8 @@ func send(ctx context.Context, t *native.Type, region string, rec *datamodel.AWS
 func saveStart(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, from string, change func(rec *datamodel.AWSResource)) (*datamodel.AWSResource, error) {
 	var taken *claimTaken
 	saved, err := updateFound(ctx, store, id, operationID, func(rec *datamodel.AWSResource) bool {
+		// A save that lost a race runs this again on the record as it is now.
+		taken = nil
 		if rec.Properties.StartState != from {
 			taken = &claimTaken{state: rec.Properties.StartState, rec: rec}
 			return false

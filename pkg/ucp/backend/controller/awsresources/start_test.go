@@ -768,3 +768,31 @@ func Test_SendStart_TimeoutSaveErrors(t *testing.T) {
 		require.True(t, records.IsWaiting(f.record()))
 	})
 }
+
+// Test_SendStart_ClaimAfterLostRace saves the record between this delivery's read and save, so the save loses the race
+// and is tried again, and the other delivery releases its claim in between. The retry claims the call and sends it.
+func Test_SendStart_ClaimAfterLostRace(t *testing.T) {
+	f := newStartFixture(t, records.OperationCreate)
+	rec, etag, err := f.store.Get(t.Context(), f.id)
+	require.NoError(t, err)
+	sent := records.Now().UTC()
+	rec.Properties.StartState, rec.Properties.StartSentAt = records.StartSending, &sent
+	_, err = f.store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+
+	released := &atomic.Bool{}
+	db := racingSave{Client: f.db, before: func() {
+		if released.CompareAndSwap(false, true) {
+			rec, etag, err := f.store.Get(t.Context(), f.id)
+			require.NoError(t, err)
+			rec.Properties.StartState, rec.Properties.StartSentAt = records.StartWaiting, nil
+			_, err = f.store.Save(t.Context(), rec, etag)
+			require.NoError(t, err)
+		}
+	}}
+	got, result, err := f.send(t.Context(), db, records.OperationCreate)
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	require.NotNil(t, got)
+	require.Len(t, f.fake.Calls(), 1, "the retry claimed the call and sent it once")
+}

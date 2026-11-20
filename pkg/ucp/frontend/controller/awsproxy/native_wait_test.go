@@ -139,7 +139,7 @@ func Test_Native_Wait_OperationTimeout(t *testing.T) {
 	require.NoError(t, err)
 	req := &ctrl.Request{}
 	require.NoError(t, json.Unmarshal(msg.Data, req))
-	require.Equal(t, time.Hour+30*time.Minute+nativeTimeoutMargin, req.Timeout())
+	require.Equal(t, time.Hour+30*time.Minute+records.StaleAfter+nativeTimeoutMargin, req.Timeout(), "a worker may also wait for a claim another one left")
 }
 
 // Test_Native_Wait_Update checks that an update whose handler reports a busy parent is sent by the worker with the

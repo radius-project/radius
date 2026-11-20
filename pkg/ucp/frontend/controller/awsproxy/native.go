@@ -162,7 +162,8 @@ func operationType(r *request) string {
 }
 
 // operationTimeout returns how long UCP's async operation for op on rec runs. An operation whose first call waits for
-// AWS to take it (see waitToStart) also runs for the handler's ReadyTimeout.
+// AWS to take it (see waitToStart) also runs for the handler's ReadyTimeout, and for records.StaleAfter, how long a
+// worker waits for a call another worker claimed before it takes that worker for stopped.
 func operationTimeout(r *request, rec *datamodel.AWSResource, op string) time.Duration {
 	if r.handler == nil {
 		return ucp_aws.OperationTimeout
@@ -170,7 +171,7 @@ func operationTimeout(r *request, rec *datamodel.AWSResource, op string) time.Du
 	options := r.handler.Options()
 	timeout := options.Timeout(native.Operation(op)) + nativeTimeoutMargin
 	if rec.Properties.StartState != "" {
-		timeout += options.ReadyTimeout
+		timeout += options.ReadyTimeout + records.StaleAfter
 	}
 	return timeout
 }
