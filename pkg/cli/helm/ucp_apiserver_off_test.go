@@ -71,7 +71,7 @@ func (c *stageCluster) putTrustSecret(t *testing.T, plainHelm bool) {
 	t.Helper()
 	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
 	if !plainHelm {
-		_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, caCertificates(c.ucpCA.pem))
+		_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, testCACertificates(t, c.ucpCA.pem))
 		require.NoError(t, err)
 		return
 	}
@@ -147,6 +147,17 @@ func (c *stageCluster) requireOffAPIService(t *testing.T) {
 
 func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
+
+	t.Run("populate an uninjected APIService", func(t *testing.T) {
+		c := newOffAfterOnCluster(t)
+		apiService := ucpAPIService("", "True", "Passed")
+		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, apiService, ""))
+		live, err := apiServiceCACertificates(apiService)
+		require.NoError(t, err)
+		require.Empty(t, live)
+		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace, nil))
+		c.requireOffTrust(t)
+	})
 
 	for _, plainHelm := range []bool{false, true} {
 		t.Run(fmt.Sprintf("removes the trust authorization on left, then changes nothing (plain Helm trust Secret %t)", plainHelm), func(t *testing.T) {
@@ -374,7 +385,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.NoError(t, err)
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		offSecret := c.secret(t, ucpOffCertificateSecretName)
-		require.Equal(t, base64.StdEncoding.EncodeToString(encodeCertificates(caCertificates(offSecret.Data[caCertificateKey]))), encoded,
+		require.Equal(t, base64.StdEncoding.EncodeToString(encodeCertificates(testCACertificates(t, offSecret.Data[caCertificateKey]))), encoded,
 			"the caBundle must be exactly the PEM of the ucp-cert CA")
 	})
 
@@ -403,7 +414,7 @@ func Test_ucpOffTrustClean(t *testing.T) {
 	ca := newTestCA(t, "ucp-ca")
 	other := newTestCA(t, "radius-apiserver-ca")
 	leaf := issueUCPCertificate(t, ca)
-	offCAs := caCertificates(ca.pem)
+	offCAs := testCACertificates(t, ca.pem)
 	join := func(parts ...[]byte) []byte { return bytes.Join(parts, nil) }
 	tests := []struct {
 		name   string
@@ -438,7 +449,7 @@ func Test_ucpOffTrustPatch(t *testing.T) {
 		"example.com/kept":               "value",
 	})
 
-	patch, err := ucpOffTrustPatch(apiService, caCertificates(ca.pem))
+	patch, err := ucpOffTrustPatch(apiService, testCACertificates(t, ca.pem))
 	require.NoError(t, err)
 	var operations []map[string]any
 	require.NoError(t, json.Unmarshal(patch, &operations))

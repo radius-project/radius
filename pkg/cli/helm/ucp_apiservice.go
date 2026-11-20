@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"time"
 
@@ -68,6 +69,10 @@ var (
 func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode, declared manifestObjectSet) error {
 	if mode == authz.ModeOff {
 		return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared)
+	}
+	// A BYO chart owns its public injection source. Do not reconcile it to a self-signed signer.
+	if declared[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && !declared[manifestObjectKey("cert-manager.io", "Certificate", ucpAPIServerCASecretName)] {
+		return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace)
 	}
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 		return err
@@ -180,7 +185,69 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 		}
 		return deployedAuthzMode(history)
 	}
+	values := resolveEffectiveChartValues(chartDefaults, storedValues, userValues)
+	if mode != authz.ModeOff && byoCertificateMode(values) != "" {
+		var latest *releasev1.Release
+		if upgrade {
+			history, err := i.radiusReleaseHistory(helmConf, options.Radius.ReleaseName)
+			if err != nil {
+				return err
+			}
+			latest = latestRevision(history)
+		}
+		if err := checkSteadyBYOCertificates(latest, values); err != nil {
+			return err
+		}
+		return checkRenderedBYO(ctx, render)
+	}
 	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, deployed, mode, render)
+}
+
+func byoCertificateMode(values map[string]any) string {
+	m, _ := nestedValue(values, "global", "rbac", "certificates", "mode").(string)
+	if m == "caSecret" || m == "issuerRef" {
+		return m
+	}
+	return ""
+}
+
+// checkRenderedBYO checks the action-specific server render, not an offline install of the chart.
+func checkRenderedBYO(ctx context.Context, render renderRadiusManifest) error {
+	manifest, ok, err := render(ctx)
+	if err != nil || !ok {
+		return err
+	}
+	kind, err := ucpServingCertificateKind(manifest)
+	if err != nil {
+		return err
+	}
+	objects, err := manifestObjects(manifest)
+	if err != nil {
+		return err
+	}
+	if kind != "Certificate" || !objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] || objects[manifestObjectKey("cert-manager.io", "Certificate", ucpAPIServerCASecretName)] {
+		return fmt.Errorf("selected chart does not render BYO UCP serving and public aggregation trust; use the certificate lifecycle")
+	}
+	return nil
+}
+
+// Self-signed staging cannot prepare a BYO signer or replace its public trust pin.
+func checkSteadyBYOCertificates(latest *releasev1.Release, target map[string]any) error {
+	if latest != nil && latest.Chart != nil && latest.Info != nil && latest.Info.Status == releasecommon.StatusDeployed {
+		mode, err := servedAuthzMode(latest)
+		if err != nil {
+			return err
+		}
+		previous := resolveEffectiveChartValues(latest.Chart.Values, nil, latest.Config)
+		objects, err := manifestObjects(latest.Manifest)
+		if err != nil {
+			return err
+		}
+		if mode != authz.ModeOff && objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && reflect.DeepEqual(nestedValue(previous, "global", "rbac", "certificates"), nestedValue(target, "global", "rbac", "certificates")) {
+			return nil
+		}
+	}
+	return fmt.Errorf("selecting global.rbac.certificates.mode=%s requires the certificate lifecycle to stage the selected issuer and public trust; Helm has not changed Radius", byoCertificateMode(target))
 }
 
 // radiusReleaseHistory returns the history of release releaseName, or none when the release does not exist.
@@ -247,6 +314,16 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	mode, err = manifestAuthzMode(target, mode)
 	if err != nil {
 		return err
+	}
+	values := resolveEffectiveChartValues(target.Chart.Values, nil, target.Config)
+	if mode != authz.ModeOff && byoCertificateMode(values) != "" {
+		if err := checkSteadyBYOCertificates(latestRevision(history), values); err != nil {
+			return err
+		}
+		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
+			return err
+		}
+		return checkRenderedBYO(ctx, i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision))
 	}
 	if mode != authz.ModeOff {
 		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {

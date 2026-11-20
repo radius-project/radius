@@ -137,12 +137,31 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if err != nil {
 		return err
 	}
+	current, _, _, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
+	if err != nil {
+		return err
+	}
+	if current == nil {
+		retained, err := retainedUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
+		if err != nil {
+			return err
+		}
+		if retained != nil {
+			return fmt.Errorf("retained selfSigned aggregation trust Secret %s/%s exists without a usable %s signer. Restore the original signer from its backup with %s. For an intentional fresh install, first verify the previous release is removed and explicitly discard its historical pin with %s as certificate lifecycle cleanup. Helm has not changed Radius",
+				radiusNamespace, ucpAPIServerTrustSecretName, ucpAPIServerCASecretName,
+				kubectlCommand(kubeContext, radiusNamespace, "apply -f radius-apiserver-ca-backup.yaml"),
+				kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTrustSecretName))
+		}
+	}
 
 	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
 	if err != nil || apiService == nil {
 		return err
 	}
 
+	if err := validateUCPAPIServerAPIAnchors(current, apiService); err != nil {
+		return err
+	}
 	manifest, ok, err := render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render the Radius chart to stage %s: %w", ucpAPIServerCASecretName, err)
@@ -157,22 +176,16 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if kind == "Secret" {
 		return stageOff()
 	}
-	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
-	bundle, err := base64.StdEncoding.DecodeString(encoded)
+	live, err := apiServiceCACertificates(apiService)
 	if err != nil {
-		return fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
+		return err
 	}
-	live := caCertificates(bundle)
 	if len(live) == 0 {
 		return nil
 	}
 	// Decide from what the API server trusts, not from the inject-ca-from-secret annotation: Helm's switch to
 	// authorization off keeps the annotation rad set, and a run that stopped before ReconcileUCPOffAPIServerTrust, or an
 	// older rad, leaves it while UCP serves a ucp-ca certificate again.
-	current, _, _, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
-	if err != nil {
-		return err
-	}
 	if current != nil && onlyKey(live, current) {
 		return nil
 	}
@@ -296,7 +309,10 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if rendered == nil {
 		return nil
 	}
-	target := caCertificates(rendered.Data[caCertificateKey])
+	target, err := caCertificates(rendered.Data[caCertificateKey])
+	if err != nil {
+		return fmt.Errorf("invalid rendered Secret %s ca.crt: %w", ucpOffCertificateSecretName, err)
+	}
 	if len(target) == 0 {
 		return fmt.Errorf("the rendered Secret %s has no CA certificate in %s", ucpOffCertificateSecretName, caCertificateKey)
 	}
@@ -368,12 +384,19 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 
 // apiServiceCACertificates returns the CA certificates in the caBundle of apiService.
 func apiServiceCACertificates(apiService *unstructured.Unstructured) ([]*x509.Certificate, error) {
-	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	encoded, _, err := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	if err != nil {
+		return nil, fmt.Errorf("invalid APIService caBundle: %w", err)
+	}
 	bundle, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 	}
-	return caCertificates(bundle), nil
+	cas, err := caCertificates(bundle)
+	if err != nil {
+		return nil, fmt.Errorf("invalid APIService trust bundle: %w", err)
+	}
+	return cas, nil
 }
 
 // releaseUCPAPIService returns the UCP APIService when the Radius release releaseName in radiusNamespace owns it and it
@@ -433,9 +456,11 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 			return false, fmt.Errorf("APIService %s was replaced while rad updated its caBundle. Helm has not changed the Radius release; check it with %s, then run the command again",
 				ucpAPIServiceName, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
 		}
-		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
-		bundle, decodeErr := base64.StdEncoding.DecodeString(encoded)
-		if decodeErr == nil && apiService.GetAnnotations()[injectCAFromSecretAnnotation] == source && containsCertificates(caCertificates(bundle), cas) {
+		live, err := apiServiceCACertificates(apiService)
+		if err != nil {
+			return false, err
+		}
+		if apiService.GetAnnotations()[injectCAFromSecretAnnotation] == source && containsCertificates(live, cas) {
 			held++
 			return held >= ucpAPIServerCASettleChecks, nil
 		}

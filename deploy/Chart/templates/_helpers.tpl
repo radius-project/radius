@@ -220,11 +220,15 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- end -}}
 
 {{- define "radius.authz.controlPlaneSecrets" -}}
-{{- $spiffe := list -}}
-{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
-{{- $spiffe = append $spiffe (printf "%s-spiffe" .) -}}
+{{- $secrets := list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" "ucp-apiserver-tls" "radius-ca" "radius-apiserver-ca" "radius-apiserver-trust" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName -}}
+{{- if ne (include "radius.authz.mode" .) "off" -}}
+{{- $c := .Values.global.rbac.certificates | default dict -}}
+{{- if and (eq (include "radius.authz.certificates.mode" .) "caSecret") $c.caSecret -}}{{- $secrets = append $secrets $c.caSecret -}}{{- end -}}
 {{- end -}}
-{{- concat (list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" "ucp-apiserver-tls" "radius-ca" "radius-apiserver-ca" "radius-apiserver-trust" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $secrets = append $secrets (printf "%s-spiffe" .) -}}
+{{- end -}}
+{{- $secrets | uniq | toJson -}}
 {{- end -}}
 
 {{/*
@@ -249,6 +253,16 @@ annotation, so changing any of them rolls the pods.
 {{- $config := $mode -}}
 {{- if ne $mode "off" -}}
 {{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.controlPlaneSecrets" .) (include "radius.de.internalAuth.enabled" .) | join "\n" -}}
+{{- $aggregation := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson -}}
+{{- if $aggregation.bundle -}}
+{{- $config = printf "%s\n%s" $config $aggregation.digest -}}
+{{- end -}}
+{{- if eq (include "radius.authz.tls.provider" .) "radius" -}}
+{{- $internal := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") | fromJson -}}
+{{- if $internal.bundle -}}
+{{- $config = printf "%s\n%s" $config $internal.digest -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- $config | sha256sum -}}
 {{- end -}}
@@ -382,9 +396,15 @@ Secret is not mounted. The Secret is required, so pods wait until cert-manager h
 {{- define "radius.authz.caBundle.volume" -}}
 {{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
 {{- include "radius.authz.validateVolumeNames" . }}
+{{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") | fromJson }}
 - name: radius-ca
+  {{- if eq $source.kind "ConfigMap" }}
+  configMap:
+    name: {{ $source.name }}
+  {{- else }}
   secret:
-    secretName: radius-ca
+    secretName: {{ $source.name }}
+  {{- end }}
     items:
       - key: ca.crt
         path: ca.crt

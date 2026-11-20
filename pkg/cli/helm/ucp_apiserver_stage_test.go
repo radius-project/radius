@@ -343,7 +343,7 @@ func (c *stageCluster) requireTrusts(t *testing.T, leaf *x509.Certificate, who s
 	bundle, err := base64.StdEncoding.DecodeString(encoded)
 	require.NoError(t, err)
 	roots := x509.NewCertPool()
-	for _, ca := range caCertificates(bundle) {
+	for _, ca := range testCACertificates(t, bundle) {
 		roots.AddCert(ca)
 	}
 	_, err = leaf.Verify(x509.VerifyOptions{Roots: roots, DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
@@ -439,7 +439,7 @@ func (c *stageCluster) cainjectorMerges(t *testing.T, apiService *unstructured.U
 		return bundle
 	}
 	require.NoError(t, err)
-	return encodeCertificates(unionCertificates(caCertificates(bundle), caCertificates(secret.Data[caCertificateKey])))
+	return encodeCertificates(unionCertificates(testCACertificates(t, bundle), testCACertificates(t, secret.Data[caCertificateKey])))
 }
 
 // requireOffTrust checks the state rad leaves after authorization turns off: the APIService has none of the
@@ -454,7 +454,7 @@ func (c *stageCluster) requireOffTrust(t *testing.T) {
 	}
 	offCertificate, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpOffCertificateSecretName, metav1.GetOptions{})
 	require.NoError(t, err)
-	require.Equal(t, pemSubjects(t, encodeCertificates(caCertificates(offCertificate.Data[caCertificateKey]))), apiServiceCABundle(t, c.dynamic),
+	require.Equal(t, pemSubjects(t, encodeCertificates(testCACertificates(t, offCertificate.Data[caCertificateKey]))), apiServiceCABundle(t, c.dynamic),
 		"the caBundle must hold only the CA of Secret %s", ucpOffCertificateSecretName)
 	c.requireTrusts(t, c.servedLeaf(t), "UCP")
 	for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName, ucpAPIServerTrustSecretName} {
@@ -484,7 +484,7 @@ func requireStagedOffCertificate(t *testing.T, secret *corev1.Secret) {
 	require.Equal(t, RadiusSystemNamespace, secret.Annotations["meta.helm.sh/release-namespace"])
 	leaf, err := firstCertificate(secret.Data[corev1.TLSCertKey])
 	require.NoError(t, err)
-	cas := caCertificates(secret.Data[caCertificateKey])
+	cas := testCACertificates(t, secret.Data[caCertificateKey])
 	require.Len(t, cas, 1)
 	require.True(t, verifiesUCPCertificate(leaf, cas[0], RadiusSystemNamespace))
 }
