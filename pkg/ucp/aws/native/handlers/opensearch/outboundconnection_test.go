@@ -107,8 +107,8 @@ func connCreate(edits ...func(*opensearch.CreateOutboundConnectionInput)) connCa
 	}
 }
 
-// connStatuses reads the connection until it reaches want, and fails when it passes through a status other than
-// those in path first.
+// connStatuses reads the connection until it reaches the last status of path, and fails when the statuses it reads,
+// "" while AWS doesn't list it, aren't path in order.
 func connStatuses(id string, path ...types.OutboundConnectionStatusCode) connCall {
 	return func(ctx context.Context, f *connFake) error {
 		seen := []types.OutboundConnectionStatusCode{}
@@ -493,6 +493,7 @@ func Test_OutboundConnection_CreateFails(t *testing.T) {
 		require.NotNil(t, p.Failure)
 		require.Equal(t, "VALIDATION_FAILED", p.State)
 		require.Contains(t, p.Failure.Message, "Domains don't meet the requirements")
+		require.Contains(t, p.Failure.Message, "requirements of cross-cluster search")
 
 		require.NoError(t, h.Delete(t.Context(), connRegion, id))
 		requireConnDeleted(t, h, id)
@@ -501,12 +502,11 @@ func Test_OutboundConnection_CreateFails(t *testing.T) {
 		h, f := newConnHandler()
 		id, err := h.Create(t.Context(), connRequest(connTemplate(nil)))
 		require.NoError(t, err)
-		f.hold = true
 		f.reject(id)
-		f.hold = false
 		p, _ := connWaitCreate(t, h, id)
 		require.NotNil(t, p.Failure)
 		require.Equal(t, "REJECTING", p.State)
+		require.Contains(t, p.Failure.Message, "owner rejected it")
 	})
 }
 

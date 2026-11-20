@@ -99,8 +99,6 @@ type connectionDomain struct {
 type connectionTemplate struct {
 	alias           string
 	local, remote   connectionDomain
-	hasLocal        bool
-	hasRemote       bool
 	mode            types.ConnectionMode
 	skipUnavailable types.SkipUnavailableStatus
 	endpoint        string
@@ -177,13 +175,11 @@ func parseConnection(properties map[string]any) (connectionTemplate, error) {
 		if c.local, err = parseConnectionDomain(value, "LocalDomainInfo"); err != nil {
 			return c, err
 		}
-		c.hasLocal = true
 	}
 	if value := properties["RemoteDomainInfo"]; value != nil {
 		if c.remote, err = parseConnectionDomain(value, "RemoteDomainInfo"); err != nil {
 			return c, err
 		}
-		c.hasRemote = true
 	}
 	mode, err := connectionString(properties, "ConnectionMode", "ConnectionMode")
 	if err != nil {
@@ -227,7 +223,7 @@ func parseConnectionRequest(properties map[string]any, region string) (connectio
 	if err != nil {
 		return c, err
 	}
-	if c.alias == "" || !c.hasLocal || !c.hasRemote {
+	if c.alias == "" || c.local.name == "" || c.remote.name == "" {
 		return c, invalid(outboundConnectionType, "set ConnectionAlias, LocalDomainInfo, and RemoteDomainInfo")
 	}
 	if c.local.region != "" && c.local.region != region {
@@ -618,13 +614,18 @@ func (h *OutboundConnection) Progress(ctx context.Context, region string, identi
 		return native.Progress{Done: true, State: string(status)}, nil
 	case types.OutboundConnectionStatusCodeValidationFailed, types.OutboundConnectionStatusCodeRejecting,
 		types.OutboundConnectionStatusCodeRejected, types.OutboundConnectionStatusCodeDeleting:
-		message := ""
+		cause := "Check that both domains meet the requirements of cross-cluster search"
+		switch status {
+		case types.OutboundConnectionStatusCodeRejecting, types.OutboundConnectionStatusCodeRejected:
+			cause = "The destination domain's owner rejected it"
+		case types.OutboundConnectionStatusCodeDeleting:
+			cause = "Someone deleted it"
+		}
 		if c.ConnectionStatus != nil && aws.ToString(c.ConnectionStatus.Message) != "" {
-			message = ": " + aws.ToString(c.ConnectionStatus.Message)
+			cause = aws.ToString(c.ConnectionStatus.Message) + ". " + cause
 		}
 		return native.Progress{Done: true, State: string(status), Failure: &native.Failure{
-			Message: fmt.Sprintf("The OpenSearch Service outbound connection %q is %s%s. Check that both domains meet the requirements of cross-cluster search, "+
-				"then delete the resource and deploy again", identifier, status, message),
+			Message: fmt.Sprintf("The OpenSearch Service outbound connection %q is %s. %s, then delete the resource and deploy again", identifier, status, cause),
 		}}, nil
 	}
 	return native.Progress{State: string(status), Waiting: string(types.OutboundConnectionStatusCodePendingAcceptance)}, nil
