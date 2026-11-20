@@ -1,0 +1,122 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_CONNECT_FLOW_ID": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+    "RADIUS_REC_CONNECT_INSTANCE_ARN": "arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+    "RADIUS_REC_CONNECT_INSTANCE_ID": "4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+    "RADIUS_REC_CONNECT_OTHER_FLOW_ID": "d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a",
+    "RADIUS_REC_CONNECT_PHONE_NUMBER_ARN": "arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b"
+  },
+  "interactions": [
+    {
+      "service": "Connect",
+      "operation": "AssociatePhoneNumberContactFlow",
+      "request": "{\"ContactFlowId\":\"c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f\",\"InstanceId\":\"4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": ""
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": []}"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": [{\"FlowId\": \"arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b/contact-flow/c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f\", \"ResourceId\": \"arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b\", \"ResourceType\": \"VOICE_PHONE_NUMBER\"}]}"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": [{\"FlowId\": \"arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b/contact-flow/c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f\", \"ResourceId\": \"arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b\", \"ResourceType\": \"VOICE_PHONE_NUMBER\"}]}"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": [{\"FlowId\": \"arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b/contact-flow/c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f\", \"ResourceId\": \"arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b\", \"ResourceType\": \"VOICE_PHONE_NUMBER\"}]}"
+    },
+    {
+      "service": "Connect",
+      "operation": "AssociatePhoneNumberContactFlow",
+      "request": "{\"ContactFlowId\":\"d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a\",\"InstanceId\":\"4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": ""
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": [{\"FlowId\": \"arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b/contact-flow/c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f\", \"ResourceId\": \"arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b\", \"ResourceType\": \"VOICE_PHONE_NUMBER\"}]}"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": [{\"FlowId\": \"arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b/contact-flow/d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a\", \"ResourceId\": \"arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b\", \"ResourceType\": \"VOICE_PHONE_NUMBER\"}]}"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": [{\"FlowId\": \"arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b/contact-flow/d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a\", \"ResourceId\": \"arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b\", \"ResourceType\": \"VOICE_PHONE_NUMBER\"}]}"
+    },
+    {
+      "service": "Connect",
+      "operation": "DisassociatePhoneNumberContactFlow",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": ""
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": [{\"FlowId\": \"arn:aws:connect:us-west-2:123456789012:instance/4a1f2b3c-5d6e-4f70-8a9b-0c1d2e3f4a5b/contact-flow/d2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6a\", \"ResourceId\": \"arn:aws:connect:us-west-2:123456789012:phone-number/7e8f9a0b-1c2d-4e3f-8a4b-5c6d7e8f9a0b\", \"ResourceType\": \"VOICE_PHONE_NUMBER\"}]}"
+    },
+    {
+      "service": "Connect",
+      "operation": "ListFlowAssociations",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FlowAssociationSummaryList\": []}"
+    }
+  ]
+}
