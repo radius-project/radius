@@ -1,10 +1,10 @@
-# Create and monitor a Radius release
+# Radius release process and rationale
 
 ## Purpose
 
 Release maintainers approve an immutable release plan, monitor its publication, and resume failed stages without changing the approved version or source. The same procedure covers RC, final, and patch releases across `radius-project/resource-types-contrib`, `radius-project/radius`, `radius-project/docs`, `radius-project/samples`, and `azure-octo/deployment-engine`. Automation creates Radius and sibling tags, stages artifacts, verifies installation, publishes the release, and coordinates docs and samples.
 
-For the short operational checklist and copyable commands, use the [Release runbook](./release-runbook.md).
+This guide explains why the release process works as it does, the one-time setup, and recovery procedures. To run a release, follow the step-by-step [Release runbook](./release-runbook.md) instead.
 
 Backport selection, collection, preparation, and their tests live only in the [shared custom action](https://github.com/radius-project/.github/tree/main/.github/actions/release-backport). Radius keeps no helper copies: Prepare Release and both release-plan validation paths call its read-only `collect` operation directly. The Radius validator requires the resulting JSON through `--backports-file` and still verifies that live backports match the plan. Run backport behavior tests in the shared repository; Radius's `test-release-plan` and release-branch provenance checks remain local.
 
