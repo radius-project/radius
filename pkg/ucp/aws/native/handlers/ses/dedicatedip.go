@@ -18,7 +18,6 @@ package ses
 
 import (
 	"context"
-	"errors"
 	"net"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -107,14 +106,9 @@ func (h *DedicatedIPAssignment) put(ctx context.Context, region string, ip strin
 // such address, so SES rejects it.
 func (h *DedicatedIPAssignment) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	ip := awsapi.String(request.Properties, "Ip")
-	if err := h.put(ctx, request.Region, ip, request.Properties); err != nil {
-		var failure *native.Failure
-		if errors.As(err, &failure) && failure.Outcome == native.OutcomeUnknown {
-			return ip, err
-		}
-		return "", err
-	}
-	return ip, nil
+	// The identifier is known, and a move whose answer UCP didn't get, such as a timeout, may have applied, so it is
+	// kept with every error.
+	return ip, h.put(ctx, request.Region, ip, request.Properties)
 }
 
 // Update moves the address to the template's pool.

@@ -156,3 +156,30 @@ func Test_ThrottledRead(t *testing.T) {
 		})
 	}
 }
+
+// Test_CreateKeepsIdentifier checks that each create returns its identifier with any error after it sent its first
+// call, such as a lost response, so the caller can find and delete what the create may have made.
+func Test_CreateKeepsIdentifier(t *testing.T) {
+	ctx := t.Context()
+	lost := errors.New("connection reset")
+	cases := []struct {
+		name       string
+		call       string
+		handler    func(api *fakeAPI) native.Handler
+		properties map[string]any
+		identifier string
+	}{
+		{"policy", "CreateEmailIdentityPolicy", func(api *fakeAPI) native.Handler { return NewEmailIdentityPolicy(api) }, identityPolicy("p1", testPolicy(testIdentity)), testIdentity + "|p1"},
+		{"notification topic", "SetIdentityNotificationTopic", func(api *fakeAPI) native.Handler { return NewIdentityNotificationTopic(api) }, notificationTopic("Bounce", topicA, false), testIdentity + "|Bounce"},
+		{"dedicated IP", "PutDedicatedIpInPool", func(api *fakeAPI) native.Handler { return NewDedicatedIPAssignment(api) }, map[string]any{"Ip": testIP, poolProperty: "pool-a"}, testIP},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			api.errs[c.call] = lost
+			identifier, err := c.handler(api).Create(ctx, native.CreateRequest{Region: region, Properties: c.properties})
+			require.ErrorIs(t, err, lost)
+			require.Equal(t, c.identifier, identifier)
+		})
+	}
+}

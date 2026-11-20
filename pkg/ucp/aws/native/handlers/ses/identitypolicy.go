@@ -151,7 +151,9 @@ func (h *EmailIdentityPolicy) Create(ctx context.Context, request native.CreateR
 		return identifier, &native.Failure{Message: fmt.Sprintf("SES already has the policy %q. Deploy again.", identifier), Outcome: native.OutcomeUnknown}
 	}
 	if err != nil {
-		return "", awsapi.Rejected(err)
+		// The identifier is known, and a create whose answer UCP didn't get, such as a timeout, may have made the
+		// policy, so it is kept with every error that isn't a rejection.
+		return identifier, awsapi.Rejected(err)
 	}
 	if err := confirm(ctx, h.wait, h.Read, request.Region, identifier, "the policy", shows(policy)); err != nil {
 		return identifier, err
