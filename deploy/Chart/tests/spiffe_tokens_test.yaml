@@ -4,6 +4,7 @@ templates:
   - rp/deployment.yaml
   - dynamic-rp/deployment.yaml
   - controller/deployment.yaml
+  - ucp/configmaps.yaml
 release:
   name: radius
   namespace: radius-system
@@ -97,24 +98,32 @@ tests:
           any: true
         template: controller/deployment.yaml
 
-  - it: keeps the existing mTLS Secret volumes alongside the new volumes
+  - it: does not mount the old mTLS Secrets
     set:
       global.rbac.enabled: true
     asserts:
-      - contains:
+      - notContains:
           path: spec.template.spec.volumes
           content:
             name: mtls
-            secret:
-              secretName: ucp-mtls
+          any: true
         template: ucp/deployment.yaml
-      - contains:
+      - notContains:
           path: spec.template.spec.volumes
           content:
             name: mtls
-            secret:
-              secretName: controller-mtls
+          any: true
         template: controller/deployment.yaml
+
+  - it: configures the trust domain
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  trustDomain: "example.org"$'
+        template: ucp/configmaps.yaml
 
   - it: projects one 10-minute token per receiver audience for each caller
     set:
@@ -204,7 +213,7 @@ tests:
       global.rootCA.volumeName: spiffe
     asserts:
       - failedTemplate:
-          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names mtls, spiffe, token-ucp, token-applications-rp, token-dynamic-rp"
+          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
         template: ucp/deployment.yaml
 
   # Helm stops at the first failing template, so the chart-wide render error is reported for ucp.
@@ -215,7 +224,7 @@ tests:
       global.rootCA.volumeName: token-ucp
     asserts:
       - failedTemplate:
-          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names mtls, spiffe, token-ucp, token-applications-rp, token-dynamic-rp"
+          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
         template: ucp/deployment.yaml
 
   - it: allows a reserved global.rootCA.volumeName when authorization is off
