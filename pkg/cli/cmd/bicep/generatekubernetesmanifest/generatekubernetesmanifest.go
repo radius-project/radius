@@ -70,7 +70,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		`,
 		Example: `
 # Generate a DeploymentTemplate Custom Resource from a Bicep file.
-rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --parameters tag=latest --destination-file app.yaml --resource-group default
+rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --parameters tag=latest --destination-file app.yaml --group default
 		`,
 		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
