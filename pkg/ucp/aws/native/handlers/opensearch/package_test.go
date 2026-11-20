@@ -489,6 +489,8 @@ func Test_Package_AWSErrors(t *testing.T) {
 	}
 	_, err = h.Identifier(map[string]any{"PackageID": 5})
 	requirePkgRejected(t, err)
+	_, err = h.Identifier(withProps(dictionaryTemplate(), map[string]any{"PackageName": 5}))
+	requirePkgRejectedBefore(t, err, "PackageName")
 	resources, err := h.List(t.Context(), pkgRegion)
 	require.NoError(t, err)
 	require.Empty(t, resources)

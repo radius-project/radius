@@ -139,7 +139,7 @@ func sendable(properties map[string]any) (*opensearch.CreatePackageInput, error)
 func packageInput(properties map[string]any) (*opensearch.CreatePackageInput, error) {
 	in := &opensearch.CreatePackageInput{}
 	if err := awsapi.Decode(properties, in); err != nil {
-		return nil, invalid(packageType, "the properties don't have the schema's types")
+		return nil, invalid(packageType, "a property doesn't have the schema's type: %v", err)
 	}
 	name := aws.ToString(in.PackageName)
 	if len(name) < 3 || len(name) > 256 || !packageNamePattern.MatchString(name) {
