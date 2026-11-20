@@ -415,10 +415,26 @@ func Test_Native_Wait_NotEligible(t *testing.T) {
 		require.Empty(t, h.finish())
 	})
 
-	for _, method := range []string{http.MethodPut, http.MethodDelete} {
-		t.Run("lost create sent again on "+method, func(t *testing.T) {
+	for _, tc := range []struct {
+		method string
+		search bool
+	}{{http.MethodPut, false}, {http.MethodDelete, false}, {http.MethodPut, true}, {http.MethodDelete, true}} {
+		method := tc.method
+		name := "lost create sent again on " + method
+		if tc.search {
+			name = "lost create found by a search that creates, on " + method
+		}
+		t.Run(name, func(t *testing.T) {
 			h := newWaitHarness(t)
-			h.loseCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+			if tc.search {
+				h.assigned.Opts.Recovery = native.RecoverBySearch
+				registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, findCreates{h.assigned})
+				require.NoError(t, err)
+				h.native = registry
+				h.failCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+			} else {
+				h.loseCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+			}
 			h.assigned.SetBusy(-1)
 			var resp response
 			if method == http.MethodPut {
@@ -431,6 +447,7 @@ func Test_Native_Wait_NotEligible(t *testing.T) {
 			rec := h.record(assignedPath)
 			require.NotEmpty(t, rec.Properties.ClientToken)
 			require.Empty(t, rec.Properties.StartState)
+			require.NotEqual(t, v1.ProvisioningStateProvisioning, rec.ProvisioningState(), "the recovery reservation is released")
 			require.Empty(t, h.finish())
 		})
 	}
