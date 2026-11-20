@@ -163,7 +163,7 @@ type RequestEvaluation struct {
 // Disabled skips mapping/evaluation. Enforce is reported without decisions: the
 // observation-only request layer must reject it rather than partially enforce.
 // Unavailability returns no mode, including when a previously loaded mode exists.
-func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) (RequestEvaluation, error) {
+func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) (result RequestEvaluation, err error) {
 	if r == nil {
 		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
 	}
@@ -177,7 +177,14 @@ func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) 
 		r.cache.clock.Since(asOf) >= PolicyMaxAge {
 		return RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
 	}
-	result := RequestEvaluation{
+	// Recheck the captured snapshot, not a newer cache timestamp, on every
+	// return path. Mapping and evaluation must not hold refresh locks.
+	defer func() {
+		if r.cache.clock.Since(asOf) >= PolicyMaxAge || lifetime.Err() != nil {
+			result, err = RequestEvaluation{Generation: -1}, ErrAuthorizationUnavailable
+		}
+	}()
+	result = RequestEvaluation{
 		Mode: *snapshot.policy.Settings.Properties.Mode, Generation: snapshot.Generation(),
 	}
 	if result.Mode != api.UserAuthorizationModeDryRun {
