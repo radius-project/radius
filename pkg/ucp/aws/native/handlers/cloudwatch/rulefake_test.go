@@ -332,10 +332,7 @@ func (f *fakeRuleAPI) PutManagedInsightRules(ctx context.Context, in *cloudwatch
 				out.Failures = append(out.Failures, failure("LimitExceededException", resource, "too many Contributor Insights rules"))
 				continue
 			}
-			p := map[string]any{"ResourceARN": resource, "TemplateName": template, "State": ruleEnabled, "RuleName": fakeRuleName(resource, template)}
-			if len(r.Tags) > 0 {
-				p["Tags"] = tagList(r.Tags)
-			}
+			p := map[string]any{"ResourceARN": resource, "TemplateName": template, "State": ruleEnabled, "RuleName": fakeRuleName(resource, template), "Tags": tagList(r.Tags)}
 			f.store.Put(managedInsightRuleType, identifier, p)
 			if f.createLag > 0 {
 				f.pending[identifier] = f.createLag

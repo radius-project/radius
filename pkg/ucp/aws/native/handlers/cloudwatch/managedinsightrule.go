@@ -327,6 +327,8 @@ func (h *ManagedInsightRule) Read(ctx context.Context, region string, identifier
 		"RuleName":     name,
 		"Arn":          ruleARN,
 	}
+	// Tags is always there, empty when the rule has none, so a template that sets Tags to an empty list matches.
+	properties["Tags"] = []any{}
 	if list := awsapi.TagListOf(tags); list != nil {
 		properties["Tags"] = list
 	}

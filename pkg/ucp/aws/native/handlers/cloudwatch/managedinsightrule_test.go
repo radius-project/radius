@@ -62,7 +62,32 @@ func newRuleHandler() (*ManagedInsightRule, *fakeRuleAPI) {
 }
 
 func Test_Suite_ManagedInsightRule(t *testing.T) {
-	properties := with(ruleTemplate(newConnections), map[string]any{"Tags": tags("env", "dev", "team", "network")})
+	ruleSuite(t, with(ruleTemplate(newConnections), map[string]any{"Tags": tags("env", "dev", "team", "network")}))
+}
+
+// Test_Suite_ManagedInsightRule_EmptyTags runs the suite for a template that sets Tags to an empty list, so an
+// unchanged redeploy only reads AWS.
+func Test_Suite_ManagedInsightRule_EmptyTags(t *testing.T) {
+	ruleSuite(t, with(ruleTemplate(newConnections), map[string]any{"Tags": []any{}}))
+}
+
+// Test_Suite_ManagedInsightRule_NoTags runs the suite for a template that leaves Tags out.
+func Test_Suite_ManagedInsightRule_NoTags(t *testing.T) {
+	ruleSuite(t, ruleTemplate(newConnections))
+}
+
+func ruleSuite(t *testing.T, properties map[string]any) {
+	// MultiCall disables the rule and sets one tag, and removes the template's tags when it has any.
+	// Removing an empty tag list changes nothing in AWS, so only a template with tags has a property to remove.
+	removable, calls := "", 2
+	if list, _ := properties["Tags"].([]any); len(list) > 0 {
+		removable, calls = "Tags", 3
+	}
+	// AWS keeps tags as a set, so tags in another order are the same.
+	var otherForm map[string]any
+	if list, _ := properties["Tags"].([]any); len(list) > 1 {
+		otherForm = map[string]any{"Tags": append([]any{list[len(list)-1]}, list[:len(list)-1]...)}
+	}
 	tooManyTags := []any{}
 	for i := range maxRuleTags + 1 {
 		tooManyTags = append(tooManyTags, map[string]any{"Key": fmt.Sprintf("k%d", i), "Value": "v"})
@@ -79,10 +104,9 @@ func Test_Suite_ManagedInsightRule(t *testing.T) {
 		Properties:       properties,
 		Identifier:       endpointService + "|" + newConnections,
 		Changed:          with(properties, map[string]any{"State": ruleDisabled, "Tags": tags("team", "platform")}),
-		Removable:        "Tags",
+		Removable:        removable,
 		CreateOnlyChange: with(properties, map[string]any{"TemplateName": rejectedConnections}),
-		// AWS keeps tags as a set, so tags in another order are the same.
-		OtherForm: map[string]any{"Tags": tags("team", "network", "env", "dev")},
+		OtherForm:        otherForm,
 		Invalid: []map[string]any{
 			with(properties, map[string]any{"TemplateName": "-dash"}),
 			with(properties, map[string]any{"ResourceARN": "vpce-svc-0a1b2c3d4e5f60718"}),
@@ -99,10 +123,9 @@ func Test_Suite_ManagedInsightRule(t *testing.T) {
 			require.NoError(t, err)
 			return ruleTemplate(id.template)
 		},
-		// Disable the rule, set one tag, and remove another.
 		MultiCall: with(properties, map[string]any{"State": ruleDisabled, "Tags": tags("team", "platform")}),
-		Calls:     3,
-		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
+		Calls:     calls,
+		FailCall: nativetest.FailCall(calls, func(h native.Handler) *nativetest.Failer {
 			return &h.(*ManagedInsightRule).api.(*fakeRuleAPI).failer
 		}),
 		API: ruleAPI,
@@ -200,7 +223,7 @@ func Test_ManagedInsightRule_FirstLook(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{
 		"ResourceARN": endpointService, "TemplateName": newConnections, "State": ruleEnabled,
-		"RuleName": ruleNameOf(newConnections), "Arn": ruleARNOf(newConnections),
+		"RuleName": ruleNameOf(newConnections), "Arn": ruleARNOf(newConnections), "Tags": []any{},
 	}, got)
 
 	require.NoError(t, h.Delete(t.Context(), region, id))
@@ -376,7 +399,7 @@ func Test_ManagedInsightRule_AWSTags(t *testing.T) {
 	api.store.Put(managedInsightRuleType, id, stored)
 	got, err := h.Read(t.Context(), region, id)
 	require.NoError(t, err)
-	require.NotContains(t, got, "Tags")
+	require.Equal(t, []any{}, got["Tags"])
 
 	require.NoError(t, h.Update(t.Context(), ruleUpdate(t, h, id, with(ruleTemplate(newConnections), map[string]any{"Tags": tags("a", "1")}))))
 	require.Zero(t, api.calls["UntagResource"])
