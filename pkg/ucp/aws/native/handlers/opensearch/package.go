@@ -341,6 +341,10 @@ func (h *Package) Create(ctx context.Context, request native.CreateRequest) (str
 // name across engine versions. DescribePackages also returns AWS's own packages and packages other accounts share, so
 // Find leaves out every package whose PackageOwner isn't the account. request.Properties have no write-only values,
 // so Find can't compare PackageVendingOptions or PackageConfiguration.
+//
+// If AWS doesn't list a package it made moments ago, a DELETE after a lost create finds nothing, and UCP removes only
+// the record. Find can't send the create to learn whether AWS has the name, as it does for an outbound connection,
+// because CreatePackage needs PackageSource, which is write-only and so not in request.Properties for a DELETE.
 func (h *Package) Find(ctx context.Context, request native.CreateRequest) (string, error) {
 	name := awsapi.String(request.Properties, "PackageName")
 	if !packageNamePattern.MatchString(name) {
