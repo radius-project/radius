@@ -1,0 +1,78 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_S3TABLES_TABLE_ARN": "arn:aws:s3tables:us-west-2:123456789012:bucket/radius-rec-example-source/table/orders",
+    "RADIUS_REC_S3TABLES_REPLICATION_ROLE_ARN": "arn:aws:iam::123456789012:role/radius-rec-example-s3tables-replication",
+    "RADIUS_REC_S3TABLES_DESTINATION_1": "arn:aws:s3tables:us-east-1:123456789012:bucket/radius-rec-example-dr",
+    "RADIUS_REC_S3TABLES_DESTINATION_2": "arn:aws:s3tables:eu-west-1:123456789012:bucket/radius-rec-example-eu"
+  },
+  "interactions": [
+    {
+      "service": "S3Tables",
+      "operation": "PutTableReplication",
+      "request": "{\"configuration\":{\"role\":\"arn:aws:iam::123456789012:role/radius-rec-example-s3tables-replication\",\"rules\":[{\"destinations\":[{\"destinationTableBucketARN\":\"arn:aws:s3tables:us-east-1:123456789012:bucket/radius-rec-example-dr\"}]}]}}",
+      "status": 200,
+      "body": "{\"status\":\"ACTIVE\",\"versionToken\":\"3HL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUo\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "service": "S3Tables",
+      "operation": "GetTableReplication",
+      "request": "",
+      "status": 200,
+      "body": "{\"configuration\":{\"role\":\"arn:aws:iam::123456789012:role/radius-rec-example-s3tables-replication\",\"rules\":[{\"destinations\":[{\"destinationTableBucketARN\":\"arn:aws:s3tables:us-east-1:123456789012:bucket/radius-rec-example-dr\"}]}]},\"versionToken\":\"3HL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUo\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "service": "S3Tables",
+      "operation": "GetTableReplication",
+      "request": "",
+      "status": 200,
+      "body": "{\"configuration\":{\"role\":\"arn:aws:iam::123456789012:role/radius-rec-example-s3tables-replication\",\"rules\":[{\"destinations\":[{\"destinationTableBucketARN\":\"arn:aws:s3tables:us-east-1:123456789012:bucket/radius-rec-example-dr\"}]}]},\"versionToken\":\"3HL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUo\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "service": "S3Tables",
+      "operation": "PutTableReplication",
+      "request": "{\"configuration\":{\"role\":\"arn:aws:iam::123456789012:role/radius-rec-example-s3tables-replication\",\"rules\":[{\"destinations\":[{\"destinationTableBucketARN\":\"arn:aws:s3tables:us-east-1:123456789012:bucket/radius-rec-example-dr\"},{\"destinationTableBucketARN\":\"arn:aws:s3tables:eu-west-1:123456789012:bucket/radius-rec-example-eu\"}]}]}}",
+      "status": 200,
+      "body": "{\"status\":\"ACTIVE\",\"versionToken\":\"3HL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUp\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "service": "S3Tables",
+      "operation": "GetTableReplication",
+      "request": "",
+      "status": 200,
+      "body": "{\"configuration\":{\"role\":\"arn:aws:iam::123456789012:role/radius-rec-example-s3tables-replication\",\"rules\":[{\"destinations\":[{\"destinationTableBucketARN\":\"arn:aws:s3tables:us-east-1:123456789012:bucket/radius-rec-example-dr\"},{\"destinationTableBucketARN\":\"arn:aws:s3tables:eu-west-1:123456789012:bucket/radius-rec-example-eu\"}]}]},\"versionToken\":\"3HL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUp\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "service": "S3Tables",
+      "operation": "GetTableReplication",
+      "request": "",
+      "status": 200,
+      "body": "{\"configuration\":{\"role\":\"arn:aws:iam::123456789012:role/radius-rec-example-s3tables-replication\",\"rules\":[{\"destinations\":[{\"destinationTableBucketARN\":\"arn:aws:s3tables:us-east-1:123456789012:bucket/radius-rec-example-dr\"},{\"destinationTableBucketARN\":\"arn:aws:s3tables:eu-west-1:123456789012:bucket/radius-rec-example-eu\"}]}]},\"versionToken\":\"3HL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUp\"}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "service": "S3Tables",
+      "operation": "DeleteTableReplication",
+      "request": "",
+      "status": 204,
+      "body": ""
+    }
+  ]
+}

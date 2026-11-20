@@ -188,7 +188,7 @@
     {
       "service": "RDS",
       "operation": "DeleteTenantDatabase",
-      "request": "Action=DeleteTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&FinalDBSnapshotIdentifier=radius-rec-cdb-pdbrec-final-20261118-120000&TenantDBName=pdbrec&Version=2014-10-31",
+      "request": "Action=DeleteTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&FinalDBSnapshotIdentifier=radius-rec-cdb-pdbrec-final-20261118-120000-5037503b&TenantDBName=pdbrec&Version=2014-10-31",
       "status": 200,
       "headers": {
         "Content-Type": "text/xml"

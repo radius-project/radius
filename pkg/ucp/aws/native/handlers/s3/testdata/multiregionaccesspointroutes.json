@@ -1,0 +1,81 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_S3_MRAP_ARN": "arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap",
+    "RADIUS_REC_S3_MRAP_BUCKET_US_WEST_2": "radius-rec-example-mrap-usw2",
+    "RADIUS_REC_S3_MRAP_BUCKET_US_EAST_1": "radius-rec-example-mrap-use1"
+  },
+  "interactions": [
+    {
+      "service": "S3 Control",
+      "operation": "GetMultiRegionAccessPointRoutes",
+      "request": "",
+      "status": 200,
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<GetMultiRegionAccessPointRoutesResult><Mrap>arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap</Mrap><Routes><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><Region>us-west-2</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><Region>us-east-1</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route></Routes></GetMultiRegionAccessPointRoutesResult>",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "service": "S3 Control",
+      "operation": "SubmitMultiRegionAccessPointRoutes",
+      "request": "<SubmitMultiRegionAccessPointRoutesRequest xmlns=\"http://awss3control.amazonaws.com/doc/2018-08-20/\"><RouteUpdates><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><TrafficDialPercentage>100</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><TrafficDialPercentage>0</TrafficDialPercentage></Route></RouteUpdates></SubmitMultiRegionAccessPointRoutesRequest>",
+      "status": 200,
+      "body": ""
+    },
+    {
+      "service": "S3 Control",
+      "operation": "GetMultiRegionAccessPointRoutes",
+      "request": "",
+      "status": 200,
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<GetMultiRegionAccessPointRoutesResult><Mrap>arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap</Mrap><Routes><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><Region>us-west-2</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><Region>us-east-1</Region><TrafficDialPercentage>0</TrafficDialPercentage></Route></Routes></GetMultiRegionAccessPointRoutesResult>",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "service": "S3 Control",
+      "operation": "GetMultiRegionAccessPointRoutes",
+      "request": "",
+      "status": 200,
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<GetMultiRegionAccessPointRoutesResult><Mrap>arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap</Mrap><Routes><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><Region>us-west-2</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><Region>us-east-1</Region><TrafficDialPercentage>0</TrafficDialPercentage></Route></Routes></GetMultiRegionAccessPointRoutesResult>",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "service": "S3 Control",
+      "operation": "SubmitMultiRegionAccessPointRoutes",
+      "request": "<SubmitMultiRegionAccessPointRoutesRequest xmlns=\"http://awss3control.amazonaws.com/doc/2018-08-20/\"><RouteUpdates><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><TrafficDialPercentage>0</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><TrafficDialPercentage>100</TrafficDialPercentage></Route></RouteUpdates></SubmitMultiRegionAccessPointRoutesRequest>",
+      "status": 200,
+      "body": ""
+    },
+    {
+      "service": "S3 Control",
+      "operation": "GetMultiRegionAccessPointRoutes",
+      "request": "",
+      "status": 200,
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<GetMultiRegionAccessPointRoutesResult><Mrap>arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap</Mrap><Routes><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><Region>us-west-2</Region><TrafficDialPercentage>0</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><Region>us-east-1</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route></Routes></GetMultiRegionAccessPointRoutesResult>",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "service": "S3 Control",
+      "operation": "GetMultiRegionAccessPointRoutes",
+      "request": "",
+      "status": 200,
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<GetMultiRegionAccessPointRoutesResult><Mrap>arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap</Mrap><Routes><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><Region>us-west-2</Region><TrafficDialPercentage>0</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><Region>us-east-1</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route></Routes></GetMultiRegionAccessPointRoutesResult>",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
+      "service": "S3 Control",
+      "operation": "SubmitMultiRegionAccessPointRoutes",
+      "request": "<SubmitMultiRegionAccessPointRoutesRequest xmlns=\"http://awss3control.amazonaws.com/doc/2018-08-20/\"><RouteUpdates><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><Region>us-west-2</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route></RouteUpdates></SubmitMultiRegionAccessPointRoutesRequest>",
+      "status": 200,
+      "body": ""
+    }
+  ]
+}
