@@ -273,9 +273,17 @@ func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientF
 	}
 
 	plane := ID.PlaneNamespace()
-	planeName := strings.Split(plane, "/")[1]
+	planeSegments := strings.Split(plane, "/")
+	if len(planeSegments) < 2 {
+		return nil, fmt.Errorf("resource ID %q does not have a UCP plane", resourceID)
+	}
+	planeName := planeSegments[1]
 	resourceProvider, _, _ := strings.Cut(ID.ProviderNamespace(), "/")
-	resourceType := strings.Split(ID.Type(), "/")[1]
+	typeSegments := strings.Split(ID.Type(), "/")
+	if len(typeSegments) < 2 {
+		return nil, fmt.Errorf("resource ID %q does not have a resource type", resourceID)
+	}
+	resourceType := typeSegments[1]
 
 	response, err := ucp.NewAPIVersionsClient().Get(
 		ctx,
