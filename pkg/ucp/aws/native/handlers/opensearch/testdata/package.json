@@ -1,0 +1,134 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_PACKAGE_BUCKET": "radius-rec-packages"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "CreatePackage",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetails\": {\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"COPYING\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795200000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"COPYING\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795200000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"VALIDATING\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795200000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795201000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v1\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795201000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v1\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795201000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v1\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "UpdatePackage",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetails\": {\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording 2\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"COPYING\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795202000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v1\"}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording 2\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"COPYING\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795202000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v1\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording 2\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795202100, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v2\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording 2\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795202100, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v2\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording 2\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795202100, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v2\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DeletePackage",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetails\": {\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording 2\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"DELETING\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795203000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v2\"}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording 2\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"DELETING\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795203000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v2\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": []}"
+    }
+  ]
+}

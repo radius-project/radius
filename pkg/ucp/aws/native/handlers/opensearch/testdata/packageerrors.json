@@ -1,0 +1,66 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_PACKAGE_BUCKET": "radius-rec-packages"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "CreatePackage",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceAlreadyExistsException"
+      },
+      "body": "{\"message\": \"Package with name radius-rec-synonyms already exists\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795201000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v1\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DeletePackage",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ConflictException"
+      },
+      "body": "{\"message\": \"Package F123456789 is associated with one or more domains\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageDescription\": \"Radius recording\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795201000, \"PackageEncryptionOptions\": {\"EncryptionEnabled\": false}, \"PackageVendingOptions\": {\"VendingEnabled\": false}, \"AvailablePackageVersion\": \"v1\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "UpdatePackage",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException"
+      },
+      "body": "{\"message\": \"S3 object radius-rec-packages/missing.txt doesn't exist\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Package F999999999 not found\"}"
+    }
+  ]
+}

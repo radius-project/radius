@@ -1,0 +1,195 @@
+{
+  "typeName": "AWS::OpenSearchService::Package",
+  "description": "A custom package for OpenSearch Service domains, such as a dictionary file or a plugin, imported from Amazon S3 with CreatePackage. AWS keeps its own copy of the file, so a new file at the same S3 key changes nothing: point PackageSource at another key to update the package. Every update imports PackageSource again with UpdatePackage, which makes a new package version. Domains keep the version they have until the package is associated with them again. AWS can't delete a package while it is associated with a domain, so such a delete fails with 409 Conflict: give each AWS::OpenSearchService::PackageAssociation of the package dependsOn on it, such as by referencing its PackageID.",
+  "definitions": {
+    "PackageSource": {
+      "type": "object",
+      "description": "The Amazon S3 object to import the package from.",
+      "properties": {
+        "S3BucketName": {
+          "type": "string",
+          "description": "The name of the S3 bucket that holds the package.",
+          "minLength": 3,
+          "maxLength": 63
+        },
+        "S3Key": {
+          "type": "string",
+          "description": "The key of the package's S3 object.",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      },
+      "required": ["S3BucketName", "S3Key"],
+      "additionalProperties": false
+    },
+    "PackageConfiguration": {
+      "type": "object",
+      "description": "The configuration and license requirements of a plugin package. AWS returns them only as the package's available configuration, so they are write-only, and create-only, because AWS doesn't say what an update that leaves them out does.",
+      "properties": {
+        "ConfigurationRequirement": {
+          "type": "string",
+          "description": "Whether the plugin needs a configuration package.",
+          "enum": ["REQUIRED", "OPTIONAL", "NONE"]
+        },
+        "LicenseRequirement": {
+          "type": "string",
+          "description": "Whether the plugin needs a license package.",
+          "enum": ["REQUIRED", "OPTIONAL", "NONE"]
+        },
+        "LicenseFilepath": {
+          "type": "string",
+          "description": "The relative path of the plugin's license file, without '..'.",
+          "maxLength": 256
+        },
+        "RequiresRestartForConfigurationUpdate": {
+          "type": "boolean",
+          "description": "Whether a change of the plugin's configuration needs a blue/green deployment of the domain."
+        }
+      },
+      "required": ["ConfigurationRequirement", "LicenseRequirement"],
+      "additionalProperties": false
+    },
+    "PackageEncryptionOptions": {
+      "type": "object",
+      "description": "How AWS encrypts the package. AWS doesn't say how to remove these options, so a deploy that removes them fails with 400 Bad Request: set EncryptionEnabled to false instead.",
+      "properties": {
+        "EncryptionEnabled": {
+          "type": "boolean",
+          "description": "Whether the package is encrypted with KmsKeyIdentifier."
+        },
+        "KmsKeyIdentifier": {
+          "type": "string",
+          "description": "The KMS key that encrypts the package.",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": ["EncryptionEnabled"],
+      "additionalProperties": false
+    },
+    "PackageVendingOptions": {
+      "type": "object",
+      "description": "Whether other accounts can use the package.",
+      "properties": {
+        "VendingEnabled": {
+          "type": "boolean",
+          "description": "Whether the package can be shared with other accounts."
+        }
+      },
+      "required": ["VendingEnabled"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "PackageName": {
+      "type": "string",
+      "description": "The name of the package, unique in the account and Region.",
+      "minLength": 3,
+      "maxLength": 256,
+      "pattern": "^[a-z][a-z0-9\\-]+$"
+    },
+    "PackageType": {
+      "type": "string",
+      "description": "The type of the package.",
+      "enum": [
+        "TXT-DICTIONARY",
+        "ZIP-PLUGIN",
+        "PACKAGE-LICENSE",
+        "PACKAGE-CONFIG"
+      ]
+    },
+    "PackageSource": {
+      "$ref": "#/definitions/PackageSource"
+    },
+    "EngineVersion": {
+      "type": "string",
+      "description": "The engine version the plugin works with, such as OpenSearch_2.15. Only for a ZIP-PLUGIN package.",
+      "pattern": "^Elasticsearch_[0-9]{1}\\.[0-9]{1,2}$|^OpenSearch_[0-9]{1,2}\\.[0-9]{1,2}$"
+    },
+    "PackageDescription": {
+      "type": "string",
+      "description": "The description of the package.",
+      "maxLength": 1024
+    },
+    "PackageConfiguration": {
+      "$ref": "#/definitions/PackageConfiguration"
+    },
+    "PackageEncryptionOptions": {
+      "$ref": "#/definitions/PackageEncryptionOptions"
+    },
+    "PackageVendingOptions": {
+      "$ref": "#/definitions/PackageVendingOptions"
+    },
+    "PackageID": {
+      "type": "string",
+      "description": "The ID AWS assigns the package, which a PackageAssociation takes."
+    },
+    "PackageOwner": {
+      "type": "string",
+      "description": "The owner of the package."
+    },
+    "PackageStatus": {
+      "type": "string",
+      "description": "The status of the package.",
+      "enum": [
+        "COPYING",
+        "COPY_FAILED",
+        "VALIDATING",
+        "VALIDATION_FAILED",
+        "AVAILABLE",
+        "DELETING",
+        "DELETED",
+        "DELETE_FAILED"
+      ]
+    },
+    "AvailablePackageVersion": {
+      "type": "string",
+      "description": "The latest version of the package."
+    }
+  },
+  "required": ["PackageName", "PackageType", "PackageSource"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/PackageID"],
+  "createOnlyProperties": [
+    "/properties/PackageName",
+    "/properties/PackageType",
+    "/properties/EngineVersion",
+    "/properties/PackageConfiguration",
+    "/properties/PackageVendingOptions"
+  ],
+  "readOnlyProperties": [
+    "/properties/PackageID",
+    "/properties/PackageOwner",
+    "/properties/PackageStatus",
+    "/properties/AvailablePackageVersion"
+  ],
+  "writeOnlyProperties": [
+    "/properties/PackageSource",
+    "/properties/PackageConfiguration"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "es:CreatePackage",
+        "es:DescribePackages",
+        "s3:GetObject"
+      ],
+      "timeoutInMinutes": 60
+    },
+    "read": {
+      "permissions": ["es:DescribePackages"]
+    },
+    "update": {
+      "permissions": [
+        "es:UpdatePackage",
+        "es:DescribePackages",
+        "s3:GetObject"
+      ],
+      "timeoutInMinutes": 60
+    },
+    "delete": {
+      "permissions": ["es:DeletePackage", "es:DescribePackages"],
+      "timeoutInMinutes": 60
+    }
+  }
+}
