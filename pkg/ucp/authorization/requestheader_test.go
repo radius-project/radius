@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -127,6 +128,72 @@ func (p proxyPKI) authenticator(t *testing.T) *RequestHeaderAuthenticator {
 	})
 	require.NoError(t, err)
 	return authenticator
+}
+
+func testRequestHeaderCABundles(t *testing.T, load func(*testing.T, []byte) (*RequestHeaderAuthenticator, error)) {
+	t.Helper()
+	first, second := newProxyPKI(t), newProxyPKI(t)
+	firstPEM, err := os.ReadFile(first.file)
+	require.NoError(t, err)
+	secondPEM, err := os.ReadFile(second.file)
+	require.NoError(t, err)
+	valid := string(firstPEM)
+	joined := strings.TrimRight(valid, "\n")
+	for _, tt := range []struct {
+		name   string
+		bundle string
+		valid  bool
+	}{
+		{name: "invalid DER after valid certificate", bundle: valid + string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("not DER")}))},
+		{name: "invalid PEM after valid certificate", bundle: valid + "-----BEGIN CERTIFICATE-----\n!!!\n-----END CERTIFICATE-----\n"},
+		{name: "invalid PEM before valid certificate", bundle: "-----BEGIN CERTIFICATE-----\n!!!\n-----END CERTIFICATE-----\n" + valid},
+		{name: "unterminated block", bundle: valid + "-----BEGIN CERTIFICATE-----\n"},
+		{name: "nested valid block", bundle: "-----BEGIN CERTIFICATE-----\n" + valid},
+		{name: "trailing garbage", bundle: valid + "garbage"},
+		{name: "leading garbage", bundle: "garbage\n" + valid},
+		{name: "interleaved garbage", bundle: valid + "garbage\n" + string(secondPEM)},
+		{name: "non-certificate block", bundle: valid + string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: []byte("key")}))},
+		{name: "PEM headers", bundle: valid + string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Headers: map[string]string{"Comment": "unexpected"}, Bytes: second.ca.Raw}))},
+		{name: "empty"},
+		{name: "whitespace only", bundle: " \t\r\n"},
+		{name: "adjacent blocks without separator", bundle: joined + string(secondPEM)},
+		{name: "adjacent blocks separated by space", bundle: joined + " " + string(secondPEM)},
+		{name: "garbage on closing line", bundle: joined + " garbage\n" + string(secondPEM)},
+		{name: "valid rotation bundle", bundle: " \t\r\n" + valid + "\n \t\n" + string(secondPEM) + " \t\r\n", valid: true},
+		{name: "valid CRLF bundle", bundle: strings.ReplaceAll(valid+string(secondPEM), "\n", "\r\n"), valid: true},
+		{name: "valid bundle with trailing blanks on closing line", bundle: joined + " \t\n" + strings.TrimRight(string(secondPEM), "\n"), valid: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			authenticator, err := load(t, []byte(tt.bundle))
+			if !tt.valid {
+				require.ErrorContains(t, err, "request-header CA")
+				require.Nil(t, authenticator, "invalid bundles must not leave partial trust")
+				return
+			}
+			require.NoError(t, err)
+			for _, issuer := range []proxyPKI{first, second} {
+				request := httptest.NewRequest(http.MethodGet, "/", nil)
+				request.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{
+					issuer.client(t, "front-proxy-client", x509.ExtKeyUsageClientAuth, false),
+				}}
+				request.Header.Set("X-Remote-User", "alice")
+				identity, err := authenticator.Authenticate(request)
+				require.NoError(t, err)
+				require.Equal(t, "alice", *identity.Principal.Subject)
+			}
+		})
+	}
+}
+
+func TestRequestHeaderCABundle(t *testing.T) {
+	t.Parallel()
+	testRequestHeaderCABundles(t, func(t *testing.T, bundle []byte) (*RequestHeaderAuthenticator, error) {
+		file := filepath.Join(t.TempDir(), "ca.pem")
+		require.NoError(t, os.WriteFile(file, bundle, 0600))
+		return NewRequestHeaderAuthenticator(&RequestHeaderOptions{
+			CAFile: file, KubernetesIssuer: "kubernetes:test-cluster",
+		})
+	})
 }
 
 func TestRequestHeaderCertificateTrust(t *testing.T) {

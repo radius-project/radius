@@ -4,9 +4,11 @@
 package authorization
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"os"
@@ -67,13 +69,50 @@ func newRequestHeaderAuthenticator(options *RequestHeaderOptions, loadCA func() 
 			return nil, fmt.Errorf("caller authentication allowed names must not contain empty names")
 		}
 	}
-	pem, err := loadCA()
+	bundle, err := loadCA()
 	if err != nil {
 		return nil, err
 	}
 	roots := x509.NewCertPool()
-	if !roots.AppendCertsFromPEM(pem) {
-		return nil, fmt.Errorf("request-header CA file contains no certificates")
+	count := 0
+	for remaining := bytes.TrimSpace(bundle); len(remaining) > 0; count++ {
+		const begin = "-----BEGIN CERTIFICATE-----"
+		const end = "-----END CERTIFICATE-----"
+		if !bytes.HasPrefix(remaining, []byte(begin)) {
+			return nil, fmt.Errorf("request-header CA bundle contains unexpected data; expected CERTIFICATE PEM block")
+		}
+		endIndex := bytes.Index(remaining, []byte(end))
+		if endIndex < 0 {
+			return nil, fmt.Errorf("request-header CA bundle contains an unterminated CERTIFICATE PEM block")
+		}
+		// The closing delimiter must end its line; otherwise slicing at the
+		// delimiter would hide a following block or data on the same line.
+		closing := remaining[endIndex+len(end):]
+		if lineEnd := bytes.IndexByte(closing, '\n'); lineEnd >= 0 {
+			closing = closing[:lineEnd+1]
+		}
+		if len(bytes.TrimRight(closing, " \t\r\n")) != 0 {
+			return nil, fmt.Errorf("request-header CA bundle contains data after a CERTIFICATE PEM block on the same line")
+		}
+		encoded := remaining[:endIndex+len(end)+len(closing)]
+		// Decode only the first block; pem.Decode otherwise skips malformed
+		// blocks and may return a later valid certificate.
+		if bytes.Contains(encoded[len(begin):], []byte("-----BEGIN ")) {
+			return nil, fmt.Errorf("request-header CA bundle contains a nested PEM block")
+		}
+		block, rest := pem.Decode(encoded)
+		if block == nil || len(rest) != 0 || block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+			return nil, fmt.Errorf("request-header CA bundle requires valid CERTIFICATE PEM blocks without headers")
+		}
+		certificate, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("parse request-header CA certificate: %w", err)
+		}
+		roots.AddCert(certificate)
+		remaining = bytes.TrimSpace(remaining[len(encoded):])
+	}
+	if count == 0 {
+		return nil, fmt.Errorf("request-header CA bundle contains no certificates")
 	}
 	return &RequestHeaderAuthenticator{
 		roots: roots, allowedNames: slices.Clone(options.AllowedNames), issuer: options.KubernetesIssuer,
