@@ -18,9 +18,9 @@
 
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -338,4 +338,23 @@ test("rejects extra release-only commits and multiple source trailers", async ()
     validateMergedBackportSource(options),
     /missing exact trailer/
   );
+});
+
+test("runs when reached through a symlinked directory", (t) => {
+  const root = mkdtempSync(
+    join(tmpdir(), "validate-conventional-commits-link-")
+  );
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const link = join(root, "scripts");
+  symlinkSync(dirname(fileURLToPath(import.meta.url)), link, "dir");
+  const result = spawnSync(
+    process.execPath,
+    [join(link, "validate-conventional-commits.mjs")],
+    {
+      env: process.env,
+      encoding: "utf8"
+    }
+  );
+  assert.notEqual(result.status, 0, "the script did not run its main function");
+  assert.match(result.stderr, /usage: validate-conventional-commits\.mjs/);
 });

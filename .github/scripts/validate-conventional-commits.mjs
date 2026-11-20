@@ -17,7 +17,8 @@
 // ------------------------------------------------------------
 
 import { readFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
+import { existsSync, realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const allowedTypes = [
   "build",
@@ -182,9 +183,11 @@ async function main() {
   process.exitCode = 1;
 }
 
+// Compare real paths: on macOS the temp directory is reached through a /var symlink.
 if (
   process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
+  existsSync(process.argv[1]) &&
+  realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
 ) {
   await main();
 }
