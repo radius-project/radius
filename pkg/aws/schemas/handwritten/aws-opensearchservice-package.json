@@ -184,6 +184,7 @@
       "permissions": [
         "es:UpdatePackage",
         "es:DescribePackages",
+        "es:GetPackageVersionHistory",
         "s3:GetObject"
       ],
       "timeoutInMinutes": 60

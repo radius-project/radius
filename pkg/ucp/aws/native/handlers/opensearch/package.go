@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/google/uuid"
 	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -71,6 +72,7 @@ type PackageAPI interface {
 	DescribePackages(ctx context.Context, params *opensearch.DescribePackagesInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribePackagesOutput, error)
 	UpdatePackage(ctx context.Context, params *opensearch.UpdatePackageInput, optFns ...func(*opensearch.Options)) (*opensearch.UpdatePackageOutput, error)
 	DeletePackage(ctx context.Context, params *opensearch.DeletePackageInput, optFns ...func(*opensearch.Options)) (*opensearch.DeletePackageOutput, error)
+	GetPackageVersionHistory(ctx context.Context, params *opensearch.GetPackageVersionHistoryInput, optFns ...func(*opensearch.Options)) (*opensearch.GetPackageVersionHistoryOutput, error)
 	AssociatePackage(ctx context.Context, params *opensearch.AssociatePackageInput, optFns ...func(*opensearch.Options)) (*opensearch.AssociatePackageOutput, error)
 	DissociatePackage(ctx context.Context, params *opensearch.DissociatePackageInput, optFns ...func(*opensearch.Options)) (*opensearch.DissociatePackageOutput, error)
 	ListPackagesForDomain(ctx context.Context, params *opensearch.ListPackagesForDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.ListPackagesForDomainOutput, error)
@@ -82,6 +84,14 @@ type PackageAccountAPI interface {
 }
 
 var stsInRegion = awsapi.InRegion[sts.Options]
+
+// sendOnce is the option of a call that changes a package or an association and takes no idempotency token, so the
+// SDK never sends it again on its own. After a first attempt that reached AWS, a retried CreatePackage fails with
+// ResourceAlreadyExistsException, which reads as a create AWS rejected, and a retried UpdatePackage or AssociatePackage
+// imports the file or deploys the domain again. A connection error then reaches UCP, which finds what AWS has.
+func sendOnce(o *opensearch.Options) {
+	o.RetryMaxAttempts = 1
+}
 
 // Package serves AWS::OpenSearchService::Package: a dictionary, plugin, license, or configuration file AWS imports
 // from S3 for domains to use. Its identifier, PackageID, is the ID AWS assigns. CreatePackage takes no idempotency
@@ -265,7 +275,7 @@ func (h *Package) describe(ctx context.Context, region string, identifier string
 // packageProperties returns the package's properties. PackageSource and PackageConfiguration are write-only, because
 // AWS doesn't return them as sent.
 func packageProperties(p *types.PackageDetails) (map[string]any, error) {
-	return awsapi.EncodeObject(map[string]any{
+	properties, err := awsapi.EncodeObject(map[string]any{
 		"PackageID":                p.PackageID,
 		"PackageName":              p.PackageName,
 		"PackageType":              string(p.PackageType),
@@ -277,6 +287,13 @@ func packageProperties(p *types.PackageDetails) (map[string]any, error) {
 		"PackageStatus":            string(p.PackageStatus),
 		"AvailablePackageVersion":  p.AvailablePackageVersion,
 	})
+	if err != nil {
+		return nil, err
+	}
+	// A template can set an empty description, and AWS may return it empty or not at all, so the description is
+	// always read, as "" when there is none. Otherwise every deploy of such a template would import the file again.
+	properties["PackageDescription"] = aws.ToString(p.PackageDescription)
+	return properties, nil
 }
 
 // Read returns the package's properties.
@@ -294,7 +311,7 @@ func (h *Package) Create(ctx context.Context, request native.CreateRequest) (str
 	if err != nil {
 		return "", err
 	}
-	out, err := h.api.CreatePackage(ctx, in, inRegion(request.Region))
+	out, err := h.api.CreatePackage(ctx, in, inRegion(request.Region), sendOnce)
 	if err != nil {
 		return "", awsapi.Rejected(err)
 	}
@@ -347,7 +364,11 @@ func (h *Package) Find(ctx context.Context, request native.CreateRequest) (strin
 	case 0:
 		return "", nil
 	case 1:
-		return aws.ToString(matches[0].PackageID), sameVending(request.Properties, &matches[0])
+		// UCP keeps an identifier Find returns with an error, so a package that isn't the template's is never returned.
+		if err := sameVending(request.Properties, &matches[0]); err != nil {
+			return "", err
+		}
+		return aws.ToString(matches[0].PackageID), nil
 	}
 	ids := []string{}
 	for _, p := range matches {
@@ -391,9 +412,9 @@ func removesPath(request native.UpdateRequest, path string) bool {
 
 // Update imports PackageSource again with the template's description and encryption options, which makes a new
 // package version. UpdatePackage requires PackageSource, so every update sends it. A removed description is sent as
-// an empty one. AWS doesn't say how to remove encryption options, so an update that removes them is rejected. An
-// update sent again after the package moved on from the version UpdateState saved sends nothing, because an earlier
-// attempt of it reached AWS.
+// an empty one. AWS doesn't say how to remove encryption options, so an update that removes them is rejected. The
+// update sends the commit message UpdateState chose for it, so an update sent again finds in the package's version
+// history whether an earlier attempt reached AWS, and sends nothing then.
 func (h *Package) Update(ctx context.Context, request native.UpdateRequest) error {
 	in, err := sendable(request.Desired)
 	if err != nil {
@@ -402,20 +423,23 @@ func (h *Package) Update(ctx context.Context, request native.UpdateRequest) erro
 	if removesPath(request, "/PackageEncryptionOptions") {
 		return invalid(packageType, "AWS doesn't say how to remove a package's encryption options. Set PackageEncryptionOptions with EncryptionEnabled false instead")
 	}
+	var before packageVersion
+	if request.State != "" {
+		if before, err = savedVersion(request.Identifier, request.State); err != nil {
+			return beforeChange(err)
+		}
+	}
 	p, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
 		return beforeChange(err)
 	}
-	// UpdateState saves only a package that isn't changing, so a package that moved on since was changed by an earlier
-	// attempt of this update.
-	if request.State != "" {
-		before, err := savedVersion(request.Identifier, request.State)
+	if before.Commit != "" && before.changedTo(versionOf(p)) {
+		// The package changed since UpdateState: by an earlier attempt of this update, or outside Radius.
+		mine, _, err := h.committed(ctx, request.Region, request.Identifier, before.Commit)
 		if err != nil {
 			return beforeChange(err)
 		}
-		if before.changedTo(versionOf(p)) {
-			// UCP sends an update again, with the state it saved before the first attempt, when it can't tell whether
-			// that attempt reached AWS. The package has moved on since, so it did, and UpdateProgress waits for it.
+		if mine != nil {
 			return nil
 		}
 	}
@@ -426,12 +450,16 @@ func (h *Package) Update(ctx context.Context, request native.UpdateRequest) erro
 	if description == nil && removesPath(request, "/PackageDescription") {
 		description = aws.String("")
 	}
-	_, err = h.api.UpdatePackage(ctx, &opensearch.UpdatePackageInput{
+	input := &opensearch.UpdatePackageInput{
 		PackageID:                aws.String(request.Identifier),
 		PackageSource:            in.PackageSource,
 		PackageDescription:       description,
 		PackageEncryptionOptions: in.PackageEncryptionOptions,
-	}, inRegion(request.Region))
+	}
+	if before.Commit != "" {
+		input.CommitMessage = aws.String(commitMessage(before.Commit))
+	}
+	_, err = h.api.UpdatePackage(ctx, input, inRegion(request.Region), sendOnce)
 	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))
 }
 
@@ -447,12 +475,47 @@ func updatable(identifier string, p *types.PackageDetails) error {
 	return nil
 }
 
-// packageVersion is what UpdateState saves before an update: the package's version, status, and last update time.
-// An update has finished once AWS reports another version or update time.
+// commitMessage returns the commit message of the update that UpdateState chose commit for.
+func commitMessage(commit string) string {
+	return "Radius update " + commit
+}
+
+// committed returns the version of the package that the update with commit made, from the package's version history,
+// or nil when AWS lists none, and whether it is the newest version AWS lists.
+func (h *Package) committed(ctx context.Context, region string, identifier string, commit string) (*types.PackageVersionHistory, bool, error) {
+	versions := []types.PackageVersionHistory{}
+	input := &opensearch.GetPackageVersionHistoryInput{PackageID: aws.String(identifier)}
+	for {
+		page, err := h.api.GetPackageVersionHistory(ctx, input, inRegion(region))
+		if err != nil {
+			return nil, false, awsapi.NotFound(err, "ResourceNotFoundException")
+		}
+		versions = append(versions, page.PackageVersionHistoryList...)
+		if input.NextToken = page.NextToken; aws.ToString(input.NextToken) == "" {
+			break
+		}
+	}
+	i := slices.IndexFunc(versions, func(v types.PackageVersionHistory) bool {
+		return aws.ToString(v.CommitMessage) == commitMessage(commit)
+	})
+	if i < 0 {
+		return nil, false, nil
+	}
+	mine := &versions[i]
+	newest := !slices.ContainsFunc(versions, func(v types.PackageVersionHistory) bool {
+		return aws.ToTime(v.CreatedAt).After(aws.ToTime(mine.CreatedAt))
+	})
+	return mine, newest, nil
+}
+
+// packageVersion is what UpdateState saves before an update: the package's version, status, and last update time,
+// and Commit, a random value the update sends in its commit message, so the version it makes can be told apart from
+// one made outside Radius.
 type packageVersion struct {
 	Version string    `json:"version,omitempty"`
 	Status  string    `json:"status,omitempty"`
 	Updated time.Time `json:"updated"`
+	Commit  string    `json:"commit,omitempty"`
 }
 
 // changedTo reports whether the package's version, status, or update time moved on from v to now.
@@ -473,10 +536,10 @@ func versionOf(p *types.PackageDetails) packageVersion {
 	return packageVersion{Version: aws.ToString(p.AvailablePackageVersion), Status: string(p.PackageStatus), Updated: aws.ToTime(p.LastUpdatedAt)}
 }
 
-// UpdateState returns the package's version before the update. AWS may report the package AVAILABLE for a while after
-// UpdatePackage returns, before it starts importing the new version, so UpdateProgress waits for another version. A
-// package AWS is still importing or deleting gets the error Update would return, so the saved version is never one
-// that an earlier change is about to replace.
+// UpdateState returns the package's version before the update, and a new commit value for it. AWS may report the
+// package AVAILABLE for a while after UpdatePackage returns, before it starts importing the new version, so
+// UpdateProgress waits for the version with the update's commit message. A package AWS is still importing or deleting
+// gets the error Update would return, so the saved version is never one that an earlier change is about to replace.
 func (h *Package) UpdateState(ctx context.Context, region string, identifier string) (string, error) {
 	p, err := h.describe(ctx, region, identifier)
 	if err != nil {
@@ -485,12 +548,16 @@ func (h *Package) UpdateState(ctx context.Context, region string, identifier str
 	if err := updatable(identifier, p); err != nil {
 		return "", err
 	}
-	b, err := json.Marshal(versionOf(p))
+	v := versionOf(p)
+	v.Commit = uuid.NewString()
+	b, err := json.Marshal(v)
 	return string(b), err
 }
 
-// UpdateProgress reads the package's status. The update is done once AWS reports the package AVAILABLE with another
-// version or update time than state, and fails once AWS reports COPY_FAILED or VALIDATION_FAILED for it.
+// UpdateProgress reads the package's status. The update is done once AWS reports the package AVAILABLE, changed since
+// state, with the update's own version as the newest in its history. It fails once AWS reports COPY_FAILED or
+// VALIDATION_FAILED after state, and when another version replaced the update's, so UCP never records the template's
+// file as what AWS has.
 func (h *Package) UpdateProgress(ctx context.Context, region string, identifier string, state string) (native.Progress, error) {
 	p, err := h.describe(ctx, region, identifier)
 	if err != nil {
@@ -506,10 +573,21 @@ func (h *Package) UpdateProgress(ctx context.Context, region string, identifier 
 	changed := now.Version != before.Version || !now.Updated.Equal(before.Updated)
 	switch p.PackageStatus {
 	case types.PackageStatusAvailable:
-		if changed {
-			return native.Progress{Done: true, State: now.Status}, nil
+		if !changed {
+			return native.Progress{State: "AVAILABLE with the old version", Waiting: "AVAILABLE with a new version"}, nil
 		}
-		return native.Progress{State: "AVAILABLE with the old version", Waiting: "AVAILABLE with a new version"}, nil
+		mine, newest, err := h.committed(ctx, region, identifier, before.Commit)
+		if err != nil {
+			return native.Progress{}, err
+		}
+		if mine == nil {
+			return native.Progress{State: "AVAILABLE with another version", Waiting: "AVAILABLE with the update's version"}, nil
+		}
+		if !newest {
+			return native.Progress{Done: true, State: now.Status, Failure: &native.Failure{Message: fmt.Sprintf(
+				"another update replaced the version of the OpenSearch Service package %q that Radius imported. Deploy again to import the template's file", identifier)}}, nil
+		}
+		return native.Progress{Done: true, State: now.Status}, nil
 	case types.PackageStatusCopyFailed, types.PackageStatusValidationFailed:
 		if changed || now.Status != before.Status {
 			return packageFailed(p, "update"), nil

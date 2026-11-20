@@ -61,6 +61,24 @@
         "X-Amzn-Errortype": "ResourceNotFoundException"
       },
       "body": "{\"message\": \"Package F999999999 not found\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribePackages",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageDetailsList\": [{\"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageOwner\": \"123456789012\", \"PackageStatus\": \"AVAILABLE\", \"AvailablePackageVersion\": \"v2\", \"CreatedAt\": 1795200000, \"LastUpdatedAt\": 1795202100}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "GetPackageVersionHistory",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"PackageID\": \"F123456789\", \"PackageVersionHistoryList\": [{\"PackageVersion\": \"v1\", \"CreatedAt\": 1795200000}, {\"PackageVersion\": \"v2\", \"CommitMessage\": \"Radius update 0b9f1c2e-6a4d-4c1b-9e7f-3d2a1b0c9e8f\", \"CreatedAt\": 1795202100}]}"
     }
   ]
 }

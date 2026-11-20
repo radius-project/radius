@@ -78,7 +78,7 @@ func Test_Replay_Package(t *testing.T) {
 // Test_Replay_PackageErrors runs AWS's errors through the SDK: a create of a name AWS already has, 409
 // ResourceAlreadyExistsException, and an update AWS answers with 400 ValidationException, must be rejected, so UCP
 // answers 400; a delete of a package a domain uses, 409 ConflictException, must be a conflict; and a read AWS answers
-// with 409 ResourceNotFoundException must be not found.
+// with 409 ResourceNotFoundException must be not found. An update sent again reads the package's version history.
 func Test_Replay_PackageErrors(t *testing.T) {
 	s := awsreplay.New(t, "testdata/packageerrors.json")
 	cfg := s.Config(t.Context())
@@ -105,6 +105,16 @@ func Test_Replay_PackageErrors(t *testing.T) {
 
 	_, err = h.Read(t.Context(), awsreplay.Region, "F999999999")
 	require.ErrorIs(t, err, native.ErrNotFound)
+
+	// An update sent again after its first attempt made version v2 finds that version by its commit message in the
+	// package's history, and sends nothing.
+	err = h.Update(t.Context(), native.UpdateRequest{
+		Region:     awsreplay.Region,
+		Identifier: "F123456789",
+		Desired:    withProps(properties, map[string]any{"PackageSource": map[string]any{"S3BucketName": bucket, "S3Key": "synonyms-2.txt"}}),
+		State:      `{"version":"v1","status":"AVAILABLE","updated":"2026-11-20T00:00:00Z","commit":"0b9f1c2e-6a4d-4c1b-9e7f-3d2a1b0c9e8f"}`,
+	})
+	require.NoError(t, err)
 }
 
 // Test_Replay_PackageAssociation associates a dictionary package with a domain and dissociates it, against AWS's

@@ -201,7 +201,7 @@ func (h *PackageAssociation) Read(ctx context.Context, region string, identifier
 	if err != nil {
 		return nil, err
 	}
-	return awsapi.EncodeObject(map[string]any{
+	properties, err := awsapi.EncodeObject(map[string]any{
 		"DomainName":                id.domain,
 		"PackageID":                 id.packageID,
 		"PrerequisitePackageIDList": d.PrerequisitePackageIDList,
@@ -212,6 +212,19 @@ func (h *PackageAssociation) Read(ctx context.Context, region string, identifier
 		"PackageVersion":            d.PackageVersion,
 		"ReferencePath":             d.ReferencePath,
 	})
+	if err != nil {
+		return nil, err
+	}
+	// A template can set an empty list of prerequisites, or an empty configuration, which are create-only, and AWS may
+	// return them empty or not at all. They are always read, so a deploy of such a template doesn't count them as a
+	// change.
+	if _, ok := properties["PrerequisitePackageIDList"]; !ok {
+		properties["PrerequisitePackageIDList"] = []any{}
+	}
+	if _, ok := properties["AssociationConfiguration"]; !ok {
+		properties["AssociationConfiguration"] = map[string]any{}
+	}
+	return properties, nil
 }
 
 // associationBusy returns the conflict of a change AWS can't make now because it is changing the domain or another of
@@ -268,7 +281,10 @@ func (h *PackageAssociation) Create(ctx context.Context, request native.CreateRe
 	case err == nil:
 		switch d.DomainPackageStatus {
 		case types.DomainPackageStatusActive, types.DomainPackageStatusAssociating:
-			return id.String(), sameAssociation(id, in, d)
+			if err := sameAssociation(id, in, d); err != nil {
+				return "", err
+			}
+			return id.String(), nil
 		case types.DomainPackageStatusDissociating:
 			return "", associationBusy(fmt.Sprintf("the package %s of the domain %q (%s)", id.packageID, id.domain, d.DomainPackageStatus), nil)
 		}
@@ -276,7 +292,7 @@ func (h *PackageAssociation) Create(ctx context.Context, request native.CreateRe
 		return "", beforeChange(err)
 	}
 	in.DomainName, in.PackageID = aws.String(id.domain), aws.String(id.packageID)
-	if _, err := h.api.AssociatePackage(ctx, in, inRegion(request.Region)); err != nil {
+	if _, err := h.api.AssociatePackage(ctx, in, inRegion(request.Region), sendOnce); err != nil {
 		if awsapi.HasCode(err, "ConflictException") {
 			return "", associationBusy(fmt.Sprintf("the domain %q or another of its packages", id.domain), err)
 		}

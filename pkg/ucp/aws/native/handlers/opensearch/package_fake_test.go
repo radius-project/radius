@@ -126,8 +126,10 @@ type pkgChange struct {
 	// next is the status after this one: another changing status, an end status, or "" when the change removes the
 	// package.
 	next []types.PackageStatus
-	// version is the version the package has once the change ends AVAILABLE, or "" to keep its version.
+	// version is the version the package has once the change ends AVAILABLE, or "" to keep its version, and commit
+	// the commit message of the update that made it.
 	version string
+	commit  *string
 }
 
 // pkgFake is an in-memory Amazon OpenSearch Service API for packages and package associations. It keeps packages and
@@ -156,6 +158,9 @@ type pkgFake struct {
 
 	// deleted holds packages AWS reports DELETED, by ID, with how many more reads report them.
 	deleted map[string]*pkgDeleted
+
+	// history holds each package's versions, which AWS lists once an import ends AVAILABLE.
+	history map[string][]types.PackageVersionHistory
 
 	// versions and updated hold each package's version number and last update time.
 	versions map[string]int
@@ -208,6 +213,7 @@ func newPkgFake(store *awsfake.CloudControl) *pkgFake {
 		failed:       map[string]*types.ErrorDetails{},
 		deleted:      map[string]*pkgDeleted{},
 		versions:     map[string]int{},
+		history:      map[string][]types.PackageVersionHistory{},
 		updated:      map[string]time.Time{},
 		clock:        pkgEpoch,
 		assocChanges: map[string]*pkgAssocChange{},
@@ -329,6 +335,9 @@ func (f *pkgFake) settle(id string) {
 		delete(f.failed, id)
 		if c.version != "" {
 			f.versions[id], _ = strconv.Atoi(strings.TrimPrefix(c.version, "v"))
+			f.history[id] = append(f.history[id], types.PackageVersionHistory{
+				PackageVersion: aws.String(c.version), CommitMessage: c.commit, CreatedAt: aws.Time(f.clock),
+			})
 		}
 		f.updated[id] = f.clock
 	case types.PackageStatusCopyFailed, types.PackageStatusValidationFailed:
@@ -486,8 +495,8 @@ func (f *pkgFake) CreatePackage(ctx context.Context, in *opensearch.CreatePackag
 	if engine != "" {
 		properties["EngineVersion"] = engine
 	}
-	if d := aws.ToString(in.PackageDescription); d != "" {
-		properties["PackageDescription"] = d
+	if in.PackageDescription != nil {
+		properties["PackageDescription"] = *in.PackageDescription
 	}
 	if in.PackageEncryptionOptions != nil {
 		properties["PackageEncryptionOptions"] = encryptionProperties(in.PackageEncryptionOptions)
@@ -595,11 +604,7 @@ func (f *pkgFake) UpdatePackage(ctx context.Context, in *opensearch.UpdatePackag
 		return nil, pkgFault(pkgBaseCode, "the package %q is %s", id, status)
 	}
 	if in.PackageDescription != nil {
-		if *in.PackageDescription == "" {
-			delete(p, "PackageDescription")
-		} else {
-			p["PackageDescription"] = *in.PackageDescription
-		}
+		p["PackageDescription"] = *in.PackageDescription
 	}
 	if in.PackageEncryptionOptions != nil {
 		p["PackageEncryptionOptions"] = encryptionProperties(in.PackageEncryptionOptions)
@@ -614,6 +619,7 @@ func (f *pkgFake) UpdatePackage(ctx context.Context, in *opensearch.UpdatePackag
 		lag:     1,
 		next:    importSteps(in.PackageSource),
 		version: fmt.Sprintf("v%d", f.versions[id]+1),
+		commit:  in.CommitMessage,
 	}
 	return &opensearch.UpdatePackageOutput{PackageDetails: f.lookup(id)}, nil
 }
@@ -848,15 +854,19 @@ func (f *pkgFake) AssociatePackage(ctx context.Context, in *opensearch.Associate
 	if p.PackageType == types.PackageTypeTxtDictionary {
 		properties["ReferencePath"] = "analyzers/" + id
 	}
-	if len(in.PrerequisitePackageIDList) > 0 {
+	if in.PrerequisitePackageIDList != nil {
 		properties["PrerequisitePackageIDList"] = anyStrings(in.PrerequisitePackageIDList)
 	}
-	if c := in.AssociationConfiguration; c != nil && c.KeyStoreAccessOption != nil {
-		o := map[string]any{"KeyStoreAccessEnabled": aws.ToBool(c.KeyStoreAccessOption.KeyStoreAccessEnabled)}
-		if c.KeyStoreAccessOption.KeyAccessRoleArn != nil {
-			o["KeyAccessRoleArn"] = *c.KeyStoreAccessOption.KeyAccessRoleArn
+	if c := in.AssociationConfiguration; c != nil {
+		config := map[string]any{}
+		if c.KeyStoreAccessOption != nil {
+			o := map[string]any{"KeyStoreAccessEnabled": aws.ToBool(c.KeyStoreAccessOption.KeyStoreAccessEnabled)}
+			if c.KeyStoreAccessOption.KeyAccessRoleArn != nil {
+				o["KeyAccessRoleArn"] = *c.KeyStoreAccessOption.KeyAccessRoleArn
+			}
+			config["KeyStoreAccessOption"] = o
 		}
-		properties["AssociationConfiguration"] = map[string]any{"KeyStoreAccessOption": o}
+		properties["AssociationConfiguration"] = config
 	}
 	f.store.Put(packageAssociationType, key, properties)
 	end := types.DomainPackageStatusActive
@@ -936,4 +946,24 @@ func (f *pkgFake) GetCallerIdentity(ctx context.Context, in *sts.GetCallerIdenti
 		return nil, err
 	}
 	return &sts.GetCallerIdentityOutput{Account: aws.String(pkgAccount)}, nil
+}
+
+func (f *pkgFake) GetPackageVersionHistory(ctx context.Context, in *opensearch.GetPackageVersionHistoryInput, _ ...func(*opensearch.Options)) (*opensearch.GetPackageVersionHistoryOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.begin("GetPackageVersionHistory"); err != nil {
+		return nil, err
+	}
+	id := aws.ToString(in.PackageID)
+	if !packageIDPattern.MatchString(id) {
+		return nil, pkgFault(pkgValidationCode, "PackageID %q doesn't match the pattern", id)
+	}
+	if in.MaxResults > 100 {
+		return nil, pkgFault(pkgValidationCode, "MaxResults must be at most 100")
+	}
+	if f.lookup(id) == nil {
+		return nil, pkgFault("ResourceNotFoundException", "the package %q doesn't exist", id)
+	}
+	items, next := pkgPage(f.history[id], in.NextToken)
+	return &opensearch.GetPackageVersionHistoryOutput{PackageID: aws.String(id), PackageVersionHistoryList: items, NextToken: next}, nil
 }

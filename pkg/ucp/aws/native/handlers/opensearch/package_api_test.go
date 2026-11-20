@@ -443,7 +443,7 @@ var packageAPI = map[string]nativetest.Call{
 			},
 		},
 		Unclear: "What an update that leaves out PackageDescription or PackageEncryptionOptions does: the fake keeps them. " +
-			"What an empty PackageDescription does: the fake removes the description. Whether AWS takes an update of a " +
+			"What an empty PackageDescription does: the fake keeps it as an empty description, and the handler reads a missing one as empty too. Whether AWS takes an update of a " +
 			"package that isn't AVAILABLE: the fake rejects it with BaseException. How soon an update shows: the fake reports " +
 			"the package AVAILABLE with its old version for one more read." + pkgConstraintNote,
 	},
@@ -477,6 +477,71 @@ var packageAPI = map[string]nativetest.Call{
 		},
 		Unclear: "Whether AWS deletes a package it is still importing or deleting, and with what error: the fake rejects it " +
 			"with BaseException. How long a delete takes: the fake reports DELETING for two reads, then DELETED for two more.",
+	},
+	"GetPackageVersionHistory": {
+		Doc: pkgAPIReference + "API_GetPackageVersionHistory.html",
+		Rules: []nativetest.Rule{
+			{
+				Rule: "PackageID matches ^([FG][0-9]+)$|^(pkg-[a-f0-9]+)$",
+				Break: pkgAgainst(func(ctx context.Context, f *pkgFake) error {
+					_, err := f.GetPackageVersionHistory(ctx, &opensearch.GetPackageVersionHistoryInput{PackageID: aws.String("package-1")})
+					return err
+				}),
+				Code: pkgValidationCode,
+			},
+			{
+				Rule: "MaxResults is at most 100",
+				Break: pkgAgainst(func(ctx context.Context, f *pkgFake) error {
+					_, err := f.GetPackageVersionHistory(ctx, &opensearch.GetPackageVersionHistoryInput{PackageID: aws.String("F111111111"), MaxResults: 101})
+					return err
+				}),
+				Code: pkgValidationCode,
+			},
+			{
+				Rule: "a package that doesn't exist fails with ResourceNotFoundException",
+				Break: pkgAgainst(func(ctx context.Context, f *pkgFake) error {
+					_, err := f.GetPackageVersionHistory(ctx, &opensearch.GetPackageVersionHistoryInput{PackageID: aws.String("F999999999")})
+					return err
+				}),
+				Code: "ResourceNotFoundException",
+			},
+			{
+				Rule: "each version is listed with the commit message of the update that made it, across pages",
+				Check: pkgAgainst(createPkg(), settlePackages, func(ctx context.Context, f *pkgFake) error {
+					for _, message := range []string{"first", "second"} {
+						in := &opensearch.UpdatePackageInput{PackageID: aws.String("F000000001"), PackageSource: createPkgInput().PackageSource, CommitMessage: aws.String(message)}
+						if _, err := f.UpdatePackage(ctx, in); err != nil {
+							return err
+						}
+						if err := settlePackages(ctx, f); err != nil {
+							return err
+						}
+					}
+					messages := []string{}
+					in := &opensearch.GetPackageVersionHistoryInput{PackageID: aws.String("F000000001")}
+					for {
+						page, err := f.GetPackageVersionHistory(ctx, in)
+						if err != nil {
+							return err
+						}
+						for _, v := range page.PackageVersionHistoryList {
+							messages = append(messages, aws.ToString(v.CommitMessage))
+						}
+						if in.NextToken = page.NextToken; in.NextToken == nil {
+							break
+						}
+					}
+					if fmt.Sprint(messages) != fmt.Sprint([]string{"", "first", "second"}) {
+						return fmt.Errorf("the history lists the commit messages %q", messages)
+					}
+					return nil
+				}),
+			},
+		},
+		Unclear: "When AWS lists a version: the fake lists it only once its import is AVAILABLE, so an update that is still " +
+			"importing can't be told from one made outside Radius. Whether a version whose import failed is listed: the fake " +
+			"lists none. Whether PackageVersion has the form of AvailablePackageVersion: the handler compares only CreatedAt and " +
+			"CommitMessage. The page size: the fake returns two versions a page." + pkgConstraintNote,
 	},
 	"GetCallerIdentity": {
 		Doc: "https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html",

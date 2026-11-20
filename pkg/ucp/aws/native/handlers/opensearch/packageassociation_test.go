@@ -114,7 +114,7 @@ func Test_PackageAssociation_FirstLook(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, withProps(properties, map[string]any{
 		"DomainPackageStatus": "ACTIVE", "PackageName": "synonyms", "PackageType": "TXT-DICTIONARY", "PackageVersion": "v1",
-		"ReferencePath": "analyzers/F111111111",
+		"ReferencePath": "analyzers/F111111111", "PrerequisitePackageIDList": []any{}, "AssociationConfiguration": map[string]any{},
 	}), read)
 	p, err = h.Progress(t.Context(), pkgRegion, id, native.OperationUpdate)
 	require.NoError(t, err)

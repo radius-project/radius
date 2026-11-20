@@ -83,7 +83,6 @@ func Test_Suite_Package(t *testing.T) {
 		Properties:         properties,
 		Changed:            withProps(properties, map[string]any{"PackageDescription": "Synonyms, version 2"}),
 		ChangedWriteOnly:   withProps(properties, map[string]any{"PackageSource": source("synonyms-2.txt")}),
-		Removable:          "PackageDescription",
 		CreateOnlyChange:   withProps(properties, map[string]any{"PackageName": "dictionary-2"}),
 		Invalid: []map[string]any{
 			withProps(properties, map[string]any{"PackageName": "Dictionary"}),
@@ -186,9 +185,16 @@ func updatePackage(t *testing.T, h *Package, request native.UpdateRequest) nativ
 	t.Helper()
 	state, err := h.UpdateState(t.Context(), pkgRegion, request.Identifier)
 	require.NoError(t, err)
+	request.State = state
 	require.NoError(t, h.Update(t.Context(), request))
+	return waitUpdate(t, h, request.Identifier, state)
+}
+
+// waitUpdate polls the progress of the update with state until it is done, and fails the test if it never is.
+func waitUpdate(t *testing.T, h *Package, identifier string, state string) native.Progress {
+	t.Helper()
 	for range 20 {
-		p, err := h.UpdateProgress(t.Context(), pkgRegion, request.Identifier, state)
+		p, err := h.UpdateProgress(t.Context(), pkgRegion, identifier, state)
 		require.NoError(t, err)
 		if p.Done {
 			return p
@@ -283,18 +289,14 @@ func Test_Package_UpdateWaitsForNewVersion(t *testing.T) {
 	request := packageUpdate(t, h, id, withProps(dictionaryTemplate(), map[string]any{"PackageSource": source("synonyms-2.txt")}))
 	state, err := h.UpdateState(t.Context(), pkgRegion, id)
 	require.NoError(t, err)
+	request.State = state
 	require.NoError(t, h.Update(t.Context(), request))
 
 	p, err := h.UpdateProgress(t.Context(), pkgRegion, id, state)
 	require.NoError(t, err)
 	require.False(t, p.Done, "AWS still reports the old version")
 	require.Equal(t, "AVAILABLE with a new version", p.Waiting)
-
-	for !p.Done {
-		p, err = h.UpdateProgress(t.Context(), pkgRegion, id, state)
-		require.NoError(t, err)
-	}
-	require.Nil(t, p.Failure)
+	require.Nil(t, waitUpdate(t, h, id, state).Failure)
 	properties, err := h.Read(t.Context(), pkgRegion, id)
 	require.NoError(t, err)
 	require.Equal(t, "v2", properties["AvailablePackageVersion"])
@@ -336,7 +338,7 @@ func Test_Package_UpdateDescription(t *testing.T) {
 	require.NotNil(t, updates.inputs[1].PackageDescription)
 	properties, err := h.Read(t.Context(), pkgRegion, id)
 	require.NoError(t, err)
-	require.NotContains(t, properties, "PackageDescription")
+	require.Equal(t, "", properties["PackageDescription"], "AWS has no description, which reads as an empty one")
 
 	// A description AWS has that the template never set isn't removed.
 	api.store.Resource(packageType, id)["PackageDescription"] = "outside"
@@ -600,24 +602,20 @@ func Test_Package_UpdateResent(t *testing.T) {
 	require.NoError(t, h.Update(t.Context(), request))
 
 	// The response was lost while AWS imported the file. UCP sends the same update again while AWS still imports it.
-	for range 3 {
+	// AWS lists the update's version only once it is AVAILABLE, so the import can't be told from one outside Radius,
+	// and the resend is a conflict that sends nothing.
+	for range 2 {
 		_, err := h.Read(t.Context(), pkgRegion, id)
 		require.NoError(t, err)
-		require.NoError(t, h.Update(t.Context(), request))
+		requirePkgConflict(t, h.Update(t.Context(), request), "still importing")
 	}
 	require.Equal(t, 1, api.calls["UpdatePackage"])
-	p, err := h.UpdateProgress(t.Context(), pkgRegion, id, state)
-	require.NoError(t, err)
-	for !p.Done {
-		p, err = h.UpdateProgress(t.Context(), pkgRegion, id, state)
-		require.NoError(t, err)
-	}
-	require.Nil(t, p.Failure)
+	require.Nil(t, waitUpdate(t, h, id, state).Failure)
 
 	// And once after it finished.
 	require.NoError(t, h.Update(t.Context(), request))
 	require.Equal(t, 1, api.calls["UpdatePackage"])
-	p, err = h.UpdateProgress(t.Context(), pkgRegion, id, state)
+	p, err := h.UpdateProgress(t.Context(), pkgRegion, id, state)
 	require.NoError(t, err)
 	require.True(t, p.Done)
 	read, err := h.Read(t.Context(), pkgRegion, id)
@@ -626,6 +624,8 @@ func Test_Package_UpdateResent(t *testing.T) {
 
 	request.State = "{"
 	requirePkgRejectedBefore(t, h.Update(t.Context(), request), "saved version")
+	_, err = h.UpdateProgress(t.Context(), pkgRegion, id, "{")
+	require.ErrorContains(t, err, "saved version")
 	require.Equal(t, 1, api.calls["UpdatePackage"])
 }
 
