@@ -159,7 +159,7 @@ func invalid(format string, args ...any) error {
 	}
 }
 
-func notFound(format string, args ...any) error {
+func notFoundError(format string, args ...any) error {
 	return apiError(http.StatusNotFound, notFoundCode, fmt.Sprintf(format, args...))
 }
 
@@ -184,7 +184,7 @@ func voiceConnector(id *string, operation string) error {
 	case !voiceConnectorIDPattern.MatchString(*id):
 		return invalid("Value '%s' at 'voiceConnectorId' failed to satisfy constraint", *id)
 	case strings.HasPrefix(*id, missingPrefix):
-		return notFound("Could not find VoiceConnector with Id '%s'", *id)
+		return notFoundError("Could not find VoiceConnector with Id '%s'", *id)
 	}
 	return nil
 }
@@ -287,7 +287,7 @@ func (f *fakeAPI) GetVoiceConnectorStreamingConfiguration(ctx context.Context, i
 	}
 	props, ok := f.read(streamingType, *in.VoiceConnectorId)
 	if !ok {
-		return nil, notFound("Could not find StreamingConfiguration for Voice Connector %s", *in.VoiceConnectorId)
+		return nil, notFoundError("Could not find StreamingConfiguration for Voice Connector %s", *in.VoiceConnectorId)
 	}
 	var settings types.StreamingConfiguration
 	decode(props, streamingProperty, &settings)
@@ -373,7 +373,7 @@ func (f *fakeAPI) GetVoiceConnectorOrigination(ctx context.Context, in *chimesdk
 	}
 	props, ok := f.read(originationType, *in.VoiceConnectorId)
 	if !ok {
-		return nil, notFound("Could not find Origination for VoiceConnector %s", *in.VoiceConnectorId)
+		return nil, notFoundError("Could not find Origination for VoiceConnector %s", *in.VoiceConnectorId)
 	}
 	var settings types.Origination
 	decode(props, originationProperty, &settings)
@@ -474,7 +474,7 @@ func (f *fakeAPI) GetVoiceConnectorTermination(ctx context.Context, in *chimesdk
 	}
 	props, ok := f.read(terminationType, *in.VoiceConnectorId)
 	if !ok {
-		return nil, notFound("Could not find Termination for VoiceConnector %s", *in.VoiceConnectorId)
+		return nil, notFoundError("Could not find Termination for VoiceConnector %s", *in.VoiceConnectorId)
 	}
 	var settings types.Termination
 	decode(props, terminationProperty, &settings)

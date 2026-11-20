@@ -92,8 +92,15 @@ func sleep(ctx context.Context, d time.Duration) {
 // reader reads the settings of the Voice Connector with the identifier, as a handler's Read does.
 type reader func(ctx context.Context, region string, identifier string) (map[string]any, error)
 
+// notFound returns err as ErrNotFound for a Voice Connector, or settings, AWS doesn't have, and err otherwise. Reads use
+// it and not awsapi.Rejected, because the worker takes a *native.Failure from Progress as the operation's end: a
+// throttled read must leave the operation waiting, not fail it as rejected.
+func notFound(err error) error {
+	return awsapi.NotFound(err, notFoundCode)
+}
+
 // notFoundOrRejected returns err as ErrNotFound for a Voice Connector, or settings, AWS doesn't have, and otherwise as
-// awsapi.Rejected does.
+// awsapi.Rejected does, for a call that changes AWS.
 func notFoundOrRejected(err error) error {
 	return awsapi.Rejected(awsapi.NotFound(err, notFoundCode))
 }
@@ -182,7 +189,7 @@ func confirm(ctx context.Context, wait pause, read reader, region string, identi
 // voiceConnectorExists reports whether AWS has the Voice Connector with id.
 func voiceConnectorExists(ctx context.Context, api API, region string, id string) (bool, error) {
 	_, err := api.GetVoiceConnector(ctx, &chimesdkvoice.GetVoiceConnectorInput{VoiceConnectorId: aws.String(id)}, inRegion(region))
-	err = notFoundOrRejected(err)
+	err = notFound(err)
 	if errors.Is(err, native.ErrNotFound) {
 		return false, nil
 	}

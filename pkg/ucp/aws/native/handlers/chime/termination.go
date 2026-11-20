@@ -62,7 +62,7 @@ func (h *Termination) Options() native.Options {
 func (h *Termination) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	out, err := h.api.GetVoiceConnectorTermination(ctx, &chimesdkvoice.GetVoiceConnectorTerminationInput{VoiceConnectorId: aws.String(identifier)}, inRegion(region))
 	if err != nil {
-		return nil, notFoundOrRejected(err)
+		return nil, notFound(err)
 	}
 	return properties(identifier, terminationProperty, out.Termination), nil
 }

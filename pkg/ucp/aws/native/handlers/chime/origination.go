@@ -61,7 +61,7 @@ func (h *Origination) Options() native.Options {
 func (h *Origination) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	out, err := h.api.GetVoiceConnectorOrigination(ctx, &chimesdkvoice.GetVoiceConnectorOriginationInput{VoiceConnectorId: aws.String(identifier)}, inRegion(region))
 	if err != nil {
-		return nil, notFoundOrRejected(err)
+		return nil, notFound(err)
 	}
 	return properties(identifier, originationProperty, out.Origination), nil
 }

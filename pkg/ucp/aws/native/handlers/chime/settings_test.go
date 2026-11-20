@@ -472,3 +472,45 @@ func Test_CreateProgress_StopsWhenTheRequestEnds(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 	require.Equal(t, 1, reads)
 }
+
+func Test_Settings_ThrottledReadDuringProgress(t *testing.T) {
+	ctx := t.Context()
+	throttled := apiError(429, "ThrottledClientException", "slow down")
+	both := []native.Operation{native.OperationCreate, native.OperationDelete}
+	for _, tt := range []struct {
+		handler native.Handler
+		get     string
+		ops     []native.Operation
+	}{
+		// A logging create is done once its Put is, so only its reset reads.
+		{withoutWait(NewLoggingConfiguration(newFakeAPI(awsfake.NewCloudControl()))), "GetVoiceConnector", []native.Operation{native.OperationDelete}},
+		{withoutWait(NewStreamingConfiguration(newFakeAPI(awsfake.NewCloudControl()))), "GetVoiceConnectorStreamingConfiguration", both},
+		{withoutWait(NewOrigination(newFakeAPI(awsfake.NewCloudControl()))), "GetVoiceConnectorOrigination", both},
+		{withoutWait(NewTermination(newFakeAPI(awsfake.NewCloudControl()))), "GetVoiceConnectorTermination", both},
+	} {
+		t.Run(tt.handler.TypeName(), func(t *testing.T) {
+			fakeOf(tt.handler).errs[tt.get] = throttled
+			for _, op := range tt.ops {
+				_, err := tt.handler.Progress(ctx, region, testVC, op)
+				require.ErrorContains(t, err, "ThrottledClientException")
+				var failure *native.Failure
+				require.False(t, errors.As(err, &failure), "a throttled read leaves the %s waiting instead of ending it", op)
+			}
+		})
+	}
+}
+
+// fakeOf returns the fake the handler uses.
+func fakeOf(h native.Handler) *fakeAPI {
+	switch h := h.(type) {
+	case *LoggingConfiguration:
+		return h.api.(*fakeAPI)
+	case *StreamingConfiguration:
+		return h.api.(*fakeAPI)
+	case *Origination:
+		return h.api.(*fakeAPI)
+	case *Termination:
+		return h.api.(*fakeAPI)
+	}
+	return nil
+}

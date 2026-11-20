@@ -75,7 +75,7 @@ func (h *LoggingConfiguration) Read(ctx context.Context, region string, identifi
 	}
 	out, err := h.api.GetVoiceConnectorLoggingConfiguration(ctx, &chimesdkvoice.GetVoiceConnectorLoggingConfigurationInput{VoiceConnectorId: aws.String(identifier)}, inRegion(region))
 	if err != nil {
-		return nil, notFoundOrRejected(err)
+		return nil, notFound(err)
 	}
 	return properties(identifier, loggingProperty, loggingOf(out.LoggingConfiguration)), nil
 }

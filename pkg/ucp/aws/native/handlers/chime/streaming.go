@@ -60,7 +60,7 @@ func (h *StreamingConfiguration) Options() native.Options {
 func (h *StreamingConfiguration) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	out, err := h.api.GetVoiceConnectorStreamingConfiguration(ctx, &chimesdkvoice.GetVoiceConnectorStreamingConfigurationInput{VoiceConnectorId: aws.String(identifier)}, inRegion(region))
 	if err != nil {
-		return nil, notFoundOrRejected(err)
+		return nil, notFound(err)
 	}
 	return properties(identifier, streamingProperty, out.StreamingConfiguration), nil
 }
