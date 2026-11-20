@@ -21,6 +21,7 @@ global:
   rootCA:
     cert: ""
     secretName: "root-ca-cert"
+    # Must not be a pod volume name the authorization settings add (mtls, spiffe, token-<receiver>).
     volumeName: "root-ca-vol"
     mountPath: "/tmp/sslcerts"
     # SSL_CERT_DIR is used to override the default root CA location.
@@ -152,6 +153,18 @@ global:
       # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
       # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
       mode: selfSigned
+    # SPIFFE server certificates and caller tokens for internal calls. Rendered only when the
+    # authorization mode is not off. ucp, applications-rp, and dynamic-rp each get Certificate
+    # "<receiver>-spiffe" from Issuer "radius-ca-issuer", stored in Secret "<receiver>-spiffe" and
+    # mounted read-only at /var/run/radius/spiffe (tls.crt, tls.key). Its only SAN is the SPIFFE ID
+    # spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>. Keys are ECDSA P-256; certificates last
+    # 24h, renew 8h before expiry, and get a new key on each renewal. Callers mount 10-minute
+    # projected ServiceAccount tokens at /var/run/radius/tokens/<receiver>/token, with the
+    # receiver's name as the audience. Mounted for a later release; components do not read them yet.
+    spiffe:
+      # SPIFFE trust domain of the Radius server certificates: lowercase letters, digits, '.', '-'
+      # and '_', at most 255 characters. Rendering fails for any other value when the mode is not off.
+      trustDomain: radius.internal
 
 controller:
   image: controller

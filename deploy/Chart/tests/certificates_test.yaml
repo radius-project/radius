@@ -17,19 +17,19 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: renders the CA, issuers, and service certificates in dry run
+  - it: renders the CA, issuers, service certificates, and SPIFFE server certificates in dry run
     set:
       global.rbac.dryRun: true
     asserts:
       - hasDocuments:
-          count: 8
+          count: 11
 
   - it: renders the self-signed bootstrap issuer and Radius CA
     set:
       global.rbac.enabled: true
     asserts:
       - hasDocuments:
-          count: 8
+          count: 11
       - isKind:
           of: Issuer
         documentIndex: 0
@@ -258,6 +258,114 @@ tests:
       - failedTemplate:
           errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned."
 
+  - it: renders a SPIFFE server certificate for each receiver
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - containsDocument:
+          kind: Certificate
+          apiVersion: cert-manager.io/v1
+          name: ucp-spiffe
+          namespace: radius-system
+          any: true
+      - containsDocument:
+          kind: Certificate
+          apiVersion: cert-manager.io/v1
+          name: applications-rp-spiffe
+          namespace: radius-system
+          any: true
+      - containsDocument:
+          kind: Certificate
+          apiVersion: cert-manager.io/v1
+          name: dynamic-rp-spiffe
+          namespace: radius-system
+          any: true
+
+  - it: issues the ucp SPIFFE server certificate with only its SPIFFE ID and server auth
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: ucp-spiffe
+    asserts:
+      - equal:
+          path: spec
+          value:
+            secretName: ucp-spiffe
+            duration: 24h
+            renewBefore: 8h
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+              rotationPolicy: Always
+            usages:
+              - digital signature
+              - server auth
+            uris:
+              - spiffe://radius.internal/ns/radius-system/sa/ucp
+            issuerRef:
+              group: cert-manager.io
+              kind: Issuer
+              name: radius-ca-issuer
+
+  - it: uses the receiver's ServiceAccount and the configured trust domain in the SPIFFE ID
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: example.org
+    documentSelector:
+      path: metadata.name
+      value: dynamic-rp-spiffe
+    asserts:
+      - equal:
+          path: spec.uris
+          value: [spiffe://example.org/ns/radius-system/sa/dynamic-rp]
+      - equal:
+          path: spec.secretName
+          value: dynamic-rp-spiffe
+      - notExists:
+          path: spec.dnsNames
+
+  - it: fails for a trust domain with a path segment
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org/team
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got \"example.org/team\""
+
+  - it: fails for a trust domain with uppercase letters or a scheme in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: spiffe://Example.org
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got \"spiffe://Example.org\""
+
+  - it: fails for a trust domain longer than 255 characters
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - failedTemplate: {}
+
+  - it: does not validate the trust domain when the mode is off
+    set:
+      global.rbac.spiffe.trustDomain: example.org/team
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: issues no certificate to the bootstrap issuer except the Radius CA
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: spec.issuerRef.name
+      value: radius-selfsigned-bootstrap
+      skipEmptyTemplates: true
+    asserts:
+      - equal:
+          path: metadata.name
+          value: radius-ca
+
   - it: fails for a false mode instead of defaulting
     set:
       global.rbac.enabled: true
@@ -285,6 +393,43 @@ tests:
   - it: ignores the certificate mode when authorization is off
     set:
       global.rbac.certificates.mode: caSecret
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails when global.rootCA.secretName names a receiver's SPIFFE Secret
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.secretName: ucp-spiffe
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.secretName must not be \"ucp-spiffe\": cert-manager writes ucp's SPIFFE server certificate and key to that Secret"
+
+  - it: fails when global.targetCluster.secretName names a receiver's SPIFFE Secret in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: dynamic-rp-spiffe
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.secretName must not be \"dynamic-rp-spiffe\": cert-manager writes dynamic-rp's SPIFFE server certificate and key to that Secret"
+
+  - it: ignores inactive shared Secret names that match a receiver's SPIFFE Secret
+    set:
+      global.rbac.enabled: true
+      global.rootCA.secretName: ucp-spiffe
+      global.targetCluster.secretName: applications-rp-spiffe
+    asserts:
+      - hasDocuments:
+          count: 11
+
+  - it: renders no receiver Certificate and does not validate shared Secret names when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.secretName: ucp-spiffe
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: ucp-spiffe
     asserts:
       - hasDocuments:
           count: 0
