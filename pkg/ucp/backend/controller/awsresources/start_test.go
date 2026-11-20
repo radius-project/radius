@@ -642,3 +642,53 @@ func Test_SendStart_DeleteFullyApplied(t *testing.T) {
 func Test_ClaimTaken_Error(t *testing.T) {
 	require.EqualError(t, &claimTaken{state: records.StartSending}, `another delivery of the operation changed its start state to "sending"`)
 }
+
+// Test_SendStart_TimeoutWhileAnotherDeliverySends runs out the wait of one delivery while another delivery of the
+// operation sends the call. The create may reach AWS, so the record keeps what finds it.
+func Test_SendStart_TimeoutWhileAnotherDeliverySends(t *testing.T) {
+	f := newStartFixture(t, records.OperationCreate)
+	f.fake.Opts.ReadyTimeout = time.Nanosecond
+	db := newSaveFails(f.db, 0)
+	// The second read is the one the timeout settles the record with.
+	db.at, db.beforeRead = 2, func() {
+		rec, etag, err := f.store.Get(t.Context(), f.id)
+		require.NoError(t, err)
+		rec.Properties.StartState = records.StartSending
+		_, err = f.store.Save(t.Context(), rec, etag)
+		require.NoError(t, err)
+	}
+	_, result, err := f.send(t.Context(), db, records.OperationCreate)
+	require.NoError(t, err)
+	require.Contains(t, result.Error.Message, "can't tell whether AWS took it")
+	rec := f.record()
+	require.Equal(t, "token", rec.Properties.ClientToken, "the next request finds the create the other delivery sent")
+	require.Equal(t, "app-native", rec.Properties.AWSIdentifier)
+}
+
+// Test_Run_FailedCreateAfterResourceGone fails a waiting create of an alias whose earlier resource was deleted outside
+// Radius. The record keeps nothing of the earlier resource, as a request that removes it would.
+func Test_Run_FailedCreateAfterResourceGone(t *testing.T) {
+	f := newStartFixture(t, records.OperationCreate)
+	rec, etag, err := f.store.Get(t.Context(), f.id)
+	require.NoError(t, err)
+	rec.Properties.LastApplied = map[string]any{"Tags": []any{"team"}}
+	rec.Properties.UnresolvedPaths = []string{"Tags"}
+	rec.Properties.Fingerprints = &datamodel.AWSFingerprints{KeyID: "key", Digests: map[string]string{"Password": "d"}}
+	rec.Properties.CreateToken = "earlier"
+	rec.Properties.DeleteToken = "final-1"
+	_, err = f.store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+	f.fake.Opts.ReadyTimeout = time.Nanosecond
+
+	result := f.run(v1.OperationPut, f.db)
+	require.NotNil(t, result.Error)
+	kept := f.record()
+	requireNoResource(t, kept)
+	require.Nil(t, kept.Properties.LastApplied, "the alias owns nothing of the next resource it takes over")
+	require.Empty(t, kept.Properties.UnresolvedPaths)
+	require.Nil(t, kept.Properties.Fingerprints)
+	require.Empty(t, kept.Properties.CreateToken)
+	require.Empty(t, kept.Properties.DeleteToken)
+	require.Equal(t, "owner", kept.Properties.Owner)
+	require.Equal(t, records.HandlerNative, kept.Properties.Handler)
+}

@@ -550,14 +550,21 @@ func StartFailed(rec *datamodel.AWSResource, op string, outcome native.Outcome, 
 	return false
 }
 
-// DropCreate clears a first create AWS never had from the record, so the record holds no resource: the next PUT
-// creates one with a new client token, a DELETE removes only the record, and no other alias is kept from the
-// identifier. UCP's worker keeps such a record, rather than removing it, so a redelivered operation still reports the
-// failure saved on it.
+// DropCreate clears a first create AWS never had from the record, so the record holds nothing but its owner, its
+// handler, and its operation, like a new record: the next PUT creates a resource with a new client token or takes one
+// over, a DELETE removes only the record, and no other alias is kept from the identifier. The record keeps nothing of a
+// resource it held before, such as one deleted outside Radius, as a request that removes the record would. UCP's
+// worker keeps such a record, rather than removing it, so a redelivered operation still reports the failure saved on
+// it.
 func DropCreate(rec *datamodel.AWSResource) {
-	rec.Properties.ClientToken = ""
-	rec.Properties.AWSIdentifier = ""
-	ClearPending(rec)
+	p := rec.Properties
+	rec.Properties = datamodel.AWSResourceProperties{
+		Owner:            p.Owner,
+		Handler:          p.Handler,
+		RequestToken:     p.RequestToken,
+		LastRequestToken: p.LastRequestToken,
+		LastRequestError: p.LastRequestError,
+	}
 }
 
 // DropWaiting ends the record's waiting operation (see IsWaiting) as if AWS rejected its first call, because nothing
