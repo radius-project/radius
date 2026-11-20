@@ -747,9 +747,10 @@ interface InstallationAccess {
 
   @post
   @route("/checkAccess")
-  checkAccess(...AuthorizationParameters, @body request: BoundedAccessCheckRequest):
-    | ArmResponse<CheckAccessResponse>
-    | ErrorResponse;
+  checkAccess(
+    ...AuthorizationParameters,
+    @body request: BoundedAccessCheckRequest,
+  ): ArmResponse<CheckAccessResponse> | ErrorResponse;
 
   @post
   @route("/explainAccess")
