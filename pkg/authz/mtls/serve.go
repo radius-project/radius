@@ -75,11 +75,12 @@ type Receiver struct {
 //
 // In off mode it calls srv.ListenAndServe, so behavior is unchanged.
 //
-// Otherwise the server presents the certificate in options.CertificateDirectory, never
-// requests a client certificate, and authenticates each request by its ServiceAccount
-// token, whose audience must be receiver.Name.
+// Otherwise both providers authenticate each request by its ServiceAccount token, whose
+// audience must be receiver.Name. The Radius provider presents the certificate in
+// options.CertificateDirectory and never requests a client certificate. The external
+// provider serves plain HTTP under operator encryption without loading TLS material.
 //
-// In dryRun mode the listener accepts both plain HTTP and TLS on the same port. Plain HTTP,
+// With the Radius provider in dryRun mode the listener accepts both plain HTTP and TLS on the same port. Plain HTTP,
 // missing or invalid tokens, callers that are not in receiver.AllowedCallers, and requests
 // received while the server's loaded certificate is expired are logged as would-deny, and
 // the request is still served. A request served over plain HTTP or with an expired server
@@ -87,7 +88,7 @@ type Receiver struct {
 // that cannot be checked because the signing keys are stale are logged as would-deny with
 // AuthorizationUnavailable and served without an identity.
 //
-// In enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
+// With the Radius provider in enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
 // A missing or invalid token gets InvalidAuthenticationInfo, a token that cannot be checked
 // because the signing keys are stale gets AuthorizationUnavailable, and a caller that is not
 // in receiver.AllowedCallers gets AuthorizationFailed. A request received while the
@@ -101,6 +102,9 @@ type Receiver struct {
 //
 // ListenAndServe changes srv's Handler when the mode is not off.
 func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options, receiver Receiver) error {
+	if err := options.ValidateTLSProvider(); err != nil {
+		return err
+	}
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.ListenAndServe()
@@ -140,6 +144,10 @@ type serveConfig struct {
 }
 
 func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, receiver Receiver, config serveConfig) error {
+	if err := options.ValidateTLSProvider(); err != nil {
+		_ = ln.Close()
+		return err
+	}
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.Serve(ln)
@@ -159,7 +167,9 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go source.Start(runCtx, config.pollInterval)
+	if source != nil {
+		go source.Start(runCtx, config.pollInterval)
+	}
 	go verifier.Run(runCtx)
 
 	s := &server{verifier: verifier, source: source, mode: mode, allowedCallers: receiver.AllowedCallers}
@@ -170,24 +180,35 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 	}
 	srv.Handler = s.authorizeCaller(handler)
 
+	if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
+		return srv.Serve(ln)
+	}
 	return srv.Serve(newListener(ctx, ln, source.ServerConfig(), mode))
 }
 
 // newServerAuth loads the server certificate and creates the token verifier.
 func newServerAuth(options authz.Options, receiver Receiver, config serveConfig) (*token.Verifier, *Source, error) {
 	mode := options.EffectiveMode()
-	if options.CertificateDirectory == "" || options.Namespace == "" {
+	managed := options.EffectiveTLSProvider() == authz.TLSProviderRadius
+	if managed && (options.CertificateDirectory == "" || options.Namespace == "") {
 		return nil, nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", mode)
+	}
+	if options.Namespace == "" {
+		return nil, nil, fmt.Errorf("authorization mode %q requires namespace", mode)
 	}
 	if receiver.Name == "" {
 		return nil, nil, errors.New("receiver name is required")
 	}
 
-	source, err := NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load server certificate: %w", err)
+	var source *Source
+	if managed {
+		var err error
+		source, err = NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to load server certificate: %w", err)
+		}
 	}
-	if config.certNow != nil {
+	if managed && config.certNow != nil {
 		source.now = config.certNow
 	}
 
@@ -233,8 +254,8 @@ type server struct {
 // one of the allowed components. It removes the Authorization header before calling next, so
 // the caller's token is never forwarded, for example when UCP proxies a request.
 //
-// The caller's identity is attached only to requests that arrived over TLS while the
-// receiver's own serving certificate is valid. A connection can outlive that certificate,
+// With Radius TLS, the caller's identity is attached only to requests that arrived over
+// TLS while the receiver's own serving certificate is valid. A connection can outlive that certificate,
 // so its validity is checked on every request, not only at the handshake. Stale signing
 // keys take precedence: such requests get AuthorizationUnavailable whatever the state of
 // the serving certificate.
@@ -264,8 +285,8 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 
 		// Plain HTTP in dryRun is logged once per connection by the listener. A request whose
 		// token cannot be checked because the signing keys are stale is not checked further.
-		trusted := r.TLS != nil
-		if trusted && decision.Code != v1.CodeAuthorizationUnavailable {
+		trusted := s.source == nil || r.TLS != nil
+		if s.source != nil && trusted && decision.Code != v1.CodeAuthorizationUnavailable {
 			if _, err := s.source.load(); err != nil {
 				// The request context's logger has no token fields, so the log shows only
 				// the certificate failure.

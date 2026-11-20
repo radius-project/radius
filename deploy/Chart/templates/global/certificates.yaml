@@ -20,6 +20,7 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   selfSigned: {}
+{{- if eq (include "radius.authz.tls.provider" .) "radius" }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -91,6 +92,7 @@ spec:
     group: cert-manager.io
     kind: Issuer
     name: radius-ca-issuer
+{{- end }}
 {{- end }}
 ---
 # UCP's aggregated API certificate has its own CA, independent of global.rbac.certificates.mode.

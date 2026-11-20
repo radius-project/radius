@@ -24,6 +24,48 @@ tests:
       - hasDocuments:
           count: 8
 
+  - it: omits the component CA and issuer but retains aggregation issuers for external dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rbac.tls.provider: external
+    asserts: &externalCAs
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: metadata.name
+          value: radius-selfsigned-bootstrap
+        documentIndex: 0
+      - equal:
+          path: spec.selfSigned
+          value: {}
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.secretName
+          value: radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.issuerRef.name
+          value: radius-selfsigned-bootstrap
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: radius-apiserver-issuer
+        documentIndex: 2
+      - equal:
+          path: spec.ca.secretName
+          value: radius-apiserver-ca
+        documentIndex: 2
+
+  - it: retains only aggregation CAs and issuers for external enforce
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+    asserts: *externalCAs
+
   - it: renders the self-signed bootstrap issuer and Radius CA
     set:
       global.rbac.enabled: true
@@ -330,6 +372,34 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: issues a URI-only server certificate for the opted-in engine
+    set:
+      global.rbac.enabled: true
+      de.internalAuth.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: bicep-de-spiffe
+    asserts:
+      - equal:
+          path: spec
+          value:
+            secretName: bicep-de-spiffe
+            duration: 24h
+            renewBefore: 8h
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+              rotationPolicy: Always
+            usages:
+              - digital signature
+              - server auth
+            uris:
+              - spiffe://radius.internal/ns/radius-system/sa/bicep-de
+            issuerRef:
+              group: cert-manager.io
+              kind: Issuer
+              name: radius-ca-issuer
 
   - it: fails when global.rootCA.secretName names a receiver's SPIFFE Secret
     set:

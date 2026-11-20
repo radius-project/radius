@@ -237,7 +237,14 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	if target == nil {
 		return nil
 	}
-	mode, err := servedAuthzMode(target)
+	// Rollback is an upgrade to the target chart with its stored overrides, never the current
+	// release's values. Reject unsupported provider/engine settings before touching trust.
+	options := ChartOptions{Namespace: radiusNamespace, ReleaseName: radiusReleaseName}
+	mode, err := radiusActionMode(target.Chart, target.Config, nil, options, true)
+	if err != nil {
+		return err
+	}
+	mode, err = manifestAuthzMode(target, mode)
 	if err != nil {
 		return err
 	}
@@ -280,6 +287,10 @@ func servedAuthzMode(rel *releasev1.Release) (authz.Mode, error) {
 	if err != nil {
 		return "", err
 	}
+	return manifestAuthzMode(rel, mode)
+}
+
+func manifestAuthzMode(rel *releasev1.Release, mode authz.Mode) (authz.Mode, error) {
 	kind, err := ucpServingCertificateKind(rel.Manifest)
 	if err != nil {
 		return "", fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)

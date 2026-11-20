@@ -142,6 +142,7 @@ Fails rendering when dry run is combined with enforcement.
 */}}
 {{- define "radius.authz.mode" -}}
 {{- $rbac := .Values.global.rbac | default dict -}}
+{{- $_ := include "radius.authz.tls.provider" . -}}
 {{- if and $rbac.enabled $rbac.dryRun -}}
 {{- fail "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run." -}}
 {{- else if $rbac.dryRun -}}
@@ -151,6 +152,48 @@ enforce
 {{- else -}}
 off
 {{- end -}}
+{{- end -}}
+
+{{/* Reject retired or misspelled provider settings even when authorization is off. */}}
+{{- define "radius.authz.tls.provider" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- if hasKey $rbac "tlsProvider" -}}
+{{- fail "global.rbac.tlsProvider is not supported; use global.rbac.tls.provider" -}}
+{{- end -}}
+{{- if hasKey $rbac "mtls" -}}
+{{- fail "global.rbac.mtls is retired; migrate explicitly to global.rbac.tls.provider" -}}
+{{- end -}}
+{{- $tls := $rbac.tls | default dict -}}
+{{- $provider := "radius" -}}
+{{- if hasKey $tls "provider" -}}
+{{- $provider = $tls.provider -}}
+{{- end -}}
+{{- if not (has $provider (list "radius" "external")) -}}
+{{- fail "global.rbac.tls.provider must be radius or external" -}}
+{{- end -}}
+{{- $provider -}}
+{{- end -}}
+
+{{/* Explicit compatible-engine gate; retired enabled settings must never become Off. */}}
+{{- define "radius.de.internalAuth.enabled" -}}
+{{- range $gate := list "ucpMTLS" "externalIdentity" -}}
+{{- $legacy := index $.Values.de $gate | default dict -}}
+{{- if $legacy.enabled -}}
+{{- fail (printf "de.%s.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled" $gate) -}}
+{{- end -}}
+{{- end -}}
+{{- $settings := .Values.de.internalAuth | default dict -}}
+{{- $enabled := false -}}
+{{- if hasKey $settings "enabled" -}}
+{{- $enabled = $settings.enabled -}}
+{{- end -}}
+{{- if not (kindIs "bool" $enabled) -}}
+{{- fail "de.internalAuth.enabled must be a boolean" -}}
+{{- end -}}
+{{- if and $enabled (eq (include "radius.authz.mode" .) "off") -}}
+{{- fail "de.internalAuth.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" -}}
+{{- end -}}
+{{- $enabled -}}
 {{- end -}}
 
 {{/*
@@ -205,7 +248,7 @@ annotation, so changing any of them rolls the pods.
 {{- $mode := include "radius.authz.mode" . -}}
 {{- $config := $mode -}}
 {{- if ne $mode "off" -}}
-{{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.controlPlaneSecrets" .) | join "\n" -}}
+{{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.controlPlaneSecrets" .) (include "radius.de.internalAuth.enabled" .) | join "\n" -}}
 {{- end -}}
 {{- $config | sha256sum -}}
 {{- end -}}
@@ -273,6 +316,7 @@ certificate, the Radius CA bundle, and the projected ServiceAccount tokens are m
 domain, and the release namespace.
 */}}
 {{- define "radius.authz.identityConfig" -}}
+tlsProvider: {{ include "radius.authz.tls.provider" . | quote }}
 certificateDirectory: {{ include "radius.authz.spiffe.mountPath" . | quote }}
 caDirectory: {{ include "radius.authz.caBundle.mountPath" . | quote }}
 tokenDirectory: {{ include "radius.authz.tokens.mountPath" . | quote }}
@@ -303,7 +347,7 @@ through the Kubernetes API server.
 ucp:
   kind: direct
   direct:
-    endpoint: "https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
+    endpoint: "{{ if eq (include "radius.authz.tls.provider" .) "radius" }}https{{ else }}http{{ end }}://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
 {{- else }}
 ucp:
   kind: kubernetes
@@ -324,7 +368,7 @@ Servers chain their SPIFFE certificate to it and clients verify servers against 
 the file when cert-manager renews radius-ca, and components reload it.
 */}}
 {{- define "radius.authz.caBundle.volumeMount" -}}
-{{- if ne (include "radius.authz.mode" .) "off" }}
+{{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
 - name: radius-ca
   mountPath: {{ include "radius.authz.caBundle.mountPath" . }}
   readOnly: true
@@ -336,7 +380,7 @@ Renders the Radius CA bundle volume. Only ca.crt is projected; the CA private ke
 Secret is not mounted. The Secret is required, so pods wait until cert-manager has issued radius-ca.
 */}}
 {{- define "radius.authz.caBundle.volume" -}}
-{{- if ne (include "radius.authz.mode" .) "off" }}
+{{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
 {{- include "radius.authz.validateVolumeNames" . }}
 - name: radius-ca
   secret:
@@ -370,7 +414,11 @@ SPIFFE trust domain of the Radius server certificates.
 Components that receive internal calls and get a SPIFFE server certificate, as a JSON list.
 */}}
 {{- define "radius.authz.spiffe.receivers" -}}
-{{- list "ucp" "applications-rp" "dynamic-rp" | toJson -}}
+{{- $receivers := list "ucp" "applications-rp" "dynamic-rp" -}}
+{{- if eq (include "radius.de.internalAuth.enabled" .) "true" -}}
+{{- $receivers = append $receivers "bicep-de" -}}
+{{- end -}}
+{{- $receivers | toJson -}}
 {{- end -}}
 
 {{/*
@@ -378,7 +426,7 @@ Renders the server certificate volume mount for a receiver container when the au
 is not off.
 */}}
 {{- define "radius.authz.spiffe.volumeMount" -}}
-{{- if ne (include "radius.authz.mode" .) "off" }}
+{{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
 - name: spiffe
   mountPath: {{ include "radius.authz.spiffe.mountPath" . }}
   readOnly: true
@@ -392,7 +440,7 @@ Only tls.crt and tls.key are projected; the CA bundle comes from radius-ca.
 Call with (dict "root" $ "component" "<receiver>").
 */}}
 {{- define "radius.authz.spiffe.volume" -}}
-{{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- if and (ne (include "radius.authz.mode" .root) "off") (eq (include "radius.authz.tls.provider" .root) "radius") }}
 {{- include "radius.authz.validateVolumeNames" .root }}
 - name: spiffe
   secret:

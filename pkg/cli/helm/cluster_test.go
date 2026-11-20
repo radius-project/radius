@@ -825,6 +825,11 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 	options.ResetValues = true
+	// The deployed chart ignored this provider override. A reset must neither
+	// validate it against the target chart nor reuse its enabled mode.
+	options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{
+		"enabled": true, "tls": map[string]any{"provider": "external"},
+	}}}
 
 	newRel := func(name, ver string) *releasev1.Release {
 		return &releasev1.Release{
@@ -1048,6 +1053,7 @@ func Test_Helm_RollbackRadiusToRevision_Success(t *testing.T) {
 		{Version: 3, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 		{Version: 4, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
+
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -1349,4 +1355,17 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 // authorization off, and returns none, which deployedAuthzMode reads as a release with authorization off.
 func expectNoRadiusHistory(client *MockHelmClient) {
 	client.EXPECT().RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, nil).AnyTimes()
+}
+
+func TestRollbackRejectsUnsupportedEngineProviderBeforeTrustChanges(t *testing.T) {
+	client := NewMockHelmClient(gomock.NewController(t))
+	history := []*releasev1.Release{{
+		Version: 1, Chart: manifestTestChart(t, ""),
+		Config: map[string]any{"global": map[string]any{"rbac": map[string]any{
+			"enabled": true, "tls": map[string]any{"provider": "external"},
+		}}},
+	}}
+	client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
+	impl := &Impl{Helm: client}
+	require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), "selected Radius chart does not support global.rbac.tls")
 }

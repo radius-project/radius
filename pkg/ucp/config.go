@@ -118,6 +118,9 @@ type AWSConfig struct {
 
 // RoutingConfig provides configuration for UCP routing.
 type RoutingConfig struct {
+	// AuthenticateDeploymentEngine opts a compatible engine into receiver-token authentication.
+	AuthenticateDeploymentEngine bool `yaml:"authenticateDeploymentEngine,omitempty"`
+
 	// DefaultDownstreamEndpoint is the default destination when a resource provider does not provide a downstream endpoint.
 	// In practice, this points to the URL of dynamic-rp.
 	DefaultDownstreamEndpoint string `yaml:"defaultDownstreamEndpoint"`

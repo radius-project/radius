@@ -87,6 +87,141 @@ func TestNewUpgradeTransport_Off(t *testing.T) {
 	require.Same(t, plain, rt)
 }
 
+func TestNewUpgradeTransport_EngineProviders(t *testing.T) {
+	t.Parallel()
+	for _, provider := range []authz.TLSProvider{authz.TLSProviderRadius, authz.TLSProviderExternal} {
+		for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+			t.Run(string(provider)+"/"+string(mode), func(t *testing.T) {
+				t.Parallel()
+				ca := newCA(t)
+				options := authz.Options{Mode: mode, TLSProvider: provider, Namespace: testNamespace}
+				if provider == authz.TLSProviderRadius {
+					options.CertificateDirectory = t.TempDir()
+					options.CADirectory = options.CertificateDirectory
+					writeFiles(t, options.CertificateDirectory, ca.issue(t, certOptions{uris: spiffeURIs("bicep-de")}), ca.pem)
+				}
+				ln, err := net.Listen("tcp", "127.0.0.1:0")
+				require.NoError(t, err)
+				srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					id, ok := authz.IdentityFromContext(r.Context())
+					require.True(t, ok)
+					require.Equal(t, "ucp."+testNamespace+".svc", id.String())
+					require.Empty(t, r.Header.Get("Authorization"))
+					w.WriteHeader(http.StatusNoContent)
+				})}
+				done := make(chan error, 1)
+				serverOptions := options
+				go func() {
+					done <- Serve(t.Context(), srv, ln, serverOptions, Receiver{Name: "bicep-de", AllowedCallers: []string{"ucp"}, KeySource: &staticKeys{}})
+				}()
+				t.Cleanup(func() {
+					_ = srv.Close()
+					require.ErrorIs(t, <-done, http.ErrServerClosed)
+				})
+
+				options.TokenDirectory = t.TempDir()
+				writeToken(t, options.TokenDirectory, "bicep-de", mintToken(t, "ucp", "bicep-de"))
+				plain := &recordingTransport{}
+				rt, err := NewUpgradeTransport(options, plain, []string{"bicep-de"}, "http://bicep-de."+testNamespace+".svc:6443")
+				require.NoError(t, err)
+				upgraded := rt.(*upgradeTransport)
+				var transport *http.Transport
+				switch engine := upgraded.secure["bicep-de"].(type) {
+				case *clientTransport:
+					transport = engine.Transport
+				case *externalTransport:
+					transport = engine.Transport
+				default:
+					t.Fatalf("unexpected engine transport %T", engine)
+				}
+				dial := transport.DialContext
+				transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+					return dial(ctx, network, ln.Addr().String())
+				}
+				c := &http.Client{Transport: rt, Timeout: 5 * time.Second}
+				t.Cleanup(transport.CloseIdleConnections)
+				for _, host := range []string{"bicep-de", "bicep-de." + testNamespace, "bicep-de." + testNamespace + ".svc"} {
+					request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://"+host+":6443/deployments", nil)
+					require.NoError(t, err)
+					request.Header.Set("Authorization", "Bearer must-not-be-forwarded")
+					request.Header["authorization"] = []string{"Bearer also-must-not-be-forwarded"}
+					response, err := c.Do(request)
+					require.NoError(t, err)
+					require.NoError(t, response.Body.Close())
+					require.Equal(t, http.StatusNoContent, response.StatusCode)
+					require.Equal(t, "Bearer must-not-be-forwarded", request.Header.Get("Authorization"))
+					require.Equal(t, "http", request.URL.Scheme)
+				}
+				require.Empty(t, plain.urls, "never fall back to the unauthenticated transport")
+			})
+		}
+	}
+}
+
+func TestExternalClientTransport_RotationAndErrors(t *testing.T) {
+	t.Parallel()
+	options := authz.Options{Mode: authz.ModeEnforce, TLSProvider: authz.TLSProviderExternal, Namespace: testNamespace, TokenDirectory: t.TempDir()}
+	options.CertificateDirectory, options.CADirectory = "/does-not-exist", "/does-not-exist"
+	writeToken(t, options.TokenDirectory, "ucp", "first-token")
+	var got []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.Header.Get("Authorization"))
+	}))
+	defer srv.Close()
+	rt, err := NewClientTransport(options, "ucp", srv.Listener.Addr().String())
+	require.NoError(t, err, "external must not read certificate or CA material")
+	c := &http.Client{Transport: rt}
+	defer c.CloseIdleConnections()
+	for _, value := range []string{"first-token", "rotated-token-with-different-length"} {
+		writeToken(t, options.TokenDirectory, "ucp", value)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+		require.NoError(t, err)
+		req.Header = nil
+		response, err := rt.RoundTrip(req)
+		require.NoError(t, err)
+		require.NoError(t, response.Body.Close())
+		require.Nil(t, req.Header)
+	}
+
+	require.Equal(t, []string{"Bearer first-token", "Bearer rotated-token-with-different-length"}, got)
+	require.NoError(t, os.Remove(filepath.Join(options.TokenDirectory, "ucp", TokenFile)))
+	_, err = c.Get(srv.URL)
+	require.ErrorContains(t, err, "failed to read ServiceAccount token")
+	_, err = c.Get("https://ucp." + testNamespace + ".svc:9444")
+	require.ErrorContains(t, err, "requires http")
+	require.Len(t, got, 2)
+	options.TLSProvider = "typo"
+	_, err = NewClientTransport(options, "ucp")
+	require.ErrorContains(t, err, "invalid TLS provider")
+}
+
+func TestTokenTransportRejectClosesBody(t *testing.T) {
+	const authority = "ucp.custom.svc:12345"
+	token := newTokenFile(filepath.Join(t.TempDir(), "missing"))
+	external := &externalTransport{token: token, authorities: []string{authority}}
+	for _, tt := range []struct {
+		rt              http.RoundTripper
+		url, host, want string
+	}{
+		{external, "https://" + authority, "", "requires http"},
+		{external, "http://ucp.custom.svc:12346", "", "unconfigured destination"},
+		{external, "http://elsewhere:12345", "", "unconfigured destination"},
+		{external, "http://" + authority, "elsewhere", "unconfigured destination"},
+		{external, "http://" + authority, "", "failed to read ServiceAccount token"},
+	} {
+		pr, pw := io.Pipe()
+		req, err := http.NewRequest(http.MethodPut, tt.url, pr)
+		require.NoError(t, err)
+		req.Host = tt.host
+		_, err = tt.rt.RoundTrip(req)
+		require.ErrorContains(t, err, tt.want)
+		// Close the writer so a leak returns EOF rather than blocking.
+		require.NoError(t, pw.Close())
+		_, err = pr.Read(make([]byte, 1))
+		require.ErrorIs(t, err, io.ErrClosedPipe)
+	}
+}
+
 func TestNewClientTransport_ConfigErrors(t *testing.T) {
 	ca := newCA(t)
 	valid := clientOptions(t, ca.pem, authz.ModeEnforce)
