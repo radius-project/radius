@@ -1,0 +1,50 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_ACCOUNT_ID": "123456789012",
+    "RADIUS_REC_QUICKSIGHT_FOLDER_ID": "radius-rec-folder",
+    "RADIUS_REC_QUICKSIGHT_DASHBOARD_ID": "radius-rec-dashboard"
+  },
+  "interactions": [
+    {
+      "service": "QuickSight",
+      "operation": "CreateFolderMembership",
+      "status": 401,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "AccessDeniedException"
+      },
+      "body": "{\"Message\": \"User: arn:aws:sts::123456789012:assumed-role/radius/ucp is not authorized to perform: quicksight:CreateFolderMembership\", \"RequestId\": \"r-1\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "CreateFolderMembership",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceExistsException"
+      },
+      "body": "{\"Message\": \"The member already exists in the folder.\", \"RequestId\": \"r-2\", \"ResourceType\": \"FOLDER_MEMBER\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DeleteFolderMembership",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ConflictException"
+      },
+      "body": "{\"Message\": \"The folder is being updated by another request.\", \"RequestId\": \"r-3\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "ListFolderMembers",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"Message\": \"Folder radius-rec-missing not found.\", \"RequestId\": \"r-4\", \"ResourceType\": \"FOLDER\"}"
+    }
+  ]
+}

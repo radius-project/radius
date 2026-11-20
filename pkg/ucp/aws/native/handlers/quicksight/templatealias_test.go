@@ -1,0 +1,194 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package quicksight
+
+import (
+	"context"
+	"maps"
+	"strings"
+	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/service/quicksight"
+	"github.com/stretchr/testify/require"
+
+	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
+)
+
+func newAliasHandler() (*TemplateAlias, *fakeAPI) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	return NewTemplateAlias(api), api
+}
+
+func makeAlias(t *testing.T, h *TemplateAlias, properties map[string]any) string {
+	t.Helper()
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.NoError(t, err)
+	wait(t, h, id, native.OperationCreate)
+	return id
+}
+
+func Test_TemplateAlias_Identifier(t *testing.T) {
+	h, api := newAliasHandler()
+	id, err := h.Identifier(aliasTemplate())
+	require.NoError(t, err)
+	require.Equal(t, account+"|report|live", id)
+	for _, partial := range []string{"AwsAccountId", "TemplateId", "AliasName", "TemplateVersionNumber"} {
+		properties := aliasTemplate()
+		delete(properties, partial)
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+		requireRejected(t, err)
+	}
+	for _, change := range []map[string]any{
+		{"AwsAccountId": "12345678901"},
+		{"AliasName": "$PUBLISHED"},
+		{"AliasName": strings.Repeat("a", maxAliasLength+1)},
+		{"TemplateId": "report|x"},
+		{"TemplateVersionNumber": float64(-1)},
+		{"TemplateVersionNumber": nil},
+		{"TemplateVersionNumber": 1e300},
+	} {
+		_, err := h.Identifier(with(aliasTemplate(), change))
+		requireRejected(t, err)
+		_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(aliasTemplate(), change)})
+		requireRejected(t, err)
+		if _, ok := change["TemplateVersionNumber"]; ok {
+			requireRejected(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: account + "|report|live", Desired: with(aliasTemplate(), change)}))
+		}
+	}
+	for _, identifier := range []string{"", account + "|report", account + "|report|$LATEST", "1234|report|live", account + "|report|live|x"} {
+		_, err := h.Read(t.Context(), region, identifier)
+		requireRejected(t, err)
+		_, err = h.Progress(t.Context(), region, identifier, native.OperationCreate)
+		requireRejected(t, err)
+		requireRejected(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: identifier, Desired: aliasTemplate()}))
+	}
+	require.Empty(t, api.calls, "a bad template or identifier never reaches AWS")
+
+	for _, n := range []any{2, int64(2)} {
+		version, err := templateVersion(map[string]any{"TemplateVersionNumber": n})
+		require.NoError(t, err)
+		require.Equal(t, int64(2), version)
+	}
+}
+
+// Test_TemplateAlias_CreateFindsExisting checks that a create that finds the alias already there, such as after a
+// create whose response was lost, points it to the template's version.
+func Test_TemplateAlias_CreateFindsExisting(t *testing.T) {
+	h, api := newAliasHandler()
+	id := makeAlias(t, h, with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(1)}))
+	again, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: aliasTemplate()})
+	require.NoError(t, err)
+	require.Equal(t, id, again)
+	require.Equal(t, 1, api.calls["UpdateTemplateAlias"])
+	read, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+	require.Equal(t, with(aliasTemplate(), map[string]any{"Arn": aliasArn("report", "live")}), read)
+
+	// The same version is sent again, so the alias ends as the template sets it.
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: aliasTemplate()})
+	require.NoError(t, err)
+	require.Equal(t, 2, api.calls["UpdateTemplateAlias"])
+}
+
+// Test_TemplateAlias_Versions checks that an alias can't point to a version the template doesn't have, as AWS's
+// rejection and not as a missing alias, and that an update points it to another version.
+func Test_TemplateAlias_Versions(t *testing.T) {
+	h, _ := newAliasHandler()
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(4)})})
+	requireRejected(t, err)
+	require.NotErrorIs(t, err, native.ErrNotFound)
+
+	id := makeAlias(t, h, aliasTemplate())
+	err = h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(9)})})
+	requireRejected(t, err)
+	require.NotErrorIs(t, err, native.ErrNotFound)
+
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(3)})}))
+	wait(t, h, id, native.OperationUpdate)
+	read, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+	require.Equal(t, float64(3), read["TemplateVersionNumber"])
+
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(aliasTemplate(), map[string]any{"TemplateId": "missing"})})
+	requireRejected(t, err)
+	require.NotErrorIs(t, err, native.ErrNotFound)
+}
+
+// Test_TemplateAlias_TemplateBusy checks that a create or update AWS rejects while the template is making a new version
+// is a conflict, and that the next deploy succeeds.
+func Test_TemplateAlias_TemplateBusy(t *testing.T) {
+	h, api := newAliasHandler()
+	api.building["report"] = 2
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: aliasTemplate()})
+	requireConflict(t, err)
+	require.Empty(t, api.store.List(templateAliasType))
+	id := makeAlias(t, h, aliasTemplate())
+
+	api.building["report"] = 2
+	requireConflict(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: aliasTemplate()}))
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: aliasTemplate()}))
+}
+
+// Test_TemplateAlias_Progress checks that every operation is done once the alias reads, and that an alias AWS doesn't
+// have is not found, so UCP sends a lost create again.
+func Test_TemplateAlias_Progress(t *testing.T) {
+	h, api := newAliasHandler()
+	for _, op := range []native.Operation{native.OperationCreate, native.OperationUpdate} {
+		_, err := h.Progress(t.Context(), region, account+"|report|live", op)
+		require.ErrorIs(t, err, native.ErrNotFound)
+	}
+	id := makeAlias(t, h, aliasTemplate())
+	p, err := h.Progress(t.Context(), region, id, native.OperationUpdate)
+	require.NoError(t, err)
+	require.True(t, p.Done)
+
+	resources, err := h.List(t.Context(), region)
+	require.NoError(t, err)
+	require.Empty(t, resources)
+
+	api.standard = true
+	_, err = h.Read(t.Context(), region, id)
+	requireRejected(t, err)
+}
+
+// Test_TemplateAlias_DeleteLeavesAlias checks that a delete makes no AWS call: AWS's docs say DeleteTemplateAlias also
+// deletes the template version the alias points to.
+func Test_TemplateAlias_DeleteLeavesAlias(t *testing.T) {
+	h, api := newAliasHandler()
+	id := makeAlias(t, h, aliasTemplate())
+	calls := maps.Clone(api.calls)
+	require.NoError(t, h.Delete(t.Context(), region, id))
+	require.Equal(t, calls, api.calls)
+	require.Len(t, api.store.List(templateAliasType), 1)
+}
+
+// Test_TemplateAlias_EmptyAnswer checks that an answer without the alias reads as not found instead of failing.
+func Test_TemplateAlias_EmptyAnswer(t *testing.T) {
+	h := NewTemplateAlias(emptyDescribe{newFakeAPI(awsfake.NewCloudControl())})
+	_, err := h.Read(t.Context(), region, account+"|report|live")
+	require.ErrorIs(t, err, native.ErrNotFound)
+}
+
+// emptyDescribe answers DescribeTemplateAlias without an alias.
+type emptyDescribe struct {
+	*fakeAPI
+}
+
+func (emptyDescribe) DescribeTemplateAlias(context.Context, *quicksight.DescribeTemplateAliasInput, ...func(*quicksight.Options)) (*quicksight.DescribeTemplateAliasOutput, error) {
+	return &quicksight.DescribeTemplateAliasOutput{}, nil
+}

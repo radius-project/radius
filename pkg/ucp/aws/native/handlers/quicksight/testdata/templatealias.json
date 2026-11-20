@@ -1,0 +1,63 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_ACCOUNT_ID": "123456789012",
+    "RADIUS_REC_QUICKSIGHT_TEMPLATE_ID": "radius-rec-template"
+  },
+  "interactions": [
+    {
+      "service": "QuickSight",
+      "operation": "CreateTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 1}}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DescribeTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 1}}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DescribeTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 1}}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "UpdateTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 2}}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DescribeTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 2}}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DescribeTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 2}}"
+    }
+  ]
+}
