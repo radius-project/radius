@@ -312,3 +312,24 @@ func Test_DataShareConsumerAssociation_DeleteRace(t *testing.T) {
 	id := dataShareAssociated(t, h, dataShareConsumerAssociation)
 	require.ErrorIs(t, h.Delete(t.Context(), dataShareRegionName, id), native.ErrNotFound, "an association another deploy removed first is gone")
 }
+
+// Test_DataShareConsumerAssociation_UpdateReplaced checks that an update never brings back an association another
+// client replaced after UCP read it, which would remove theirs.
+func Test_DataShareConsumerAssociation_UpdateReplaced(t *testing.T) {
+	h, f := newDataShareConsumer()
+	writes := dataShareWith(dataShareConsumerAssociation, map[string]any{"AllowWrites": true})
+	id := dataShareAssociated(t, h, writes)
+	current, err := h.Read(t.Context(), dataShareRegionName, id)
+	require.NoError(t, err)
+	_, err = f.AssociateDataShareConsumer(t.Context(), &redshift.AssociateDataShareConsumerInput{DataShareArn: aws.String(dataShareSales), AssociateEntireAccount: aws.Bool(true)})
+	require.NoError(t, err)
+	before := f.calls["AssociateDataShareConsumer"]
+
+	err = h.Update(t.Context(), native.UpdateRequest{Region: dataShareRegionName, Identifier: id, Current: current, Desired: dataShareConsumerAssociation,
+		Patch: jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/AllowWrites", Value: false}}})
+	require.ErrorIs(t, err, native.ErrNotFound)
+	require.Equal(t, before, f.calls["AssociateDataShareConsumer"], "UCP sends nothing")
+	entire, _ := h.Identifier(dataShareEntireProperties)
+	_, err = h.Read(t.Context(), dataShareRegionName, entire)
+	require.NoError(t, err, "AWS keeps the other client's association")
+}

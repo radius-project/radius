@@ -429,10 +429,12 @@ func (f *dataShareFake) DescribeDataSharesForProducer(ctx context.Context, in *r
 	}
 	all := []types.DataShare{}
 	for _, arn := range f.produced() {
-		if f.internal(arn) {
+		if f.internal(arn) || (in.ProducerArn != nil && aws.ToString(in.ProducerArn) != dataShareProducerArn) {
 			continue
 		}
-		all = append(all, f.producerView(arn))
+		if share := f.producerView(arn); dataShareHasStatus(share, string(in.Status)) {
+			all = append(all, share)
+		}
 	}
 	list, next := dataSharePage(all, in.Marker, in.MaxRecords)
 	return &redshift.DescribeDataSharesForProducerOutput{DataShares: list, Marker: next}, nil
@@ -453,10 +455,18 @@ func (f *dataShareFake) DescribeDataSharesForConsumer(ctx context.Context, in *r
 	}
 	all := []types.DataShare{}
 	for _, arn := range f.inbound() {
-		all = append(all, f.consumerView(arn))
+		if share := f.consumerView(arn); dataShareHasStatus(share, string(in.Status)) {
+			all = append(all, share)
+		}
 	}
 	list, next := dataSharePage(all, in.Marker, in.MaxRecords)
 	return &redshift.DescribeDataSharesForConsumerOutput{DataShares: list, Marker: next}, nil
+}
+
+// dataShareHasStatus reports whether status is "", or one of the share's associations has it, which is what a
+// describe call's Status keeps.
+func dataShareHasStatus(share types.DataShare, status string) bool {
+	return status == "" || slices.ContainsFunc(share.DataShareAssociations, func(a types.DataShareAssociation) bool { return string(a.Status) == status })
 }
 
 // dataShareOneConsumer checks that a call names exactly one of the entire account, a namespace, or a Region.
@@ -519,7 +529,7 @@ func (f *dataShareFake) DisassociateDataShareConsumer(ctx context.Context, in *r
 	r := &dataShareRules{}
 	dataShareOneConsumer(r, entire, consumerArn, region)
 	id := dataShareAssociationID(arn, entire, consumerArn, region)
-	r.check(f.store.Resource(dataShareConsumerType, id) != nil, dataShareFault,
+	r.check(slices.Contains(f.inbound(), arn) && f.store.Resource(dataShareConsumerType, id) != nil, dataShareFault,
 		"The data share either doesn't exist or isn't associated with this data consumer cluster's Amazon Resource Name (ARN).")
 	if r.err != nil {
 		return nil, r.err

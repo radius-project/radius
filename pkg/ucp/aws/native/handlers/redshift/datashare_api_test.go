@@ -341,6 +341,16 @@ var dataShareAuthorizationAPI = map[string]nativetest.Call{
 				}),
 				Code: dataShareParameterFault,
 			},
+			{
+				Rule: "Status keeps only the data shares with an association in that status",
+				Check: dataShareAgainst(dataShareAuthorize(dataShareOrders, dataShareConsumerAccount, nil), func(ctx context.Context, f *dataShareFake) error {
+					out, err := f.DescribeDataSharesForProducer(ctx, &redshift.DescribeDataSharesForProducerInput{Status: types.DataShareStatusForProducerAuthorized})
+					if err != nil || len(out.DataShares) != 1 || aws.ToString(out.DataShares[0].DataShareArn) != dataShareOrders {
+						return fmt.Errorf("the AUTHORIZED data shares are %v: %v", out, err)
+					}
+					return nil
+				}),
+			},
 			dataSharePaging(false, func(ctx context.Context, f *dataShareFake, marker *string) (int, *string, error) {
 				out, err := f.DescribeDataSharesForProducer(ctx, &redshift.DescribeDataSharesForProducerInput{Marker: marker})
 				if err != nil {
@@ -449,6 +459,11 @@ var dataShareConsumerAPI = map[string]nativetest.Call{
 				Code:  dataShareFault,
 			},
 			{
+				Rule:  "the call removes only an association of the calling account",
+				Break: dataShareAsConsumer(dataShareAssociate(dataShareEntire), dataShareAs(dataShareProducer), dataShareDisassociate(redshift.DisassociateDataShareConsumerInput{DisassociateEntireAccount: aws.Bool(true)})),
+				Code:  dataShareFault,
+			},
+			{
 				Rule: "an association removed once can't be removed again",
 				Break: dataShareAsConsumer(dataShareAssociate(dataShareInNs),
 					dataShareDisassociate(redshift.DisassociateDataShareConsumerInput{ConsumerArn: aws.String(dataShareNamespace)}),
@@ -487,6 +502,16 @@ var dataShareConsumerAPI = map[string]nativetest.Call{
 					out, err := f.DescribeDataSharesForConsumer(ctx, &redshift.DescribeDataSharesForConsumerInput{})
 					if err != nil || len(out.DataShares) != 0 {
 						return fmt.Errorf("the producer sees %d data shares: %v", len(out.DataShares), err)
+					}
+					return nil
+				}),
+			},
+			{
+				Rule: "Status keeps only the data shares with an association in that status",
+				Check: dataShareAsConsumer(dataShareAssociate(dataShareInNs), func(ctx context.Context, f *dataShareFake) error {
+					out, err := f.DescribeDataSharesForConsumer(ctx, &redshift.DescribeDataSharesForConsumerInput{Status: types.DataShareStatusForConsumerActive})
+					if err != nil || len(out.DataShares) != 1 || aws.ToString(out.DataShares[0].DataShareArn) != dataShareSales {
+						return fmt.Errorf("the ACTIVE data shares are %v: %v", out, err)
 					}
 					return nil
 				}),

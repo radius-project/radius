@@ -355,7 +355,8 @@ func (h *DataShareConsumerAssociation) associate(ctx context.Context, region str
 }
 
 // Update changes AllowWrites by associating the data share again the same way, which keeps the association. It first
-// reads the data share, so it never changes an association with one Redshift made for itself. A
+// reads the association, so it never changes one with a data share Redshift made for itself, and never brings back
+// one that is gone. A
 // template that no longer sets AllowWrites sets it back to false, AWS's default.
 func (h *DataShareConsumerAssociation) Update(ctx context.Context, request native.UpdateRequest) error {
 	if _, err := h.Identifier(request.Desired); err != nil {
@@ -364,13 +365,15 @@ func (h *DataShareConsumerAssociation) Update(ctx context.Context, request nativ
 	if !slices.Contains(awsapi.Changed(request), "AllowWrites") {
 		return nil
 	}
-	arn, c, err := h.split(request.Identifier)
+	_, c, a, err := h.association(ctx, request.Region, request.Identifier)
 	if err != nil {
 		return err
 	}
-	if _, err := h.find(ctx, request.Region, arn, request.Identifier); err != nil {
-		return err
+	if a == nil || a.Status != types.DataShareStatusActive {
+		// Another client replaced or removed the association after UCP read it. Associating again would replace theirs.
+		return native.ErrNotFound
 	}
+	arn, _, _ := strings.Cut(request.Identifier, "|")
 	return h.associate(ctx, request.Region, arn, c, dataShareBool(request.Desired, "AllowWrites"))
 }
 
