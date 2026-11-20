@@ -372,11 +372,7 @@ func Test_Suite_OutboundConnection(t *testing.T) {
 		Metadata:    connSchemaFile(t, "aws-opensearchservice-outboundconnection.metadata.json"),
 		HandWritten: true,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			f := newConnFake(store)
-			// A DELETE of a record whose create response was lost finds the connection only with Find, which can't
-			// see a connection AWS doesn't list yet. Test_OutboundConnection_ResendFindsLostCreate covers the lag.
-			f.lagReads = 0
-			return NewOutboundConnection(f)
+			return NewOutboundConnection(newConnFake(store))
 		},
 		IdentifierProperty: "ConnectionId",
 		Properties:         properties,
@@ -549,10 +545,10 @@ func requireConnDeleted(t *testing.T, h *OutboundConnection, id string) {
 	require.ErrorIs(t, err, native.ErrNotFound, "a deleted connection is gone, not lagging")
 }
 
-// Test_OutboundConnection_ResendFindsLostCreate loses a create's response: the next deploy's Find misses the
-// connection AWS doesn't list yet, so UCP sends the create again, which AWS rejects as a duplicate. Create returns a
-// conflict, never the connection, because UCP doesn't check who manages an identifier Create returns. The deploy
-// after that finds the connection with Find, which UCP checks.
+// Test_OutboundConnection_ResendFindsLostCreate loses a create's response while AWS doesn't list the connection yet.
+// Create sent again gets AWS's duplicate rejection and returns a conflict, never the connection, because UCP doesn't
+// check who manages an identifier Create returns. Find, which UCP checks, also gets the duplicate rejection, so it
+// fails with a conflict instead of reporting no connection, and finds the connection once AWS lists it.
 func Test_OutboundConnection_ResendFindsLostCreate(t *testing.T) {
 	for name, properties := range map[string]map[string]any{
 		"same template": connTemplate(nil),
@@ -563,41 +559,84 @@ func Test_OutboundConnection_ResendFindsLostCreate(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			h, f := newConnHandler()
+			// Create's search, then Find's two searches, don't see the connection, and the next read does.
+			f.lagReads = 3
 			_, err := f.CreateOutboundConnection(t.Context(), connCreateInput())
 			require.NoError(t, err)
 			request := connRequest(properties)
 
-			found, err := h.Find(t.Context(), request)
-			require.NoError(t, err)
-			require.Empty(t, found, "AWS doesn't list the connection yet")
-
 			id, err := h.Create(t.Context(), request)
-			requireConnConflict(t, err, "deploy again to take it")
-			require.Contains(t, err.Error(), connFirstID)
+			requireConnConflict(t, err, "doesn't list yet")
 			require.Empty(t, id)
-			require.Equal(t, 2, f.calls["CreateOutboundConnection"])
+
+			found, err := h.Find(t.Context(), request)
+			requireConnConflict(t, err, "doesn't list yet")
+			require.Empty(t, found, "a DELETE must not take this as no connection")
+			require.Equal(t, 3, f.calls["CreateOutboundConnection"])
 			require.Len(t, f.store.List(outboundConnectionType), 1)
 
 			found, err = h.Find(t.Context(), request)
 			require.NoError(t, err)
 			require.Equal(t, connFirstID, found)
+			require.Equal(t, 3, f.calls["CreateOutboundConnection"], "Find sends nothing once AWS lists the connection")
+
+			id, err = h.Create(t.Context(), request)
+			requireConnConflict(t, err, "deploy again to take it")
+			require.Contains(t, err.Error(), connFirstID)
+			require.Empty(t, id)
 		})
 	}
 }
 
-// Test_OutboundConnection_DuplicateNotListedYet checks that a create AWS rejects as a duplicate it doesn't list yet
-// is a conflict, so the caller deploys again, and sends nothing more.
-func Test_OutboundConnection_DuplicateNotListedYet(t *testing.T) {
+// Test_OutboundConnection_FindSendsCreate checks that Find, when AWS lists no connection, sends the create, and
+// returns the connection AWS makes, so a delete of a record whose create never reached AWS removes what it makes.
+func Test_OutboundConnection_FindSendsCreate(t *testing.T) {
 	h, f := newConnHandler()
-	f.lagReads = 3
-	_, err := f.CreateOutboundConnection(t.Context(), connCreateInput())
-	require.NoError(t, err)
 	found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
 	require.NoError(t, err)
-	require.Empty(t, found)
-	_, err = h.Create(t.Context(), connRequest(connTemplate(nil)))
-	requireConnConflict(t, err, "doesn't list yet")
-	require.Len(t, f.store.List(outboundConnectionType), 1)
+	require.Equal(t, connFirstID, found)
+	require.Equal(t, 1, f.calls["CreateOutboundConnection"])
+
+	t.Run("busy", func(t *testing.T) {
+		h, f := newConnHandler()
+		f.processing[connDomainKey(connAccount, connRegion, "logs")] = 5
+		found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
+		requireConnConflict(t, err, "dependsOn")
+		require.Empty(t, found)
+	})
+	t.Run("alias held by another connection", func(t *testing.T) {
+		h, f := newConnHandler()
+		f.hold = true
+		connPut(f, "cc-outside00001", map[string]any{"RemoteDomainInfo": connDomainProperty("metrics", connAccount, connRegion)}, types.OutboundConnectionStatusCodeActive)
+		f.errs["CreateOutboundConnection"] = connFault("ResourceAlreadyExistsException", "already exists")
+		found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
+		requireConnRejected(t, err, "cc-outside00001")
+		require.Empty(t, found)
+	})
+	t.Run("list fails after the duplicate", func(t *testing.T) {
+		_, f := newConnHandler()
+		f.lagReads = 4
+		_, err := f.CreateOutboundConnection(t.Context(), connCreateInput())
+		require.NoError(t, err)
+		describe := 0
+		stub := &connFailingList{connFake: f, failAt: 2, count: &describe}
+		_, err = NewOutboundConnection(stub).Find(t.Context(), connRequest(connTemplate(nil)))
+		require.ErrorContains(t, err, "connection reset")
+	})
+}
+
+// connFailingList is a fake whose failAt-th DescribeOutboundConnections fails.
+type connFailingList struct {
+	*connFake
+	failAt int
+	count  *int
+}
+
+func (c *connFailingList) DescribeOutboundConnections(ctx context.Context, in *opensearch.DescribeOutboundConnectionsInput, optFns ...func(*opensearch.Options)) (*opensearch.DescribeOutboundConnectionsOutput, error) {
+	if *c.count++; *c.count == c.failAt {
+		return nil, errors.New("connection reset")
+	}
+	return c.connFake.DescribeOutboundConnections(ctx, in, optFns...)
 }
 
 // Test_OutboundConnection_DuplicateOfAnother checks that a create AWS rejects because the source domain has another
@@ -644,11 +683,11 @@ func Test_OutboundConnection_Find(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "cc-outside00001", found)
 		}
-		// A destination in another Region or account is another connection.
+		// A destination in another Region or account is another connection, so Find sends its create.
 		for _, remote := range []map[string]any{connDomainProperty("archive", "", "us-east-1"), connDomainProperty("archive", connOtherAccount, "")} {
 			found, err := h.Find(t.Context(), connRequest(connTemplate(map[string]any{"RemoteDomainInfo": remote})))
 			require.NoError(t, err)
-			require.Empty(t, found)
+			require.NotEqual(t, "cc-outside00001", found)
 		}
 	})
 	t.Run("more than one", func(t *testing.T) {
@@ -739,9 +778,6 @@ func Test_OutboundConnection_Find(t *testing.T) {
 	t.Run("deleted", func(t *testing.T) {
 		h, f := newConnHandler()
 		f.deleted["cc-outside00001"] = storedConnection("cc-outside00001", connCreateInput())
-		found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
-		require.NoError(t, err)
-		require.Empty(t, found)
 		s, err := h.search(t.Context(), connRegion, connectionTemplate{alias: "archive", local: connectionDomain{name: "logs"}})
 		require.NoError(t, err)
 		require.Equal(t, connectionSearch{}, s, "a DELETED connection holds nothing")
@@ -952,10 +988,13 @@ func Test_OutboundConnection_OddAnswers(t *testing.T) {
 	_, err := h.Create(t.Context(), connRequest(connTemplate(nil)))
 	require.ErrorContains(t, err, "returned no ID")
 
-	h = NewOutboundConnection(&connStub{connections: []types.OutboundConnection{{ConnectionId: aws.String(connFirstID), ConnectionAlias: aws.String("archive")}}})
+	h = NewOutboundConnection(&connStub{
+		create:      &opensearch.CreateOutboundConnectionOutput{ConnectionId: aws.String("cc-000000000002")},
+		connections: []types.OutboundConnection{{ConnectionId: aws.String(connFirstID), ConnectionAlias: aws.String("archive")}},
+	})
 	found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
 	require.NoError(t, err)
-	require.Empty(t, found)
+	require.Equal(t, "cc-000000000002", found, "a connection without domains never matches")
 	p, err := h.Progress(t.Context(), connRegion, connFirstID, native.OperationCreate)
 	require.NoError(t, err)
 	require.False(t, p.Done)

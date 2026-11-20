@@ -70,7 +70,8 @@ var liveConnectionStatuses = []types.OutboundConnectionStatusCode{
 // domain in the caller's account and Region to a destination domain. Its identifier, ConnectionId, is the ID AWS
 // assigns. AWS has no call that changes a connection, so every property is create-only, and UCP rejects a change with
 // 400 before any AWS call. The create takes no idempotency token, so a lost create is found by the source domain, the
-// alias, and the destination domain, and AWS rejects a second connection with the same values.
+// alias, and the destination domain, and AWS rejects a second connection with the same values, which Find relies on
+// when AWS doesn't list the connection yet.
 type OutboundConnection struct {
 	api ConnectionAPI
 }
@@ -411,10 +412,14 @@ func (h *OutboundConnection) search(ctx context.Context, region string, t connec
 }
 
 // Find returns the ID of the connection from the template's source domain with its alias to its destination domain,
-// live or failed, or "" when AWS lists none. AWS keeps a connection that failed, so a delete after a lost create
-// removes it. It fails when more than one matches, because any of them could be the lost create's, or the one that
-// matches has another value the template sets. A connection AWS made moments ago may not be listed yet, which the create's duplicate
-// rejection covers.
+// live or failed. AWS keeps a connection that failed, so a delete after a lost create removes it. It fails when more
+// than one matches, because any of them could be the lost create's, or the one that matches has another value the
+// template sets.
+//
+// AWS may not list a connection it made moments ago, and a DELETE that took "" as no connection would drop the
+// record and leave it in AWS. So when AWS lists none, Find sends the create, as a create sent again would be for a
+// type that takes a token. AWS makes the connection when it has none, and Find returns it, so a delete removes it.
+// Otherwise AWS rejects it as a duplicate, and Find fails with a conflict until AWS lists the connection.
 func (h *OutboundConnection) Find(ctx context.Context, request native.CreateRequest) (string, error) {
 	t, err := parseConnectionRequest(request.Properties, request.Region)
 	if err != nil {
@@ -424,7 +429,20 @@ func (h *OutboundConnection) Find(ctx context.Context, request native.CreateRequ
 	if err != nil {
 		return "", err
 	}
-	return t.one(slices.Concat(s.live, s.failed))
+	if id, err := t.one(slices.Concat(s.live, s.failed)); id != "" || err != nil {
+		return id, err
+	}
+	id, sendErr := h.send(ctx, request.Region, t)
+	if !awsapi.HasCode(sendErr, "ResourceAlreadyExistsException") {
+		return id, sendErr
+	}
+	if s, err = h.search(ctx, request.Region, t); err != nil {
+		return "", err
+	}
+	if found := slices.Concat(s.live, s.failed); len(found) > 0 {
+		return t.one(found)
+	}
+	return "", t.duplicate(s, sendErr)
 }
 
 // one returns the ID of the only connection in found, or "" when found is empty. It returns no ID with an error,
@@ -465,6 +483,20 @@ func (h *OutboundConnection) Create(ctx context.Context, request native.CreateRe
 	if err != nil {
 		return "", err
 	}
+	id, err := h.send(ctx, request.Region, t)
+	if !awsapi.HasCode(err, "ResourceAlreadyExistsException") {
+		return id, err
+	}
+	s, searchErr := h.search(ctx, request.Region, t)
+	if searchErr != nil {
+		return "", beforeChange(searchErr)
+	}
+	return "", t.duplicate(s, err)
+}
+
+// send sends the create of the connection and returns its ID. It returns AWS's ResourceAlreadyExistsException as it
+// is, for the caller to handle.
+func (h *OutboundConnection) send(ctx context.Context, region string, t connectionTemplate) (string, error) {
 	input := &opensearch.CreateOutboundConnectionInput{
 		ConnectionAlias:  aws.String(t.alias),
 		LocalDomainInfo:  t.local.sdk(),
@@ -482,10 +514,10 @@ func (h *OutboundConnection) Create(ctx context.Context, request native.CreateRe
 	}
 	// The call takes no token, so the SDK must not send it again on its own: after a response lost on the way back,
 	// a retry would get ResourceAlreadyExistsException, which reads as a create AWS rejected.
-	out, err := h.api.CreateOutboundConnection(ctx, input, inRegion(request.Region), func(o *opensearch.Options) { o.RetryMaxAttempts = 1 })
+	out, err := h.api.CreateOutboundConnection(ctx, input, inRegion(region), func(o *opensearch.Options) { o.RetryMaxAttempts = 1 })
 	switch {
 	case awsapi.HasCode(err, "ResourceAlreadyExistsException"):
-		return h.existing(ctx, request.Region, t, err)
+		return "", err
 	case awsapi.HasCode(err, "ConflictException"):
 		return "", connectionBusy(fmt.Sprintf("the domain %q", t.local.name), err)
 	case err != nil:
@@ -497,20 +529,17 @@ func (h *OutboundConnection) Create(ctx context.Context, request native.CreateRe
 	return aws.ToString(out.ConnectionId), nil
 }
 
-// existing returns the error of a create AWS rejected with cause, because the source domain already has a connection
-// with the alias. AWS changed nothing, so every error is rejected. A connection that matches the template is a
-// conflict: an earlier attempt of this create may have made it, and the next deploy finds it.
-func (h *OutboundConnection) existing(ctx context.Context, region string, t connectionTemplate, cause error) (string, error) {
-	s, err := h.search(ctx, region, t)
-	if err != nil {
-		return "", beforeChange(err)
-	}
+// duplicate returns the error of a create AWS rejected with cause, because the source domain already has a
+// connection with the alias, given what a search found after it. AWS changed nothing, so every error is rejected. A
+// live connection that matches the template is a conflict: an earlier attempt of this create may have made it, and
+// the next deploy finds it.
+func (t connectionTemplate) duplicate(s connectionSearch, cause error) error {
 	if len(s.live) > 0 {
 		id, err := t.one(slices.Concat(s.live, s.failed))
 		if err != nil {
-			return "", beforeChange(err)
+			return beforeChange(err)
 		}
-		return "", &native.Failure{
+		return &native.Failure{
 			Message: fmt.Sprintf("%s: AWS already has the connection %q named %q from the domain %q to the domain %q. If an earlier deploy of this resource made it, "+
 				"deploy again to take it. Otherwise another resource manages it, or it was made outside Radius: use another ConnectionAlias, or delete that connection first",
 				outboundConnectionType, id, t.alias, t.local.name, t.remote.name),
@@ -524,7 +553,7 @@ func (h *OutboundConnection) existing(ctx context.Context, region string, t conn
 		for _, c := range held {
 			names = append(names, fmt.Sprintf("%s (%s, to %q)", aws.ToString(c.ConnectionId), connectionStatusOf(&c), connectionDomainOf(c.RemoteDomainInfo).name))
 		}
-		return "", &native.Failure{
+		return &native.Failure{
 			Message: fmt.Sprintf("%s: the source domain %q already has a connection named %q that AWS doesn't let this create reuse: %s. Use another ConnectionAlias, or delete that connection first: %s",
 				outboundConnectionType, t.local.name, t.alias, strings.Join(names, ", "), cause.Error()),
 			ClientError: true,
@@ -532,7 +561,7 @@ func (h *OutboundConnection) existing(ctx context.Context, region string, t conn
 		}
 	}
 	// AWS may not list a connection it made moments ago, such as one a lost create made.
-	return "", connectionBusy(fmt.Sprintf("the connection named %q from the domain %q, which AWS reports exists but doesn't list yet", t.alias, t.local.name), cause)
+	return connectionBusy(fmt.Sprintf("the connection named %q from the domain %q, which AWS reports exists but doesn't list yet", t.alias, t.local.name), cause)
 }
 
 // sdk returns the domain as the AWS SDK takes it.

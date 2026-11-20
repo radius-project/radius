@@ -1,6 +1,6 @@
 {
   "typeName": "AWS::OpenSearchService::OutboundConnection",
-  "description": "A cross-cluster connection from a source OpenSearch Service domain in this account and Region to a destination domain, made with CreateOutboundConnection. AWS has no call that changes a connection, so every property is create-only. The create is done once AWS has validated the connection: a connection to a domain of another owner then waits for that owner to accept it, which Radius doesn't wait for. ConnectionStatus shows where it is. The alias must be unique on the source domain, because queries name the destination domain by it, as alias:index.",
+  "description": "A cross-cluster connection from a source OpenSearch Service domain in this account and Region to a destination domain, made with CreateOutboundConnection. AWS has no call that changes a connection, so every property is create-only. The create is done once AWS has validated the connection: a connection to a domain of another owner then waits for that owner to accept it, which Radius doesn't wait for. ConnectionStatus shows where it is. The alias must be unique on the source domain, because queries name the destination domain by it, as alias:index. A delete of a resource whose create may have reached AWS, but that AWS doesn't list, sends the create again so it can delete what AWS has, so delete needs es:CreateOutboundConnection.",
   "definitions": {
     "AWSDomainInformation": {
       "type": "object",
@@ -159,6 +159,7 @@
     "delete": {
       "permissions": [
         "es:DeleteOutboundConnection",
+        "es:CreateOutboundConnection",
         "es:DescribeOutboundConnections"
       ]
     },
