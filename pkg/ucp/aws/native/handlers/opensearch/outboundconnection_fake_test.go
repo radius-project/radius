@@ -90,6 +90,7 @@ var (
 	os211 = connEngine{opensearch: true, major: 2, minor: 11}
 	os113 = connEngine{opensearch: true, major: 1, minor: 3}
 	es79  = connEngine{major: 7, minor: 9}
+	es710 = connEngine{major: 7, minor: 10}
 
 	// connDomains are the domains the fake knows, by connDomainKey.
 	connDomains = map[string]connDomainSpec{
@@ -99,6 +100,7 @@ var (
 		connDomainKey(connAccount, connRegion, "old"):          {engine: os113, fineGrained: true, nodeToNode: true},
 		connDomainKey(connAccount, connRegion, "plain"):        {engine: os211, fineGrained: false, nodeToNode: true},
 		connDomainKey(connAccount, connRegion, "legacy"):       {engine: es79, fineGrained: true, nodeToNode: true},
+		connDomainKey(connAccount, connRegion, "es710"):        {engine: es710, fineGrained: true, nodeToNode: true},
 		connDomainKey(connAccount, "us-east-1", "far"):         {engine: os211, fineGrained: true, nodeToNode: true},
 		connDomainKey(connAccount, "us-east-1", "far-legacy"):  {engine: es79, fineGrained: true, nodeToNode: true},
 		connDomainKey(connOtherAccount, connRegion, "shared"):  {engine: os211, fineGrained: true, nodeToNode: true},
@@ -292,10 +294,16 @@ func connValid(p map[string]any) bool {
 		return false
 	case !local.engine.atLeast(remote.engine):
 		return false
-	case lr != rr && (!local.engine.opensearch && !local.engine.atLeast(connEngine{major: 7, minor: 10})):
+	case lr != rr && (!crossRegion(local.engine) || !crossRegion(remote.engine)):
 		return false
 	}
 	return true
+}
+
+// crossRegion reports whether a domain on engine can connect across Regions: OpenSearch, or Elasticsearch 7.10 or
+// later.
+func crossRegion(engine connEngine) bool {
+	return engine.opensearch || engine.atLeast(connEngine{major: 7, minor: 10})
 }
 
 func (f *connFake) CreateOutboundConnection(ctx context.Context, in *opensearch.CreateOutboundConnectionInput, _ ...func(*opensearch.Options)) (*opensearch.CreateOutboundConnectionOutput, error) {

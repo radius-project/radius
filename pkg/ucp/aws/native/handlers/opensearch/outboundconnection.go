@@ -373,48 +373,74 @@ func (t connectionTemplate) sameSettings(c *types.OutboundConnection) error {
 	}
 }
 
-// search returns the live connections that match the template, and the connections of the source domain that hold
-// the alias in any other way: to another destination domain, or in a status that isn't live.
-func (h *OutboundConnection) search(ctx context.Context, region string, t connectionTemplate) (found []types.OutboundConnection, others []types.OutboundConnection, err error) {
-	all, err := h.connections(ctx, region)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, c := range all {
-		switch {
-		case connectionStatusOf(&c) == types.OutboundConnectionStatusCodeDeleted:
-		case slices.Contains(liveConnectionStatuses, connectionStatusOf(&c)) && t.matches(&c, region):
-			found = append(found, c)
-		case aws.ToString(c.ConnectionAlias) == t.alias && connectionDomainOf(c.LocalDomainInfo).name == t.local.name:
-			others = append(others, c)
-		}
-	}
-	return found, others, nil
+// failedConnectionStatuses lists the statuses of a connection that failed, which AWS keeps listing.
+var failedConnectionStatuses = []types.OutboundConnectionStatusCode{
+	types.OutboundConnectionStatusCodeValidationFailed,
+	types.OutboundConnectionStatusCodeRejecting,
+	types.OutboundConnectionStatusCodeRejected,
 }
 
-// Find returns the ID of the live connection from the template's source domain with its alias to its destination
-// domain, or "" when AWS lists none. It fails when more than one matches, or the one that matches has another value
-// the template sets. A connection AWS made moments ago may not be listed yet, which the create's duplicate rejection
-// covers.
+// connectionSearch is what a search of the source domain's connections found.
+type connectionSearch struct {
+	// live and failed are the connections that match the template, by status. others are the connections of the
+	// source domain that hold the alias in any other way, such as to another destination domain, or while AWS is
+	// deleting them.
+	live, failed, others []types.OutboundConnection
+}
+
+// search returns the source domain's connections that hold the template's alias, except those AWS deleted.
+func (h *OutboundConnection) search(ctx context.Context, region string, t connectionTemplate) (connectionSearch, error) {
+	all, err := h.connections(ctx, region)
+	if err != nil {
+		return connectionSearch{}, err
+	}
+	var s connectionSearch
+	for _, c := range all {
+		status := connectionStatusOf(&c)
+		switch {
+		case status == types.OutboundConnectionStatusCodeDeleted:
+		case slices.Contains(liveConnectionStatuses, status) && t.matches(&c, region):
+			s.live = append(s.live, c)
+		case slices.Contains(failedConnectionStatuses, status) && t.matches(&c, region):
+			s.failed = append(s.failed, c)
+		case aws.ToString(c.ConnectionAlias) == t.alias && connectionDomainOf(c.LocalDomainInfo).name == t.local.name:
+			s.others = append(s.others, c)
+		}
+	}
+	return s, nil
+}
+
+// Find returns the ID of the connection from the template's source domain with its alias to its destination domain,
+// or "" when AWS lists none. A live connection comes first, and otherwise one that failed, which AWS keeps, so a
+// delete after a lost create removes it. It fails when more than one matches, or the one that matches has another
+// value the template sets. A connection AWS made moments ago may not be listed yet, which the create's duplicate
+// rejection covers.
 func (h *OutboundConnection) Find(ctx context.Context, request native.CreateRequest) (string, error) {
 	t, err := parseConnectionRequest(request.Properties, request.Region)
 	if err != nil {
 		return "", err
 	}
-	found, _, err := h.search(ctx, request.Region, t)
+	s, err := h.search(ctx, request.Region, t)
 	if err != nil {
 		return "", err
 	}
-	return t.one(found)
+	if len(s.live) > 0 {
+		return t.one(s.live)
+	}
+	return t.one(s.failed)
 }
 
-// one returns the ID of the only connection in found, after checking its settings, or "" when found is empty.
+// one returns the ID of the only connection in found, or "" when found is empty. It returns no ID with an error,
+// because UCP keeps an identifier Find returns with one.
 func (t connectionTemplate) one(found []types.OutboundConnection) (string, error) {
 	switch len(found) {
 	case 0:
 		return "", nil
 	case 1:
-		return aws.ToString(found[0].ConnectionId), t.sameSettings(&found[0])
+		if err := t.sameSettings(&found[0]); err != nil {
+			return "", err
+		}
+		return aws.ToString(found[0].ConnectionId), nil
 	}
 	ids := []string{}
 	for _, c := range found {
@@ -457,7 +483,9 @@ func (h *OutboundConnection) Create(ctx context.Context, request native.CreateRe
 			input.ConnectionProperties.CrossClusterSearch = &types.CrossClusterSearchConnectionProperties{SkipUnavailable: t.skipUnavailable}
 		}
 	}
-	out, err := h.api.CreateOutboundConnection(ctx, input, inRegion(request.Region))
+	// The call takes no token, so the SDK must not send it again on its own: after a response lost on the way back,
+	// a retry would get ResourceAlreadyExistsException, which reads as a create AWS rejected.
+	out, err := h.api.CreateOutboundConnection(ctx, input, inRegion(request.Region), func(o *opensearch.Options) { o.RetryMaxAttempts = 1 })
 	switch {
 	case awsapi.HasCode(err, "ResourceAlreadyExistsException"):
 		return h.existing(ctx, request.Region, t, err)
@@ -476,12 +504,12 @@ func (h *OutboundConnection) Create(ctx context.Context, request native.CreateRe
 // with the alias. AWS changed nothing, so every error is rejected. A connection that matches the template is a
 // conflict: an earlier attempt of this create may have made it, and the next deploy finds it.
 func (h *OutboundConnection) existing(ctx context.Context, region string, t connectionTemplate, cause error) (string, error) {
-	found, others, err := h.search(ctx, region, t)
+	s, err := h.search(ctx, region, t)
 	if err != nil {
 		return "", beforeChange(err)
 	}
-	if len(found) > 0 {
-		id, err := t.one(found)
+	if len(s.live) > 0 {
+		id, err := t.one(s.live)
 		if err != nil {
 			return "", beforeChange(err)
 		}
@@ -494,13 +522,13 @@ func (h *OutboundConnection) existing(ctx context.Context, region string, t conn
 			Outcome:     native.OutcomeRejected,
 		}
 	}
-	if len(others) > 0 {
+	if held := slices.Concat(s.failed, s.others); len(held) > 0 {
 		names := []string{}
-		for _, c := range others {
+		for _, c := range held {
 			names = append(names, fmt.Sprintf("%s (%s, to %q)", aws.ToString(c.ConnectionId), connectionStatusOf(&c), connectionDomainOf(c.RemoteDomainInfo).name))
 		}
 		return "", &native.Failure{
-			Message: fmt.Sprintf("%s: the source domain %q already has a connection named %q that isn't the template's: %s. Use another ConnectionAlias, or delete that connection first: %s",
+			Message: fmt.Sprintf("%s: the source domain %q already has a connection named %q that AWS doesn't let this create reuse: %s. Use another ConnectionAlias, or delete that connection first: %s",
 				outboundConnectionType, t.local.name, t.alias, strings.Join(names, ", "), cause.Error()),
 			ClientError: true,
 			Outcome:     native.OutcomeRejected,

@@ -281,6 +281,17 @@ var connAPI = map[string]nativetest.Call{
 				),
 			},
 			{
+				Rule: "To connect domains across Regions, the destination must also be on Elasticsearch 7.10 or later or OpenSearch",
+				Doc:  connGuide,
+				Check: connAgainst(
+					connCreate(func(in *opensearch.CreateOutboundConnectionInput) {
+						in.LocalDomainInfo.AWSDomainInformation.DomainName = aws.String("es710")
+						in.RemoteDomainInfo.AWSDomainInformation = &types.AWSDomainInformation{DomainName: aws.String("far-legacy"), Region: aws.String("us-east-1")}
+					}),
+					connStatuses(connFirstID, "", types.OutboundConnectionStatusCodeValidating, types.OutboundConnectionStatusCodeValidationFailed),
+				),
+			},
+			{
 				Rule: "An Elasticsearch domain can't connect to an OpenSearch domain",
 				Doc:  connGuide,
 				Check: connAgainst(
@@ -508,6 +519,14 @@ func Test_OutboundConnection_CreateFails(t *testing.T) {
 		require.Equal(t, "REJECTING", p.State)
 		require.Contains(t, p.Failure.Message, "owner rejected it")
 	})
+	t.Run("deleted outside Radius", func(t *testing.T) {
+		h, f := newConnHandler()
+		f.hold = true
+		connPut(f, "cc-outside00001", nil, types.OutboundConnectionStatusCodeDeleting)
+		p, _ := connWaitCreate(t, h, "cc-outside00001")
+		require.NotNil(t, p.Failure)
+		require.Contains(t, p.Failure.Message, "Someone deleted it")
+	})
 }
 
 // requireConnDeleted waits for a delete, which reports DELETING first and is done once AWS reports DELETED.
@@ -591,21 +610,19 @@ func Test_OutboundConnection_DuplicateOfAnother(t *testing.T) {
 	}{
 		{name: "another destination", stored: map[string]any{"RemoteDomainInfo": connDomainProperty("metrics", connAccount, connRegion)}, status: types.OutboundConnectionStatusCodeActive},
 		{name: "another owner of the destination", stored: map[string]any{"RemoteDomainInfo": connDomainProperty("archive", connOtherAccount, connRegion)}, status: types.OutboundConnectionStatusCodeActive},
-		{name: "rejected", status: types.OutboundConnectionStatusCodeRejected},
 		{name: "deleting", status: types.OutboundConnectionStatusCodeDeleting},
-		{name: "validation failed", status: types.OutboundConnectionStatusCodeValidationFailed},
+		{name: "rejected", status: types.OutboundConnectionStatusCodeRejected},
+		{name: "rejected, to another destination", stored: map[string]any{"RemoteDomainInfo": connDomainProperty("metrics", connAccount, connRegion)}, status: types.OutboundConnectionStatusCodeRejected},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h, f := newConnHandler()
+			f.hold = true
 			connPut(f, "cc-outside00001", tt.stored, tt.status)
-			found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
-			require.NoError(t, err)
-			require.Empty(t, found)
 
 			// AWS may count it as a duplicate, which the docs don't rule out.
 			f.errs["CreateOutboundConnection"] = connFault("ResourceAlreadyExistsException", "already exists")
-			_, err = h.Create(t.Context(), connRequest(connTemplate(nil)))
+			_, err := h.Create(t.Context(), connRequest(connTemplate(nil)))
 			requireConnRejected(t, err, "cc-outside00001 ("+string(tt.status))
 		})
 	}
@@ -653,8 +670,9 @@ func Test_OutboundConnection_Find(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				h, f := newConnHandler()
 				connPut(f, "cc-outside00001", nil, types.OutboundConnectionStatusCodeActive)
-				_, err := h.Find(t.Context(), connRequest(properties))
+				found, err := h.Find(t.Context(), connRequest(properties))
 				requireConnRejected(t, err, name)
+				require.Empty(t, found, "UCP keeps an identifier Find returns with an error")
 
 				f.errs["CreateOutboundConnection"] = connFault("ResourceAlreadyExistsException", "already exists")
 				_, err = h.Create(t.Context(), connRequest(properties))
@@ -683,15 +701,41 @@ func Test_OutboundConnection_Find(t *testing.T) {
 		require.Equal(t, "cc-outside00009", found)
 		require.Greater(t, f.calls["DescribeOutboundConnections"], 2)
 	})
+	t.Run("failed", func(t *testing.T) {
+		for _, status := range []types.OutboundConnectionStatusCode{
+			types.OutboundConnectionStatusCodeValidationFailed, types.OutboundConnectionStatusCodeRejecting, types.OutboundConnectionStatusCodeRejected,
+		} {
+			t.Run(string(status), func(t *testing.T) {
+				h, f := newConnHandler()
+				f.hold = true
+				connPut(f, "cc-outside00001", nil, status)
+				found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
+				require.NoError(t, err)
+				require.Equal(t, "cc-outside00001", found, "a lost create that failed is still in AWS, so a delete must find it")
+
+				// A live connection is the one a later create made.
+				connPut(f, "cc-outside00002", nil, types.OutboundConnectionStatusCodeActive)
+				found, err = h.Find(t.Context(), connRequest(connTemplate(nil)))
+				require.NoError(t, err)
+				require.Equal(t, "cc-outside00002", found)
+			})
+		}
+		h, f := newConnHandler()
+		f.hold = true
+		connPut(f, "cc-outside00001", nil, types.OutboundConnectionStatusCodeRejected)
+		connPut(f, "cc-outside00002", nil, types.OutboundConnectionStatusCodeValidationFailed)
+		_, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
+		require.ErrorContains(t, err, "cc-outside00002")
+	})
 	t.Run("deleted", func(t *testing.T) {
 		h, f := newConnHandler()
 		f.deleted["cc-outside00001"] = storedConnection("cc-outside00001", connCreateInput())
 		found, err := h.Find(t.Context(), connRequest(connTemplate(nil)))
 		require.NoError(t, err)
 		require.Empty(t, found)
-		_, others, err := h.search(t.Context(), connRegion, connectionTemplate{alias: "archive", local: connectionDomain{name: "logs"}})
+		s, err := h.search(t.Context(), connRegion, connectionTemplate{alias: "archive", local: connectionDomain{name: "logs"}})
 		require.NoError(t, err)
-		require.Empty(t, others, "a DELETED connection holds nothing")
+		require.Equal(t, connectionSearch{}, s, "a DELETED connection holds nothing")
 	})
 	t.Run("list fails", func(t *testing.T) {
 		h, f := newConnHandler()
@@ -911,4 +955,29 @@ func Test_OutboundConnection_OddAnswers(t *testing.T) {
 	_, err = h.Progress(t.Context(), connRegion, connFirstID, native.OperationCreate)
 	require.ErrorContains(t, err, "denied")
 	require.False(t, errors.Is(err, native.ErrNotFound))
+}
+
+// connOptionsStub records the options of each create.
+type connOptionsStub struct {
+	connStub
+	options opensearch.Options
+}
+
+func (s *connOptionsStub) CreateOutboundConnection(ctx context.Context, in *opensearch.CreateOutboundConnectionInput, optFns ...func(*opensearch.Options)) (*opensearch.CreateOutboundConnectionOutput, error) {
+	s.options = opensearch.Options{RetryMaxAttempts: 3}
+	for _, fn := range optFns {
+		fn(&s.options)
+	}
+	return &opensearch.CreateOutboundConnectionOutput{ConnectionId: aws.String(connFirstID)}, nil
+}
+
+// Test_OutboundConnection_CreateNoRetry checks that the SDK never sends the create again on its own. The call takes
+// no token, so a retry after AWS made the connection would get ResourceAlreadyExistsException, which reads as a
+// create AWS rejected, and UCP would drop the record of the connection.
+func Test_OutboundConnection_CreateNoRetry(t *testing.T) {
+	stub := &connOptionsStub{}
+	_, err := NewOutboundConnection(stub).Create(t.Context(), connRequest(connTemplate(nil)))
+	require.NoError(t, err)
+	require.Equal(t, 1, stub.options.RetryMaxAttempts)
+	require.Equal(t, connRegion, stub.options.Region)
 }
