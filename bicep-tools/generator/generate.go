@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/radius-project/radius/bicep-tools/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 func RunGenerate(manifestFile, outputDir string) error {
@@ -48,13 +49,13 @@ func RunGenerate(manifestFile, outputDir string) error {
 			return fmt.Errorf("failed to remove existing file %s: %w", outputPath, err)
 		}
 
-		fmt.Printf("Writing %s to %s\n", filename, outputPath)
+		output.LogInfo("Writing %s to %s", filename, outputPath)
 		if err := os.WriteFile(outputPath, []byte(content), 0644); err != nil {
 			return fmt.Errorf("failed to write %s: %w", filename, err)
 		}
 	}
 
-	fmt.Printf("Successfully generated Bicep extension files in %s\n", outputDir)
+	output.LogInfo("Successfully generated Bicep extension files in %s", outputDir)
 	return nil
 }
 

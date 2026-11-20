@@ -18,6 +18,7 @@ import {
   getDiscriminator,
   getDoc,
   getLifecycleVisibilityEnum,
+  getProperty,
   getVisibilityForClass,
   type Model,
   type ModelProperty,
@@ -215,10 +216,11 @@ export function buildResourceType(
   resource: DiscoveredResource,
   cache: Map<Type, TypeReference>
 ): TypeReference {
-  // The resource name is modeled as a plain string. Name-schema parsing for a
-  // constant or constrained name segment is not ported (no Radius resource
-  // currently relies on it).
-  const resourceName = factory.addStringType();
+  const nameProperty = getProperty(resource.bodyModel, "name");
+  const resourceName =
+    nameProperty ?
+      parseType(program, factory, nameProperty.type, cache)
+    : factory.addStringType();
 
   const properties = getStandardizedResourceProperties(
     factory,

@@ -79,6 +79,8 @@ type Client interface {
 	// Save will return ErrNotFound if the resource is not found.
 	// When providing an ETag, Save will return ErrConcurrency if the resource has been
 	// modified OR deleted since the ETag was retrieved.
+	// WithCreateOnly atomically inserts instead of upserting and returns
+	// ErrConcurrency if the resource exists. It cannot be combined with an ETag.
 	Save(ctx context.Context, obj *Object, options ...SaveOptions) error
 }
 

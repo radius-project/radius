@@ -119,3 +119,9 @@ func TestQueryFilter_Validate(t *testing.T) {
 		})
 	}
 }
+
+func Test_WithCreateOnly(t *testing.T) {
+	require.True(t, NewSaveConfig(WithCreateOnly()).CreateOnly)
+	require.False(t, NewSaveConfig().CreateOnly)
+	require.False(t, NewSaveConfig(WithETag("abc")).CreateOnly)
+}

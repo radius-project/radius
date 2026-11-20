@@ -1,0 +1,164 @@
+{
+  "typeName": "AWS::DAX::Cluster",
+  "description": "Resource Type definition for AWS::DAX::Cluster",
+  "additionalProperties": false,
+  "properties": {
+    "SSESpecification": {
+      "$ref": "#/definitions/SSESpecification"
+    },
+    "ClusterDiscoveryEndpointURL": {
+      "type": "string"
+    },
+    "Description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "ReplicationFactor": {
+      "type": "integer"
+    },
+    "ParameterGroupName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "AvailabilityZones": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "IAMRoleARN": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "SubnetGroupName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "PreferredMaintenanceWindow": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "ClusterEndpointEncryptionType": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "NotificationTopicARN": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "SecurityGroupIds": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      },
+      "insertionOrder": false
+    },
+    "NetworkType": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 10
+    },
+    "NodeType": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "ClusterName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20
+    },
+    "ClusterDiscoveryEndpoint": {
+      "type": "string"
+    },
+    "Arn": {
+      "type": "string"
+    },
+    "Tags": {
+      "type": "object"
+    }
+  },
+  "definitions": {
+    "SSESpecification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SSEEnabled": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "required": ["ReplicationFactor", "IAMRoleARN", "NodeType"],
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags",
+    "permissions": ["dax:TagResource", "dax:UntagResource", "dax:ListTags"]
+  },
+  "createOnlyProperties": [
+    "/properties/IAMRoleARN",
+    "/properties/SSESpecification",
+    "/properties/ClusterEndpointEncryptionType",
+    "/properties/NetworkType",
+    "/properties/ClusterName",
+    "/properties/NodeType",
+    "/properties/SubnetGroupName"
+  ],
+  "primaryIdentifier": ["/properties/ClusterName"],
+  "readOnlyProperties": [
+    "/properties/ClusterDiscoveryEndpoint",
+    "/properties/Arn",
+    "/properties/ClusterDiscoveryEndpointURL"
+  ],
+  "writeOnlyProperties": ["/properties/AvailabilityZones"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "dax:CreateCluster",
+        "dax:DescribeClusters",
+        "dax:TagResource",
+        "dax:ListTags",
+        "ec2:CreateNetworkInterface",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "iam:GetRole",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["dax:DescribeClusters", "dax:ListTags"]
+    },
+    "update": {
+      "permissions": [
+        "dax:UpdateCluster",
+        "dax:DescribeClusters",
+        "dax:TagResource",
+        "dax:UntagResource",
+        "dax:ListTags",
+        "dax:IncreaseReplicationFactor",
+        "dax:DecreaseReplicationFactor"
+      ]
+    },
+    "delete": {
+      "permissions": ["dax:DeleteCluster", "dax:DescribeClusters"]
+    },
+    "list": {
+      "permissions": ["dax:DescribeClusters", "dax:ListTags"]
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_APPSYNC_API_ID": "wjjvdtrz45a7rogfeknndzpcja",
+    "RADIUS_REC_APPSYNC_SCHEMA_S3_LOCATION": "s3://radius-rec-rc899e-162ba9/schema.graphql"
+  },
+  "interactions": [
+    {
+      "service": "AppSync",
+      "operation": "StartSchemaCreation",
+      "request": "{\"definition\":\"dHlwZSBRdWVyeSB7IGhlbGxvOiBTdHJpbmcgfQ==\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"status\":\"PROCESSING\"}"
+    },
+    {
+      "service": "AppSync",
+      "operation": "GetSchemaCreationStatus",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"status\":\"PROCESSING\",\"details\":\"The schema is being processed.\"}"
+    },
+    {
+      "service": "AppSync",
+      "operation": "GetSchemaCreationStatus",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"status\":\"SUCCESS\",\"details\":\"Successfully created schema with 1 types.\"}"
+    },
+    {
+      "service": "AppSync",
+      "operation": "GetGraphqlApi",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\n  \"graphqlApi\" : {\n    \"name\" : \"radius-rec-rc899e\",\n    \"apiId\" : \"wjjvdtrz45a7rogfeknndzpcja\",\n    \"authenticationType\" : \"API_KEY\",\n    \"logConfig\" : null,\n    \"userPoolConfig\" : null,\n    \"openIDConnectConfig\" : null,\n    \"arn\" : \"arn:aws:appsync:us-west-2:123456789012:apis/wjjvdtrz45a7rogfeknndzpcja\",\n    \"uris\" : {\n      \"REALTIME\" : \"wss://gs75zobpxjgw3gr223hwuyguaq.appsync-realtime-api.us-west-2.amazonaws.com/graphql\",\n      \"GRAPHQL\" : \"https://gs75zobpxjgw3gr223hwuyguaq.appsync-api.us-west-2.amazonaws.com/graphql\"\n    },\n    \"tags\" : {\n      \"radius-recording\" : \"rc899e\"\n    },\n    \"additionalAuthenticationProviders\" : null,\n    \"xrayEnabled\" : false,\n    \"wafWebAclArn\" : null,\n    \"lambdaAuthorizerConfig\" : null,\n    \"dns\" : {\n      \"REALTIME\" : \"gs75zobpxjgw3gr223hwuyguaq.appsync-realtime-api.us-west-2.amazonaws.com\",\n      \"GRAPHQL\" : \"gs75zobpxjgw3gr223hwuyguaq.appsync-api.us-west-2.amazonaws.com\"\n    },\n    \"visibility\" : \"GLOBAL\",\n    \"apiType\" : \"GRAPHQL\",\n    \"mergedApiExecutionRoleArn\" : null,\n    \"owner\" : \"123456789012\",\n    \"ownerContact\" : null,\n    \"introspectionConfig\" : \"ENABLED\",\n    \"queryDepthLimit\" : 0,\n    \"resolverCountLimit\" : 0,\n    \"enhancedMetricsConfig\" : null\n  }\n}"
+    },
+    {
+      "service": "S3",
+      "operation": "GetObject",
+      "status": 200,
+      "headers": {
+        "Content-Type": "binary/octet-stream"
+      },
+      "body": "type Query { hello: String }\n"
+    },
+    {
+      "service": "AppSync",
+      "operation": "StartSchemaCreation",
+      "request": "{\"definition\":\"dHlwZSBRdWVyeSB7IGhlbGxvOiBTdHJpbmcgfQo=\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"status\":\"PROCESSING\"}"
+    },
+    {
+      "service": "AppSync",
+      "operation": "GetSchemaCreationStatus",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"status\":\"PROCESSING\",\"details\":\"The schema is being processed.\"}"
+    },
+    {
+      "service": "AppSync",
+      "operation": "GetSchemaCreationStatus",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"status\":\"SUCCESS\",\"details\":\"Successfully created schema with 1 types.\"}"
+    },
+    {
+      "service": "AppSync",
+      "operation": "GetGraphqlApi",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\n  \"graphqlApi\" : {\n    \"name\" : \"radius-rec-rc899e\",\n    \"apiId\" : \"wjjvdtrz45a7rogfeknndzpcja\",\n    \"authenticationType\" : \"API_KEY\",\n    \"logConfig\" : null,\n    \"userPoolConfig\" : null,\n    \"openIDConnectConfig\" : null,\n    \"arn\" : \"arn:aws:appsync:us-west-2:123456789012:apis/wjjvdtrz45a7rogfeknndzpcja\",\n    \"uris\" : {\n      \"REALTIME\" : \"wss://gs75zobpxjgw3gr223hwuyguaq.appsync-realtime-api.us-west-2.amazonaws.com/graphql\",\n      \"GRAPHQL\" : \"https://gs75zobpxjgw3gr223hwuyguaq.appsync-api.us-west-2.amazonaws.com/graphql\"\n    },\n    \"tags\" : {\n      \"radius-recording\" : \"rc899e\"\n    },\n    \"additionalAuthenticationProviders\" : null,\n    \"xrayEnabled\" : false,\n    \"wafWebAclArn\" : null,\n    \"lambdaAuthorizerConfig\" : null,\n    \"dns\" : {\n      \"REALTIME\" : \"gs75zobpxjgw3gr223hwuyguaq.appsync-realtime-api.us-west-2.amazonaws.com\",\n      \"GRAPHQL\" : \"gs75zobpxjgw3gr223hwuyguaq.appsync-api.us-west-2.amazonaws.com\"\n    },\n    \"visibility\" : \"GLOBAL\",\n    \"apiType\" : \"GRAPHQL\",\n    \"mergedApiExecutionRoleArn\" : null,\n    \"owner\" : \"123456789012\",\n    \"ownerContact\" : null,\n    \"introspectionConfig\" : \"ENABLED\",\n    \"queryDepthLimit\" : 0,\n    \"resolverCountLimit\" : 0,\n    \"enhancedMetricsConfig\" : null\n  }\n}"
+    }
+  ]
+}

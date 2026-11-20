@@ -19,21 +19,35 @@ package upgrade_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/testutil"
@@ -63,6 +77,135 @@ const (
 	ucpDeployment = "ucp"
 	ucpContainer  = "ucp"
 )
+
+// Test_RadUpgradeFromReleasedVersion uses a published CLI and its actual chart, not versioned copies of main.
+func Test_RadUpgradeFromReleasedVersion(t *testing.T) {
+	const baselineVersion = "0.62.0"
+	ctx := t.Context()
+	baselineCLI := downloadReleasedCLI(t, baselineVersion)
+	k8sClient, err := newKubernetesClient()
+	require.NoError(t, err)
+	deImage, err := deploymentEngineImageFromEnv()
+	require.NoError(t, err)
+	registry, tag := testutil.SetDefault()
+	imageArgs := radUpgradeImageArgs(registry, tag, deImage, os.Getenv("RADIUS_REGISTRY_CERT_FILE"))
+
+	cleanupAndWait(t, ctx, k8sClient)
+	resetControllerCRDsForBaseline(t, ctx)
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
+		defer cancel()
+		cleanupAndWait(t, cleanupCtx, k8sClient)
+		resetControllerCRDsForBaseline(t, cleanupCtx)
+	})
+	// Do not override the baseline images or chart: install the release as a user would.
+	out, err := exec.CommandContext(ctx, baselineCLI, "install", "kubernetes", "--skip-contour-install").CombinedOutput()
+	require.NoErrorf(t, err, "Released rad install failed: %s", out)
+	requireRelease(t, ctx, baselineVersion)
+	releases := storage.Init(driver.NewSecrets(k8sClient.CoreV1().Secrets(radiusNamespace)))
+	revision, err := releases.Last(helmReleaseName)
+	require.NoError(t, err)
+	installed, ok := revision.(*releasev1.Release)
+	require.True(t, ok, "Unexpected Helm release type %T", revision)
+	require.Equal(t, string(releasev1.ApplyMethodServerSideApply), installed.ApplyMethod)
+	before, err := k8sClient.AppsV1().Deployments(radiusNamespace).Get(ctx, "controller", metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, appsv1.RollingUpdateDeploymentStrategyType, before.Spec.Strategy.Type)
+	require.NotNil(t, before.Spec.Strategy.RollingUpdate)
+
+	cli := radcli.NewCLI(t, "")
+	// The target is an edge build, so bypass version policy while exercising the real upgrade.
+	args := append([]string{"upgrade", "kubernetes", "--skip-preflight", "--chart", relativeChartPath}, imageArgs...)
+	result, err := cli.RunCommand(ctx, args)
+	require.NoErrorf(t, err, "Released-to-current upgrade failed: %s", result)
+	requireRelease(t, ctx, edgeAppVersion)
+	require.Equal(t, installed.Version+1, latestRevision(t, ctx))
+	after, err := k8sClient.AppsV1().Deployments(radiusNamespace).Get(ctx, "controller", metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, before.UID, after.UID)
+	require.Equal(t, appsv1.RecreateDeploymentStrategyType, after.Spec.Strategy.Type)
+	require.Nil(t, after.Spec.Strategy.RollingUpdate)
+	require.Equal(t, after.Generation, after.Status.ObservedGeneration)
+	require.Equal(t, *after.Spec.Replicas, after.Status.UpdatedReplicas)
+	require.Equal(t, *after.Spec.Replicas, after.Status.AvailableReplicas)
+	requireContainerImage(t, ctx, k8sClient, "controller", "controller", registry+"/controller:"+tag)
+}
+
+// Helm uninstall retains CRDs. Remove only empty controller CRDs so an earlier current-version installation
+// cannot supply migrated schemas (or conflicting field ownership) to the released baseline.
+func resetControllerCRDsForBaseline(t *testing.T, ctx context.Context) {
+	t.Helper()
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(clientcmd.NewDefaultClientConfigLoadingRules(), nil).ClientConfig()
+	require.NoError(t, err)
+	definitions, err := apiextclient.NewForConfig(config)
+	require.NoError(t, err)
+	resources, err := dynamic.NewForConfig(config)
+	require.NoError(t, err)
+	crds := definitions.ApiextensionsV1().CustomResourceDefinitions()
+	names := []string{"deploymenttemplates.radapp.io", "deploymentresources.radapp.io"}
+	for _, name := range names {
+		_, err := crds.Get(ctx, name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		require.NoError(t, err)
+		list, err := resources.Resource(schema.GroupVersionResource{
+			Group: "radapp.io", Version: "v1alpha3", Resource: strings.TrimSuffix(name, ".radapp.io"),
+		}).List(ctx, metav1.ListOptions{})
+		require.NoError(t, err)
+		require.Empty(t, list.Items, "Refusing to delete %s with existing instances; use a dedicated upgrade-test cluster", name)
+	}
+	for _, name := range names {
+		err := crds.Delete(ctx, name, metav1.DeleteOptions{})
+		if !apierrors.IsNotFound(err) {
+			require.NoError(t, err)
+		}
+		require.Eventually(t, func() bool {
+			_, err := crds.Get(ctx, name, metav1.GetOptions{})
+			if apierrors.IsNotFound(err) {
+				return true
+			}
+			require.NoError(t, err)
+			return false
+		}, cleanupTimeout, cleanupPollInterval, "CRD %s was not deleted", name)
+	}
+}
+
+func downloadReleasedCLI(t *testing.T, version string) string {
+	t.Helper()
+	name := "rad_" + runtime.GOOS + "_" + runtime.GOARCH
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	baseURL := "https://github.com/radius-project/radius/releases/download/v" + version + "/"
+	client := &http.Client{Timeout: 3 * time.Minute}
+	download := func(name string, destination io.Writer) {
+		t.Helper()
+		request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, baseURL+name, nil)
+		require.NoError(t, err)
+		response, err := client.Do(request)
+		require.NoError(t, err)
+		defer response.Body.Close()
+		require.Equal(t, http.StatusOK, response.StatusCode, "Download %s: %s", name, response.Status)
+		_, err = io.Copy(destination, response.Body)
+		require.NoError(t, err)
+	}
+	var checksum bytes.Buffer
+	download(name+".sha256", &checksum)
+	fields := strings.Fields(checksum.String())
+	require.Len(t, fields, 2, "Unexpected release checksum format")
+	require.Equal(t, name, strings.TrimPrefix(fields[1], "*"))
+	binaryPath := filepath.Join(t.TempDir(), name)
+	binary, err := os.Create(binaryPath)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = binary.Close() })
+	hash := sha256.New()
+	download(name, io.MultiWriter(binary, hash))
+	require.NoError(t, binary.Close())
+	require.Equal(t, fields[0], hex.EncodeToString(hash.Sum(nil)), "Released CLI checksum mismatch")
+	require.NoError(t, os.Chmod(binaryPath, 0700))
+	return binaryPath
+}
 
 // Test_RadUpgradeKubernetes exercises the `rad upgrade kubernetes` command end to end.
 //
@@ -234,7 +377,7 @@ func Test_RadUpgradeKubernetes(t *testing.T) {
 // radUpgradeImageArgs pins every image the chart renders so the result does not depend on the
 // chart's appVersion, which the versioned chart copies change. The Radius images come from the
 // build under test. The Deployment Engine and dashboard fall back to the tags the edge chart
-// renders ("latest") when no override is configured.
+// renders ("edge") when no override is configured.
 func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, rootCACertFile string) []string {
 	var args []string
 	for _, component := range radiusImageComponents {
@@ -243,9 +386,9 @@ func radUpgradeImageArgs(registry, tag string, deImage deploymentEngineImage, ro
 	if deImage.repository != "" {
 		args = append(args, "--set", fmt.Sprintf("de.image=%s,de.tag=%s", deImage.repository, deImage.tag))
 	} else {
-		args = append(args, "--set", "de.tag=latest")
+		args = append(args, "--set", "de.tag=edge")
 	}
-	args = append(args, "--set", "dashboard.tag=latest")
+	args = append(args, "--set", "dashboard.tag=edge")
 	if rootCACertFile != "" {
 		args = append(args, "--set-file", "global.rootCA.cert="+rootCACertFile)
 	}
@@ -406,7 +549,7 @@ func Test_radUpgradeImageArgs(t *testing.T) {
 	}{
 		{
 			name: "default Deployment Engine",
-			want: append(slices.Clone(components), "--set", "de.tag=latest", "--set", "dashboard.tag=latest"),
+			want: append(slices.Clone(components), "--set", "de.tag=edge", "--set", "dashboard.tag=edge"),
 		},
 		{
 			name:    "candidate Deployment Engine and root CA",
@@ -414,7 +557,7 @@ func Test_radUpgradeImageArgs(t *testing.T) {
 			cert:    "/tmp/certs/client.crt",
 			want: append(slices.Clone(components),
 				"--set", "de.image=ghcr.io/radius-project/deployment-engine,de.tag=candidate",
-				"--set", "dashboard.tag=latest",
+				"--set", "dashboard.tag=edge",
 				"--set-file", "global.rootCA.cert=/tmp/certs/client.crt"),
 		},
 	} {

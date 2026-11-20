@@ -1,0 +1,87 @@
+suite: test client mTLS connections to UCP
+templates:
+  - controller/deployment.yaml
+  - controller/configmaps.yaml
+  - rp/configmaps.yaml
+  - dynamic-rp/configmaps.yaml
+  - ucp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: connects to UCP through Kubernetes and mounts no controller certificate by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: controller/deployment.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^ucp:\n  kind: kubernetes$'
+        template: controller/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^ucp:\n  kind: kubernetes$'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^ucp:\n  kind: kubernetes$'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: connects to UCP's internal mTLS port in dryRun mode
+    set:
+      global.rbac.dryRun: true
+    asserts: &direct
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+            secret:
+              secretName: controller-mtls
+        template: controller/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mtls
+            mountPath: /var/run/radius/mtls
+            readOnly: true
+        template: controller/deployment.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+        template: controller/configmaps.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^ucp:\n  kind: direct\n  direct:\n    endpoint: "https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"$'
+        template: controller/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^ucp:\n  kind: direct\n  direct:\n    endpoint: "https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"$'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^ucp:\n  kind: direct\n  direct:\n    endpoint: "https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"$'
+        template: dynamic-rp/configmaps.yaml
+      # UCP's connection to itself is unchanged.
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^ucp:\n  kind: kubernetes$'
+        template: ucp/configmaps.yaml
+
+  - it: connects to UCP's internal mTLS port in enforce mode
+    set:
+      global.rbac.enabled: true
+    asserts: *direct
+
+  - it: uses the release namespace in the UCP endpoint
+    release:
+      namespace: radius-test
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'endpoint: "https://ucp.radius-test.svc:9444/apis/api.ucp.dev/v1alpha3"'
+        template: controller/configmaps.yaml

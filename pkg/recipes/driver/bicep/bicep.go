@@ -20,18 +20,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	reflect "reflect"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	awsarn "github.com/aws/aws-sdk-go-v2/aws/arn"
 	"github.com/go-logr/logr"
-	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
 
+	"github.com/radius-project/radius/pkg/aws/arnproperties"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -48,8 +53,10 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
 )
 
@@ -92,16 +99,13 @@ type bicepDriver struct {
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
 // a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
 // is done and prepares the recipe response.
-func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (output *recipes.RecipeOutput, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", opts.Definition.Name, opts.Definition.TemplatePath))
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
-	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
-	if err != nil {
-		return nil, err
-	}
+	secrets := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 
 	registryClient := d.RegistryClient
 	// Get ORAS authentication client if secrets are found for the registry.
@@ -148,7 +152,12 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		// Direct module — resolve {{context.*}} expressions, merge parameters, and wrap as ARM parameters.
 		// Resource (developer) parameters take precedence over environment (operator) parameters.
 		mergedParams := recipes_util.ShallowMergeParameters(opts.Definition.Parameters, opts.Recipe.Parameters)
-		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		resolvedParams, err := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		if err != nil {
+			// Report an execution error rather than a setup error so a later delete still cleans up
+			// resources from an earlier successful deployment.
+			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 		parameters = wrapARMParameters(resolvedParams)
 	}
 
@@ -159,7 +168,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 
 	// Provider config will specify the Azure and AWS scopes (if provided).
-	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), opts.Configuration.Providers)
+	providerConfig := newProviderConfig(deploymentID.FindScope(resources_radius.ScopeResourceGroups), opts.Configuration.Providers, awsOwner(opts.Recipe))
 
 	logger.Info("deploying bicep template for recipe", "deploymentID", deploymentID)
 	if providerConfig.AWS != nil {
@@ -168,6 +177,46 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	if providerConfig.Az != nil {
 		logger.Info("using Azure provider", "deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope)
 	}
+
+	var knownOutput *recipes.RecipeOutput
+	var completedDeployment *clients.ClientCreateOrUpdateResponse
+	submissionRejected := false
+	defer func() {
+		if err == nil || submissionRejected {
+			return
+		}
+		// Successful deployment outputs remain valid when only old-resource cleanup fails.
+		if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok && output != nil && recipeErr.ErrorDetails.Code == recipes.RecipeGarbageCollectionFailed {
+			return
+		}
+
+		output = &recipes.RecipeOutput{PendingDeploymentID: deploymentID.String()}
+		if knownOutput != nil {
+			output.Resources = slices.Clone(knownOutput.Resources)
+			output.ProviderResourceIDs = knownOutput.ProviderResourceIDs
+		}
+		var ids []string
+		var inventoryErr error
+		if completedDeployment != nil {
+			ids, inventoryErr = deploymentOutputResourceIDs(completedDeployment.Properties)
+		}
+		if completedDeployment == nil || inventoryErr != nil {
+			ids, inventoryErr = d.deploymentOutputResources(ctx, deploymentID.String())
+		}
+		if inventoryErr != nil {
+			logger.Error(inventoryErr, "Failed to recover recipe cleanup inventory; retaining deployment ID for deletion", "deploymentID", deploymentID.String())
+			return
+		}
+		if output.Resources == nil {
+			output.Resources = ids
+		}
+		for _, id := range ids {
+			if !slices.Contains(output.Resources, id) {
+				output.Resources = append(output.Resources, id)
+			}
+		}
+		output.PendingDeploymentID = ""
+	}()
 
 	poller, err := d.DeploymentClient.CreateOrUpdate(
 		ctx,
@@ -184,6 +233,10 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	)
 
 	if err != nil {
+		if responseErr, ok := errors.AsType[*azcore.ResponseError](err); ok {
+			submissionRejected = responseErr.StatusCode >= 400 && responseErr.StatusCode < 500 &&
+				responseErr.StatusCode != http.StatusRequestTimeout && responseErr.StatusCode != http.StatusTooManyRequests
+		}
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
@@ -191,6 +244,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
+	completedDeployment = &resp
 
 	// Log only IDs, not output values, which can contain credentials.
 	outputResourceIDs := make([]string, 0, len(resp.Properties.OutputResources))
@@ -206,12 +260,15 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		"outputResourceIDs", outputResourceIDs)
 
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
+	knownOutput = recipeResponse
 	if err != nil {
 		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
 			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 		}
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
+
+	d.addAWSProviderResourceIDs(ctx, recipeResponse)
 
 	// containerImages recipes may declare an imageBuild output. Check for it first, then run the
 	// embedded build script and merge the resulting image reference into the recipe output.
@@ -232,22 +289,63 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	garbageCollectionStartTime := time.Now()
 	diff, err := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
 	if err != nil {
-		return nil, err
+		// Nothing was deleted, so keep tracking every previous resource the new output does not contain.
+		for _, previous := range opts.PrevState {
+			if !slices.Contains(recipeResponse.Resources, previous) {
+				recipeResponse.UndeletedResources = append(recipeResponse.UndeletedResources, previous)
+			}
+		}
+		return recipeResponse, err
 	}
 
 	// Deleting obsolete output resources.
-	err = d.Delete(ctx, driver.DeleteOptions{
+	recipeResponse.UndeletedResources, err = d.deleteOutputResources(ctx, driver.DeleteOptions{
 		BaseOptions:     opts.BaseOptions,
 		OutputResources: diff,
 	})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.FailedOperationState))
-		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
+		// The deployment succeeded, so return its output for the caller to keep tracking the new resources.
+		return recipeResponse, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
 	return recipeResponse, nil
+}
+
+func (d *bicepDriver) deploymentOutputResources(ctx context.Context, deploymentID string) ([]string, error) {
+	response, err := d.DeploymentClient.Get(ctx, deploymentID, clients.DeploymentsClientAPIVersion)
+	if err != nil {
+		return nil, err
+	}
+	return deploymentOutputResourceIDs(response.Properties)
+}
+
+func deploymentOutputResourceIDs(properties *armdeployments.DeploymentPropertiesExtended) ([]string, error) {
+	if properties == nil || properties.ProvisioningState == nil {
+		return nil, fmt.Errorf("deployment has no provisioning state")
+	}
+	switch strings.ToLower(string(*properties.ProvisioningState)) {
+	case "succeeded", "failed", "canceled":
+	default:
+		return nil, fmt.Errorf("deployment is still in progress: %s", *properties.ProvisioningState)
+	}
+	if properties.OutputResources == nil {
+		return nil, fmt.Errorf("deployment output resource inventory is unavailable")
+	}
+
+	ids := make([]string, 0, len(properties.OutputResources))
+	for _, ref := range properties.OutputResources {
+		if ref == nil || ref.ID == nil {
+			return nil, fmt.Errorf("deployment output resource inventory contains a missing resource ID")
+		}
+		if _, err := resources.ParseResource(*ref.ID); err != nil {
+			return nil, fmt.Errorf("invalid deployment output resource ID %q: %w", *ref.ID, err)
+		}
+		ids = append(ids, *ref.ID)
+	}
+	return ids, nil
 }
 
 // Delete deletes all of the output resources that are marked as managed by Radius.
@@ -256,71 +354,192 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 // We don't have context on the dependency ordering here, so we need to try to delete them
 // all in parallel. Since some resources may depend on others, we may need to retry.
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
+	for i, deploymentID := range opts.PendingDeployments {
+		ids, err := d.deploymentOutputResources(ctx, deploymentID)
+		if err != nil {
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to recover cleanup inventory for deployment %q: %v", deploymentID, err), "", recipes.GetErrorDetails(err))
+		}
+		recovered, err := processors.GetOutputResourcesFromRecipe(&recipes.RecipeOutput{Resources: ids})
+		if err != nil {
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+		for _, outputResource := range recovered {
+			if !slices.ContainsFunc(opts.OutputResources, func(existing rpv1.OutputResource) bool {
+				return existing.ID.String() == outputResource.ID.String()
+			}) {
+				opts.OutputResources = append(opts.OutputResources, outputResource)
+			}
+		}
+		if opts.PersistCleanup != nil {
+			if err := opts.PersistCleanup(ctx, opts.OutputResources, opts.PendingDeployments[i+1:]); err != nil {
+				return fmt.Errorf("failed to persist recovered recipe cleanup inventory: %w", err)
+			}
+		}
+	}
+
+	_, err := d.deleteOutputResources(ctx, opts)
+	return err
+}
+
+// deleteOutputResources deletes the output resources like Delete. When deletion fails, it also returns the IDs of the
+// output resources that may still exist: each one whose delete failed, its duplicates, and a Key Vault secret whose
+// parent vault failed to delete.
+func (d *bicepDriver) deleteOutputResources(ctx context.Context, opts driver.DeleteOptions) ([]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceClient, err := d.resourceClientForDelete(ctx, opts)
 	if err != nil {
-		return err
+		return undeletedOutputResources(opts.OutputResources, nil), err
 	}
 	if resourceClient == nil {
-		return nil
+		return nil, nil
 	}
 
-	// Create a waitgroup to track the deletion of each output resource
-	g, groupCtx := errgroup.WithContext(ctx)
+	// UCP deletes an AWS resource only for the owner that deployed it.
+	ctx = processors.WithAWSOwner(ctx, awsOwner(opts.Recipe))
+
+	// Each output resource gets its own delete attempts, so one failure does not stop the others.
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	failures := []error{}
+	failedKeys := map[string]struct{}{}
+	deleting := map[string]struct{}{}
 
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
 
-		if outputResource.IsRadiusManaged() && deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
+		if !outputResource.IsRadiusManaged() {
+			logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", outputResource.ID.String()))
+			continue
+		}
+
+		if deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
 			// ARM cannot delete secrets. The batch must still wait for the managed vault deletion to succeed.
 			logger.Info("Skipping direct Key Vault secret deletion; the managed parent vault is in the deletion batch", "resourceID", outputResource.ID.String())
 			continue
 		}
 
+		// Explicit recipe outputs and deployment inventory can contain the same resource.
+		// Deduplicate here so saved state and redeploy garbage collection are covered too.
+		key := outputResourceKey(outputResource.ID)
+		if _, exists := deleting[key]; exists {
+			continue
+		}
+		deleting[key] = struct{}{}
+
 		// Create a goroutine that handles the deletion of one resource
-		g.Go(func() error {
+		wg.Go(func() {
 			id := outputResource.ID.String()
 			logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
 
-			// If the resource is not managed by Radius, skip the deletion
-			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id))
-				return nil
-			}
-
 			var err error
-			for attempt := 0; attempt <= d.options.DeleteRetryCount; attempt++ {
-				logger.WithValues("attempt", attempt)
-				ctx := logr.NewContext(groupCtx, logger)
-				logger.V(ucplog.LevelDebug).Info("beginning attempt")
+			attempts := 0
+			for {
+				if err = ctx.Err(); err != nil {
+					break
+				}
+				attempts++
+				attemptLogger := logger.WithValues("attempt", attempts, "resourceID", id)
+				attemptCtx := logr.NewContext(ctx, attemptLogger)
+				attemptLogger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-				err = resourceClient.Delete(ctx, id)
-				if err != nil {
-					if attempt <= d.options.DeleteRetryCount {
-						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
-						time.Sleep(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
-						continue
-					}
-
-					return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+				err = resourceClient.Delete(attemptCtx, id)
+				if err == nil {
+					attemptLogger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
+					return
+				}
+				if attempts > d.options.DeleteRetryCount || !isRetryableDeleteError(err) {
+					break
 				}
 
-				// If the err is nil, then the resource is deleted successfully
-				logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleted output resource: %q", id))
-				return nil
+				attemptLogger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
+				timer := time.NewTimer(time.Duration(d.options.DeleteRetryDelaySeconds) * time.Second)
+				select {
+				case <-ctx.Done():
+					err = ctx.Err()
+				case <-timer.C:
+				}
+				timer.Stop()
+				if ctx.Err() != nil {
+					break
+				}
 			}
 
-			deletionErr := fmt.Errorf("failed to delete resource after %d attempt(s), last error: %s", d.options.DeleteRetryCount+1, err.Error())
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
+			mu.Lock()
+			defer mu.Unlock()
+			failures = append(failures, fmt.Errorf("failed to delete resource %q after %d attempt(s), last error: %w", id, attempts, err))
+			failedKeys[key] = struct{}{}
 		})
 	}
+	wg.Wait()
 
-	if err := g.Wait(); err != nil {
-		return err
+	if len(failures) == 0 {
+		return nil, nil
 	}
 
-	return nil
+	// Sort so the error is the same no matter which delete finished first.
+	slices.SortFunc(failures, func(a, b error) int { return strings.Compare(a.Error(), b.Error()) })
+	deletionErr := errors.Join(failures...)
+	return undeletedOutputResources(opts.OutputResources, failedKeys), recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
+}
+
+// undeletedOutputResources returns the IDs of the Radius-managed output resources that may still exist after a failed
+// delete. failedKeys holds the outputResourceKey of each failed delete; nil means no delete was attempted.
+func undeletedOutputResources(outputResources []rpv1.OutputResource, failedKeys map[string]struct{}) []string {
+	undeleted := []string{}
+	for _, outputResource := range outputResources {
+		if !outputResource.IsRadiusManaged() {
+			continue
+		}
+
+		key := outputResourceKey(outputResource.ID)
+		if deletingKeyVaultParent(outputResource.ID, outputResources) {
+			// The secret was deleted with its vault, so it remains only if the vault does.
+			key = outputResourceKey(outputResource.ID.Truncate())
+		}
+		_, failed := failedKeys[key]
+		if id := outputResource.ID.String(); (failed || failedKeys == nil) && !slices.Contains(undeleted, id) {
+			undeleted = append(undeleted, id)
+		}
+	}
+	return undeleted
+}
+
+// permanentDeleteErrorCodes are ARM error codes that a later attempt cannot fix.
+var permanentDeleteErrorCodes = map[string]struct{}{
+	"authenticationfailed":             {},
+	"authorizationfailed":              {},
+	"invalidauthenticationtoken":       {},
+	"invalidauthenticationtokentenant": {},
+	"linkedauthorizationfailed":        {},
+}
+
+// isRetryableDeleteError reports whether another delete attempt can succeed.
+// Deletes run in parallel without dependency ordering, and dependency failures
+// arrive with many status codes (for example 400 for Azure "in use" errors, or 200
+// for a failed long-running operation). Only errors that are known to be permanent stop retries.
+func isRetryableDeleteError(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+
+	if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
+		if _, permanent := permanentDeleteErrorCodes[strings.ToLower(responseError.ErrorCode)]; permanent {
+			return false
+		}
+		return !isAuthStatus(responseError.StatusCode)
+	}
+
+	var statusError apierrors.APIStatus
+	if errors.As(err, &statusError) {
+		return !isAuthStatus(int(statusError.Status().Code))
+	}
+
+	return true
+}
+
+func isAuthStatus(statusCode int) bool {
+	return statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden
 }
 
 func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResource) bool {
@@ -339,6 +558,15 @@ func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResour
 	}
 
 	return false
+}
+
+// outputResourceKey identifies the resource that an output resource ID refers to. Azure IDs match without case and
+// with or without an Azure plane prefix. Other resource IDs match exactly.
+func outputResourceKey(id resources.ID) string {
+	if path := azureResourcePath(id); path != "" {
+		return strings.ToLower(path)
+	}
+	return id.String()
 }
 
 func azureResourcePath(id resources.ID) string {
@@ -426,10 +654,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 	//		}
 	//	}
 	recipeData := make(map[string]any)
-	secrets, err := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
-	if err != nil {
-		return nil, err
-	}
+	secrets := util.GetRegistrySecrets(opts.Configuration, opts.Definition.TemplatePath, opts.Secrets)
 
 	registryClient := d.RegistryClient
 	// Get ORAS authentication client if secrets are found for the registry.
@@ -442,7 +667,7 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 		registryClient = authClient
 	}
 
-	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
+	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +752,12 @@ func createDeploymentID(resourceID string, deploymentName string) (resources.ID,
 	return resources.ParseResource(fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Microsoft.Resources/deployments/%s", resourceGroup, deploymentName))
 }
 
-func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clients.ProviderConfig {
+// awsOwner returns the owner of the AWS resources a recipe deploys.
+func awsOwner(recipe recipes.ResourceMetadata) string {
+	return clients.AWSRecipeOwner(recipe.ApplicationID, recipe.EnvironmentID, recipe.ResourceID)
+}
+
+func newProviderConfig(resourceGroup string, envProviders coredm.Providers, owner string) clients.ProviderConfig {
 	config := clients.NewDefaultProviderConfig(resourceGroup)
 
 	if envProviders.Azure != (coredm.ProvidersAzure{}) {
@@ -544,6 +774,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 			Type: clients.ProviderTypeAWS,
 			Value: clients.Value{
 				Scope: envProviders.AWS.Scope,
+				Owner: owner,
 			},
 		}
 	}
@@ -613,6 +844,82 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 	return recipeResponse, nil
 }
 
+// addAWSProviderResourceIDs records the ARN of each AWS output resource as its provider resource ID. This covers
+// resources the recipe deploys and resources it returns in result.resources, including existing resources.
+//
+// The ARN is read through UCP from the property that holds the resource's own ARN for its type. Types that have no
+// such property are skipped. For types that aren't in the catalog, the Arn, ARN, or arn property is used.
+//
+// It is best effort: when the ARN can't be determined, the output resource is stored without it.
+func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *recipes.RecipeOutput) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	var resourceClient processors.ResourceClient
+	for _, resource := range output.Resources {
+		id, err := resources.ParseResource(resource)
+		if _, ok := output.ProviderResourceIDs[resource]; err != nil || ok || !isAWSResource(id) {
+			continue
+		}
+
+		property, known := arnproperties.Lookup(resources_aws.ToAWSResourceType(id))
+		if known && property == "" {
+			continue
+		}
+
+		if resourceClient == nil {
+			if d.resourceClientFactory == nil {
+				return
+			}
+			resourceClient = d.resourceClientFactory(nil)
+			if resourceClient == nil {
+				return
+			}
+		}
+
+		properties, err := resourceClient.GetProperties(ctx, resource)
+		if isAWSNoRecordError(err) {
+			// UCP has no record of a resource the recipe references with existing. Its ID ends in the AWS identifier,
+			// so read it from AWS by that. Any other 404 is for an alias whose resource is gone, and reading by the
+			// alias could read an unrelated resource.
+			properties, err = resourceClient.GetAWSPropertiesByIdentifier(ctx, resource)
+		}
+		if err != nil {
+			logger.Info("Could not read the AWS output resource to find its ARN", "resourceID", resource, "error", err.Error())
+			continue
+		}
+
+		if arn := arnFromProperties(properties, property); arn != "" {
+			output.SetProviderResourceID(resource, arnproperties.ProviderResourceID(arn))
+		}
+	}
+}
+
+// isAWSNoRecordError reports whether err is UCP's 404 for an AWS resource ID that has no record.
+func isAWSNoRecordError(err error) bool {
+	respErr, ok := clientv2.ExtractResponseError(err)
+	return ok && respErr.StatusCode == http.StatusNotFound && respErr.ErrorCode == clients.AWSResourceNoRecordCode
+}
+
+// arnFromProperties returns the ARN in the given property of an AWS resource, or in its Arn, ARN, or arn property when
+// property is empty. It returns an empty string when the value is missing or isn't an ARN.
+func arnFromProperties(properties map[string]any, property string) string {
+	candidates := []string{property}
+	if property == "" {
+		candidates = []string{"Arn", "ARN", "arn"}
+	}
+	for _, key := range candidates {
+		if arn, ok := properties[key].(string); ok && awsarn.IsARN(arn) {
+			return arn
+		}
+	}
+
+	return ""
+}
+
+func isAWSResource(id resources.ID) bool {
+	return id.IsUCPQualified() && strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), resources_aws.PlaneTypeAWS+"/")
+}
+
 // collectARMOutputs splits ARM deployment outputs into non-sensitive values and sensitive secrets
 // based on each output's declared ARM type. Outputs typed securestring/secureobject are routed to
 // secrets so that secure Bicep module outputs are not exposed as plain values, mirroring the
@@ -674,24 +981,36 @@ func wrapARMParameters(params map[string]any) map[string]any {
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
 // returns a slice of OutputResources that contains the elements that are in the "previous" slice but not in the "current".
+// IDs are compared with outputResourceKey.
 func (d *bicepDriver) getGCOutputResources(current []string, previous []string) ([]rpv1.OutputResource, error) {
-	// We can easily determine which resources have changed via a brute-force search comparing IDs.
-	// The lists of resources we work with are small, so this is fine.
+	currentKeys := make(map[string]struct{}, len(current))
+	for _, currentResourceID := range current {
+		key := currentResourceID
+		if id, err := resources.Parse(currentResourceID); err == nil {
+			key = outputResourceKey(id)
+		}
+		currentKeys[key] = struct{}{}
+	}
+
 	diff := []rpv1.OutputResource{}
 	for _, prevResourceId := range previous {
-		found := slices.Contains(current, prevResourceId)
-
-		if !found {
-			id, err := resources.Parse(prevResourceId)
-			if err != nil {
-				return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
-			}
-
-			diff = append(diff, rpv1.OutputResource{
-				ID:            id,
-				RadiusManaged: new(true),
-			})
+		if slices.Contains(current, prevResourceId) {
+			continue
 		}
+
+		id, err := resources.Parse(prevResourceId)
+		if err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
+		}
+		// A redeploy can return the same Azure resource with different casing. Deleting it would delete the live resource.
+		if _, found := currentKeys[outputResourceKey(id)]; found {
+			continue
+		}
+
+		diff = append(diff, rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
+		})
 	}
 
 	return diff, nil

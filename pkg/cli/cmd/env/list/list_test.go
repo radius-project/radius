@@ -17,8 +17,11 @@ limitations under the License.
 package list
 
 import (
+	"bytes"
+	"net/http"
 	"testing"
 
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -119,6 +122,51 @@ func Test_Run(t *testing.T) {
 			err = runner.Run(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+		})
+	}
+}
+
+func Test_Run_EmptyJSON(t *testing.T) {
+	t.Parallel()
+
+	testcases := []struct {
+		name         string
+		environments []*corerpv20250801.EnvironmentResource
+	}{
+		{name: "nil value"},
+		{name: "empty value", environments: []*corerpv20250801.EnvironmentResource{}},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			workspace := &workspaces.Workspace{
+				Scope: "/planes/radius/local/resourceGroups/test-group",
+			}
+			serverFactory := func() fake.EnvironmentsServer {
+				return fake.EnvironmentsServer{
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.EnvironmentsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.EnvironmentsClientListByScopeResponse]) {
+						resp.AddPage(http.StatusOK, corerpv20250801.EnvironmentsClientListByScopeResponse{
+							Value: tc.environments,
+						}, nil)
+						return
+					},
+				}
+			}
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, serverFactory, nil)
+			require.NoError(t, err)
+
+			var stdout bytes.Buffer
+			runner := &Runner{
+				RadiusCoreClientFactory: factory,
+				Workspace:               workspace,
+				Format:                  output.FormatJson,
+				Output:                  &output.OutputWriter{Writer: &stdout},
+			}
+
+			require.NoError(t, runner.Run(t.Context()))
+			require.Equal(t, "[]\n", stdout.String())
 		})
 	}
 }

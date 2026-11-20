@@ -20,10 +20,14 @@
 ifeq ($(origin GIT_COMMIT),undefined)
 GIT_COMMIT := $(shell git rev-list -1 HEAD)
 endif
-ifeq ($(origin GIT_VERSION),undefined)
-GIT_VERSION := $(shell git describe --always --abbrev=7 --dirty --tags)
-endif
 
 REL_VERSION ?= edge
 REL_CHANNEL ?= edge
 CHART_VERSION ?= 0.42.42-dev
+
+# GIT_VERSION can be overridden from environment variable. Like
+# .github/scripts/release-version.sh, it identifies builds by release and commit
+# because the nearest tag reachable from main can be an older release candidate.
+ifeq ($(origin GIT_VERSION),undefined)
+GIT_VERSION := $(REL_VERSION)-$(shell git describe --always --abbrev=7 --dirty --exclude='*')
+endif

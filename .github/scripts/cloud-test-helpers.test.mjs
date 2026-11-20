@@ -1,0 +1,1516 @@
+// Copyright 2026 The Radius Authors.
+// Licensed under the Apache License, Version 2.0.
+
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import * as bundle from "./cloud-test-artifacts.mjs";
+import { setup, testStatus } from "./cloud-test-context.mjs";
+
+const context = {
+  repo: { owner: "radius-project", repo: "radius" },
+  eventName: "pull_request_target",
+  sha: "a".repeat(40),
+  runId: 101,
+  payload: {
+    pull_request: {
+      head: { repo: { full_name: "fork/radius" }, sha: "b".repeat(40) }
+    }
+  }
+};
+const env = {
+  GITHUB_RUN_ATTEMPT: "2",
+  GITHUB_REPOSITORY_ID: "340522752",
+  CHECKOUT_REPO: "fork/radius",
+  CHECKOUT_REF: "b".repeat(40),
+  UNIQUE_ID: "func0123456789",
+  REL_VERSION: "test-func0123456789-101-1",
+  CONTAINER_REGISTRY: "ghcr.io/radius-project/dev",
+  BICEP_RECIPE_REGISTRY: "ghcr.io/radius-project/dev",
+  TEST_BICEP_TYPES_REGISTRY: "crradfunctestl83v.azurecr.io"
+};
+const source = bundle.sourceIdentity(context, env, 1);
+const hash = (data) =>
+  `sha256:${createHash("sha256").update(data).digest("hex")}`;
+const artifact = {
+  id: 7,
+  name: "cloud-test-inputs-101-1.tar",
+  expired: false,
+  size_in_bytes: 10,
+  digest: hash("raw"),
+  created_at: "2026-09-25T10:10:00Z",
+  workflow_run: {
+    id: 101,
+    repository_id: 340522752,
+    head_sha: source.runHeadSHA
+  }
+};
+const save = (file, value) => writeFile(file, JSON.stringify(value));
+const core = (inputs) => ({
+  getInput: (name) => inputs[name] ?? "",
+  setOutput() {},
+  info() {},
+  summary: {
+    addCodeBlock() {
+      return this;
+    },
+    async write() {}
+  }
+});
+async function temporary(t) {
+  const directory = await mkdtemp(join(tmpdir(), "cloud-contract-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  return directory;
+}
+
+test("run identity distinguishes PR candidates from controllers and manual source branches", () => {
+  for (const eventName of [
+    "pull_request_target",
+    "workflow_dispatch",
+    "merge_group"
+  ]) {
+    const identity = bundle.sourceIdentity({ ...context, eventName }, env);
+    assert.equal(identity.commit, env.CHECKOUT_REF);
+    assert.equal(identity.workflowSHA, context.sha);
+    assert.equal(
+      identity.runHeadSHA,
+      eventName === "pull_request_target" ? env.CHECKOUT_REF : context.sha
+    );
+  }
+  assert.throws(() =>
+    bundle.sourceIdentity(context, { ...env, CHECKOUT_REF: context.sha })
+  );
+  const verify = (value) =>
+    bundle.verifyArtifact(
+      value,
+      bundle.sourceIdentity(context, env),
+      env.GITHUB_REPOSITORY_ID
+    );
+  assert.equal(verify(artifact), 1);
+  for (const override of [
+    { name: "../inputs.tar" },
+    { expired: true },
+    { size_in_bytes: 4 * 1024 ** 3 + 1 },
+    { digest: "" },
+    { name: "cloud-test-inputs-101-3.tar" },
+    ...[{ id: 99 }, { repository_id: 99 }, { head_sha: context.sha }].map(
+      (run) => ({
+        workflow_run: { ...artifact.workflow_run, ...run }
+      })
+    )
+  ])
+    assert.throws(() => verify({ ...artifact, ...override }));
+});
+
+test("setup resolves source identity without owning the producer tag", async () => {
+  const outputs = {};
+  await setup({
+    context: {
+      ...context,
+      eventName: "workflow_dispatch",
+      ref: "refs/heads/main",
+      payload: {
+        repository: { full_name: "radius-project/radius" },
+        inputs: { branch: "candidate" }
+      }
+    },
+    github: {
+      rest: {
+        repos: {
+          getBranch: async ({ branch }) => ({
+            data: {
+              protected: branch === "main",
+              commit: {
+                sha: branch === "main" ? context.sha : env.CHECKOUT_REF
+              }
+            }
+          })
+        }
+      }
+    },
+    core: {
+      setOutput: (name, value) => {
+        outputs[name] = value;
+      }
+    }
+  });
+  assert.match(outputs.UNIQUE_ID, /^func[a-f0-9]{10}$/);
+  assert.equal(outputs.CHECKOUT_REF, env.CHECKOUT_REF);
+  assert.equal(outputs.TRUSTED_SHA, context.sha);
+  assert.equal(outputs.DE_IMAGE, "ghcr.io/radius-project/deployment-engine");
+  assert.equal(outputs.DE_TAG, "edge");
+  assert.equal(Object.hasOwn(outputs, "REL_VERSION"), false);
+});
+
+test("cloud contexts default to edge and preserve explicit deployment-engine dispatch tags", async () => {
+  const repository = { full_name: "radius-project/radius" };
+  const cases = [
+    { eventName: "schedule", payload: { repository } },
+    {
+      eventName: "pull_request_target",
+      payload: {
+        repository,
+        pull_request: {
+          ...context.payload.pull_request,
+          number: 123,
+          base: { repo: repository, ref: "main", sha: context.sha }
+        }
+      }
+    },
+    {
+      eventName: "merge_group",
+      ref: "refs/heads/gh-readonly-queue/main/pr-123",
+      payload: {
+        repository,
+        merge_group: { base_ref: "refs/heads/main", head_sha: context.sha }
+      }
+    },
+    ...["edge", "latest", "0.61.0", "0.61.0-rc.1", "pr-123"].map((tag) => ({
+      eventName: "repository_dispatch",
+      tag,
+      payload: {
+        repository,
+        action: "deployment-engine.run-functional-tests",
+        client_payload: {
+          dest_image: "ghcr.io/radius-project/deployment-engine",
+          tag
+        }
+      }
+    }))
+  ];
+  for (const entry of cases) {
+    const outputs = {};
+    await setup({
+      context: { ...context, ref: "refs/heads/main", ...entry },
+      github: {
+        rest: {
+          repos: {
+            getBranch: async () => ({
+              data: { protected: true, commit: { sha: context.sha } }
+            })
+          }
+        }
+      },
+      core: {
+        setOutput: (name, value) => {
+          outputs[name] = value;
+        }
+      }
+    });
+    assert.equal(outputs.DE_TAG, entry.tag ?? "edge", entry.eventName);
+    assert.equal(outputs.DE_IMAGE, "ghcr.io/radius-project/deployment-engine");
+  }
+});
+
+test("merge-group setup keeps candidate and trusted-base revisions distinct", async () => {
+  const trustedSHA = "c".repeat(40);
+  const candidateSHA = "d".repeat(40);
+  const outputs = {};
+  const args = {
+    context: {
+      ...context,
+      eventName: "merge_group",
+      sha: candidateSHA,
+      ref: "refs/heads/gh-readonly-queue/main/pr-123",
+      payload: {
+        repository: { full_name: "radius-project/radius" },
+        merge_group: { base_ref: "refs/heads/main", head_sha: candidateSHA }
+      }
+    },
+    github: {
+      rest: {
+        repos: {
+          getBranch: async () => ({
+            data: { protected: true, commit: { sha: trustedSHA } }
+          })
+        }
+      }
+    },
+    core: {
+      setOutput: (name, value) => {
+        outputs[name] = value;
+      }
+    }
+  };
+  await setup(args);
+  assert.equal(outputs.CHECKOUT_REF, candidateSHA);
+  assert.equal(outputs.TRUSTED_SHA, trustedSHA);
+  assert.notEqual(outputs.TRUSTED_SHA, outputs.CHECKOUT_REF);
+  args.github.rest.repos.getBranch = async () => ({
+    data: { protected: false, commit: { sha: trustedSHA } }
+  });
+  await assert.rejects(setup(args), /protected main/);
+});
+
+function prSetupFixture({ stacked = true, baseRef = "main" } = {}) {
+  const repository = { full_name: "radius-project/radius" };
+  const pr = {
+    number: 123,
+    state: "open",
+    head: { repo: repository, ref: "candidate", sha: "b".repeat(40) },
+    base: {
+      repo: repository,
+      ref: stacked ? "previous-layer" : baseRef,
+      sha: "c".repeat(40)
+    },
+    ...(stacked && {
+      stack: {
+        number: 456,
+        position: 4,
+        size: 4,
+        base: { ref: baseRef, sha: "d".repeat(40) }
+      }
+    })
+  };
+  const outputs = {};
+  const branches = [];
+  const pulls = [];
+  const fixture = {
+    live: structuredClone(pr),
+    outputs,
+    branches,
+    pulls,
+    args: {
+      context: {
+        ...context,
+        ref: `refs/heads/${baseRef}`,
+        payload: { repository, pull_request: pr }
+      },
+      github: {
+        rest: {
+          repos: {
+            getBranch: async ({ branch }) => {
+              branches.push(branch);
+              return {
+                data: {
+                  protected: branch === "main" || branch === baseRef,
+                  commit: { sha: context.sha }
+                }
+              };
+            }
+          },
+          pulls: {
+            get: async (request) => {
+              pulls.push(request);
+              return { data: fixture.live };
+            }
+          }
+        }
+      },
+      core: {
+        setOutput: (name, value) => {
+          outputs[name] = value;
+        }
+      }
+    }
+  };
+  return fixture;
+}
+
+test("native stacks protect the ultimate controller but retain the layer diff and candidate SHAs", async () => {
+  for (const baseRef of ["main", "features/platform", "release/0.61"]) {
+    for (const position of [4, 2, 1]) {
+      const fixture = prSetupFixture({ baseRef });
+      const pr = fixture.args.context.payload.pull_request;
+      pr.stack.position = position;
+      if (position === 1) pr.base.ref = baseRef;
+      fixture.live = structuredClone(pr);
+      await setup(fixture.args);
+      assert.deepEqual(fixture.branches, ["main", baseRef]);
+      assert.deepEqual(fixture.pulls, [
+        { owner: "radius-project", repo: "radius", pull_number: 123 }
+      ]);
+      assert.equal(fixture.outputs.CHECKOUT_REPO, pr.head.repo.full_name);
+      assert.equal(fixture.outputs.CHECKOUT_REF, pr.head.sha);
+      assert.equal(fixture.outputs.BASE_SHA, pr.base.sha);
+      assert.notEqual(fixture.outputs.BASE_SHA, pr.stack.base.sha);
+      assert.equal(fixture.outputs.TRUSTED_SHA, context.sha);
+      assert.equal(fixture.outputs.PR_NUMBER, "123");
+    }
+  }
+});
+
+test("ordinary same-repo and fork PRs retain protected direct-base behavior", async () => {
+  for (const baseRef of ["main", "features/platform", "release/0.61"]) {
+    for (const headRepo of ["radius-project/radius", "fork/radius"]) {
+      const fixture = prSetupFixture({ stacked: false, baseRef });
+      const pr = fixture.args.context.payload.pull_request;
+      pr.head.repo = { full_name: headRepo };
+      pr.stack = null;
+      await setup(fixture.args);
+      assert.equal(fixture.outputs.CHECKOUT_REPO, headRepo);
+      assert.equal(fixture.outputs.CHECKOUT_REF, pr.head.sha);
+      assert.equal(fixture.outputs.BASE_SHA, pr.base.sha);
+      assert.deepEqual(fixture.pulls, []);
+      assert.deepEqual(fixture.branches, ["main", baseRef]);
+    }
+  }
+});
+
+test("invalid native stack claims fail closed before emitting any outputs", async (t) => {
+  const mutations = {
+    "no stack on an intermediate base": (pr) => delete pr.stack,
+    "non-object stack": (pr) => {
+      pr.stack = false;
+    },
+    "missing stack base": (pr) => delete pr.stack.base,
+    "invalid stack base SHA": (pr) => {
+      pr.stack.base.sha = "not-a-sha";
+    },
+    "non-string stack base SHA": (pr) => {
+      pr.stack.base.sha = ["d".repeat(40)];
+    },
+    "non-string stack base ref": (pr) => {
+      pr.stack.base.ref = ["main"];
+    },
+    "unlisted ultimate base": (pr) => {
+      pr.stack.base.ref = "candidate";
+    },
+    "missing stack number": (pr) => delete pr.stack.number,
+    "non-integer stack number": (pr) => {
+      pr.stack.number = "456";
+    },
+    "invalid stack number": (pr) => {
+      pr.stack.number = 0;
+    },
+    "invalid stack size": (pr) => {
+      pr.stack.size = -1;
+    },
+    "unsafe stack size": (pr) => {
+      pr.stack.size = Number.MAX_SAFE_INTEGER + 1;
+    },
+    "invalid stack position": (pr) => {
+      pr.stack.position = 0;
+    },
+    "fractional stack position": (pr) => {
+      pr.stack.position = 1.5;
+    },
+    "out-of-range position": (pr) => {
+      pr.stack.position = 5;
+    },
+    "cross-fork stack": (pr) => {
+      pr.head.repo = { full_name: "fork/radius" };
+    },
+    "foreign base repository": (pr) => {
+      pr.base.repo = { full_name: "fork/radius" };
+    },
+    "invalid PR number": (pr) => {
+      pr.number = -1;
+    },
+    "invalid diff base": (pr) => {
+      pr.base.sha = "";
+    },
+    "invalid candidate": (pr) => {
+      pr.head.sha = "";
+    }
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, async () => {
+      const fixture = prSetupFixture();
+      mutate(fixture.args.context.payload.pull_request);
+      fixture.live = structuredClone(fixture.args.context.payload.pull_request);
+      await assert.rejects(setup(fixture.args));
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+});
+
+test("native stack verification rejects stale or spoofed event metadata and API failures", async (t) => {
+  const mutations = {
+    "stack removed": (pr) => delete pr.stack,
+    "stack replaced": (pr) => {
+      pr.stack.number++;
+    },
+    "stack reordered": (pr) => {
+      pr.stack.position--;
+    },
+    "stack resized": (pr) => {
+      pr.stack.size++;
+    },
+    "stack retargeted": (pr) => {
+      pr.stack.base.ref = "release/0.61";
+    },
+    "stack base changed": (pr) => {
+      pr.stack.base.sha = "e".repeat(40);
+    },
+    "PR replaced": (pr) => {
+      pr.number++;
+    },
+    "PR closed": (pr) => {
+      pr.state = "closed";
+    },
+    "PR retargeted": (pr) => {
+      pr.base.ref = "another-layer";
+    },
+    "PR base changed": (pr) => {
+      pr.base.sha = "e".repeat(40);
+    },
+    "base repository changed": (pr) => {
+      pr.base.repo.full_name = "fork/radius";
+    },
+    "head repository changed": (pr) => {
+      pr.head.repo.full_name = "fork/radius";
+    },
+    "head branch changed": (pr) => {
+      pr.head.ref = "another-candidate";
+    },
+    "head commit changed": (pr) => {
+      pr.head.sha = "e".repeat(40);
+    }
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, async () => {
+      const fixture = prSetupFixture();
+      mutate(fixture.live);
+      await assert.rejects(setup(fixture.args), /stack.*changed|stack.*match/i);
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+  for (const status of [403, 404, 500]) {
+    await t.test(`API ${status}`, async () => {
+      const fixture = prSetupFixture();
+      const error = Object.assign(new Error(`GitHub API ${status}`), {
+        status
+      });
+      fixture.args.github.rest.pulls.get = async () => {
+        throw error;
+      };
+      await assert.rejects(setup(fixture.args), (actual) => actual === error);
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+});
+
+test("PR controllers still require the matching ref and protected main and ultimate base", async () => {
+  for (const stacked of [true, false]) {
+    for (const ref of ["refs/heads/previous-layer", "refs/heads/candidate"]) {
+      const fixture = prSetupFixture({ stacked });
+      fixture.args.context.ref = ref;
+      await assert.rejects(setup(fixture.args), /Unexpected PR base/);
+      assert.deepEqual(fixture.outputs, {});
+    }
+    for (const unprotected of ["main", "release/0.61"]) {
+      const fixture = prSetupFixture({ stacked, baseRef: "release/0.61" });
+      fixture.args.github.rest.repos.getBranch = async ({ branch }) => ({
+        data: {
+          protected: branch !== unprotected,
+          commit: { sha: context.sha }
+        }
+      });
+      await assert.rejects(setup(fixture.args), /protected/);
+      assert.deepEqual(fixture.outputs, {});
+    }
+  }
+});
+
+test("producer tags bind the unique ID, run and producing attempt", () => {
+  assert.equal(bundle.producerTag(env.UNIQUE_ID, source), env.REL_VERSION);
+  assert.equal(
+    bundle.producerTag(env.UNIQUE_ID, { ...source, generationAttempt: 2 }),
+    "test-func0123456789-101-2"
+  );
+  for (const uniqueID of ["", "funcABCDEF0123", "functional", "../escape"])
+    assert.throws(() => bundle.producerTag(uniqueID, source));
+  for (const value of [0, -1, "01", "x", Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() =>
+      bundle.producerTag(env.UNIQUE_ID, { ...source, runId: value })
+    );
+    assert.throws(() =>
+      bundle.producerTag(env.UNIQUE_ID, { ...source, generationAttempt: value })
+    );
+  }
+});
+
+test("selection authenticates attempts, reuses earlier successful inputs and surfaces API failures", async (t) => {
+  const directory = await temporary(t);
+  const run = {
+    id: 101,
+    run_attempt: 1,
+    head_sha: env.CHECKOUT_REF,
+    event: context.eventName,
+    repository: { full_name: "radius-project/radius" },
+    path: ".github/workflows/functional-test-cloud.yaml",
+    run_started_at: "2026-09-25T10:00:00Z"
+  };
+  const actions = {
+    getArtifact: async () => ({ data: artifact }),
+    getWorkflowRunAttempt: async ({ attempt_number }) => ({
+      data:
+        attempt_number === 1 ? run : (
+          { ...run, run_started_at: "2026-09-25T11:00:00Z" }
+        )
+    })
+  };
+  const args = {
+    context,
+    core: core({ artifact_id: "7", directory }),
+    github: { rest: { actions } }
+  };
+  await bundle.select(args, env);
+  assert.deepEqual(
+    JSON.parse(await readFile(join(directory, "selected.json"))).source,
+    source
+  );
+  for (const override of [
+    { REL_VERSION: "pr-func0123456789" },
+    { REL_VERSION: "test-func0123456789-101-2" },
+    { REL_VERSION: "test-func0123456789-102-1" },
+    { UNIQUE_ID: "func9876543210" }
+  ]) {
+    await assert.rejects(
+      bundle.select(args, { ...env, ...override }),
+      /authenticated producer/
+    );
+  }
+  for (const field of ["event", "path"]) {
+    const original = run[field];
+    run[field] = "unexpected";
+    await assert.rejects(bundle.select(args, env), /attempt mismatch/);
+    run[field] = original;
+  }
+  run.head_sha = context.sha;
+  await assert.rejects(bundle.select(args, env), /attempt mismatch/);
+  actions.getArtifact = async () => {
+    throw new Error("HTTP 403");
+  };
+  await assert.rejects(bundle.select(args, env), /HTTP 403/);
+});
+
+function payload() {
+  const roots = [],
+    manifests = new Map();
+  const names = [
+    ...bundle.images.map((name) => `images-${name}`),
+    "types-radius",
+    "recipes-dynamicrp_recipe"
+  ];
+  for (const name of names) {
+    const kind = name.split("-")[0],
+      prefix = `application/vnd.ms.bicep.${kind === "types" ? "provider" : "module"}.`;
+    const blob = (mediaType) => ({ mediaType, digest: hash("{}"), size: 2 });
+    const manifest = {
+      schemaVersion: 2,
+      mediaType: "application/vnd.oci.image.manifest.v1+json",
+      config: blob(
+        kind === "images" ?
+          "application/vnd.oci.image.config.v1+json"
+        : `${prefix}config.v1+json`
+      ),
+      layers: [
+        blob(
+          kind === "images" ?
+            "application/vnd.oci.image.layer.v1.tar+gzip"
+          : `${prefix}layer.v1${kind === "types" ? ".tar+gzip" : "+json"}`
+        )
+      ]
+    };
+    if (kind === "types") manifest.artifactType = `${prefix}artifact`;
+    const raw = JSON.stringify(manifest),
+      digest = hash(raw);
+    manifests.set(digest, raw);
+    roots.push({
+      mediaType: manifest.mediaType,
+      digest,
+      size: raw.length,
+      annotations: { "org.opencontainers.image.ref.name": name }
+    });
+  }
+  return { roots, manifests };
+}
+
+async function importManifests(directory, manifests) {
+  const blobs = join(directory, "layout", "blobs", "sha256");
+  await mkdir(blobs, { recursive: true });
+  for (const [digest, raw] of manifests)
+    await writeFile(join(blobs, digest.slice(7)), raw);
+}
+
+function httpTrace(events) {
+  return events
+    .map(
+      ({ method, url, status }, id) => `
+[2026-11-16T00:00:00Z][DEBUG]: --> Request #${id}
+> Request URL: ${JSON.stringify(url)}
+> Request method: ${JSON.stringify(method)}
+> Request headers:
+   "Authorization": ${JSON.stringify(["Bearer", "private-fixture-value"].join(" "))}
+
+[2026-11-16T00:00:00Z][DEBUG]: <-- Response #${id}
+< Response Status: "${status} Fixture"
+< Response headers:
+   "X-Github-Request-Id": "ABCD:1234:5678:9ABC"
+   "X-Ms-Request-Id": "12345678-1234-1234-1234-123456789abc"
+   "X-Ms-Correlation-Request-Id": "private-fixture-value"
+   "Location": "https://signed.invalid/private-fixture-value?signature=private-fixture-value"
+< Response body:
+{"token":"private-fixture-value"}
+`
+    )
+    .join("\n");
+}
+
+async function publisherFixture(t, eventName = context.eventName) {
+  const directory = await temporary(t);
+  const { roots, manifests } = payload();
+  await importManifests(directory, manifests);
+  const current = { ...context, eventName };
+  const receiptPath = join(directory, "receipt.json");
+  await save(receiptPath, {
+    source: bundle.sourceIdentity(current, env, 1),
+    tag: env.REL_VERSION,
+    roots,
+    published: []
+  });
+  const messages = [],
+    delays = [];
+  const api = core({ directory, destination: "ghcr" });
+  api.info = (message) => messages.push(message);
+  const args = {
+    context: current,
+    core: api,
+    sleep: async (delay) => {
+      delays.push(delay);
+    }
+  };
+  const targets = bundle
+    .destinations(roots, env.REL_VERSION, env)
+    .filter((entry) => entry.kind !== "types");
+  const first = targets[0];
+  const manifestURL = "https://ghcr.io/v2/radius-project/dev/ucpd/manifests";
+  const tagURL = `${manifestURL}/${env.REL_VERSION}`;
+  const digestURL = `${manifestURL}/${first.digest}`;
+  const put = { method: "PUT", url: tagURL, status: 201 };
+  const missing = { method: "GET", url: digestURL, status: 404 };
+  const fail = (options, events, overrides = {}) => {
+    const stderr = httpTrace(events);
+    options.onStderr(stderr);
+    throw Object.assign(new Error(`private-fixture-value ${stderr}`), {
+      code: 1,
+      stderr,
+      ...overrides
+    });
+  };
+  return {
+    directory,
+    receiptPath,
+    roots,
+    manifests,
+    messages,
+    delays,
+    args,
+    targets,
+    first,
+    put,
+    missing,
+    tagURL,
+    digestURL,
+    fail
+  };
+}
+
+test("registry diagnostics redact credentials, bodies, signed URLs and untrusted paths", () => {
+  const entry = bundle.destinations(payload().roots, env.REL_VERSION, env)[0];
+  const path = `/v2/radius-project/dev/ucpd/manifests/${entry.digest}`;
+  const credentialURL = new URL(`https://ghcr.io${path}`);
+  credentialURL.username = "fixture";
+  credentialURL.password = "private-fixture-value";
+  const responses = bundle.registryResponses(
+    httpTrace([
+      {
+        method: "GET",
+        url: `https://ghcr.io${path}?signature=private-fixture-value`,
+        status: 404
+      },
+      {
+        method: "PUT",
+        url: "https://ghcr.io/v2/radius-project/dev/ucpd/blobs/uploads/private-fixture-value?signature=private-fixture-value",
+        status: 201
+      },
+      {
+        method: "GET",
+        url: `https://signed.invalid/private-fixture-value`,
+        status: 403
+      },
+      { method: "GET", url: credentialURL.href, status: 401 },
+      { method: "GET", url: `http://ghcr.io${path}`, status: 404 }
+    ]),
+    entry
+  );
+  assert.deepEqual(responses[0], {
+    method: "GET",
+    path,
+    status: 404,
+    requestIDs: {
+      "x-github-request-id": "ABCD:1234:5678:9ABC",
+      "x-ms-request-id": "12345678-1234-1234-1234-123456789abc"
+    }
+  });
+  assert.equal(
+    responses[1].path,
+    "/v2/radius-project/dev/ucpd/blobs/uploads/[redacted]"
+  );
+  for (const response of responses.slice(2)) {
+    assert.equal(response.path, "[redacted]");
+    assert.deepEqual(response.requestIDs, {});
+  }
+  assert.doesNotMatch(
+    JSON.stringify(responses),
+    /private-fixture-value|signed.invalid|Authorization|signature|token|Location/
+  );
+  assert.deepEqual(
+    bundle.registryResponses("unrecognized trace private-fixture-value", entry),
+    []
+  );
+  const unfinished = bundle.registryResponses(
+    httpTrace([
+      {
+        method: "PUT",
+        url: `https://ghcr.io/v2/radius-project/dev/ucpd/manifests/${env.REL_VERSION}`,
+        status: 201
+      },
+      { method: "GET", url: `https://ghcr.io${path}`, status: 404 }
+    ]) +
+      `
+[2026-11-16T00:00:00Z][DEBUG]: --> Request #2
+> Request URL: "https://signed.invalid/private-fixture-value"
+> Request method: "GET"
+`,
+    entry
+  );
+  assert.deepEqual(unfinished.at(-1), {
+    method: "GET",
+    path: "[redacted]",
+    status: null,
+    requestIDs: {}
+  });
+});
+
+for (const mutation of [
+  "missing",
+  "corrupt",
+  "size",
+  "media type",
+  "symlink"
+]) {
+  test(`publisher rejects ${mutation} imported roots before network access`, async (t) => {
+    const state = await publisherFixture(t);
+    const file = join(
+      state.directory,
+      "layout/blobs/sha256",
+      state.first.digest.slice(7)
+    );
+    if (mutation === "missing" || mutation === "symlink") {
+      await rm(file);
+      if (mutation === "symlink") {
+        const other = join(state.directory, "other-manifest");
+        await writeFile(other, state.manifests.get(state.first.digest));
+        await symlink(other, file);
+      }
+    } else if (mutation === "corrupt") {
+      await writeFile(
+        file,
+        state.manifests
+          .get(state.first.digest)
+          .replace('"schemaVersion":2', '"schemaVersion":3')
+      );
+    } else {
+      const receipt = JSON.parse(await readFile(state.receiptPath));
+      if (mutation === "size") receipt.roots[0].size++;
+      else
+        receipt.roots[0].mediaType =
+          "application/vnd.docker.distribution.manifest.v2+json";
+      await save(state.receiptPath, receipt);
+    }
+    let calls = 0;
+    await assert.rejects(
+      bundle.publish(state.args, env, async () => {
+        calls++;
+      }),
+      /ENOENT|Imported root|Manifest digest mismatch/
+    );
+    assert.equal(calls, 0);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      []
+    );
+  });
+}
+
+for (const event of [
+  "pull_request_target",
+  "merge_group",
+  "repository_dispatch"
+]) {
+  test(`${event} recovers only proven post-copy visibility without uploading again`, async (t) => {
+    const state = await publisherFixture(t, event);
+    const copies = [],
+      reads = [];
+    let hidden = 2;
+    await bundle.publish(state.args, env, async (command, options) => {
+      const reference = command.at(-1);
+      if (command[1] === "cp") {
+        copies.push(reference);
+        if (reference === state.first.reference)
+          state.fail(options, [state.put, state.missing]);
+        return "";
+      }
+      assert.equal(options.timeout, 10_000);
+      reads.push(reference);
+      if (reference.endsWith(`@${state.first.digest}`) && hidden-- > 0)
+        state.fail(options, [state.missing]);
+      return state.manifests.get(
+        state.targets.find((entry) => entry.reference === reference)?.digest ??
+          reference.split("@")[1]
+      );
+    });
+    assert.deepEqual(
+      copies,
+      state.targets.map(({ reference }) => reference)
+    );
+    assert.equal(reads.length, state.targets.length * 2 + 2);
+    assert.deepEqual(state.delays, [1000, 2000]);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      copies
+    );
+    assert.ok(
+      state.messages.some((message) =>
+        message.includes("ORAS post-copy destination read failed")
+      )
+    );
+    assert.doesNotMatch(state.messages.join("\n"), /private-fixture-value/);
+  });
+}
+
+for (const failure of [
+  "no successful PUT",
+  "rejected PUT",
+  "wrong PUT",
+  "wrong GET",
+  "forbidden GET",
+  "intervening failed upload",
+  "intervening authorization failure",
+  "intervening unrelated read",
+  "unknown trace",
+  "timeout"
+]) {
+  test(`publisher does not recover copy failure with ${failure}`, async (t) => {
+    const state = await publisherFixture(t);
+    let events = [state.put, state.missing],
+      overrides = {};
+    if (failure === "no successful PUT") events = [state.missing];
+    if (failure === "rejected PUT") events[0] = { ...state.put, status: 403 };
+    if (failure === "wrong PUT")
+      events[0] = { ...state.put, url: state.digestURL };
+    if (failure === "wrong GET")
+      events[1] = { ...state.missing, url: state.tagURL };
+    if (failure === "forbidden GET")
+      events[1] = { ...state.missing, status: 403 };
+    if (failure === "intervening failed upload")
+      events.splice(1, 0, { ...state.put, status: 400 });
+    if (failure === "intervening authorization failure")
+      events.splice(1, 0, { ...state.missing, status: 403 });
+    if (failure === "intervening unrelated read")
+      events.splice(1, 0, { ...state.missing, url: state.tagURL });
+    if (failure === "unknown trace") events = [];
+    if (failure === "timeout") overrides = { killed: true, signal: "SIGTERM" };
+    let copies = 0;
+    await assert.rejects(
+      bundle.publish(state.args, env, async (command, options) => {
+        assert.equal(command[1], "cp");
+        copies++;
+        state.fail(options, events, overrides);
+      }),
+      (error) => {
+        assert.match(error.message, /Registry copy failed/);
+        assert.doesNotMatch(
+          `${error.stack}\n${JSON.stringify(error)}`,
+          /private-fixture-value|Authorization|signature/
+        );
+        return true;
+      }
+    );
+    assert.equal(copies, 1);
+    assert.deepEqual(state.delays, []);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      []
+    );
+  });
+}
+
+for (const phase of ["digest", "tag"]) {
+  for (const status of [
+    401,
+    403,
+    404,
+    429,
+    500,
+    "mismatch",
+    "untraced",
+    "wrong path",
+    "timeout"
+  ]) {
+    test(`publisher fails closed on ${phase} readback ${status}`, async (t) => {
+      const state = await publisherFixture(t);
+      let copies = 0,
+        failures = 0;
+      await assert.rejects(
+        bundle.publish(state.args, env, async (command, options) => {
+          if (command[1] === "cp") {
+            copies++;
+            return "";
+          }
+          const byDigest = command.at(-1).includes("@");
+          if (byDigest !== (phase === "digest"))
+            return state.manifests.get(state.first.digest);
+          failures++;
+          if (status === "mismatch") return "{}";
+          const event = {
+            method: "GET",
+            url:
+              status === "wrong path" ? "https://ghcr.io/unrelated"
+              : phase === "digest" ? state.digestURL
+              : state.tagURL,
+            status: typeof status === "number" ? status : 404
+          };
+          state.fail(
+            options,
+            status === "untraced" ? [] : [event],
+            status === "timeout" ? { killed: true } : {}
+          );
+        }),
+        status === "mismatch" ? /Published digest changed/
+        : status === 404 ? /not visible after 5 attempts/
+        : /Registry .*readback failed/
+      );
+      assert.equal(copies, 1);
+      assert.equal(failures, status === 404 ? 5 : 1);
+      assert.deepEqual(
+        state.delays,
+        status === 404 ? [1000, 2000, 4000, 8000] : []
+      );
+      assert.deepEqual(
+        JSON.parse(await readFile(state.receiptPath)).published,
+        []
+      );
+      assert.doesNotMatch(state.messages.join("\n"), /private-fixture-value/);
+    });
+  }
+}
+
+test("closed targets/media types preserve images and underscore recipes, excluding foreign/executable data", () => {
+  const { roots, manifests } = payload();
+  const targets = bundle.destinations(roots, env.REL_VERSION, env);
+  assert.equal(targets.filter((item) => item.kind === "images").length, 8);
+  assert.match(
+    targets.at(-1).reference,
+    /\/test\/testrecipes\/test-bicep-recipes\/dynamicrp_recipe:test-func0123456789-101-1$/
+  );
+  for (const name of [
+    "images-unknown",
+    "types-aws",
+    "types-unknown.azurecr.io",
+    "types-unknown.azurecr.io/test/radius",
+    "recipes-../escape",
+    "production-radius"
+  ]) {
+    const changed = structuredClone(roots);
+    changed[0].annotations["org.opencontainers.image.ref.name"] = name;
+    assert.throws(() => bundle.destinations(changed, env.REL_VERSION, env));
+  }
+  assert.throws(() => bundle.destinations(roots, "latest", env));
+  for (const tag of [
+    "edge",
+    "pr-func0123456789",
+    "test-local",
+    "test-func0123456789-0-1"
+  ])
+    assert.throws(() => bundle.destinations(roots, tag, env));
+  assert.throws(() =>
+    bundle.destinations(roots.slice(1), env.REL_VERSION, env)
+  );
+  for (const entry of targets)
+    bundle.validateManifest(manifests.get(entry.digest), entry);
+  const entry = targets.find((item) => item.kind === "types");
+  for (const override of [
+    { subject: {} },
+    { config: { digest: hash("executable") } },
+    { layers: [{ mediaType: "application/executable" }] },
+    {
+      layers: [
+        {
+          mediaType: "application/vnd.ms.bicep.provider.layer.v1.tar+gzip",
+          digest: hash("{}"),
+          size: 2,
+          urls: ["https://foreign.invalid/blob"]
+        }
+      ]
+    }
+  ]) {
+    const raw = JSON.stringify({
+      ...JSON.parse(manifests.get(entry.digest)),
+      ...override
+    });
+    assert.throws(() =>
+      bundle.validateManifest(raw, { ...entry, digest: hash(raw) })
+    );
+  }
+});
+
+test("capture assigns a new tag and archive to each producer attempt with retained setup identity", async (t) => {
+  const directory = await temporary(t);
+  const { roots } = payload();
+  for (const attempt of [1, 2]) {
+    const producer = bundle.sourceIdentity(context, env, attempt);
+    const tag = bundle.producerTag(env.UNIQUE_ID, producer);
+    const calls = [];
+    const run = async (args) => {
+      calls.push(args);
+      if (args[0] === "oras") {
+        const layout = args.at(-1).split(":")[0];
+        await save(join(layout, "index.json"), { manifests: roots });
+      } else {
+        assert.equal(args[0], "tar");
+        assert.equal(
+          args[2],
+          join(directory, `cloud-test-inputs-101-${attempt}.tar`)
+        );
+        assert.deepEqual(
+          JSON.parse(await readFile(join(args[4], "source.json"))),
+          { source: producer, tag }
+        );
+      }
+    };
+    await bundle.capture(
+      { core: core({ directory }), context },
+      {
+        ...env,
+        GITHUB_RUN_ATTEMPT: String(attempt),
+        REL_VERSION: tag
+      },
+      run
+    );
+    assert.ok(calls.length > 1);
+    assert.ok(
+      calls
+        .filter((args) => args[0] === "oras")
+        .every(
+          (args) =>
+            args.includes("--from-plain-http=false") &&
+            !args.includes("--from-insecure") &&
+            args.at(-2).startsWith("localhost:5000/") &&
+            args.at(-2).endsWith(`:${tag}`)
+        )
+    );
+  }
+  await assert.rejects(
+    bundle.capture({ core: core({ directory }), context }, env, async () =>
+      assert.fail("Wrong producing-attempt tag must fail before tool execution")
+    ),
+    /authenticated producer/
+  );
+});
+
+test("preparation rejects mismatched sources before writes and publication records only verified copies", async (t) => {
+  const directory = await temporary(t),
+    { roots, manifests } = payload(),
+    calls = [];
+  await mkdir(join(directory, "download"));
+  await writeFile(
+    join(directory, "download", artifact.name),
+    "x".repeat(artifact.size_in_bytes)
+  );
+  await save(join(directory, "selected.json"), { source, artifact });
+  const metadata = { source, tag: env.REL_VERSION };
+  const run = async (args) => {
+    calls.push(args);
+    if (args[0] === "tar")
+      return JSON.stringify(
+        args.at(-1) === "source.json" ?
+          metadata
+        : { schemaVersion: 2, manifests: roots }
+      );
+    const target = bundle
+      .destinations(roots, env.REL_VERSION, env)
+      .find((item) => item.reference === args.at(-1));
+    return args[2] === "fetch" ?
+        manifests.get(target?.digest ?? args.at(-1).split("@")[1])
+      : "";
+  };
+  const args = { context, core: core({ directory, destination: "ghcr" }) };
+  metadata.source = { ...source, commit: context.sha };
+  await assert.rejects(
+    bundle.prepare(args, env, run),
+    /source metadata mismatch/
+  );
+  assert.equal(calls.filter((cmd) => cmd[1] === "cp").length, 0);
+  metadata.source = source;
+  for (const tag of [
+    "pr-func0123456789",
+    "test-func0123456789-101-2",
+    "test-func0123456789-102-1",
+    "test-func9876543210-101-1"
+  ]) {
+    metadata.tag = tag;
+    await assert.rejects(
+      bundle.prepare(args, env, run),
+      /authenticated producer/
+    );
+  }
+  metadata.tag = env.REL_VERSION;
+  await assert.rejects(
+    bundle.prepare(
+      args,
+      { ...env, REL_VERSION: "test-func0123456789-101-2" },
+      run
+    ),
+    /output tag mismatch/
+  );
+  assert.equal(calls.filter((cmd) => cmd[1] === "cp").length, 0);
+  await bundle.prepare(args, env, run);
+  await importManifests(directory, manifests);
+  assert.ok(
+    calls
+      .filter((cmd) => cmd[1] === "cp")
+      .every((cmd) => cmd.includes("--to-oci-layout"))
+  );
+  const receiptPath = join(directory, "receipt.json");
+  const receipt = JSON.parse(await readFile(receiptPath));
+  await save(receiptPath, { ...receipt, tag: "test-func0123456789-101-2" });
+  await assert.rejects(
+    bundle.publish(args, env, async () =>
+      assert.fail("No writes for a modified receipt")
+    ),
+    /authenticated producer/
+  );
+  await save(receiptPath, receipt);
+  for (const destination of ["ghcr", "acr"]) {
+    args.core = core({ directory, destination });
+    await bundle.publish(args, env, run);
+  }
+  assert.equal(
+    JSON.parse(await readFile(join(directory, "receipt.json"))).published
+      .length,
+    roots.length
+  );
+  assert.ok(
+    calls
+      .filter((cmd) => cmd[1] === "cp" && !cmd.includes("--to-oci-layout"))
+      .every((cmd) => cmd.at(-1).endsWith(`:${env.REL_VERSION}`))
+  );
+  await assert.rejects(
+    bundle.publish(args, env, async () => {
+      throw new Error("copy failed");
+    }),
+    /copy failed/
+  );
+  await assert.rejects(
+    bundle.publish(args, env, async () => "{}"),
+    /digest changed/
+  );
+});
+
+test("Test ACR configuration accepts minimum and maximum registry name lengths", () => {
+  for (const name of ["abc12", "a".repeat(50)]) {
+    const registry = `${name}.azurecr.io`;
+    assert.equal(
+      bundle.testTypesRegistry({ TEST_BICEP_TYPES_REGISTRY: registry }),
+      registry
+    );
+  }
+});
+
+for (const destination of ["ghcr", "acr"]) {
+  for (const [registry, typesPath] of [
+    [
+      "crradfunctestl83v.azurecr.io",
+      "crradfunctestl83v.azurecr.io/test/radius"
+    ],
+    [
+      "crradfunctest1b2s.azurecr.io",
+      "crradfunctest1b2s.azurecr.io/test/radius"
+    ],
+    ["unknown.azurecr.io", "unknown.azurecr.io/test/radius"]
+  ]) {
+    test(`${destination} publication uses configured ${registry} and verifies readback`, async (t) => {
+      const settings = { ...env, TEST_BICEP_TYPES_REGISTRY: registry };
+      const paths =
+        destination === "acr" ?
+          [typesPath]
+        : [
+            "ghcr.io/radius-project/dev/ucpd",
+            "ghcr.io/radius-project/dev/applications-rp",
+            "ghcr.io/radius-project/dev/dynamic-rp",
+            "ghcr.io/radius-project/dev/controller",
+            "ghcr.io/radius-project/dev/testrp",
+            "ghcr.io/radius-project/dev/magpiego",
+            "ghcr.io/radius-project/dev/bicep",
+            "ghcr.io/radius-project/dev/pre-upgrade",
+            "ghcr.io/radius-project/dev/test/testrecipes/test-bicep-recipes/dynamicrp_recipe"
+          ];
+      const directory = await temporary(t);
+      const { roots, manifests } = payload();
+      await importManifests(directory, manifests);
+      const receiptPath = join(directory, "receipt.json");
+      const receipt = {
+        source,
+        artifact: { id: artifact.id, digest: artifact.digest },
+        tag: env.REL_VERSION,
+        roots,
+        published: []
+      };
+      await save(receiptPath, receipt);
+      const targets = paths.map((path) => `${path}:test-func0123456789-101-1`);
+      const selected = roots.filter(
+        (root) =>
+          root.annotations["org.opencontainers.image.ref.name"].startsWith(
+            "types-"
+          ) ===
+          (destination === "acr")
+      );
+      const calls = [];
+      const args = { context, core: core({ directory, destination }) };
+      await bundle.publish(args, settings, async (command) => {
+        calls.push(command);
+        if (command[1] === "cp") return "";
+        const index = targets.findIndex((reference, index) =>
+          [reference, `${paths[index]}@${selected[index].digest}`].includes(
+            command.at(-1)
+          )
+        );
+        assert.notEqual(
+          index,
+          -1,
+          "Readback must use an expected fixed target"
+        );
+        return manifests.get(selected[index].digest);
+      });
+      assert.deepEqual(
+        calls,
+        targets.flatMap((reference, index) => [
+          [
+            "oras",
+            "cp",
+            "--from-oci-layout",
+            `${join(directory, "layout")}@${selected[index].digest}`,
+            "--debug",
+            reference
+          ],
+          [
+            "oras",
+            "manifest",
+            "fetch",
+            "--debug",
+            `${paths[index]}@${selected[index].digest}`
+          ],
+          ["oras", "manifest", "fetch", "--debug", reference]
+        ])
+      );
+      assert.deepEqual(JSON.parse(await readFile(receiptPath)), {
+        ...receipt,
+        published: targets
+      });
+      await save(receiptPath, receipt);
+      await assert.rejects(
+        bundle.publish(args, settings, async () => "{}"),
+        /Published digest changed/
+      );
+      assert.deepEqual(JSON.parse(await readFile(receiptPath)), receipt);
+    });
+  }
+
+  for (const [setting, registry] of [
+    ...[
+      undefined,
+      null,
+      12345,
+      "",
+      "abcd.azurecr.io",
+      `${"a".repeat(51)}.azurecr.io`,
+      "UPPERCASE.azurecr.io",
+      "https://validregistry.azurecr.io",
+      "user:password@validregistry.azurecr.io",
+      "validregistry.azurecr.io:443",
+      "validregistry.azurecr.io/test/radius",
+      "validregistry.azurecr.io/",
+      "validregistry.azurecr.io?query=value",
+      "validregistry.azurecr.io#fragment",
+      "validregistry.azurecr.io.evil.invalid",
+      "valid-registry.azurecr.io",
+      "validregistry.example.com",
+      "validregistry.azurecr.cn",
+      "validregistry.azurecr.io;echo injected",
+      "$(echo injected).azurecr.io",
+      " validregistry.azurecr.io",
+      "validregistry.azurecr.io ",
+      "validregistry.azurecr.io\n",
+      "validregistry.azurecr.io\r\n",
+      "validregistry.azurecr.io\u2028"
+    ].map((registry) => ["TEST_BICEP_TYPES_REGISTRY", registry]),
+    ["CONTAINER_REGISTRY", "ghcr.io/unknown/dev"],
+    ["BICEP_RECIPE_REGISTRY", "ghcr.io/unknown/dev"]
+  ]) {
+    test(`${destination} rejects ${setting}=${JSON.stringify(registry)} before any copy`, async (t) => {
+      const directory = await temporary(t);
+      await save(join(directory, "receipt.json"), {
+        source,
+        artifact: { id: artifact.id, digest: artifact.digest },
+        tag: env.REL_VERSION,
+        roots: payload().roots,
+        published: []
+      });
+      const calls = [];
+      await assert.rejects(
+        bundle.publish(
+          { context, core: core({ directory, destination }) },
+          { ...env, [setting]: registry },
+          async (command) => {
+            calls.push(command);
+            assert.fail("Unexpected registry copy");
+          }
+        ),
+        setting === "TEST_BICEP_TYPES_REGISTRY" ?
+          /Invalid TEST_BICEP_TYPES_REGISTRY/
+        : /Test registry allowlist mismatch/
+      );
+      assert.deepEqual(calls, []);
+    });
+  }
+}
+
+test("uploads retain the authenticated producer tag across full and downstream-only reruns", async (t) => {
+  for (const [producingAttempt, retryAttempt] of [
+    [1, 1],
+    [1, 2],
+    [2, 2],
+    [2, 3]
+  ]) {
+    await t.test(
+      `producer ${producingAttempt}, current attempt ${retryAttempt}`,
+      async (t) => {
+        const directory = await temporary(t);
+        const producer = bundle.sourceIdentity(context, env, producingAttempt);
+        const tag = bundle.producerTag(env.UNIQUE_ID, producer);
+        const settings = {
+          ...env,
+          GITHUB_RUN_ATTEMPT: String(retryAttempt),
+          REL_VERSION: tag
+        };
+        const input = {
+          ...artifact,
+          name: `cloud-test-inputs-101-${producingAttempt}.tar`
+        };
+        const args = {
+          context,
+          core: core({ artifact_id: "7", directory, destination: "ghcr" }),
+          github: {
+            rest: {
+              actions: {
+                getArtifact: async () => ({ data: input }),
+                getWorkflowRunAttempt: async ({ attempt_number }) => ({
+                  data: {
+                    id: 101,
+                    run_attempt: attempt_number,
+                    head_sha: env.CHECKOUT_REF,
+                    event: context.eventName,
+                    repository: { full_name: "radius-project/radius" },
+                    path: ".github/workflows/functional-test-cloud.yaml",
+                    run_started_at:
+                      attempt_number === producingAttempt ?
+                        "2026-09-25T10:00:00Z"
+                      : "2026-09-25T11:00:00Z"
+                  }
+                })
+              }
+            }
+          }
+        };
+        await bundle.select(args, settings);
+        await mkdir(join(directory, "download"));
+        await writeFile(
+          join(directory, "download", input.name),
+          "x".repeat(input.size_in_bytes)
+        );
+        const { roots, manifests } = payload();
+        const copies = [];
+        const targets = bundle.destinations(roots, tag, settings);
+        const run = async (cmd) => {
+          if (cmd[0] === "tar")
+            return JSON.stringify(
+              cmd.at(-1) === "source.json" ?
+                { source: producer, tag }
+              : { schemaVersion: 2, manifests: roots }
+            );
+          if (cmd[1] === "cp") {
+            if (!cmd.includes("--to-oci-layout")) copies.push(cmd.at(-1));
+            return "";
+          }
+          const target = targets.find((item) => item.reference === cmd.at(-1));
+          return manifests.get(target?.digest ?? cmd.at(-1).split("@")[1]);
+        };
+        await bundle.prepare(args, settings, run);
+        await importManifests(directory, manifests);
+        for (const destination of ["ghcr", "acr"]) {
+          args.core = core({ directory, destination });
+          await bundle.publish(args, settings, run);
+        }
+        assert.deepEqual(
+          copies.sort(),
+          targets.map((item) => item.reference).sort()
+        );
+        const receipt = JSON.parse(
+          await readFile(join(directory, "receipt.json"))
+        );
+        assert.equal(receipt.tag, tag);
+        assert.deepEqual(receipt.source, producer);
+        assert.equal(receipt.published.length, roots.length);
+      }
+    );
+  }
+});
+
+test("summary fails closed on incomplete or cancelled work", () => {
+  const phases = [
+    "authorize",
+    "setup",
+    "changes",
+    "announce",
+    "build",
+    "upload-ghcr",
+    "upload-test-types",
+    "tests"
+  ];
+  const needs = Object.fromEntries(
+    phases.map((key) => [
+      key,
+      { result: "success", outputs: { only_changed: "false" } }
+    ])
+  );
+  needs["skip-tests"] = { result: "skipped" };
+  assert.equal(testStatus(needs), "success");
+  for (const result of ["failure", "cancelled", "skipped"]) {
+    needs["upload-ghcr"].result = result;
+    assert.equal(
+      testStatus(needs),
+      result === "cancelled" ? "cancelled" : "failure"
+    );
+  }
+  needs.changes.outputs.only_changed = "true";
+  for (const key of phases.slice(3)) needs[key].result = "skipped";
+  assert.equal(testStatus(needs), "failure");
+  needs["skip-tests"].result = "success";
+  assert.equal(testStatus(needs), "success");
+  needs.changes.result = "failure";
+  assert.equal(testStatus(needs), "failure");
+});

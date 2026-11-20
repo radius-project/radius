@@ -1,0 +1,76 @@
+# Hand-reviewed ARN property decisions for AWS resource types that the naming rules in gen/main.go can't settle: types
+# with more than one candidate, and types with only other read-only "*Arn" properties. Each line is
+# "<type name> <property or none> # reason". Use none when no property holds the ARN of the resource itself. A wrong ARN
+# is worse than none, so pick a property only when the CloudFormation schema or the AWS documentation says it is the
+# resource's own ARN.
+#
+# Regenerate with `go generate ./pkg/aws/arnproperties` after editing.
+
+# Two candidates. The AWS docs describe the second property as a synonym of Arn, so both hold the same value.
+AWS::Location::Map Arn # MapArn is documented as a synonym for Arn.
+AWS::Location::Tracker Arn # TrackerArn is documented as a synonym for Arn.
+AWS::OpenSearchService::Domain Arn # DomainArn holds the same domain ARN; Arn is the current name.
+
+# The property is the resource's own ARN under a name the rules don't recognize.
+AWS::Backup::LogicallyAirGappedBackupVault BackupVaultArn # The backup vault's ARN.
+AWS::Bedrock::ApplicationInferenceProfile InferenceProfileArn # The inference profile's ARN.
+AWS::BedrockAgentCore::BrowserCustom BrowserArn # "The ARN of a Browser resource."
+AWS::BedrockAgentCore::BrowserProfile ProfileArn # The browser profile's ARN.
+AWS::BedrockAgentCore::CodeInterpreterCustom CodeInterpreterArn # "The ARN of a CodeInterpreter resource."
+AWS::BedrockAgentCore::Runtime AgentRuntimeArn # "The ARN that uniquely identifies the Agent."
+AWS::Config::ConfigurationRecorder ResourceARN # "Returns the ARN for the Configuration Recorder."
+AWS::Config::StoredQuery QueryArn # The stored query's ARN.
+AWS::DSQL::Cluster ResourceArn # "The ARN for the cluster."
+AWS::EntityResolution::IdMappingWorkflow WorkflowArn # The workflow's ARN.
+AWS::EntityResolution::MatchingWorkflow WorkflowArn # The workflow's ARN.
+AWS::EntityResolution::SchemaMapping SchemaArn # The schema mapping's ARN.
+AWS::FSx::DataRepositoryAssociation ResourceARN # GetAtt ResourceARN returns the association's ARN.
+AWS::FSx::Snapshot ResourceARN # "Returns the snapshot's ARN."
+AWS::FSx::StorageVirtualMachine ResourceARN # GetAtt ResourceARN returns the storage virtual machine's ARN.
+AWS::FSx::Volume ResourceARN # "Returns the volume's ARN."
+AWS::GameLift::ContainerFleet FleetArn # "The ARN that is assigned to a container fleet resource." The others are group definitions.
+AWS::Glue::IntegrationResourceProperty ResourcePropertyArn # Ref returns the resource property ARN. ResourceArn is the input connection or database.
+AWS::HealthLake::FHIRDatastore DatastoreArn # The data store's ARN.
+AWS::IoT::CustomMetric MetricArn # "The ARN of the custom metric."
+AWS::IoT::FleetMetric MetricArn # "The ARN of a fleet metric."
+AWS::IoT::ProvisioningTemplate TemplateArn # The provisioning template's ARN.
+AWS::IoT::SoftwarePackage PackageArn # The software package's ARN.
+AWS::IoT::SoftwarePackageVersion PackageVersionArn # The package version's ARN.
+AWS::Omics::AnnotationStore StoreArn # The annotation store's ARN.
+AWS::Omics::VariantStore StoreArn # The variant store's ARN.
+AWS::QuickSight::ApprovalPolicy PolicyArn # The approval policy's ARN.
+AWS::RDS::CustomDBEngineVersion DBEngineVersionArn # The custom engine version's ARN.
+AWS::SES::MailManagerAddonInstance AddonInstanceArn # The add-on instance's ARN.
+AWS::SES::MailManagerAddonSubscription AddonSubscriptionArn # The add-on subscription's ARN.
+AWS::SES::MailManagerAddressList AddressListArn # The address list's ARN.
+AWS::SES::MailManagerArchive ArchiveArn # The archive's ARN.
+AWS::SES::MailManagerIngressPoint IngressPointArn # The ingress point's ARN.
+AWS::SES::MailManagerRelay RelayArn # The relay's ARN.
+AWS::SES::MailManagerRuleSet RuleSetArn # The rule set's ARN.
+AWS::SES::MailManagerTrafficPolicy TrafficPolicyArn # The traffic policy's ARN.
+AWS::SageMaker::MlflowTrackingServer TrackingServerArn # "The ARN of the MLFlow Tracking Server."
+AWS::WorkSpaces::WorkspacesPool PoolArn # The pool's ARN.
+
+# The only read-only "*Arn" properties belong to another resource.
+AWS::ApiGatewayV2::Api none # ExecuteApiArn is the execute-api ARN used in IAM policies, not the API's apigateway ARN.
+AWS::AppConfig::ConfigurationProfile none # KmsKeyArn is the encryption key.
+AWS::Bedrock::EnforcedGuardrailConfiguration none # GuardrailArn is the guardrail the configuration enforces.
+AWS::Bedrock::FlowVersion none # CustomerEncryptionKeyArn and ExecutionRoleArn are a KMS key and an IAM role.
+AWS::BedrockAgentCore::GatewayRule none # GatewayArn is the parent gateway.
+AWS::BedrockAgentCore::GatewayTarget none # GatewayArn is the parent gateway.
+AWS::Detective::OrganizationAdmin none # GraphArn is the behavior graph, not the admin account designation.
+AWS::EC2::LocalGatewayRouteTableVirtualInterfaceGroupAssociation none # LocalGatewayRouteTableArn is the route table.
+AWS::Glue::IdentityCenterConfiguration none # ApplicationArn is the IAM Identity Center application.
+AWS::NetworkManager::ConnectAttachment none # CoreNetworkArn is the core network. ResourceArn is the attached resource.
+AWS::NetworkManager::DirectConnectGatewayAttachment none # CoreNetworkArn is the core network. ResourceArn is the attached resource.
+AWS::NetworkManager::SiteToSiteVpnAttachment none # CoreNetworkArn is the core network. ResourceArn is the attached resource.
+AWS::NetworkManager::TransitGatewayPeering none # CoreNetworkArn is the core network. ResourceArn is the peered transit gateway.
+AWS::NetworkManager::TransitGatewayRouteTableAttachment none # CoreNetworkArn is the core network. ResourceArn is the attached resource.
+AWS::NetworkManager::VpcAttachment none # CoreNetworkArn is the core network. ResourceArn is the attached VPC.
+AWS::Panorama::PackageVersion none # PackageArn is the parent package, not this version.
+AWS::Redshift::Cluster none # ClusterNamespaceArn is the namespace and MasterPasswordSecretArn is a Secrets Manager secret.
+AWS::S3Tables::TablePolicy none # TableBucketARN is the parent table bucket.
+AWS::ServiceCatalog::CloudFormationProvisionedProduct none # CloudformationStackArn is the underlying stack.
+AWS::Wisdom::AIAgentVersion none # AIAgentArn and AssistantArn are the parent agent and assistant.
+AWS::Wisdom::AIGuardrailVersion none # AIGuardrailArn and AssistantArn are the parent guardrail and assistant.
+AWS::Wisdom::AIPromptVersion none # AIPromptArn and AssistantArn are the parent prompt and assistant.

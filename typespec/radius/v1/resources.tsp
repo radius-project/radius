@@ -167,6 +167,9 @@ model OutputResource {
 
   @doc("Determines whether Radius manages the lifecycle of the underlying resource.")
   radiusManaged?: boolean;
+
+  @doc("The provider-native ID of the underlying resource, such as the ARN of an AWS resource. Set only when Radius can determine it. Output resources with different UCP resource IDs can refer to the same provider resource.")
+  providerResourceId?: string;
 }
 
 @doc("Describes a reference to an existing resource")

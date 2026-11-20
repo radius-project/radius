@@ -397,6 +397,15 @@ func Test_azurePortalURL(t *testing.T) {
 	}
 }
 
+const (
+	testAWSQueueID  = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SQS/Queue/q1"
+	testAWSQueueURL = "https://us-west-2.console.aws.amazon.com/sqs/v3/home?region=us-west-2#/queues"
+
+	testAWSFunctionID         = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f1"
+	testAWSFunctionARN        = "arn:aws:lambda:us-west-2:123456789012:function:f1"
+	testAWSFunctionConsoleURL = "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Af1"
+)
+
 func Test_outputResourceEntryFromID(t *testing.T) {
 	const tenantID = "11111111-1111-1111-1111-111111111111"
 	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
@@ -405,6 +414,7 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 	tests := []struct {
 		name          string
 		id            string
+		arn           string
 		tenantID      string
 		wantName      string
 		wantType      string
@@ -427,6 +437,102 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			wantPortalURL: "",
 		},
 		{
+			name:          "AWS ID of a known type sets the console URL without a tenant",
+			id:            testAWSQueueID,
+			tenantID:      "",
+			wantName:      "q1",
+			wantType:      "AWS.SQS/Queue",
+			wantPortalURL: testAWSQueueURL,
+		},
+		{
+			name:          "AWS ID with an ARN sets the resource's console URL",
+			id:            testAWSFunctionID,
+			arn:           testAWSFunctionARN,
+			wantName:      "f1",
+			wantType:      "AWS.Lambda/Function",
+			wantPortalURL: testAWSFunctionConsoleURL,
+		},
+		{
+			name:          "AWS ID with a GovCloud ARN sets the resource's GovCloud console URL",
+			id:            "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.Lambda/Function/f2",
+			arn:           "arn:aws-us-gov:lambda:us-gov-west-1:123456789012:function:f2",
+			wantName:      "f2",
+			wantType:      "AWS.Lambda/Function",
+			wantPortalURL: "https://console.amazonaws-us-gov.com/go/view?arn=arn%3Aaws-us-gov%3Alambda%3Aus-gov-west-1%3A123456789012%3Afunction%3Af2",
+		},
+		{
+			name:          "AWS ID in a GovCloud region sets the GovCloud console URL",
+			id:            "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.RDS/DBInstance/db1",
+			tenantID:      tenantID,
+			wantName:      "db1",
+			wantType:      "AWS.RDS/DBInstance",
+			wantPortalURL: "https://console.amazonaws-us-gov.com/rds/home?region=us-gov-west-1#databases:",
+		},
+		{
+			name:          "AWS ID in a China region sets the China console URL",
+			id:            "/planes/aws/aws-cn/accounts/123456789012/regions/cn-northwest-1/providers/AWS.RDS/DBInstance/db3",
+			tenantID:      tenantID,
+			wantName:      "db3",
+			wantType:      "AWS.RDS/DBInstance",
+			wantPortalURL: "https://console.amazonaws.cn/rds/home?region=cn-northwest-1#databases:",
+		},
+		{
+			name:          "AWS IAM role sets the IAM roles console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/Role/role1",
+			tenantID:      "",
+			wantName:      "role1",
+			wantType:      "AWS.IAM/Role",
+			wantPortalURL: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/roles",
+		},
+		{
+			name:          "AWS ID of an unknown type omits PortalURL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t1",
+			tenantID:      tenantID,
+			wantName:      "t1",
+			wantType:      "AWS.Unknown/Thing",
+			wantPortalURL: "",
+		},
+		{
+			name:          "AWS ID of an unknown type with an ARN sets the resource's console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Kinesis/Stream/s1",
+			arn:           "arn:aws:kinesis:us-west-2:123456789012:stream/s1",
+			wantName:      "s1",
+			wantType:      "AWS.Kinesis/Stream",
+			wantPortalURL: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Akinesis%3Aus-west-2%3A123456789012%3Astream%2Fs1",
+		},
+		{
+			name:          "AWS ID in the global region omits PortalURL for a regional console page",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.SQS/Queue/q2",
+			tenantID:      tenantID,
+			wantName:      "q2",
+			wantType:      "AWS.SQS/Queue",
+			wantPortalURL: "",
+		},
+		{
+			name:          "Terraform AWS ID sets the console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_db_instance/db2",
+			tenantID:      "",
+			wantName:      "db2",
+			wantType:      "Terraform.AWS/aws_db_instance",
+			wantPortalURL: "https://us-east-2.console.aws.amazon.com/rds/home?region=us-east-2#databases:",
+		},
+		{
+			name:          "Terraform AWS S3 bucket in the global region sets the global console URL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/b2",
+			tenantID:      "",
+			wantName:      "b2",
+			wantType:      "Terraform.AWS/aws_s3_bucket",
+			wantPortalURL: "https://console.aws.amazon.com/s3/buckets",
+		},
+		{
+			name:          "Terraform AWS ID of an unknown type omits PortalURL",
+			id:            "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-1",
+			tenantID:      tenantID,
+			wantName:      "subnet-1",
+			wantType:      "Terraform.AWS/aws_subnet",
+			wantPortalURL: "",
+		},
+		{
 			name:          "UCP-qualified ID with tenant omits PortalURL",
 			id:            ucpQualifiedID,
 			tenantID:      tenantID,
@@ -441,7 +547,7 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 			id, err := resources.Parse(tt.id)
 			require.NoError(t, err)
 
-			entry := outputResourceEntryFromID(id, tt.tenantID)
+			entry := outputResourceEntryFromID(outputResourceRef{ID: id, ProviderResourceID: tt.arn}, tt.tenantID)
 
 			require.NotNil(t, entry.ID)
 			require.Equal(t, tt.id, *entry.ID)
@@ -524,6 +630,37 @@ func Test_outputResourcesFromAPIData(t *testing.T) {
 			wantIDsInOrder: []string{azureStorageID, kubernetesUCPID},
 			wantPortalURLByID: map[string]string{
 				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+			},
+		},
+		{
+			name: "Azure and AWS IDs both get their portal links",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": azureStorageID},
+					map[string]any{"id": testAWSQueueID},
+					map[string]any{"id": kubernetesUCPID},
+				}},
+			}),
+			tenantID: tenantID,
+			// Sorted by Type: "AWS.SQS/Queue" < "Microsoft.Storage/storageAccounts" < "apps/Deployment".
+			wantIDsInOrder: []string{testAWSQueueID, azureStorageID, kubernetesUCPID},
+			wantPortalURLByID: map[string]string{
+				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+				testAWSQueueID: testAWSQueueURL,
+			},
+		},
+		{
+			name: "empty tenant still links AWS IDs",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": azureStorageID},
+					map[string]any{"id": testAWSQueueID},
+				}},
+			}),
+			tenantID:       "",
+			wantIDsInOrder: []string{testAWSQueueID, azureStorageID},
+			wantPortalURLByID: map[string]string{
+				testAWSQueueID: testAWSQueueURL,
 			},
 		},
 		{
@@ -752,64 +889,89 @@ func Test_azureTenantID(t *testing.T) {
 	}
 }
 
-func Test_computeGraph_azurePortalLinksInGraphJSON(t *testing.T) {
+func Test_computeGraph_portalLinksInGraphJSON(t *testing.T) {
 	const tenantID = "11111111-1111-1111-1111-111111111111"
 	const containerID = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/mycontainer"
 	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
 	const kubernetesDeploymentID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
+	const terraformBucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/mybucket"
 
-	container := generated.GenericResource{
-		ID:   to.Ptr(containerID),
-		Name: to.Ptr("mycontainer"),
-		Type: to.Ptr("Applications.Core/containers"),
-		Properties: map[string]any{
-			"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/applications/myapp",
-			"status": map[string]any{
-				"outputResources": []any{
-					map[string]any{"id": azureStorageID},
-					map[string]any{"id": kubernetesDeploymentID},
-				},
+	azureURL := "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID
+	tests := []struct {
+		name     string
+		tenantID string
+		want     map[string]*string // nil means the output resource must not carry a portalUrl
+	}{
+		{
+			name:     "with an Azure tenant",
+			tenantID: tenantID,
+			want: map[string]*string{
+				azureStorageID:         &azureURL,
+				testAWSQueueID:         to.Ptr(testAWSQueueURL),
+				testAWSFunctionID:      to.Ptr(testAWSFunctionConsoleURL),
+				terraformBucketID:      to.Ptr("https://console.aws.amazon.com/s3/buckets"),
+				kubernetesDeploymentID: nil,
+			},
+		},
+		{
+			name: "without an Azure tenant",
+			want: map[string]*string{
+				azureStorageID:         nil,
+				testAWSQueueID:         to.Ptr(testAWSQueueURL),
+				testAWSFunctionID:      to.Ptr(testAWSFunctionConsoleURL),
+				terraformBucketID:      to.Ptr("https://console.aws.amazon.com/s3/buckets"),
+				kubernetesDeploymentID: nil,
 			},
 		},
 	}
 
-	graph := computeGraph([]generated.GenericResource{container}, nil, tenantID)
-	require.Len(t, graph.Resources, 1, "expected exactly one graph resource")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputResources := []any{}
+			for id := range tt.want {
+				or := map[string]any{"id": id}
+				if id == testAWSFunctionID {
+					or["providerResourceId"] = testAWSFunctionARN
+				}
+				outputResources = append(outputResources, or)
+			}
+			container := generated.GenericResource{
+				ID:   to.Ptr(containerID),
+				Name: to.Ptr("mycontainer"),
+				Type: to.Ptr("Applications.Core/containers"),
+				Properties: map[string]any{
+					"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/applications/myapp",
+					"status":      map[string]any{"outputResources": outputResources},
+				},
+			}
 
-	// Marshal to JSON and re-parse so the assertion actually exercises the wire format
-	// that HTTP clients (rad CLI, portal, tests) will see.
-	raw, err := json.Marshal(graph)
-	require.NoError(t, err)
+			graph := computeGraph([]generated.GenericResource{container}, nil, tt.tenantID)
+			require.Len(t, graph.Resources, 1, "expected exactly one graph resource")
 
-	var decoded struct {
-		Resources []struct {
-			ID              string `json:"id"`
-			OutputResources []struct {
-				ID        string  `json:"id"`
-				Name      string  `json:"name"`
-				Type      string  `json:"type"`
-				PortalURL *string `json:"portalUrl,omitempty"`
-			} `json:"outputResources"`
-		} `json:"resources"`
+			// Marshal to JSON and re-parse so the assertion actually exercises the wire format
+			// that HTTP clients (rad CLI, portal, tests) will see.
+			raw, err := json.Marshal(graph)
+			require.NoError(t, err)
+
+			var decoded struct {
+				Resources []struct {
+					ID              string `json:"id"`
+					OutputResources []struct {
+						ID        string  `json:"id"`
+						PortalURL *string `json:"portalUrl,omitempty"`
+					} `json:"outputResources"`
+				} `json:"resources"`
+			}
+			require.NoError(t, json.Unmarshal(raw, &decoded))
+
+			require.Len(t, decoded.Resources, 1)
+			require.Equal(t, containerID, decoded.Resources[0].ID)
+
+			got := map[string]*string{}
+			for _, or := range decoded.Resources[0].OutputResources {
+				got[or.ID] = or.PortalURL
+			}
+			require.Equal(t, tt.want, got)
+		})
 	}
-	require.NoError(t, json.Unmarshal(raw, &decoded))
-
-	require.Len(t, decoded.Resources, 1)
-	require.Equal(t, containerID, decoded.Resources[0].ID)
-
-	// Index the output resources by ID so we can make ID-based assertions regardless of
-	// the sort order chosen by outputResourcesFromAPIData.
-	byID := map[string]*string{}
-	for _, or := range decoded.Resources[0].OutputResources {
-		byID[or.ID] = or.PortalURL
-	}
-
-	azurePortalURL, hasAzure := byID[azureStorageID]
-	require.True(t, hasAzure, "graph JSON must include the Azure output resource")
-	require.NotNil(t, azurePortalURL, "Azure output resource must carry a portalUrl in the graph JSON")
-	require.Equal(t, "https://portal.azure.com/#@"+tenantID+"/resource"+azureStorageID, *azurePortalURL)
-
-	k8sPortalURL, hasK8s := byID[kubernetesDeploymentID]
-	require.True(t, hasK8s, "graph JSON must include the Kubernetes output resource")
-	require.Nil(t, k8sPortalURL, "non-Azure output resource must not carry a portalUrl in the graph JSON")
 }

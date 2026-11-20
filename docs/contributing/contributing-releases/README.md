@@ -6,11 +6,14 @@ Release maintainers approve an immutable release plan, monitor its publication, 
 
 For the short operational checklist and copyable commands, use the [Release runbook](./release-runbook.md).
 
+Backport selection, collection, preparation, and their tests live only in the [shared custom action](https://github.com/radius-project/.github/tree/main/.github/actions/release-backport). Radius keeps no helper copies: Prepare Release and both release-plan validation paths call its read-only `collect` operation directly. The Radius validator requires the resulting JSON through `--backports-file` and still verifies that live backports match the plan. Run backport behavior tests in the shared repository; Radius's `test-release-plan` and release-branch provenance checks remain local.
+
 ## Prerequisites
 
 - Choose `rc`, `final`, or `patch` and its `X.Y` channel. Prepare Release computes the version; new RCs use `-rc.N`, starting at `-rc.1`, and the historical `-rcN` form is never mixed into the same version, because SemVer orders every dotted candidate before every legacy one and `rad upgrade` would treat that move as a downgrade. A final uses the last validated RC's product code. `versions.yaml` keeps the previous stable release supported until the final release moves it to `deprecated`. Label selected fixes `backport release/X.Y` and **rebase-merge** their generated backports before preparation.
 - Every version listed under `supported` in `versions.yaml` must have a Radius Git tag before preparing another release. Complete any pending final or patch metadata backport first. Open release plans enforce the same prerequisite.
 - Backport only PRs already merged into this repository's `main`. Automation applies pending sources in main's first-parent merge order, oldest first, regardless of PR number or input order, and opens one backport PR at a time per channel. Each backport must contain one non-merge commit with the original source marker and exact cherry-pick trailer; the required release-branch check verifies the source PR and its reachability from `main`. Do not add release-only fixes or remove the provenance markers. Selecting an older fix after newer fixes have shipped cannot reorder existing release history.
+- Radius, `bicep-types-aws`, `dashboard`, and `recipes` use the [centrally maintained backport workflow](https://github.com/radius-project/.github/blob/main/eng/SYNC.md#release-backports), distributed through the organization's normal Sync PRs. Apply the same `backport release/X.Y` label in the repository that owns the fix, and merge its backport before Radius preparation captures that sibling's release-branch commit. The caller also supports manual queue reconciliation from `main`, for example `gh workflow run release-backport.yaml --repo radius-project/recipes --ref main -f channel=0.62`. Existing release branches need the synced caller bootstrapped before release-branch events can advance their queues. Each repository needs the channel label, access to both release-App secrets, and App Contents, Workflows, Issues, and Pull requests write permissions. See the shared guide for rollout; adding the sync mapping does not provision credentials, labels, or branch rules.
 - Have maintainer access to the organization repositories, including `resource-types-contrib`, and permission to approve the `release` environment. In the repository rulesets, require `action-semantic-pull-request` and `Validate release plan` on `main`, and `Validate release branch commits` with up-to-date branches on `release/*`, in addition to the existing required checks. The title policy uses the `action-semantic-pull-request` commit status, not the green `Validate pull request title` job, because a `[WIP]` title leaves the status pending. Merging the workflows does not configure these rulesets. Ordinary `main` PRs use squash merge; backports use rebase merge. Create branches directly in the organization repositories, not personal forks.
 - For the `release/*` status-check rule, enable **Do not require status checks on creation** (`do_not_enforce_on_create`). The controller creates a new channel from an approved, checked `main` commit that has not yet been the subject of a release-branch PR. Requiring the release-branch-only check on that initial creation would block the first RC. Existing release branches still require their checks and an up-to-date base.
 - Protect the `release` environment with required reviewers. The release controller refuses to start unless it requires reviewers and pauses there before any mutation; finals and patches wait there again after verification. Enable **Prevent self-review** if the person who merges a release PR must not also approve it, and restrict deployments to `main`, where the controller runs, and to `v*` release tags. Recommended: add tag rulesets for `v*` that block updates and deletion by anyone except the App that creates those tags: the release App in `radius`, `recipes`, `dashboard`, and `bicep-types-aws`, and the publisher App in `deployment-engine`. Add a branch ruleset for `automation/release-state-*` in `radius` that does the same for the release App. The controller never moves a tag and rejects a Deployment Engine lock that the release App did not write, but only rulesets stop someone else from moving a tag or deleting the lock.
@@ -47,6 +50,25 @@ Complete this step before starting Radius release preparation so the approved pr
 
 Stop if the update is missing or incomplete. Publishing namespaces and recipe packs alone is not enough: their generated update must be merged into the code that Radius will release.
 
+### Pin Radius in bicep-types-aws
+
+`bicep-types-aws` builds the AWS Bicep extension from the Radius schemas at the commit its `radius` submodule pins. Release plan validation fails unless the `radius` submodule at the planned `bicep-types-aws` commit pins the plan's `source.productCommit`. The release controller runs the same check before approval, so nothing is tagged on a mismatch even if the release PR merged without a passing plan check. In that case the merged plan can't change: follow [break-glass recovery](#break-glass-recovery). A `bicep-types-aws` commit from before the submodule was added passes both checks with a notice. Nothing sets the pin automatically yet, so set it by hand:
+
+1. Find the product commit. For a later RC, a final, or a patch, it's the head of Radius `release/X.Y` after its backports merge, so you can set the pin before preparation. For a first RC, it's the `main` commit that preparation freezes: run Prepare Release, then read `source.productCommit` from the release PR's plan.
+2. In `radius-project/bicep-types-aws`, create `release/X.Y` from `main` if it doesn't exist (`git push origin origin/main:refs/heads/release/X.Y` after the clone below). Then set the `radius` submodule on `release/X.Y` to the product commit through a pull request, and merge it:
+
+   ```bash
+   git clone https://github.com/radius-project/bicep-types-aws.git
+   cd bicep-types-aws
+   git switch -c pin-radius-X.Y origin/release/X.Y
+   git update-index --cacheinfo "160000,<product-commit>,radius"
+   git commit -s -m "chore: pin Radius to <product-commit>"
+   git push origin pin-radius-X.Y
+   gh pr create --repo radius-project/bicep-types-aws --base release/X.Y --fill
+   ```
+
+3. Rerun Prepare Release with the same inputs. Preparation captures `bicep-types-aws` from `release/X.Y`. For a first RC, if Radius `main` moved since the last run, the new plan freezes a newer commit and the check fails again. Repeat these steps with the new product commit.
+
 ### Approve the plan
 
 1. Run [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) from `main` with `release-type`, `channel`, and optional comma-separated `backport-pr-numbers`.
@@ -81,6 +103,64 @@ Automatic edge reference-documentation PRs come only from Radius `main`; manual 
 
 For a final release, run [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) from `main` in `radius-project/resource-types-contrib` with `release_version` set to the version without `v`, such as `0.56.0`. This remains a separate maintainer action: the Radius controller does not dispatch it. Confirm the selected recipe source is intended for the release, wait for publication to succeed, and record its run URL. This publishes release-version recipe-image tags and moves the `latest` tags referenced by recipe packs.
 
+### Bicep extension release contract
+
+The GHCR extension contract is preparatory: checked-in `.github/release-parity/targets.json` and active release workflows still use ACR. No new registry permissions, settings, release policy, or writer cutover is needed to land the contract alone. Later activation must select `expectedOutputs.bicepExtensionsContract: ghcr-v1` in the generated, approved schema-v2 plan and replace its `ociArtifacts` with the canonical AWS/Radius targets exported by `.github/scripts/release-bicep-extensions.mjs`. Prepare Release already copies the complete targets into the plan; never edit an approved plan to opt in. Plans without the selector retain current ACR release verification: full-version references for RC, final, and patch releases, with matching source, revision, and version annotations. Historical non-staged parity collection still records channel references; those baseline inventories are not current publication-verification fixtures. Unknown selectors and GHCR targets without a selector fail closed; neither missing evidence nor historical channel references trigger a registry fallback.
+
+New-format releases require one `bicep-extension-lock.json` release asset, with the following shape (example values, not publication evidence):
+
+```json
+{
+  "schemaVersion": 1,
+  "version": "v0.62.0-rc.1",
+  "releaseSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifacts": [
+    {
+      "name": "aws-bicep-types",
+      "source": {
+        "repository": "radius-project/bicep-types-aws",
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "version": "0.62.0-rc.1",
+      "reference": "ghcr.io/radius-project/bicep-types-aws:0.62.0-rc.1",
+      "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "generation": {
+        "workflow": ".github/workflows/publish-bicep.yaml",
+        "runId": 123,
+        "runAttempt": 1,
+        "artifactId": 456,
+        "artifactDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    },
+    {
+      "name": "radius-bicep-types",
+      "source": {
+        "repository": "radius-project/radius",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "version": "0.62.0-rc.1",
+      "reference": "ghcr.io/radius-project/bicep-types-radius:0.62.0-rc.1",
+      "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "generation": {
+        "workflow": ".github/workflows/build-release.yaml",
+        "runId": 789,
+        "runAttempt": 1,
+        "artifactId": 987,
+        "artifactDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    }
+  ]
+}
+```
+
+The artifact array has exactly AWS then Radius, at the same full stable or dotted RC version. Radius binds to the controller-resolved metadata-bearing release SHA, not the product parent or current `main`; AWS binds to the plan's one frozen `bicep-types-aws` sibling SHA. Existing plan validation also checks that frozen AWS source's Radius pin against the approved product commit; selecting this output contract does not bypass that check or the frozen release-plan policy. Each manifest must be a non-executable Bicep provider artifact with the provider config and single type layer, `bicep.serialization.format: v1`, and `org.opencontainers.image.source`, `.revision`, and `.version` annotations matching its entry. The generation attempt identifies the original generation, not a later upload retry.
+
+The producer/integration layer must authenticate the recorded run and artifact through GitHub's API in the source repository: trusted workflow, exact source/tag, successful generation attempt, artifact ownership and content digest. Capture generated inputs and outputs once, including AWS schemas. The offline contract validator checks shape and source/digest binding; a self-reported run ID is not authentication. It neither queries registries nor regenerates missing evidence. R2 and the AWS companion supply generation evidence; R3 binds and uploads the pair before verification.
+
+`plannedBicepExtensions(plan, sourceSha)` returns the exact expected identities; `validateBicepExtensionLock(plan, sourceSha, lock)` validates the pair; `verifyBicepExtensionOutputs(plan, sourceSha, lock, observed)` also checks the collected OCI manifests. The collector's optional `--plan-file <approved-plan.json>` is required for GHCR targets. It downloads the lock with existing release assets, fetches manifests by their observed digest, checks the raw bytes against that digest, and stores the lock in `downstream.bicepExtensionLock`. `verify-release-manifest.mjs` includes that evidence in installation approval and post-approval rechecking. Existing release-asset upload/download helpers enforce immutability and reject missing lock evidence, even when a caller requests optional download.
+
+Before activation, complete both producer integrations, source-owned GHCR bootstrap (first push, then administrator makes the package Public), anonymous restore, AWS package access for the Radius finalizer, private-publisher exact-digest release-copy integration, and the superseded Bicep writer handoff. Production Azure credentials and ACR writes remain in private `azure-octo/radius-publisher`, not `radius-project` workflows. The main publisher's copy path depends on [azure-octo/radius-publisher#38](https://github.com/azure-octo/radius-publisher/pull/38): publish and check public GHCR content, dispatch the scoped App copy operation through the correlated monitor, then verify GHCR/ACR digest equality anonymously. Retain the private copy service and legacy release path until coordinated integration; no successful live copy is claimed. The planned GHCR Bicep `latest` alias means newest stable and `edge` means development; legacy ACR Bicep `latest` remains its development alias. This does not exempt dashboard or Deployment Engine images from the newest-stable `latest` and main-only `edge` policy. This preparatory layer changes no aliases, approval, controller ordering, or historical recovery. See the [migration design](../../../eng/design-notes/tools/2026-09-bicep-extension-ghcr-migration.md#parallel-execution-and-queueing). Missing or conflicting evidence blocks publication; recover the original captured evidence rather than replacing a locked release asset.
+
 ### Resume
 
 Run [Resume Release](https://github.com/radius-project/radius/actions/workflows/resume-release.yaml) from `main` with the failed summary's `version` (including `v`, for example `v0.61.0-rc.1`) and `source-commit`. For a frozen first RC, this means the **resolved signed release commit**, not the frozen product SHA and not a later main tip. If failure occurred before resolution, use the merged metadata PR SHA shown in that summary; replaying it adopts the same immutable source ref once created. For legacy first-RC plans the source remains the PR squash; for subsequent RCs, finals, and patches it remains the metadata backport merge commit.
@@ -104,8 +184,21 @@ Use [Approve Release](https://github.com/radius-project/radius/actions/workflows
     --format '{{ json (index .SBOM "linux/amd64").SPDX }}'
   ```
 
+- **Attest release provenance** signs one [artifact attestation](https://docs.github.com/actions/concepts/security/artifact-attestations) with SLSA build provenance for every CLI asset, Radius-built image index, and the Helm chart. It reads the staged checksum sidecars, image locks, and published chart digest; it never rebuilds an artifact. Only this job, after staging, can request the signing token, so build tools never receive it. Verification and the post-approval recheck reject a subject without provenance from `build-release.yaml` on a GitHub-hosted runner at the release tag and source commit. Rerunning the job signs the same digests again, which is harmless. Radius does not attest images it does not build, such as dashboard and Deployment Engine; their existing source and digest checks still apply. A release branch cut before this job publishes without provenance until its release tooling is backported. To check a published artifact, including `oci://ghcr.io/radius-project/helm-chart/radius:<version>`:
+
+  ```bash
+  gh attestation verify rad_linux_amd64 --repo radius-project/radius \
+    --signer-workflow radius-project/radius/.github/workflows/build-release.yaml \
+    --source-ref refs/tags/v<version>
+  gh attestation verify oci://ghcr.io/radius-project/ucpd:<version> \
+    --repo radius-project/radius \
+    --signer-workflow radius-project/radius/.github/workflows/build-release.yaml \
+    --source-ref refs/tags/v<version>
+  ```
+
+- Releases work with or without GitHub [immutable releases](https://docs.github.com/code-security/concepts/supply-chain-security/immutable-releases). Every asset and attestation exists before the draft is published, and no later stage changes a published tag or asset. Enabling the repository setting needs no workflow change; it adds a GitHub release attestation, checked with `gh release verify v<version>`, alongside the build provenance.
 - The GitHub Release is public only after verification succeeds. For Radius-built images and CLI OCI artifacts, RCs advance no aliases; finals and patches promote eligible `X.Y` and `latest` aliases from locked digests without rebuilding, and an older release never replaces a newer published release's aliases. Main publishes only `edge` from snapshots, together with the moving `edge-<os>-<arch>` tags of the platform manifests the `edge` index is assembled from, and is outside the release transaction.
-- Dashboard and Deployment Engine `X.Y` aliases are promoted from their verified source-bound locks in the same finalizer as Radius images. ORAS preserves the dashboard's single-manifest digest. Radius and AWS Bicep `X.Y` aliases are promoted by correlated publisher runs using the exact verified full-version digests before the GitHub Release becomes public. RCs move none of these aliases. External `latest` tags retain their independently owned edge behavior.
+- Dashboard and Deployment Engine `X.Y` and `latest` aliases are promoted from their verified source-bound locks in the same finalizer and under the same newest-stable `latest` policy as Radius images. Their `main` builds publish only `edge`, and the Deployment Engine dispatch and publisher reject `X.Y` and `latest` destinations. ORAS preserves the dashboard's single-manifest digest. Radius and AWS Bicep `X.Y` aliases are promoted by correlated publisher runs using the exact verified full-version digests before the GitHub Release becomes public. RCs move none of these aliases. The Bicep type registries keep `latest` as their edge alias.
 - Confirm all four sibling/Deployment Engine GitHub Release links in the sibling publication summary, their approved tag commits, and their RC/stable classification. A public Radius release alone does not prove this post-publication stage completed. The resolved tag binds the source: GitHub's `target_commitish` field may name a branch and is ignored for existing tags. A conflicting tag or classification stops publication rather than replacing an entry.
 - A new stable channel needs no legacy bootstrap. An existing Bicep channel without comparable source/version annotations is rejected rather than blindly overwritten. Migrating such a channel is a separately reviewed compatibility prerequisite against known publication history; do not edit old immutable artifacts or blindly annotate an alias to bypass the check. Limit registry writes to the serialized publishers and finalizer: OCI registries do not provide a portable atomic create-only tag operation.
 - Complete the [readiness checks](#confirm-readiness-before-the-first-production-cycle) with this runbook before production use. Local fixtures and draft PRs do not satisfy that rollout gate.
@@ -156,13 +249,31 @@ If a visibility timeout persists, inspect the version, source, release ID when a
 
 ### Encryption Secret upgrade failures
 
-An apply conflict on `radius-encryption-key` can occur when an upgrade changes `radius.dev/last-rotation` owned by another client, such as the staged `rad_linux_amd64` binary or the rotation CronJob. Compare the preserved upgrade error with `installation-diagnostics.json`; different manager names do not imply different Helm major versions. Ordinary upgrades must preserve both existing `keys.json` bytes and the actual rotation annotation, including its absence on legacy Secrets. Only a new Secret initializes keys and a timestamp; the rotation CronJob updates them together. A missing or empty key store in an existing Secret fails rendering instead of silently replacing encryption keys. Investigate or restore that store through the approved recovery process; do not delete the Secret, force conflicts, or recreate keys to make the gate pass.
+An apply conflict on `radius-encryption-key` can occur when a standalone Helm upgrade changes `radius.dev/last-rotation` owned by another client, such as the `rad` CLI or the rotation CronJob. `rad upgrade kubernetes` applies as the `rad` field manager and forces conflicts, so it takes those fields over; older CLIs used the executable name, such as `rad_linux_amd64`, and did not force conflicts. An upgrade that fails with `the object has been modified` on the Secret saw it change after Helm read it, for example a key rotation during the upgrade; rerun the upgrade so it reads the current keys. Compare the preserved upgrade error with `installation-diagnostics.json`; different manager names do not imply different Helm major versions. Ordinary upgrades must preserve both existing `keys.json` bytes and the actual rotation annotation, including its absence on legacy Secrets. Only a new Secret initializes keys and a timestamp; the rotation CronJob updates them together. A missing or empty key store in an existing Secret fails rendering instead of silently replacing encryption keys. Investigate or restore that store through the approved recovery process; do not delete the Secret, force conflicts, or recreate keys to make the gate pass.
 
 Run `bash .github/scripts/release-verification_test.sh` with Helm, Bash, jq, and yq to check failure reporting without a cluster. Run the [focused chart and API-server regressions](../../../deploy/Chart/tests/README.md#encryption-secret-upgrades) to check key and timestamp preservation. These checks do not authorize retagging or replacing a staged immutable chart; follow [Break-glass recovery](#break-glass-recovery) for fixes to tagged product code.
 
 ### Lost dispatch response
 
 Downstream tasks have GitHub deployment receipts in the `release-coordination` environment, one per version and task (`release-coordination:<version>:<task>`), bound to the Radius source SHA. If a dispatch response was lost before its returned run ID was persisted, automation stops instead of dispatching twice. Find the accepted run, verify its workflow, branch, inputs, and source, and add an `in_progress` status with its exact `log_url` to the reported receipt before resuming. If no run was accepted, reconcile the receipt explicitly before retrying. Never guess a run from a time window. For an upmerge, the receipt's environment URL is the pull request the run opened; automation binds it once, from the single upmerge pull request into `edge` created while the run's pull-request step ran, then checks only that pull request's merge state. If it cannot bind exactly one pull request, add an `in_progress` status with the run's `log_url` and the pull request as `environment_url` to the receipt before resuming.
+
+### Retrying failed sample tests
+
+After merging a samples or test-workflow fix into `radius-project/samples` `edge`, resume the same Radius version and approved source. When the previously recorded sample-test run completed unsuccessfully, the coordinator dispatches a new `test.yaml` run on current `edge`, retaining the original Radius version input. This reloads both the workflow definition and sample code and runs the complete matrix at the new run's commit; retrying jobs of the old samples run would retain its old workflow and source. The existing receipt automatically records the returned replacement run URL, and the release summary reports the tested samples commit separately from the approved Radius source. No routine manual receipt edit is needed.
+
+An active test run is monitored rather than replaced, and a successful gate is reused even if `edge` later advances. Each resume starts at most one replacement; a new failure waits for another resume. A missing dispatch acknowledgement or an unresolved legacy rerun marker still stops for [exact-run reconciliation](#lost-dispatch-response), rather than risking duplicate work. Other downstream tasks retain their existing retry behavior.
+
+This policy must be present in the tagged Radius coordinator. Merging it into `main` does not update an already-tagged RC's code. For an older release, use the existing exact-run receipt recovery after a fresh samples test against the same Radius version, or include the reviewed coordinator fix before tagging a later release. Never move a tag or change the approved release source to adopt new recovery code.
+
+### Closed or conflicting upmerge pull requests
+
+With the current coordinator, closing an upmerge PR without merging it is retryable: resume the same release. The coordinator reruns **all jobs** of that exact downstream run, clears the old PR binding, and binds the replacement created by the new attempt. The closed PR stays closed, merged upmerges are not repeated, and sample tests still wait for both upmerges to complete. A replacement that has no net changes is successful without a PR. An explicitly rejected rerun restores the previous PR binding; accepted or uncertain requests leave that old binding cleared. An uncertain rerun response retains its attempt marker and is not requested twice.
+
+Clean upmerges open ready for review. Genuine content conflicts stop with a file list instead of publishing a draft source snapshot that could omit edge-only changes. Resolve the conflicts on either the selected release branch or `edge` through normal review, then rerun. The shared upmerge workflow fetches both branches' latest commits at the start of every attempt and records their exact SHAs in its summary and PR body; commits pushed after that fetch enter the next attempt. This does not change the approved Radius release source or its receipt identity. Do not mark an older provisional snapshot ready without reconciling all edge-only content.
+
+For a downstream upmerge run created before fresh-head retries were deployed, choose **Re-run all jobs** on that docs/samples run after the shared fix merges. GitHub re-resolves the shared workflow's `@main` for a full rerun; rerunning only failed or specific jobs retains the first attempt's shared-workflow commit and can still use the old source-selection behavior. A run created with the updated implementation refreshes both content heads on every retry.
+
+This coordinator change cannot alter an already-tagged release's scripts. Rerunning an older tag-build job still uses that tag's coordinator. For such a release, either bind a separately verified replacement downstream run and PR using the existing receipt-reconciliation procedure, or include the fix in the next candidate; never move the tag or edit its approved source.
 
 ### Backport conflicts or missing prerequisites
 

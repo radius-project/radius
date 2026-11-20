@@ -19,6 +19,7 @@ package recipecontext
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -66,6 +67,23 @@ func expectedResourceNameHash(t *testing.T, azureScopeID, applicationID, environ
 	// 16 rather than resourceNameHashLength, for the same independence reason:
 	// the truncation length is part of the rule, so reusing the production
 	// constant would let a change to it pass unnoticed.
+	return hex.EncodeToString(sum[:])[:16]
+}
+
+// expectedAWSResourceNameHash reimplements the AWS hash rule independently, like expectedResourceNameHash: the first
+// 16 hex characters of SHA-256 over the lowercased account, region, application, environment, and resource IDs,
+// NUL-separated.
+func expectedAWSResourceNameHash(t *testing.T, account, region, applicationID, environmentID, resourceID string) string {
+	t.Helper()
+
+	seed := strings.Join([]string{
+		strings.ToLower(account),
+		strings.ToLower(region),
+		strings.ToLower(applicationID),
+		strings.ToLower(environmentID),
+		strings.ToLower(resourceID),
+	}, "\x00")
+	sum := sha256.Sum256([]byte(seed))
 	return hex.EncodeToString(sum[:])[:16]
 }
 
@@ -141,8 +159,9 @@ func TestNewContext(t *testing.T) {
 					ResourceNameHash: expectedResourceNameHash(t, testResourceGroupID, testApplicationID, testEnvironmentID, testResourceID),
 				},
 				AWS: &ProviderAWS{
-					Region:  "us-west-2",
-					Account: "1234567890",
+					Region:           "us-west-2",
+					Account:          "1234567890",
+					ResourceNameHash: expectedAWSResourceNameHash(t, "1234567890", "us-west-2", testMetadata.ApplicationID, testMetadata.EnvironmentID, testMetadata.ResourceID),
 				},
 			},
 		},
@@ -644,5 +663,90 @@ func TestNewContext_ResourceNameHash(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Equal(t, first.Azure.ResourceNameHash, second.Azure.ResourceNameHash)
+	})
+}
+
+func TestNewContext_AWSResourceNameHash(t *testing.T) {
+	const (
+		awsScope  = "/planes/aws/aws/accounts/123456789012/regions/us-west-2"
+		appPrefix = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/"
+		envPrefix = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/"
+	)
+	baseMetadata := recipes.ResourceMetadata{
+		ResourceID:    testResourceID,
+		EnvironmentID: testEnvironmentID,
+		ApplicationID: testApplicationID,
+	}
+	awsConfig := func(scope string) *recipes.Configuration {
+		return &recipes.Configuration{Providers: coredm.Providers{AWS: coredm.ProvidersAWS{Scope: scope}}}
+	}
+	hash := func(t *testing.T, metadata recipes.ResourceMetadata, scope string) string {
+		t.Helper()
+		ctx, err := New(&metadata, awsConfig(scope))
+		require.NoError(t, err)
+		require.NotNil(t, ctx.AWS)
+		return ctx.AWS.ResourceNameHash
+	}
+
+	t.Run("matches the documented rule", func(t *testing.T) {
+		require.Equal(
+			t,
+			expectedAWSResourceNameHash(t, "123456789012", "us-west-2", testApplicationID, testEnvironmentID, testResourceID),
+			hash(t, baseMetadata, awsScope),
+		)
+	})
+
+	t.Run("is stable for the same owner", func(t *testing.T) {
+		require.Equal(t, hash(t, baseMetadata, awsScope), hash(t, baseMetadata, awsScope))
+	})
+
+	t.Run("is case insensitive", func(t *testing.T) {
+		upper := baseMetadata
+		upper.ResourceID = "/planes/radius/local/resourceGroups/TESTGROUP/providers/Applications.Datastores/mongoDatabases/MONGO0"
+		upper.EnvironmentID = envPrefix + "ENV0"
+		upper.ApplicationID = appPrefix + "TESTAPPLICATION"
+		require.Equal(t, hash(t, baseMetadata, awsScope), hash(t, upper, "/planes/aws/aws/accounts/123456789012/regions/US-WEST-2"))
+	})
+
+	t.Run("changes when any input changes", func(t *testing.T) {
+		base := hash(t, baseMetadata, awsScope)
+
+		otherResource := baseMetadata
+		otherResource.ResourceID = "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo1"
+		otherApp := baseMetadata
+		otherApp.ApplicationID = appPrefix + "app1"
+		noApp := baseMetadata
+		noApp.ApplicationID = ""
+		otherEnv := baseMetadata
+		otherEnv.EnvironmentID = envPrefix + "env1"
+
+		others := map[string]string{
+			"account":        hash(t, baseMetadata, "/planes/aws/aws/accounts/210987654321/regions/us-west-2"),
+			"region":         hash(t, baseMetadata, "/planes/aws/aws/accounts/123456789012/regions/us-east-1"),
+			"resource":       hash(t, otherResource, awsScope),
+			"application":    hash(t, otherApp, awsScope),
+			"no application": hash(t, noApp, awsScope),
+			"environment":    hash(t, otherEnv, awsScope),
+		}
+		for input, other := range others {
+			require.NotEqual(t, base, other, "hash did not change with the %s", input)
+		}
+	})
+
+	t.Run("is empty when the scope has no account", func(t *testing.T) {
+		require.Empty(t, hash(t, baseMetadata, "/planes/aws/aws/regions/us-west-2"))
+	})
+
+	t.Run("is serialized as aws.resourceNameHash", func(t *testing.T) {
+		ctx, err := New(&baseMetadata, awsConfig(awsScope))
+		require.NoError(t, err)
+
+		b, err := json.Marshal(ctx)
+		require.NoError(t, err)
+		var out struct {
+			AWS map[string]string `json:"aws"`
+		}
+		require.NoError(t, json.Unmarshal(b, &out))
+		require.Equal(t, ctx.AWS.ResourceNameHash, out.AWS["resourceNameHash"])
 	})
 }

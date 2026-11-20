@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+name: Lockfile Registry Policy
+
+on:
+  pull_request:
+  merge_group:
+  push:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: lockfile-registry-policy-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    uses: radius-project/.github/.github/workflows/__lockfile-registry-policy.yml@main
+    permissions:
+      contents: read
