@@ -70,7 +70,8 @@ func Test_Suite_AuthenticationProfile(t *testing.T) {
 		Identifier:         "odbc",
 		Changed:            profileProps("odbc", `{"AllowDBUserOverride":"0","App_ID":"example"}`),
 		CreateOnlyChange:   profileProps("jdbc", `{"AllowDBUserOverride": 1, "App_ID": "example"}`),
-		OtherForm:          map[string]any{"AuthenticationProfileContent": `{"AllowDBUserOverride":"1","App_ID":"example"}`},
+		// AWS's form, with the keys in another order, as AWS returned them in a recording.
+		OtherForm: map[string]any{"AuthenticationProfileContent": `{"App_ID":"example","AllowDBUserOverride":"1"}`},
 		Invalid: []map[string]any{
 			profileProps("odbc_profile", `{"App_ID": "x"}`),
 			profileProps(strings.Repeat("a", 64), `{"App_ID": "x"}`),
