@@ -32,9 +32,12 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/components/queue"
+	queueinmemory "github.com/radius-project/radius/pkg/components/queue/inmemory"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
@@ -316,6 +319,96 @@ func Test_Register(t *testing.T) {
 			require.IsType(t, &AwaitController{}, c)
 		}
 	}
+}
+
+// Test_Worker_ReplacedOperation runs the registered controller in the worker, and checks that settling an operation
+// leaves the record alone once the record no longer shows it.
+func Test_Worker_ReplacedOperation(t *testing.T) {
+	const maxRetries = 2
+	cases := map[string]struct {
+		setup        func(f *fixture)
+		dequeueCount int
+		state        v1.ProvisioningState
+		// written is the state the worker saves on the record, or empty when it leaves the record alone.
+		written v1.ProvisioningState
+	}{
+		"retry limit, replaced": {
+			setup:        func(f *fixture) { f.accept(records.OperationUpdate) },
+			dequeueCount: maxRetries + 1,
+			state:        v1.ProvisioningStateFailed,
+		},
+		// UCP stopped after the controller settled the record and before it saved the operation's status.
+		"retry limit, already settled": {
+			setup:        func(f *fixture) { require.Nil(f.t, f.run(v1.OperationPut).Error) },
+			dequeueCount: maxRetries + 1,
+			state:        v1.ProvisioningStateFailed,
+		},
+		"retry limit, still the record's operation": {
+			setup:        func(f *fixture) {},
+			dequeueCount: maxRetries + 1,
+			state:        v1.ProvisioningStateFailed,
+			written:      v1.ProvisioningStateFailed,
+		},
+		"controller finds it replaced": {
+			setup: func(f *fixture) { f.accept(records.OperationUpdate) },
+			state: v1.ProvisioningStateCanceled,
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture(t)
+			f.accept(records.OperationCreate)
+			opA := f.op
+			sm := statusmanager.New(f.db, queueinmemory.New(queueinmemory.NewInMemQueue(time.Minute)), v1.LocationGlobal)
+			operationType := v1.OperationType{Type: records.OperationType, Method: v1.OperationPut}
+			require.NoError(t, sm.QueueAsyncOperation(t.Context(), &v1.ARMRequestContext{ResourceID: f.id, OperationID: opA, OperationType: operationType}, statusmanager.QueueOperationOptions{}))
+			tc.setup(f)
+			// Polling AWS for a replaced or settled operation would fail it with a different error.
+			f.cc.Errors["GetResourceRequestStatus"] = errors.New("must not poll")
+			before := f.record()
+
+			registry := worker.NewControllerRegistry()
+			require.NoError(t, Register(registry, ucp_aws.Clients{CloudControl: f.cc}, ctrl.Options{DatabaseClient: f.db}))
+			internalQ := queueinmemory.NewInMemQueue(time.Minute)
+			q := queueinmemory.New(internalQ)
+			w := worker.New(worker.Options{MaxOperationRetryCount: maxRetries, DequeueIntervalDuration: time.Millisecond}, sm, q, registry)
+			timeout := time.Minute
+			msg := queue.NewMessage(&ctrl.Request{OperationID: opA, OperationType: operationType.String(), ResourceID: vpcID, OperationTimeout: &timeout})
+			require.NoError(t, q.Enqueue(t.Context(), msg))
+			msg.DequeueCount = tc.dequeueCount
+
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				_ = w.Start(ctx)
+			}()
+			var status *statusmanager.Status
+			require.Eventually(t, func() bool {
+				var err error
+				status, err = sm.Get(t.Context(), f.id, opA)
+				return err == nil && status.Status.IsTerminal() && internalQ.Len() == 0
+			}, 10*time.Second, time.Millisecond)
+			cancel()
+			<-done
+
+			require.Equal(t, tc.state, status.Status)
+			after := f.record()
+			if tc.written == "" {
+				require.Equal(t, before, after)
+			} else {
+				require.Equal(t, tc.written, after.ProvisioningState())
+			}
+		})
+	}
+}
+
+// Test_OwnsResource_UnreadableRecord checks that a record that can't be read is an error, not a different owner.
+func Test_OwnsResource_UnreadableRecord(t *testing.T) {
+	c, err := NewAwaitController(ctrl.Options{DatabaseClient: inmemory.NewClient()}, ucp_aws.Clients{CloudControl: awsfake.NewCloudControl()}, v1.OperationPut)
+	require.NoError(t, err)
+	_, err = c.(ctrl.OwnershipChecker).OwnsResource(&database.Object{Data: map[string]any{"properties": "not an object"}}, &ctrl.Request{OperationID: uuid.New()})
+	require.Error(t, err)
 }
 
 // Test_Await_Redelivery covers a message the worker gets again after it already finished the operation, for example

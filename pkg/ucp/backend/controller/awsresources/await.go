@@ -42,7 +42,10 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*AwaitController)(nil)
+var (
+	_ ctrl.Controller       = (*AwaitController)(nil)
+	_ ctrl.OwnershipChecker = (*AwaitController)(nil)
+)
 
 // AwaitController waits for an AWS resource operation to finish and updates the record. It polls Cloud Control with
 // the request token saved on the record. Polling only reads AWS, so a redelivered message or a restarted worker runs
@@ -204,6 +207,18 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		return requeue(ctx, fmt.Errorf("AWS finished the %s of %q, but UCP failed to save the result: %w", strings.ToLower(op), id.Name(), err)), nil
 	}
 	return ctrl.Result{}, nil
+}
+
+// OwnsResource reports whether the record resource still shows the operation request by its request token. The
+// worker calls it before it writes a provisioning state on the record, so an operation that a newer one replaced, or
+// one that already settled the record, leaves the record alone. That includes a newer request that reserved the
+// record and is still calling AWS, which clears the request token.
+func (c *AwaitController) OwnsResource(resource *database.Object, request *ctrl.Request) (bool, error) {
+	rec := &datamodel.AWSResource{}
+	if err := resource.As(rec); err != nil {
+		return false, err
+	}
+	return sameRequest(rec.Properties.RequestToken, request.OperationID), nil
 }
 
 // noRecord finishes an operation whose record is gone. A finished delete and a failed create remove the record, so

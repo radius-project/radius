@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/queue/inmemory"
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -735,4 +737,200 @@ func TestRunOperation_PanicController_FinalAttempt(t *testing.T) {
 	require.NotNil(t, terminalErr, "the panic reason must be recorded as the terminal failure")
 	require.Equal(t, v1.CodeInternal, terminalErr.Code)
 	require.Contains(t, terminalErr.Message, "don't panic")
+}
+
+// ownedController is a test controller whose resources name the operation that owns them in "owner".
+type ownedController struct {
+	testAsyncController
+}
+
+func (c *ownedController) OwnsResource(resource *database.Object, request *ctrl.Request) (bool, error) {
+	return resource.Data.(map[string]any)["owner"] == request.OperationID.String(), nil
+}
+
+// raceDB runs before once, on the first save of a resource, before it saves.
+type raceDB struct {
+	database.Client
+	before func()
+	once   sync.Once
+}
+
+func (r *raceDB) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+	r.once.Do(r.before)
+	return r.Client.Save(ctx, obj, options...)
+}
+
+// settleFixture runs the worker on one operation, A, of a resource that may show a newer operation, B. It uses the
+// real in-memory store and status manager.
+type settleFixture struct {
+	t          *testing.T
+	db         database.Client
+	sm         manager.StatusManager
+	queue      *inmemory.Client
+	internalQ  *inmemory.InmemQueue
+	resourceID resources.ID
+	opA, opB   uuid.UUID
+}
+
+func newSettleFixture(t *testing.T, lockTime time.Duration, owner string) *settleFixture {
+	resourceID, err := resources.ParseResource("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env0")
+	require.NoError(t, err)
+	internalQ := inmemory.NewInMemQueue(lockTime)
+	f := &settleFixture{
+		t:          t,
+		db:         inmemorystore.NewClient(),
+		queue:      inmemory.New(internalQ),
+		internalQ:  internalQ,
+		resourceID: resourceID,
+		opA:        uuid.New(),
+		opB:        uuid.New(),
+	}
+	// The status manager queues on its own queue, so the test controls the message the worker gets.
+	f.sm = manager.New(f.db, inmemory.New(inmemory.NewInMemQueue(lockTime)), v1.LocationGlobal)
+	sCtx := &v1.ARMRequestContext{ResourceID: resourceID, OperationID: f.opA, OperationType: v1.OperationType{Type: testResourceType, Method: v1.OperationPut}}
+	require.NoError(t, f.sm.QueueAsyncOperation(t.Context(), sCtx, manager.QueueOperationOptions{}))
+
+	if owner == "A" {
+		owner = f.opA.String()
+	} else {
+		owner = f.opB.String()
+	}
+	f.saveResource(owner)
+	return f
+}
+
+// saveResource saves the resource as the frontend would when it starts the operation owner.
+func (f *settleFixture) saveResource(owner string) {
+	f.t.Helper()
+	require.NoError(f.t, f.db.Save(f.t.Context(), &database.Object{
+		ID:   f.resourceID.String(),
+		Data: map[string]any{"id": f.resourceID.String(), "provisioningState": string(v1.ProvisioningStateProvisioning), "owner": owner},
+	}))
+}
+
+// run queues operation A with dequeueCount and timeout, and runs the worker until A's status is terminal and its
+// message is finished.
+func (f *settleFixture) run(asyncCtrl ctrl.Controller, dequeueCount int, timeout time.Duration) *manager.Status {
+	f.t.Helper()
+	registry := NewControllerRegistry()
+	require.NoError(f.t, registry.Register(testResourceType, v1.OperationPut, func(ctrl.Options) (ctrl.Controller, error) { return asyncCtrl, nil }, ctrl.Options{DatabaseClient: f.db}))
+	w := New(Options{MaxOperationRetryCount: 2, DequeueIntervalDuration: defaultTestDequeueInterval}, f.sm, f.queue, registry)
+
+	msg := queue.NewMessage(&ctrl.Request{
+		OperationID:      f.opA,
+		OperationType:    "APPLICATIONS.CORE/ENVIRONMENTS|PUT",
+		ResourceID:       f.resourceID.String(),
+		OperationTimeout: &timeout,
+	})
+	require.NoError(f.t, f.queue.Enqueue(f.t.Context(), msg))
+	msg.DequeueCount = dequeueCount
+
+	ctx, cancel := context.WithCancel(f.t.Context())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		assert.NoError(f.t, w.Start(ctx))
+	}()
+	var status *manager.Status
+	require.Eventually(f.t, func() bool {
+		var err error
+		status, err = f.sm.Get(f.t.Context(), f.resourceID, f.opA)
+		return err == nil && status.Status.IsTerminal() && f.internalQ.Len() == 0
+	}, 10*time.Second, time.Millisecond)
+	cancel()
+	<-done
+	return status
+}
+
+func (f *settleFixture) resource() map[string]any {
+	f.t.Helper()
+	obj, err := f.db.Get(f.t.Context(), f.resourceID.String())
+	require.NoError(f.t, err)
+	return obj.Data.(map[string]any)
+}
+
+// TestStart_SettleReplacedOperation checks that when the worker settles an operation without the controller's result,
+// on the retry limit or the operation timeout, it leaves a resource that a newer operation owns unchanged, and still
+// settles the operation's own status.
+func TestStart_SettleReplacedOperation(t *testing.T) {
+	paths := map[string]struct {
+		dequeueCount int
+		timeout      time.Duration
+		state        v1.ProvisioningState
+		message      string
+	}{
+		"retry limit": {dequeueCount: 3, timeout: time.Minute, state: v1.ProvisioningStateFailed, message: "exceeded max retry count"},
+		"timeout":     {timeout: 10 * time.Millisecond, state: v1.ProvisioningStateCanceled, message: "has timed out"},
+	}
+	owners := map[string]struct {
+		owner   string
+		checker bool
+		// replaced means the resource keeps the newer operation's state.
+		replaced bool
+	}{
+		"replaced":   {owner: "B", checker: true, replaced: true},
+		"owned":      {owner: "A", checker: true},
+		"no checker": {owner: "B"},
+	}
+	for pathName, path := range paths {
+		for ownerName, owner := range owners {
+			t.Run(pathName+"/"+ownerName, func(t *testing.T) {
+				f := newSettleFixture(t, time.Minute, owner.owner)
+				base := testAsyncController{
+					BaseController: ctrl.NewBaseAsyncController(ctrl.Options{DatabaseClient: f.db}),
+					fn: func(ctx context.Context) (ctrl.Result, error) {
+						<-ctx.Done()
+						return ctrl.Result{}, ctx.Err()
+					},
+				}
+				var asyncCtrl ctrl.Controller = &base
+				if owner.checker {
+					asyncCtrl = &ownedController{testAsyncController: base}
+				}
+				before := f.resource()
+
+				status := f.run(asyncCtrl, path.dequeueCount, path.timeout)
+				require.Equal(t, path.state, status.Status)
+				require.Contains(t, status.Error.Message, path.message)
+				if owner.replaced {
+					require.Equal(t, before, f.resource())
+				} else {
+					require.Equal(t, string(path.state), f.resource()["provisioningState"])
+				}
+			})
+		}
+	}
+}
+
+// TestStart_SettleRacesNewerOperation checks that a newer operation that takes the resource between the worker's
+// ownership check and its save is not overwritten: the save fails on the ETag, and the redelivered message finds the
+// newer owner.
+func TestStart_SettleRacesNewerOperation(t *testing.T) {
+	f := newSettleFixture(t, 50*time.Millisecond, "A")
+	race := &raceDB{Client: f.db, before: func() { f.saveResource(f.opB.String()) }}
+	asyncCtrl := &ownedController{testAsyncController: testAsyncController{BaseController: ctrl.NewBaseAsyncController(ctrl.Options{DatabaseClient: race})}}
+
+	status := f.run(asyncCtrl, 3, time.Minute)
+	require.Equal(t, v1.ProvisioningStateFailed, status.Status)
+	require.Equal(t, string(v1.ProvisioningStateProvisioning), f.resource()["provisioningState"])
+	require.Equal(t, f.opB.String(), f.resource()["owner"])
+}
+
+// TestUpdateResourceState_OwnershipError checks that the resource is not saved when the controller can't tell whether
+// the operation owns it, and the error is returned so the message is retried.
+func TestUpdateResourceState_OwnershipError(t *testing.T) {
+	f := newSettleFixture(t, time.Minute, "A")
+	before := f.resource()
+	asyncCtrl := &failingOwner{testAsyncController{BaseController: ctrl.NewBaseAsyncController(ctrl.Options{DatabaseClient: f.db})}}
+	err := updateResourceState(t.Context(), asyncCtrl, &ctrl.Request{OperationID: f.opA}, f.resourceID.String(), v1.ProvisioningStateFailed)
+	require.ErrorContains(t, err, "cannot read the owner")
+	require.Equal(t, before, f.resource())
+}
+
+type failingOwner struct {
+	testAsyncController
+}
+
+func (c *failingOwner) OwnsResource(*database.Object, *ctrl.Request) (bool, error) {
+	return false, errors.New("cannot read the owner")
 }
