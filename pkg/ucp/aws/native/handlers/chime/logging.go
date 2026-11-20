@@ -25,7 +25,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/chimesdkvoice/types"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
-	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
 
 const (
@@ -120,7 +119,7 @@ func (h *LoggingConfiguration) Create(ctx context.Context, request native.Create
 	}
 	identifier, _ := request.Properties[voiceConnectorIDProperty].(string)
 	if err := h.put(ctx, request.Region, identifier, settings); err != nil {
-		return "", awsapi.Rejected(err)
+		return "", sendFailed(err)
 	}
 	return identifier, nil
 }
@@ -135,10 +134,14 @@ func (h *LoggingConfiguration) Update(ctx context.Context, request native.Update
 	if err != nil {
 		return err
 	}
-	if err := settingsOf(target, loggingProperty, &settings); err != nil {
-		return err
+	// A template that sets LoggingConfiguration to {} after setting logs gets a patch that removes the object, which
+	// turns every log off.
+	// The patched settings hold only the template's values, which decoded above, and AWS's, so they decode too.
+	settings = types.LoggingConfiguration{}
+	if _, ok := target[loggingProperty]; ok {
+		_ = settingsOf(target, loggingProperty, &settings)
 	}
-	return awsapi.Rejected(h.put(ctx, request.Region, request.Identifier, settings))
+	return sendFailed(h.put(ctx, request.Region, request.Identifier, settings))
 }
 
 // Reset turns both logs off, AWS's default. It returns ErrNotFound when AWS has no such Voice Connector.

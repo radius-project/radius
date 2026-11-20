@@ -37,6 +37,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/chimesdkvoice"
+	"github.com/aws/smithy-go"
 	jsonpatch "github.com/evanphx/json-patch/v5"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -95,6 +96,16 @@ type reader func(ctx context.Context, region string, identifier string) (map[str
 // awsapi.Rejected does.
 func notFoundOrRejected(err error) error {
 	return awsapi.Rejected(awsapi.NotFound(err, notFoundCode))
+}
+
+// sendFailed returns the error of a call that changes AWS. An error the SDK returns before it sends the call, for a
+// required parameter the call leaves out, is a client failure AWS applied none of, as awsapi.Rejected makes a 4xx.
+func sendFailed(err error) error {
+	var params smithy.InvalidParamsError
+	if errors.As(err, &params) {
+		return rejected("%s", err.Error())
+	}
+	return awsapi.Rejected(err)
 }
 
 // rejected returns a client failure AWS applied none of, with message.
@@ -172,11 +183,24 @@ func voiceConnectorExists(ctx context.Context, api API, region string, id string
 	return err == nil, err
 }
 
-// createProgress reads how far a create of settings has got: it is done once read finds them. It returns ErrNotFound
-// when read doesn't find them, so UCP sends a lost create again. The create's Put already waited until a read showed
-// the settings.
-func createProgress(ctx context.Context, read reader, region string, identifier string) (native.Progress, error) {
-	if _, err := read(ctx, region, identifier); err != nil {
+// createProgress reads how far a create of settings has got: it is done once read finds them. AWS shows a Put about a
+// second after it accepts it, and a create whose response UCP lost never waited for that, so read gets up to
+// confirmReads tries before createProgress returns ErrNotFound, which makes UCP send the create again, or a DELETE
+// remove only the record.
+func createProgress(ctx context.Context, wait pause, read reader, region string, identifier string) (native.Progress, error) {
+	var err error
+	for i := range confirmReads {
+		if i > 0 {
+			wait(ctx, confirmPause)
+		}
+		if ctx.Err() != nil {
+			return native.Progress{}, ctx.Err()
+		}
+		if _, err = read(ctx, region, identifier); !errors.Is(err, native.ErrNotFound) {
+			break
+		}
+	}
+	if err != nil {
 		return native.Progress{}, err
 	}
 	return native.Progress{Done: true}, nil

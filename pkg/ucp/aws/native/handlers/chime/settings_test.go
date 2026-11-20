@@ -23,9 +23,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/chimesdkvoice"
+	"github.com/aws/aws-sdk-go-v2/service/chimesdkvoice/types"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
@@ -357,12 +361,55 @@ func Test_Settings_Errors(t *testing.T) {
 		requireRejected(t, err, validationCode)
 	})
 
-	t.Run("a logging update whose patch removes the settings", func(t *testing.T) {
-		h := withoutWait(NewLoggingConfiguration(newFakeAPI(awsfake.NewCloudControl())))
-		current := logging(testVC, true, false)
-		request := update(t, current, nil)
-		request.Desired = current
-		request.Patch = jsondiff.Patch{{Type: jsondiff.OperationRemove, Path: "/LoggingConfiguration"}}
-		requireRejected(t, h.Update(ctx, request), "set LoggingConfiguration")
+	t.Run("a logging template that sets LoggingConfiguration to {} turns every log off", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := withoutWait(NewLoggingConfiguration(api))
+		lastApplied := logging(testVC, true, true)
+		api.store.Put(loggingType, testVC, lastApplied)
+		current, err := h.Read(ctx, region, testVC)
+		require.NoError(t, err)
+		desired := map[string]any{"VoiceConnectorId": testVC, "LoggingConfiguration": map[string]any{}}
+
+		// The patch UCP computes, as the engine does.
+		currentJSON, _ := json.Marshal(current)
+		desiredJSON, _ := json.Marshal(desired)
+		patch, err := awsoperations.GeneratePatchWithOptions(currentJSON, desiredJSON, []byte(readFile(t, "aws-chime-voiceconnectorloggingconfiguration.json")), awsoperations.PatchOptions{
+			Removed:     awsoperations.RemovedPaths(lastApplied, desired),
+			LastApplied: lastApplied,
+		})
+		require.NoError(t, err)
+		require.NoError(t, h.Update(ctx, native.UpdateRequest{Region: region, Identifier: testVC, Current: current, Desired: desired, Patch: patch}))
+		require.Equal(t, logging(testVC, false, false), api.store.Resource(loggingType, testVC))
 	})
+}
+
+func Test_Settings_LostCreateResponse(t *testing.T) {
+	ctx := t.Context()
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := withoutWait(NewOrigination(api))
+
+	// The Put reached AWS, but UCP lost its response before it waited for a read to show it. AWS still reads as having
+	// no settings for a while.
+	_, err := api.PutVoiceConnectorOrigination(ctx, &chimesdkvoice.PutVoiceConnectorOriginationInput{VoiceConnectorId: aws.String(testVC), Origination: &types.Origination{Routes: []types.OriginationRoute{sdkRoute(nil)}}})
+	require.NoError(t, err)
+	progress, err := h.Progress(ctx, region, testVC, native.OperationCreate)
+	require.NoError(t, err, "the lost create is found, not sent again or dropped from the record")
+	require.True(t, progress.Done)
+}
+
+func Test_Settings_MissingRequiredParameter(t *testing.T) {
+	h := withoutWait(NewStreamingConfiguration(newFakeAPI(awsfake.NewCloudControl())))
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: streaming(testVC, map[string]any{"DataRetentionInHours": 1})})
+	requireRejected(t, err, "Disabled")
+}
+
+func Test_CreateProgress_StopsWhenTheRequestEnds(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	reads := 0
+	_, err := createProgress(ctx, func(context.Context, time.Duration) { cancel() }, func(context.Context, string, string) (map[string]any, error) {
+		reads++
+		return nil, native.ErrNotFound
+	}, region, testVC)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, reads)
 }

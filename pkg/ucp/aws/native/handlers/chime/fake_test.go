@@ -46,6 +46,9 @@ const (
 
 	badRequestCode = "BadRequestException"
 
+	// accessDeniedCode is the error AWS returns for a call the caller isn't authorized to make on a resource.
+	accessDeniedCode = "AccessDeniedException"
+
 	// validationCode is the error AWS returns for a value outside the limits of its API model. The SDK doesn't model
 	// it, so its fault is unknown.
 	validationCode = "ValidationException"
@@ -60,10 +63,32 @@ const (
 	staleReads = 2
 )
 
+// documentationRanges are the IPv4 ranges RFC 5737 reserves for documentation, which aren't publicly routable.
+var documentationRanges = []string{"192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24"}
+
+// routable reports whether host, an FQDN or an IP address, can be an origination route's host: AWS takes only
+// publicly routable IP addresses.
+func routable(host string) bool {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return true
+	}
+	if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsMulticast() {
+		return false
+	}
+	for _, cidr := range documentationRanges {
+		if _, network, _ := net.ParseCIDR(cidr); network.Contains(ip) {
+			return false
+		}
+	}
+	return true
+}
+
 // callingRegions are the countries a Voice Connector can call in the fake.
 var callingRegions = []string{"US", "CA"}
 
 var (
+	arnPattern         = regexp.MustCompile(`^arn[\/\:\-\_\.a-zA-Z0-9]+$`)
 	phoneNumberPattern = regexp.MustCompile(`^\+?[1-9]\d{1,14}$`)
 
 	// voiceConnectorIDPattern is the form of a Voice Connector ID AWS takes, from its ValidationException.
@@ -288,6 +313,10 @@ func checkStreaming(settings *types.StreamingConfiguration) error {
 			return invalid("NotificationTarget must satisfy enum value set")
 		}
 	}
+	// AWS authorizes the call on the ARN, so one that isn't an ARN is denied.
+	if insights := settings.MediaInsightsConfiguration; insights != nil && insights.ConfigurationArn != nil && !arnPattern.MatchString(*insights.ConfigurationArn) {
+		return apiError(http.StatusForbidden, accessDeniedCode, "not authorized to perform: chime:PutVoiceConnectorStreamingConfiguration on resource: "+*insights.ConfigurationArn)
+	}
 	return nil
 }
 
@@ -367,6 +396,8 @@ func checkOrigination(settings *types.Origination) error {
 		switch {
 		case route.Host == nil || route.Weight == nil || route.Priority == nil:
 			return badRequest("An origination route must set Host, Weight, and Priority")
+		case !routable(*route.Host):
+			return badRequest("IP %s is not permitted", *route.Host)
 		case route.Port != nil && (*route.Port < 0 || *route.Port > 65535):
 			return invalid("Port must have value from 0 to 65535")
 		case *route.Priority < 1 || *route.Priority > 100:

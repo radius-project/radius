@@ -179,6 +179,14 @@ var streamingAPI = map[string]nativetest.Call{
 				},
 				Code: validationCode,
 			},
+			{
+				Rule: "ConfigurationArn matches ^arn[\\/\\:\\-\\_\\.a-zA-Z0-9]+$",
+				Doc:  doc("MediaInsightsConfiguration"),
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					return putStreaming(ctx, store, &types.StreamingConfiguration{DataRetentionInHours: aws.Int32(1), Disabled: aws.Bool(false), MediaInsightsConfiguration: &types.MediaInsightsConfiguration{ConfigurationArn: aws.String("bogus")}})
+				},
+				Code: accessDeniedCode,
+			},
 			voiceConnectorRule(func(ctx context.Context, api *fakeAPI) error {
 				_, err := api.PutVoiceConnectorStreamingConfiguration(ctx, &chimesdkvoice.PutVoiceConnectorStreamingConfigurationInput{VoiceConnectorId: aws.String(missingVC), StreamingConfiguration: &types.StreamingConfiguration{DataRetentionInHours: aws.Int32(1), Disabled: aws.Bool(false)}})
 				return err
@@ -186,8 +194,8 @@ var streamingAPI = map[string]nativetest.Call{
 		},
 		Unclear: validationNote + "The page doesn't say what AWS does when a Put leaves out StreamingNotificationTargets. " +
 			"In live calls it set them to EventBridge, even after a Put that set SNS; the fake does the same. A " +
-			"MediaInsightsConfiguration ConfigurationArn that doesn't match its pattern got AccessDeniedException in a " +
-			"live call, because AWS authorizes the call on that ARN; the fake doesn't check it. The SDK rejects a call " +
+			"MediaInsightsConfiguration ConfigurationArn that doesn't match its pattern got AccessDeniedException, not " +
+			"a validation error, because AWS authorizes the call on that ARN; the fake does the same. The SDK rejects a call " +
 			"without DataRetentionInHours or Disabled before it sends it, and so does the fake. The page doesn't name " +
 			"the permissions a notification target needs: AWS checks the caller for sns:CreateTopic for SNS and " +
 			"sqs:CreateQueue for SQS, and creates a topic or queue named ChimeVoiceConnector-Streaming, which stays " +
@@ -285,6 +293,14 @@ var originationAPI = map[string]nativetest.Call{
 				},
 				Code: validationCode,
 			},
+			{
+				Rule: "an IP address used for Host is publicly routable",
+				Doc:  "https://docs.aws.amazon.com/chime-sdk/latest/ag/edit-voicecon.html",
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					return putOrigination(ctx, store, &types.Origination{Routes: []types.OriginationRoute{sdkRoute(func(r *types.OriginationRoute) { r.Host = aws.String("10.0.0.10") })}})
+				},
+				Code: badRequestCode,
+			},
 			voiceConnectorRule(func(ctx context.Context, api *fakeAPI) error {
 				_, err := api.PutVoiceConnectorOrigination(ctx, &chimesdkvoice.PutVoiceConnectorOriginationInput{VoiceConnectorId: aws.String(missingVC), Origination: &types.Origination{Routes: []types.OriginationRoute{sdkRoute(nil)}}})
 				return err
@@ -294,8 +310,10 @@ var originationAPI = map[string]nativetest.Call{
 			"enough, but the OriginationRoute page gives a limit of ten, and in live calls AWS rejected 11 routes, and " +
 			"settings without Routes, with BadRequestException. It also rejected a route without Host, Priority, or " +
 			"Weight, though the page marks them optional. The fake does the same. The page says Port defaults to " +
-			"5060, but AWS reports a port the Put left out as 0; the fake does the same. AWS rejected an IP address " +
-			"from a documentation range as not permitted, which the page doesn't say; the fake doesn't check hosts.",
+			"5060, but AWS reports a port the Put left out as 0; the fake does the same. The admin guide says an IP " +
+			"address used for Host must be publicly routable, without naming the error; AWS answered one from a " +
+			"documentation range with BadRequestException, and the fake does the same for private, loopback, " +
+			"link-local, multicast, and documentation addresses.",
 	},
 	"DeleteVoiceConnectorOrigination": {
 		Doc: doc("DeleteVoiceConnectorOrigination"),

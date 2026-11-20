@@ -84,7 +84,8 @@
         "chime:PutVoiceConnectorStreamingConfiguration",
         "chime:GetVoiceConnectorStreamingConfiguration",
         "sns:CreateTopic",
-        "sqs:CreateQueue"
+        "sqs:CreateQueue",
+        "iam:CreateServiceLinkedRole"
       ]
     },
     "read": {
@@ -95,7 +96,8 @@
         "chime:PutVoiceConnectorStreamingConfiguration",
         "chime:GetVoiceConnectorStreamingConfiguration",
         "sns:CreateTopic",
-        "sqs:CreateQueue"
+        "sqs:CreateQueue",
+        "iam:CreateServiceLinkedRole"
       ]
     },
     "delete": {

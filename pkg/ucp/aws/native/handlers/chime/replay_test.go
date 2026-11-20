@@ -122,8 +122,8 @@ func Test_Replay_Termination(t *testing.T) {
 }
 
 // Test_Replay_Errors checks how the handlers report AWS's errors, recorded from real calls: a Voice Connector AWS
-// doesn't have, a value outside a limit of AWS's API model, which the SDK reads without a fault, and settings AWS
-// doesn't take. Each is a request AWS rejected and applied none of, and a read or delete of settings or a Voice
+// doesn't have, a value outside a limit of AWS's API model, which the SDK reads without a fault, settings AWS doesn't
+// take, and an analytics configuration ARN AWS denies the call on. Each is a request AWS rejected and applied none of, and a read or delete of settings or a Voice
 // Connector AWS doesn't have means AWS has no such resource.
 func Test_Replay_Errors(t *testing.T) {
 	s, api, wait := replay(t, "testdata/errors.json")
@@ -155,6 +155,13 @@ func Test_Replay_Errors(t *testing.T) {
 	}
 	_, err = routes.Create(ctx, native.CreateRequest{Region: awsreplay.Region, Properties: origination(vc, routeList...)})
 	requireRejected(t, err, "more than 10")
+
+	_, err = routes.Create(ctx, native.CreateRequest{Region: awsreplay.Region, Properties: origination(vc, route("203.0.113.10", 1, 1))})
+	requireRejected(t, err, "not permitted")
+	_, err = streams.Create(ctx, native.CreateRequest{Region: awsreplay.Region, Properties: streaming(vc, map[string]any{
+		"DataRetentionInHours": 1, "Disabled": false, "MediaInsightsConfiguration": map[string]any{"ConfigurationArn": "bogus"},
+	})})
+	requireRejected(t, err, accessDeniedCode)
 
 	_, err = streams.Read(ctx, awsreplay.Region, vc)
 	require.ErrorIs(t, err, native.ErrNotFound)

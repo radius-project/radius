@@ -24,7 +24,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/chimesdkvoice/types"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
-	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
 
 const (
@@ -79,7 +78,7 @@ func (h *Termination) put(ctx context.Context, region string, identifier string,
 		Termination:      &settings,
 	}, inRegion(region))
 	if err != nil {
-		return awsapi.Rejected(err)
+		return sendFailed(err)
 	}
 	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, terminationProperty, out.Termination))
 	return nil
@@ -119,12 +118,12 @@ func (h *Termination) List(ctx context.Context, region string) ([]native.Resourc
 	return nil, cantList(terminationType)
 }
 
-// Progress reports a create as done once a read finds the settings, an update as done, because the Put waited until a
+// Progress reports a create as done once a read finds the settings, after a few tries, an update as done, because the Put waited until a
 // read showed it, and a delete as done, with ErrNotFound, once a read no longer finds them.
 func (h *Termination) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	switch op {
 	case native.OperationCreate:
-		return createProgress(ctx, h.Read, region, identifier)
+		return createProgress(ctx, h.wait, h.Read, region, identifier)
 	case native.OperationDelete:
 		return deleteProgress(ctx, h.Read, region, identifier)
 	}
