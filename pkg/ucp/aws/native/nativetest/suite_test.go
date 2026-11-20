@@ -148,6 +148,20 @@ func Test_Suite_Settings(t *testing.T) {
 	}
 }
 
+// Test_Suite_AlwaysPresent runs the suite for a setting AWS always has, at its default until a deploy changes it, and
+// back at the default after a delete resets it. The first deploy takes it over and updates it.
+func Test_Suite_AlwaysPresent(t *testing.T) {
+	defaults := map[string]any{"Id": "default", "MinimumLength": 8}
+	suite := settingSuite(schemas.OnDeleteReset, schemas.IdentityScopeAccount, defaults)
+	settings := suite.NewHandler
+	suite.NewHandler = func(store *awsfake.CloudControl) native.Handler {
+		store.Put(suite.TypeName, "default", defaults)
+		return settings(store)
+	}
+	suite.AlwaysPresent = true
+	Run(t, suite)
+}
+
 // assignedSchema is the schema of a type whose identifier, Id, AWS assigns.
 func assignedSchema(typeName string) string {
 	return `{
