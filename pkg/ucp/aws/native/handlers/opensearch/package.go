@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -75,17 +76,26 @@ type PackageAPI interface {
 	ListPackagesForDomain(ctx context.Context, params *opensearch.ListPackagesForDomainInput, optFns ...func(*opensearch.Options)) (*opensearch.ListPackagesForDomainOutput, error)
 }
 
+// PackageAccountAPI is the part of the STS client the package handler uses, to learn the current account.
+type PackageAccountAPI interface {
+	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+}
+
+var stsInRegion = awsapi.InRegion[sts.Options]
+
 // Package serves AWS::OpenSearchService::Package: a dictionary, plugin, license, or configuration file AWS imports
 // from S3 for domains to use. Its identifier, PackageID, is the ID AWS assigns. CreatePackage takes no idempotency
 // token, but AWS keeps package names unique, so a lost create is found by its name (see Find). Every update imports
 // PackageSource again, which makes a new package version.
 type Package struct {
-	api PackageAPI
+	api      PackageAPI
+	accounts PackageAccountAPI
 }
 
-// NewPackage returns the handler for OpenSearch Service packages.
-func NewPackage(api PackageAPI) *Package {
-	return &Package{api: api}
+// NewPackage returns the handler for OpenSearch Service packages. It learns the current account with accounts, so a
+// lost create is never found in a package another owner has.
+func NewPackage(api PackageAPI, accounts PackageAccountAPI) *Package {
+	return &Package{api: api, accounts: accounts}
 }
 
 // TypeName returns AWS::OpenSearchService::Package.
@@ -294,10 +304,12 @@ func (h *Package) Create(ctx context.Context, request native.CreateRequest) (str
 	return aws.ToString(out.PackageDetails.PackageID), nil
 }
 
-// Find returns the package a lost create made: the one AWS has with the template's name, type, and engine version,
-// when the template sets one. AWS keeps names unique, except that the docs have a plugin keep its name across engine
-// versions. A package whose other create-only values differ from the template's is another package, so Find fails
-// rather than take it as the template's. request.Properties have no write-only values, so Find reads none.
+// Find returns the package a lost create made: the one the current account owns with the template's name, type, and
+// engine version, when the template sets one. AWS keeps names unique, except that the docs have a plugin keep its
+// name across engine versions. DescribePackages also returns AWS's own packages and packages other accounts share, so
+// Find leaves out every package whose PackageOwner isn't the account. A package whose other create-only values differ
+// from the template's is another package, so Find fails rather than take it as the template's. request.Properties
+// have no write-only values, so Find reads none.
 func (h *Package) Find(ctx context.Context, request native.CreateRequest) (string, error) {
 	name := awsapi.String(request.Properties, "PackageName")
 	if !packageNamePattern.MatchString(name) {
@@ -319,6 +331,17 @@ func (h *Package) Find(ctx context.Context, request native.CreateRequest) (strin
 			continue
 		}
 		matches = append(matches, p)
+	}
+	if len(matches) > 0 {
+		out, err := h.accounts.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}, stsInRegion(request.Region))
+		if err != nil {
+			return "", err
+		}
+		account := aws.ToString(out.Account)
+		if account == "" {
+			return "", fmt.Errorf("STS returned no account ID for the AWS credentials, so Radius can't tell which OpenSearch Service packages the account owns")
+		}
+		matches = slices.DeleteFunc(matches, func(p types.PackageDetails) bool { return aws.ToString(p.PackageOwner) != account })
 	}
 	switch len(matches) {
 	case 0:

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -46,6 +47,7 @@ func requireReplayFailure(t *testing.T, err error, conflict bool, code string) {
 // version, and deletes it, against AWS's responses.
 func Test_Replay_Package(t *testing.T) {
 	s := awsreplay.New(t, "testdata/package.json")
+	cfg := s.Config(t.Context())
 	bucket := s.Input("RADIUS_REC_PACKAGE_BUCKET")
 	properties := map[string]any{
 		"PackageName":        "radius-rec-synonyms",
@@ -63,7 +65,7 @@ func Test_Replay_Package(t *testing.T) {
 		return out
 	}
 	nativetest.Lifecycle{
-		Handler:     NewPackage(opensearch.NewFromConfig(s.Config(t.Context()))),
+		Handler:     NewPackage(opensearch.NewFromConfig(cfg), sts.NewFromConfig(cfg)),
 		Session:     s,
 		Properties:  properties,
 		Want:        without(properties, map[string]any{"PackageStatus": "AVAILABLE", "AvailablePackageVersion": "v1"}),
@@ -79,7 +81,8 @@ func Test_Replay_Package(t *testing.T) {
 // with 409 ResourceNotFoundException must be not found.
 func Test_Replay_PackageErrors(t *testing.T) {
 	s := awsreplay.New(t, "testdata/packageerrors.json")
-	h := NewPackage(opensearch.NewFromConfig(s.Config(t.Context())))
+	cfg := s.Config(t.Context())
+	h := NewPackage(opensearch.NewFromConfig(cfg), sts.NewFromConfig(cfg))
 	bucket := s.Input("RADIUS_REC_PACKAGE_BUCKET")
 	properties := map[string]any{
 		"PackageName":   "radius-rec-synonyms",

@@ -92,7 +92,7 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
-		opensearch.NewPackage(opensearchAPI),
+		opensearch.NewPackage(opensearchAPI, stsAPI),
 		opensearch.NewPackageAssociation(opensearchAPI),
 	}
 }

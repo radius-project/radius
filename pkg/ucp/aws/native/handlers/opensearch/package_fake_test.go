@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -195,7 +196,10 @@ type pkgAssocChange struct {
 	end    types.DomainPackageStatus
 }
 
-var _ PackageAPI = (*pkgFake)(nil)
+var (
+	_ PackageAPI        = (*pkgFake)(nil)
+	_ PackageAccountAPI = (*pkgFake)(nil)
+)
 
 func newPkgFake(store *awsfake.CloudControl) *pkgFake {
 	return &pkgFake{
@@ -923,4 +927,13 @@ func (f *pkgFake) ListPackagesForDomain(ctx context.Context, in *opensearch.List
 		f.settleAssoc(aws.ToString(d.DomainName) + "|" + aws.ToString(d.PackageID))
 	}
 	return &opensearch.ListPackagesForDomainOutput{DomainPackageDetailsList: items, NextToken: next}, nil
+}
+
+func (f *pkgFake) GetCallerIdentity(ctx context.Context, in *sts.GetCallerIdentityInput, _ ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.begin("GetCallerIdentity"); err != nil {
+		return nil, err
+	}
+	return &sts.GetCallerIdentityOutput{Account: aws.String(pkgAccount)}, nil
 }

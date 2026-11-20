@@ -28,6 +28,7 @@ import (
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
@@ -74,7 +75,8 @@ func Test_Suite_Package(t *testing.T) {
 		Metadata:    readSchemaFile(t, "aws-opensearchservice-package.metadata.json"),
 		HandWritten: true,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			return NewPackage(newPkgFake(store))
+			api := newPkgFake(store)
+			return NewPackage(api, api)
 		},
 		IdentifierProperty: "PackageID",
 		WriteOnly:          []string{"PackageSource", "PackageConfiguration"},
@@ -140,7 +142,7 @@ func Test_Suite_PackageAssociation(t *testing.T) {
 
 func newPackageHandler() (*Package, *pkgFake) {
 	api := newPkgFake(awsfake.NewCloudControl())
-	return NewPackage(api), api
+	return NewPackage(api, api), api
 }
 
 // pkgWait polls the progress of op until it is done, and fails the test if it never is.
@@ -321,7 +323,7 @@ func Test_Package_UpdateDescription(t *testing.T) {
 	h, api := newPackageHandler()
 	id := createPackage(t, h, dictionaryTemplate())
 	updates := &updateInputs{pkgFake: api}
-	h = NewPackage(updates)
+	h = NewPackage(updates, updates)
 
 	require.Nil(t, updatePackage(t, h, packageUpdate(t, h, id, withProps(dictionaryTemplate(), map[string]any{"PackageDescription": "Synonyms 2"}))).Failure)
 	require.Equal(t, "synonyms.txt", aws.ToString(updates.inputs[0].PackageSource.S3Key))
@@ -425,10 +427,13 @@ func Test_Package_Find(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, found)
 
-	// AWS's own plugin with the name isn't a dictionary.
+	// AWS's own plugin with the name isn't a dictionary, and isn't this account's plugin either.
 	found, err = find(withProps(withoutSource(dictionaryTemplate()), map[string]any{"PackageName": "analysis-icu"}))
 	require.NoError(t, err)
 	require.Empty(t, found)
+	found, err = find(map[string]any{"PackageName": "analysis-icu", "PackageType": "ZIP-PLUGIN", "EngineVersion": "OpenSearch_2.15"})
+	require.NoError(t, err)
+	require.Empty(t, found, "a lost create never takes a package another owner has")
 
 	_, err = find(withProps(withoutSource(dictionaryTemplate()), map[string]any{"PackageVendingOptions": map[string]any{"VendingEnabled": true}}))
 	requirePkgRejectedBefore(t, err, "VendingEnabled")
@@ -523,9 +528,9 @@ func (o *pkgOddAnswers) DescribePackages(ctx context.Context, in *opensearch.Des
 
 func Test_Package_OddAnswers(t *testing.T) {
 	api := newPkgFake(awsfake.NewCloudControl())
-	id := createPackage(t, NewPackage(api), dictionaryTemplate())
+	id := createPackage(t, NewPackage(api, api), dictionaryTemplate())
 	o := &pkgOddAnswers{pkgFake: api, status: types.PackageStatusDeleteFailed}
-	h := NewPackage(o)
+	h := NewPackage(o, o)
 
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: dictionaryTemplate()})
 	require.ErrorContains(t, err, "returned no ID")
@@ -546,7 +551,7 @@ func Test_Package_OddAnswers(t *testing.T) {
 
 	// Packages AWS returns that the filter didn't ask for are left out.
 	o.status, o.noFilter = "", true
-	other := createPackage(t, NewPackage(api), withProps(dictionaryTemplate(), map[string]any{"PackageName": "dictionary-2"}))
+	other := createPackage(t, NewPackage(api, api), withProps(dictionaryTemplate(), map[string]any{"PackageName": "dictionary-2"}))
 	read, err := h.Read(t.Context(), pkgRegion, other)
 	require.NoError(t, err)
 	require.Equal(t, other, read["PackageID"])
@@ -644,4 +649,25 @@ func Test_Package_NewUpdateWhileImporting(t *testing.T) {
 	api.changes[id].status = types.PackageStatusDeleting
 	_, err = h.UpdateState(t.Context(), pkgRegion, id)
 	requirePkgRejected(t, err)
+}
+
+// Test_Package_FindAccountFails checks that Find fails, rather than take or skip a package, when STS can't tell the
+// current account.
+func Test_Package_FindAccountFails(t *testing.T) {
+	h, api := newPackageHandler()
+	createPackage(t, h, dictionaryTemplate())
+	request := native.CreateRequest{Region: pkgRegion, Properties: map[string]any{"PackageName": "dictionary", "PackageType": "TXT-DICTIONARY"}}
+	api.errs["GetCallerIdentity"] = errors.New("expired credentials")
+	_, err := h.Find(t.Context(), request)
+	require.ErrorContains(t, err, "expired credentials")
+
+	_, err = NewPackage(api, noAccount{}).Find(t.Context(), request)
+	require.ErrorContains(t, err, "no account ID")
+}
+
+// noAccount is an STS API that returns no account.
+type noAccount struct{}
+
+func (noAccount) GetCallerIdentity(context.Context, *sts.GetCallerIdentityInput, ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+	return &sts.GetCallerIdentityOutput{}, nil
 }

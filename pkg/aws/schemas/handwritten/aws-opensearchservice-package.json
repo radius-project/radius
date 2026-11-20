@@ -172,7 +172,8 @@
       "permissions": [
         "es:CreatePackage",
         "es:DescribePackages",
-        "s3:GetObject"
+        "s3:GetObject",
+        "sts:GetCallerIdentity"
       ],
       "timeoutInMinutes": 60
     },
@@ -188,7 +189,11 @@
       "timeoutInMinutes": 60
     },
     "delete": {
-      "permissions": ["es:DeletePackage", "es:DescribePackages"],
+      "permissions": [
+        "es:DeletePackage",
+        "es:DescribePackages",
+        "sts:GetCallerIdentity"
+      ],
       "timeoutInMinutes": 60
     }
   }

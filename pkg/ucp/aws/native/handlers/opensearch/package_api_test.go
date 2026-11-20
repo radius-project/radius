@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
@@ -476,6 +477,26 @@ var packageAPI = map[string]nativetest.Call{
 		},
 		Unclear: "Whether AWS deletes a package it is still importing or deleting, and with what error: the fake rejects it " +
 			"with BaseException. How long a delete takes: the fake reports DELETING for two reads, then DELETED for two more.",
+	},
+	"GetCallerIdentity": {
+		Doc: "https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html",
+		Rules: []nativetest.Rule{
+			{
+				Rule: "the call needs no permissions and returns the account that owns the caller",
+				Check: pkgAgainst(func(ctx context.Context, f *pkgFake) error {
+					out, err := f.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+					if err != nil {
+						return err
+					}
+					if aws.ToString(out.Account) != pkgAccount {
+						return fmt.Errorf("the call returned the account %q", aws.ToString(out.Account))
+					}
+					return nil
+				}),
+			},
+		},
+		Unclear: "The OpenSearch docs don't say what PackageOwner holds: the fake reports the account ID for the account's " +
+			"packages and AWS for AWS's, and the handler takes only packages whose owner is the account ID.",
 	},
 }
 
