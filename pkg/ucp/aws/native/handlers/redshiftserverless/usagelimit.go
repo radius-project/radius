@@ -223,8 +223,8 @@ func (h *UsageLimit) Create(ctx context.Context, request native.CreateRequest) (
 }
 
 // Find returns the ID of the usage limit with the values of the create request, AWS's defaults for the ones it leaves
-// out, or "" when AWS has none. It fails when more than one limit has them, because UCP can't tell which one the lost
-// create made.
+// out, or "" when AWS has none. Limits another alias holds are left out, because AWS accepts identical limits. It fails
+// when more than one limit is left, because UCP can't tell which one the lost create made.
 func (h *UsageLimit) Find(ctx context.Context, request native.CreateRequest) (string, error) {
 	p := request.Properties
 	want, ok := amount(p["Amount"])
@@ -254,10 +254,21 @@ func (h *UsageLimit) Find(ctx context.Context, request native.CreateRequest) (st
 			return "", err
 		}
 		for _, l := range page.UsageLimits {
-			if aws.ToString(l.ResourceArn) == aws.ToString(input.ResourceArn) && l.UsageType == input.UsageType &&
-				aws.ToInt64(l.Amount) == want && string(l.Period) == period && string(l.BreachAction) == action {
-				found = append(found, aws.ToString(l.UsageLimitId))
+			if aws.ToString(l.ResourceArn) != aws.ToString(input.ResourceArn) || l.UsageType != input.UsageType ||
+				aws.ToInt64(l.Amount) != want || string(l.Period) != period || string(l.BreachAction) != action {
+				continue
 			}
+			id := aws.ToString(l.UsageLimitId)
+			if request.Held != nil {
+				held, err := request.Held(ctx, id)
+				if err != nil {
+					return "", err
+				}
+				if held {
+					continue
+				}
+			}
+			found = append(found, id)
 		}
 	}
 	switch len(found) {

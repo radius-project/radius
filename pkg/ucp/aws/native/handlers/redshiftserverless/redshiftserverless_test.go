@@ -99,6 +99,7 @@ func Test_Suite_UsageLimit(t *testing.T) {
 		Changed:            with(limit, map[string]any{"Amount": float64(20)}),
 		CreateOnlyChange:   with(limit, map[string]any{"Period": "weekly"}),
 		Duplicates:         true,
+		FindSkipsHeld:      true,
 		Invalid: []map[string]any{
 			with(limit, map[string]any{"Amount": float64(0)}),
 			with(limit, map[string]any{"Amount": 1.5}),

@@ -378,11 +378,7 @@ func saveError(id resources.ID, err error) (armrpc_rest.Response, error) {
 // two aliases never manage the same AWS resource. For a type whose metadata sets identityScope to account, that
 // includes an alias in another region.
 func (e *engine) checkIdentifier(ctx context.Context, r *request, identifier string) (armrpc_rest.Response, error) {
-	scope := schemas.IdentityScopeRegion
-	if r.native != nil {
-		scope = r.native.Metadata.IdentityScope
-	}
-	holder, err := e.store.FindByIdentifier(ctx, r.id, identifier, scope)
+	holder, err := e.holderOf(ctx, r, identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -390,6 +386,15 @@ func (e *engine) checkIdentifier(ctx context.Context, r *request, identifier str
 		return conflict("The AWS resource %q is already managed under the alias %q. Reference it with existing instead, or delete it from the other alias first.", identifier, records.AliasOf(holder)), nil
 	}
 	return nil, nil
+}
+
+// holderOf returns the ID of another alias that holds the identifier in the type's identity scope, or "".
+func (e *engine) holderOf(ctx context.Context, r *request, identifier string) (string, error) {
+	scope := schemas.IdentityScopeRegion
+	if r.native != nil {
+		scope = r.native.Metadata.IdentityScope
+	}
+	return e.store.FindByIdentifier(ctx, r.id, identifier, scope)
 }
 
 // readResource reads a resource from AWS by its identifier, through the handler that serves r, without its write-only

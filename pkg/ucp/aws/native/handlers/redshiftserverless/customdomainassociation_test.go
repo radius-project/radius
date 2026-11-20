@@ -178,3 +178,15 @@ func Test_CustomDomain_UpdateRetried(t *testing.T) {
 	err := h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: domainID, Desired: domain, Patch: patchOf(t, "/CustomDomainCertificateArn", testCertificate)})
 	_ = requireFailure(t, err, native.OutcomeRejected, true)
 }
+
+// Test_CustomDomain_CreateConflictUnconfirmed checks that a create AWS answers with ConflictException, whose read to
+// see whether an earlier attempt made the association fails, has an unknown outcome, so UCP keeps the record.
+func Test_CustomDomain_CreateConflictUnconfirmed(t *testing.T) {
+	api := newAPI()
+	api.errs["CreateCustomDomainAssociation"] = fault(conflict, "busy")
+	_, err := NewCustomDomainAssociation(&failSecondGet{fakeAPI: api}).Create(t.Context(), native.CreateRequest{Region: region, Properties: domain})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.Contains(t, failure.Message, "ThrottlingException")
+}

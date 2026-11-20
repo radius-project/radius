@@ -100,12 +100,12 @@ func rejected(what string, err error) error {
 	return awsapi.Rejected(err)
 }
 
-// unconfirmed is the failure of an update AWS answered with ConflictException, err, when the read that would show
-// whether an earlier attempt of it reached AWS failed with readErr. The update may be applied, so its outcome is
-// unknown, and UCP keeps its values as possibly applied.
+// unconfirmed is the failure of a create or an update AWS answered with ConflictException, err, when the read that
+// would show whether an earlier attempt of it reached AWS failed with readErr. It may be applied, so its outcome is
+// unknown, and UCP keeps the record and its values.
 func unconfirmed(err error, readErr error) error {
 	return &native.Failure{
-		Message: fmt.Sprintf("AWS answered the update with %s, and reading the resource to see whether an earlier attempt "+
+		Message: fmt.Sprintf("AWS answered the change with %s, and reading the resource to see whether an earlier attempt "+
 			"of it reached AWS failed: %s. Deploy again.", err.Error(), readErr.Error()),
 		Outcome: native.OutcomeUnknown,
 	}

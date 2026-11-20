@@ -610,7 +610,11 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 	if err != nil {
 		return "", err
 	}
-	return finder.Find(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
+	held := func(ctx context.Context, identifier string) (bool, error) {
+		holder, err := e.holderOf(ctx, r, identifier)
+		return holder != "", err
+	}
+	return finder.Find(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken, Held: held})
 }
 
 // recoverNativeCreate finds the AWS resource of a native first create that may have reached AWS, before a DELETE,

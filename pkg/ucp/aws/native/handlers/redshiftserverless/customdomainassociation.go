@@ -161,12 +161,16 @@ func (h *CustomDomainAssociation) Create(ctx context.Context, request native.Cre
 		// UCP reads AWS by the identifier before it creates an association, so one AWS has now may be the one an
 		// earlier attempt of this create made, such as when the SDK retried a call whose response was lost. The
 		// outcome is then unknown, so UCP keeps the record and the next deploy finds it.
-		if _, getErr := h.get(ctx, request.Region, identifier); getErr == nil {
+		_, getErr := h.get(ctx, request.Region, identifier)
+		switch {
+		case getErr == nil:
 			return "", &native.Failure{
 				Message:     fmt.Sprintf("AWS already associates %s with the workgroup %s, which an earlier attempt of this deploy may have done. Deploy again to manage it: %s", domain, workgroup, err.Error()),
 				ClientError: true,
 				Outcome:     native.OutcomeUnknown,
 			}
+		case !errors.Is(getErr, native.ErrNotFound):
+			return "", unconfirmed(err, getErr)
 		}
 	}
 	if err != nil {

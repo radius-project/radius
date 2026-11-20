@@ -232,6 +232,11 @@ type CreateRequest struct {
 	// idempotency token or tags the create with it. UCP may call Create more than once with the same ClientToken,
 	// including from concurrent requests, and each call must return the same resource without creating a second one.
 	ClientToken string
+
+	// Held, set only for Find, reports whether another alias holds the resource with the identifier. A handler whose
+	// search can match resources other aliases manage, because AWS accepts duplicates, leaves those out before it
+	// counts the matches, so they don't make the search ambiguous.
+	Held func(ctx context.Context, identifier string) (bool, error)
 }
 
 // Recovery is how UCP finds a create it lost after AWS accepted it, such as when UCP stopped before it saved the

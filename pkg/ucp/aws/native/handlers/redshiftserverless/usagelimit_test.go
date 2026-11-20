@@ -209,9 +209,19 @@ func Test_UsageLimit_Find(t *testing.T) {
 		require.Empty(t, found, "%v", other)
 	}
 
-	createdLimit(t, h, minimal)
+	second := createdLimit(t, h, minimal)
 	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: minimal})
 	require.ErrorContains(t, err, "2 usage limits")
+	heldBy := func(held string) func(context.Context, string) (bool, error) {
+		return func(_ context.Context, identifier string) (bool, error) { return identifier == held, nil }
+	}
+	found, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: minimal, Held: heldBy(id)})
+	require.NoError(t, err)
+	require.Equal(t, second, found, "a limit another alias holds isn't the lost create's")
+	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: minimal, Held: func(context.Context, string) (bool, error) {
+		return false, errors.New("the store failed")
+	}})
+	require.ErrorContains(t, err, "the store failed")
 
 	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: with(minimal, map[string]any{"Amount": "ten"})})
 	_ = requireFailure(t, err, native.OutcomeRejected, false)
