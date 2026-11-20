@@ -581,3 +581,45 @@ func Test_RegionOptions(t *testing.T) {
 	ec2InRegion("eu-west-3")(&ec2Opts)
 	require.Equal(t, "eu-west-3", ec2Opts.Region)
 }
+
+// Test_Package_UpdateResent checks that an update UCP sends again, with the state it saved before the first attempt,
+// sends nothing when that attempt already reached AWS, and waits for that attempt's import instead of taking a version
+// AWS shows before a second import as done.
+func Test_Package_UpdateResent(t *testing.T) {
+	h, api := newPackageHandler()
+	id := createPackage(t, h, dictionaryTemplate())
+	request := packageUpdate(t, h, id, withProps(dictionaryTemplate(), map[string]any{"PackageSource": source("synonyms-2.txt")}))
+	state, err := h.UpdateState(t.Context(), pkgRegion, id)
+	require.NoError(t, err)
+	request.State = state
+	require.NoError(t, h.Update(t.Context(), request))
+
+	// The response was lost while AWS imported the file. UCP sends the same update again while AWS still imports it.
+	for range 3 {
+		_, err := h.Read(t.Context(), pkgRegion, id)
+		require.NoError(t, err)
+		require.NoError(t, h.Update(t.Context(), request))
+	}
+	require.Equal(t, 1, api.calls["UpdatePackage"])
+	p, err := h.UpdateProgress(t.Context(), pkgRegion, id, state)
+	require.NoError(t, err)
+	for !p.Done {
+		p, err = h.UpdateProgress(t.Context(), pkgRegion, id, state)
+		require.NoError(t, err)
+	}
+	require.Nil(t, p.Failure)
+
+	// And once after it finished.
+	require.NoError(t, h.Update(t.Context(), request))
+	require.Equal(t, 1, api.calls["UpdatePackage"])
+	p, err = h.UpdateProgress(t.Context(), pkgRegion, id, state)
+	require.NoError(t, err)
+	require.True(t, p.Done)
+	read, err := h.Read(t.Context(), pkgRegion, id)
+	require.NoError(t, err)
+	require.Equal(t, "v2", read["AvailablePackageVersion"])
+
+	request.State = "{"
+	requirePkgRejectedBefore(t, h.Update(t.Context(), request), "saved version")
+	require.Equal(t, 1, api.calls["UpdatePackage"])
+}

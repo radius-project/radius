@@ -191,6 +191,7 @@ func Test_PackageAssociation_Failures(t *testing.T) {
 	require.NotNil(t, p.Failure)
 	require.Equal(t, "ASSOCIATION_FAILED", p.State)
 	require.Contains(t, p.Failure.Message, "an index uses the package")
+	require.Equal(t, native.OutcomeRejected, p.Failure.Outcome, "the domain doesn't have the package, so the next deploy associates it again")
 
 	createAssociation(t, h, properties)
 	require.Equal(t, 2, api.calls["AssociatePackage"])

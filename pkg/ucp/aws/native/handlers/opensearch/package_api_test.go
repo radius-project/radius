@@ -273,6 +273,12 @@ var packageAPI = map[string]nativetest.Call{
 				Code:  "ResourceAlreadyExistsException",
 			},
 			{
+				Rule:  "a plugin whose EngineVersion is left out gets the default one, so a second such plugin with the name fails with ResourceAlreadyExistsException",
+				Doc:   pkgAPIReference + "API_PackageDetails.html",
+				Break: pkgAgainst(createPkg(asPlugin("")), createPkg(asPlugin(""))),
+				Code:  "ResourceAlreadyExistsException",
+			},
+			{
 				Rule:  "a plugin keeps its package name across engine versions",
 				Doc:   pluginsGuide,
 				Check: pkgAgainst(createPkg(asPlugin("OpenSearch_2.15")), createPkg(asPlugin("OpenSearch_2.17"))),

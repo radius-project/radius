@@ -58,6 +58,9 @@ const (
 	// rule but name no error for it.
 	pkgBaseCode = "BaseException"
 
+	// pkgLatestEngine is the latest engine version, which a plugin created without one gets.
+	pkgLatestEngine = "OpenSearch_2.17"
+
 	// pkgBucket is the S3 bucket the fake's package files are in.
 	pkgBucket = "radius-packages"
 )
@@ -455,12 +458,17 @@ func (f *pkgFake) CreatePackage(ctx context.Context, in *opensearch.CreatePackag
 	if o := in.PackageVendingOptions; o != nil && o.VendingEnabled == nil {
 		return nil, pkgFault(pkgValidationCode, "VendingEnabled is required")
 	}
+	engine := aws.ToString(in.EngineVersion)
+	if engine == "" && in.PackageType == types.PackageTypeZipPlugin {
+		// The docs say EngineVersion defaults to the latest version of OpenSearch.
+		engine = pkgLatestEngine
+	}
 	for _, id := range f.packageIDs() {
 		p := f.lookup(id)
 		if p == nil || aws.ToString(p.PackageName) != name || aws.ToString(p.PackageOwner) != pkgAccount {
 			continue
 		}
-		if p.PackageType == types.PackageTypeZipPlugin && in.PackageType == types.PackageTypeZipPlugin && aws.ToString(p.EngineVersion) != aws.ToString(in.EngineVersion) {
+		if p.PackageType == types.PackageTypeZipPlugin && in.PackageType == types.PackageTypeZipPlugin && aws.ToString(p.EngineVersion) != engine {
 			continue
 		}
 		return nil, pkgFault("ResourceAlreadyExistsException", "a package named %q already exists", name)
@@ -471,11 +479,8 @@ func (f *pkgFake) CreatePackage(ctx context.Context, in *opensearch.CreatePackag
 		id = fmt.Sprintf("F%09d", f.nextID)
 	}
 	properties := map[string]any{"PackageID": id, "PackageName": name, "PackageType": string(in.PackageType), "PackageOwner": pkgAccount}
-	if in.EngineVersion != nil {
-		properties["EngineVersion"] = *in.EngineVersion
-	} else if in.PackageType == types.PackageTypeZipPlugin {
-		// The docs say EngineVersion defaults to the latest version of OpenSearch.
-		properties["EngineVersion"] = "OpenSearch_2.17"
+	if engine != "" {
+		properties["EngineVersion"] = engine
 	}
 	if d := aws.ToString(in.PackageDescription); d != "" {
 		properties["PackageDescription"] = d

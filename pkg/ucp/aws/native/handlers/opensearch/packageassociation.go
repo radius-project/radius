@@ -320,10 +320,10 @@ func (h *PackageAssociation) List(ctx context.Context, region string) ([]native.
 	return nil, nil
 }
 
-// Progress reads the domain's packages. A create waits for ACTIVE and fails at ASSOCIATION_FAILED, which leaves the
-// association listed, so the record stays and a later deploy associates it again. A delete waits until the domain
-// no longer lists the package, when Progress returns ErrNotFound, and fails at DISSOCIATION_FAILED. An update changes
-// nothing.
+// Progress reads the domain's packages. A create waits for ACTIVE and fails at ASSOCIATION_FAILED as rejected: the
+// domain doesn't have the package, so the next deploy sends the create again, which associates it again. A delete
+// waits until the domain no longer lists the package, when Progress returns ErrNotFound, and fails at
+// DISSOCIATION_FAILED. An update changes nothing.
 func (h *PackageAssociation) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	if op == native.OperationUpdate {
 		return native.Progress{Done: true}, nil
@@ -346,9 +346,10 @@ func (h *PackageAssociation) Progress(ctx context.Context, region string, identi
 		case types.DomainPackageStatusActive:
 			return native.Progress{Done: true, State: status}, nil
 		case types.DomainPackageStatusAssociationFailed:
+			// The domain doesn't have the package, so AWS changed nothing, and the next deploy associates it again.
 			return native.Progress{Done: true, State: status, Failure: &native.Failure{Message: fmt.Sprintf(
 				"AWS failed to associate the package %s with the domain %q%s. Check that the package is AVAILABLE and fits the domain's engine version, then deploy again",
-				id.packageID, id.domain, details)}}, nil
+				id.packageID, id.domain, details), Outcome: native.OutcomeRejected}}, nil
 		}
 		return native.Progress{State: status, Waiting: string(types.DomainPackageStatusActive)}, nil
 	}

@@ -368,7 +368,9 @@ func removesPath(request native.UpdateRequest, path string) bool {
 
 // Update imports PackageSource again with the template's description and encryption options, which makes a new
 // package version. UpdatePackage requires PackageSource, so every update sends it. A removed description is sent as
-// an empty one. AWS doesn't say how to remove encryption options, so an update that removes them is rejected.
+// an empty one. AWS doesn't say how to remove encryption options, so an update that removes them is rejected. An
+// update sent again after the package moved on from the version UpdateState saved sends nothing, because an earlier
+// attempt of it reached AWS.
 func (h *Package) Update(ctx context.Context, request native.UpdateRequest) error {
 	in, err := sendable(request.Desired)
 	if err != nil {
@@ -380,6 +382,17 @@ func (h *Package) Update(ctx context.Context, request native.UpdateRequest) erro
 	p, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
 		return beforeChange(err)
+	}
+	if request.State != "" {
+		before, err := savedVersion(request.Identifier, request.State)
+		if err != nil {
+			return beforeChange(err)
+		}
+		if before.changedTo(versionOf(p)) {
+			// UCP sends an update again, with the state it saved before the first attempt, when it can't tell whether
+			// that attempt reached AWS. The package has moved on since, so it did, and UpdateProgress waits for it.
+			return nil
+		}
 	}
 	switch p.PackageStatus {
 	case types.PackageStatusCopying, types.PackageStatusValidating:
@@ -408,6 +421,20 @@ type packageVersion struct {
 	Updated time.Time `json:"updated"`
 }
 
+// changedTo reports whether the package's version, status, or update time moved on from v to now.
+func (v packageVersion) changedTo(now packageVersion) bool {
+	return now.Version != v.Version || now.Status != v.Status || !now.Updated.Equal(v.Updated)
+}
+
+// savedVersion returns the version UpdateState saved for the package.
+func savedVersion(identifier string, state string) (packageVersion, error) {
+	var v packageVersion
+	if err := json.Unmarshal([]byte(state), &v); err != nil {
+		return v, fmt.Errorf("failed to read the saved version of the OpenSearch Service package %q: %w", identifier, err)
+	}
+	return v, nil
+}
+
 func versionOf(p *types.PackageDetails) packageVersion {
 	return packageVersion{Version: aws.ToString(p.AvailablePackageVersion), Status: string(p.PackageStatus), Updated: aws.ToTime(p.LastUpdatedAt)}
 }
@@ -432,8 +459,8 @@ func (h *Package) UpdateProgress(ctx context.Context, region string, identifier 
 	}
 	var before packageVersion
 	if state != "" {
-		if err := json.Unmarshal([]byte(state), &before); err != nil {
-			return native.Progress{}, fmt.Errorf("failed to read the saved version of the OpenSearch Service package %q: %w", identifier, err)
+		if before, err = savedVersion(identifier, state); err != nil {
+			return native.Progress{}, err
 		}
 	}
 	now := versionOf(p)
@@ -462,7 +489,11 @@ func packageFailed(p *types.PackageDetails, what string) native.Progress {
 	if d := p.ErrorDetails; d != nil {
 		message += fmt.Sprintf(": %s: %s", aws.ToString(d.ErrorType), aws.ToString(d.ErrorMessage))
 	}
-	message += ". Check PackageSource and the file it points to, then deploy again, or delete the resource to remove the package"
+	if what == "create" {
+		message += ". Fix the file PackageSource points to, then delete the resource, which removes the failed package, and deploy again"
+	} else {
+		message += ". Fix the file PackageSource points to and deploy again. If AWS rejects that update, delete the resource and deploy again"
+	}
 	return native.Progress{Done: true, State: string(p.PackageStatus), Failure: &native.Failure{Message: message}}
 }
 
