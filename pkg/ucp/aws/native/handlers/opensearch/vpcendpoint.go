@@ -372,11 +372,18 @@ func (h *VpcEndpoint) Progress(ctx context.Context, region string, identifier st
 	return native.Progress{State: status, Waiting: "deleted"}, nil
 }
 
-// endpointProgress names the endpoint in the failure of a create or update.
+// endpointProgress names the endpoint in the failure of a create or update, and what to do next. AWS keeps an
+// endpoint it failed to create, and a create sent again with the record's client token returns that endpoint, so the
+// resource must be deleted before a deploy can create it again. A failed update is sent again by the next deploy.
 func endpointProgress(p native.Progress, identifier string, what string) native.Progress {
-	if p.Failure != nil {
-		p.Failure.Message = fmt.Sprintf("AWS failed to %s the OpenSearch Service VPC endpoint %q (%s). Check the subnets, security groups, and the domain's access, "+
-			"then deploy again, or delete the resource to remove the endpoint", what, identifier, p.State)
+	if p.Failure == nil {
+		return p
 	}
+	next := "Then deploy again"
+	if what == "create" {
+		next = "Delete the resource first, which deletes the failed endpoint, then deploy again"
+	}
+	p.Failure.Message = fmt.Sprintf("AWS failed to %s the OpenSearch Service VPC endpoint %q (%s). Check the subnets, security groups, and the domain's access. %s",
+		what, identifier, p.State, next)
 	return p
 }

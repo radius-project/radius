@@ -278,6 +278,7 @@ func Test_VpcEndpoint_CreateFailed(t *testing.T) {
 	require.NotNil(t, p.Failure)
 	require.Contains(t, p.Failure.Message, id)
 	require.Contains(t, p.Failure.Message, "CREATE_FAILED")
+	require.Contains(t, p.Failure.Message, "Delete the resource first", "a redeploy alone returns the same failed endpoint")
 	require.NoError(t, h.Delete(t.Context(), region, id))
 	wait(t, h, id, native.OperationDelete)
 }
@@ -500,4 +501,19 @@ func Test_VpcEndpoint_ListServerError(t *testing.T) {
 	createEndpointWith(t, NewVpcEndpoint(api, api), endpointTemplate(list("subnet-a"), nil), "a")
 	_, err := NewVpcEndpoint(serverErrors{api}, api).List(t.Context(), region)
 	require.ErrorContains(t, err, "try later")
+}
+
+// Test_VpcEndpoint_UpdateFailed checks that an update AWS reports as failed tells the user to deploy again, which sends
+// the update again.
+func Test_VpcEndpoint_UpdateFailed(t *testing.T) {
+	h, api := newEndpointHandler()
+	id := createEndpointWith(t, h, endpointTemplate(list("subnet-a"), nil), "a")
+	api.status[id] = types.VpcEndpointStatusUpdateFailed
+	p, err := h.Progress(t.Context(), region, id, native.OperationUpdate)
+	require.NoError(t, err)
+	require.True(t, p.Done)
+	require.Contains(t, p.Failure.Message, "UPDATE_FAILED")
+	require.Contains(t, p.Failure.Message, "deploy again")
+	require.NotContains(t, p.Failure.Message, "Delete the resource first")
+	require.NoError(t, h.Update(t.Context(), updateRequest(t, h, id, endpointTemplate(list("subnet-b"), nil))), "a failed update can be sent again")
 }
