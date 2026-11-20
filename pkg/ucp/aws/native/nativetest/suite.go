@@ -198,6 +198,12 @@ type Suite struct {
 	// update instead.
 	AlwaysPresent bool
 
+	// CreateFails is true, with AlwaysPresent, for a resource that is part of something AWS has before any deploy,
+	// such as the running state of an EC2 instance. NewHandler puts the resource Properties names in store. Removing it
+	// from store, as when the instance is terminated outside Radius, leaves nothing UCP can take over, and Create
+	// fails with 400, so a deploy then gets 400 and removes the record.
+	CreateFails bool
+
 	// API records each AWS call the handler makes, by the name of its AWS SDK client method, such as
 	// CreateDBCluster: the call's page in AWS's API reference and the rules AWS documents for it, which the fake must
 	// enforce. It is nil for a handler that makes no AWS SDK calls, such as nativefake's.
@@ -290,6 +296,8 @@ func Run(t *testing.T, s Suite) {
 		suffix := map[bool]string{true: "after the create reached AWS", false: "before the create reached AWS"}[reached]
 		t.Run("deploy again "+suffix, func(t *testing.T) { s.lostCreate(t, reached) })
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
+		suffix = map[bool]string{true: "after the update reached AWS", false: "before the update reached AWS"}[reached]
+		t.Run("deploy again "+suffix, func(t *testing.T) { s.lostUpdate(t, reached) })
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	t.Run("delete fails after it finds a lost create", func(t *testing.T) { s.lostCreateFailedDelete(t) })
@@ -387,6 +395,13 @@ func (s Suite) deletedOutsideRadius(t *testing.T) {
 	h.deploy(s.Properties)
 	h.cc.Remove(s.TypeName, h.identifier())
 
+	if s.CreateFails {
+		resp := h.put(s.Properties)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Nil(t, h.record(), "the resource is gone, so the record is removed")
+		require.Zero(t, h.cc.Count(s.TypeName), "UCP can't create the resource")
+		return
+	}
 	h.deploy(s.Properties)
 	requireSubset(t, s.readable(s.Properties), h.stored())
 	require.Equal(t, 1, h.cc.Count(s.TypeName))
@@ -443,8 +458,13 @@ func (s Suite) changedOutside(t *testing.T, takeOver bool) {
 	}
 	h := s.newHarness(t)
 	if takeOver {
-		identifier, err := h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: c.Properties, ClientToken: uuid.NewString()})
-		require.NoError(t, err)
+		// NewHandler already put the resource of a type whose create fails in AWS.
+		identifier := h.identifier()
+		if !s.CreateFails {
+			var err error
+			identifier, err = h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: c.Properties, ClientToken: uuid.NewString()})
+			require.NoError(t, err)
+		}
 		h.cc.Put(s.TypeName, identifier, c.Change(h.cc.Resource(s.TypeName, identifier)))
 		resp := h.do(h.putFactory(), http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": c.Properties})
 		require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
@@ -738,6 +758,25 @@ func (s Suite) lostCreate(t *testing.T, reached bool) {
 	if s.Identifier != "" {
 		require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
 	}
+}
+
+// lostUpdate loses the update of the first deploy of a resource AWS always has, after it reached AWS or before, and
+// deploys again. The next deploy reads AWS and finishes the update, and a deploy after that only reads.
+func (s Suite) lostUpdate(t *testing.T, reached bool) {
+	if !s.AlwaysPresent {
+		t.Skip("the first deploy creates the resource")
+	}
+	h := s.newHarness(t)
+	h.handler.lose("Update", reached)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.deployEventually(s.Properties)
+	requireSubset(t, s.readable(s.Properties), h.stored())
+	h.handler.reset()
+	resp = h.put(s.Properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset(), "the update is fully applied")
 }
 
 // lostCreateChangedWriteOnly loses a create that reached AWS, and deploys again with a changed write-only value. UCP
@@ -1122,11 +1161,12 @@ func (s Suite) invalid(t *testing.T) {
 	for _, properties := range s.Invalid {
 		h := s.newHarness(t)
 		h.handler.reset()
+		count := h.cc.Count(s.TypeName)
 		resp := h.put(properties)
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 		require.Empty(t, h.handler.reset(), "nothing reaches AWS")
 		require.Nil(t, h.record())
-		require.Zero(t, h.cc.Count(s.TypeName))
+		require.Equal(t, count, h.cc.Count(s.TypeName), "AWS has no new resource")
 	}
 }
 
@@ -1159,8 +1199,9 @@ func (s Suite) deployBoth(t *testing.T, first map[string]any, second map[string]
 	require.Nil(t, h.recordAt(other))
 	require.Equal(t, 1, h.cc.Count(s.TypeName))
 
+	before := h.stored()
 	h.remove()
-	h.requireRemoved(nil)
+	h.requireRemoved(before)
 }
 
 // sameResourceNames deploys Properties under one alias, and Properties with each of SameResourceNames under another.
@@ -2387,17 +2428,17 @@ func (r *recorder) Create(ctx context.Context, request native.CreateRequest) (st
 
 func (r *recorder) Update(ctx context.Context, request native.UpdateRequest) error {
 	r.note("Update")
-	return r.Handler.Update(ctx, request)
+	return r.lostCall("Update", func() error { return r.Handler.Update(ctx, request) })
 }
 
 func (r *recorder) Delete(ctx context.Context, region string, identifier string) error {
 	r.note("Delete")
-	return r.lostDelete(func() error { return r.Handler.Delete(ctx, region, identifier) })
+	return r.lostCall("Delete", func() error { return r.Handler.Delete(ctx, region, identifier) })
 }
 
-// lostDelete makes a delete call, losing its response as lose set.
-func (r *recorder) lostDelete(call func() error) error {
-	reached, lost := r.takeLoss("Delete")
+// lostCall makes a call to method, losing its response as lose set.
+func (r *recorder) lostCall(method string, call func() error) error {
+	reached, lost := r.takeLoss(method)
 	switch {
 	case lost && !reached:
 		return errLost
@@ -2420,7 +2461,7 @@ func (s scoped) ReadScoped(ctx context.Context, region string, identifier string
 
 func (s scoped) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
 	s.r.note("Delete")
-	return s.r.lostDelete(func() error {
+	return s.r.lostCall("Delete", func() error {
 		return s.r.Handler.(native.ScopedDeleter).DeleteScoped(ctx, region, identifier, managed)
 	})
 }
@@ -2453,7 +2494,7 @@ func (r *recorder) DeleteWithToken(ctx context.Context, region string, identifie
 	if onDelete != nil {
 		onDelete(token)
 	}
-	return r.lostDelete(func() error {
+	return r.lostCall("Delete", func() error {
 		return r.Handler.(native.DeletePreparer).DeleteWithToken(ctx, region, identifier, token)
 	})
 }
