@@ -74,7 +74,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AccessCheckRequest"
+              "$ref": "#/definitions/BoundedAccessCheckRequest"
             }
           }
         ],
@@ -701,7 +701,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AccessCheckRequest"
+              "$ref": "#/definitions/BoundedAccessCheckRequest"
             }
           }
         ],
@@ -1271,13 +1271,11 @@
       "properties": {
         "permission": {
           "$ref": "#/definitions/PermissionName",
-          "description": "The permission being evaluated, up to 256 characters.",
-          "maxLength": 256
+          "description": "The permission being evaluated."
         },
         "target": {
           "type": "string",
-          "description": "The concrete target resource or scope ID, up to 2048 characters including the leading slash.",
-          "maxLength": 2048
+          "description": "The concrete target resource or scope ID."
         }
       },
       "required": [
@@ -1334,14 +1332,13 @@
       "description": "Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.",
       "properties": {
         "principal": {
-          "$ref": "#/definitions/AccessCheckPrincipal",
+          "$ref": "#/definitions/Principal",
           "description": "The principal to check, or the authenticated caller when omitted."
         },
         "checks": {
           "type": "array",
-          "description": "The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.",
+          "description": "The checks to evaluate.",
           "minItems": 1,
-          "maxItems": 100,
           "items": {
             "$ref": "#/definitions/AccessCheck"
           }
@@ -1520,6 +1517,48 @@
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ProxyResource"
         }
+      ]
+    },
+    "BoundedAccessCheck": {
+      "type": "object",
+      "description": "A bounded permission and concrete target for checkAccess input.",
+      "properties": {
+        "permission": {
+          "$ref": "#/definitions/PermissionName",
+          "description": "The permission being evaluated.",
+          "maxLength": 256
+        },
+        "target": {
+          "type": "string",
+          "description": "The concrete target resource or scope ID.",
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "permission",
+        "target"
+      ]
+    },
+    "BoundedAccessCheckRequest": {
+      "type": "object",
+      "description": "Bounded checkAccess input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.",
+      "properties": {
+        "principal": {
+          "$ref": "#/definitions/AccessCheckPrincipal",
+          "description": "The principal to check, or the authenticated caller when omitted."
+        },
+        "checks": {
+          "type": "array",
+          "description": "The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/BoundedAccessCheck"
+          }
+        }
+      },
+      "required": [
+        "checks"
       ]
     },
     "CheckAccessResponse": {

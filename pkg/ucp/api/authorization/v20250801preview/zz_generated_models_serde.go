@@ -526,6 +526,68 @@ func (a *AuthorizationSettingsResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type BoundedAccessCheck.
+func (b BoundedAccessCheck) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "permission", b.Permission)
+	populate(objectMap, "target", b.Target)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type BoundedAccessCheck.
+func (b *BoundedAccessCheck) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %s", b, err.Error())
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "permission":
+			err = unpopulate(val, "Permission", &b.Permission)
+			delete(rawMsg, key)
+		case "target":
+			err = unpopulate(val, "Target", &b.Target)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %s", b, err.Error())
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type BoundedAccessCheckRequest.
+func (b BoundedAccessCheckRequest) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "checks", b.Checks)
+	populate(objectMap, "principal", b.Principal)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type BoundedAccessCheckRequest.
+func (b *BoundedAccessCheckRequest) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %s", b, err.Error())
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "checks":
+			err = unpopulate(val, "Checks", &b.Checks)
+			delete(rawMsg, key)
+		case "principal":
+			err = unpopulate(val, "Principal", &b.Principal)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %s", b, err.Error())
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type CheckAccessResponse.
 func (c CheckAccessResponse) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)

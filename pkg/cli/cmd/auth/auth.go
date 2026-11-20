@@ -72,7 +72,7 @@ func newCommand(factory framework.Factory, operation string) (*cobra.Command, *r
 
 type inspectionClient interface {
 	whoAmI(context.Context) (api.WhoAmIResult, error)
-	checkAccess(context.Context, string, api.AccessCheckRequest) (api.CheckAccessResponse, error)
+	checkAccess(context.Context, string, api.BoundedAccessCheckRequest) (api.CheckAccessResponse, error)
 }
 
 type runner struct {
@@ -169,7 +169,7 @@ func (r *runner) Run(ctx context.Context) error {
 		}
 		return r.output.WriteFormatted(r.format, result, options)
 	}
-	request := api.AccessCheckRequest{}
+	request := api.BoundedAccessCheckRequest{}
 	if r.principal != "" {
 		issuer := r.issuer
 		if issuer == "" {
@@ -195,7 +195,7 @@ func (r *runner) Run(ctx context.Context) error {
 		if len(r.targets) != 0 {
 			target = r.targets[i]
 		}
-		request.Checks = append(request.Checks, &api.AccessCheck{Permission: to.Ptr(action), Target: to.Ptr(target)})
+		request.Checks = append(request.Checks, &api.BoundedAccessCheck{Permission: to.Ptr(action), Target: to.Ptr(target)})
 	}
 	result, err := client.checkAccess(ctx, r.scope, request)
 	if err != nil {
@@ -271,7 +271,7 @@ func validateIdentityResponse(result api.WhoAmIResult) error {
 	return nil
 }
 
-func validateAccessResponse(result api.CheckAccessResponse, request api.AccessCheckRequest) error {
+func validateAccessResponse(result api.CheckAccessResponse, request api.BoundedAccessCheckRequest) error {
 	if !validPrincipal(result.Principal) || !validMode(result.Mode) || result.Generation == nil || *result.Generation < 0 ||
 		len(result.Checks) != len(request.Checks) {
 		return fmt.Errorf("Radius returned an invalid access-check response")
@@ -322,7 +322,7 @@ func (c *apiClient) whoAmI(ctx context.Context) (api.WhoAmIResult, error) {
 	return response.WhoAmIResult, nil
 }
 
-func (c *apiClient) checkAccess(ctx context.Context, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
+func (c *apiClient) checkAccess(ctx context.Context, scope string, request api.BoundedAccessCheckRequest) (api.CheckAccessResponse, error) {
 	var result api.CheckAccessResponse
 	var err error
 	if scope == "/" {

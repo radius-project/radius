@@ -226,10 +226,10 @@ func TestInspectionCommandsWithGeneratedHTTPClients(t *testing.T) {
 					request := requireInspectionRequest(t, requests, method, path)
 					if isCheck {
 						require.Equal(t, "application/json", request.contentType)
-						var body api.AccessCheckRequest
+						var body api.BoundedAccessCheckRequest
 						require.NoError(t, json.Unmarshal(request.body, &body))
 						require.Equal(t, &api.AccessCheckPrincipal{Type: to.Ptr(api.PrincipalTypeGroup), Subject: to.Ptr("developers"), Issuer: to.Ptr("kubernetes:test")}, body.Principal)
-						require.Equal(t, []*api.AccessCheck{
+						require.Equal(t, []*api.BoundedAccessCheck{
 							{Permission: to.Ptr("Radius.Core/applications/read"), Target: &scope},
 							{Permission: to.Ptr("Radius.Core/applications/write"), Target: to.Ptr(scope + "/denied")},
 						}, body.Checks)
@@ -289,8 +289,8 @@ func TestGeneratedHTTPClientErrors(t *testing.T) {
 				if operation == "scoped check" {
 					scope = "/planes/radius/local"
 				}
-				result, callErr := client.checkAccess(t.Context(), scope, api.AccessCheckRequest{
-					Checks: []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: &scope}},
+				result, callErr := client.checkAccess(t.Context(), scope, api.BoundedAccessCheckRequest{
+					Checks: []*api.BoundedAccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: &scope}},
 				})
 				err = callErr
 				require.Equal(t, api.CheckAccessResponse{}, result)
@@ -527,7 +527,7 @@ func TestCheckResponsePrincipalMatchesExplicitRequest(t *testing.T) {
 					require.Len(t, writer.Writes, 1)
 				}
 				request := requireInspectionRequest(t, requests, http.MethodPost, "/providers/Radius.Core/checkAccess")
-				var body api.AccessCheckRequest
+				var body api.BoundedAccessCheckRequest
 				require.NoError(t, json.Unmarshal(request.body, &body))
 				if tt.omit {
 					require.Nil(t, body.Principal)
