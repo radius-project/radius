@@ -294,7 +294,10 @@ func (h *VpcEndpointAccess) Create(ctx context.Context, request native.CreateReq
 	}
 	switch p, err := h.find(ctx, request.Region, id); {
 	case err == nil:
-		return id.String(), sameServiceOptions(id, options, p.ServiceOptions)
+		if err := sameServiceOptions(id, options, p.ServiceOptions); err != nil {
+			return "", err
+		}
+		return id.String(), nil
 	case !errors.Is(err, native.ErrNotFound):
 		return "", beforeChange(err)
 	}
@@ -304,7 +307,7 @@ func (h *VpcEndpointAccess) Create(ctx context.Context, request native.CreateReq
 	} else {
 		input.Service = types.AWSServicePrincipal(id.principal)
 	}
-	if _, err := h.api.AuthorizeVpcEndpointAccess(ctx, input, inRegion(request.Region)); err != nil {
+	if _, err := h.api.AuthorizeVpcEndpointAccess(ctx, input, inRegion(request.Region), sendWithoutRetry); err != nil {
 		return "", awsapi.Rejected(err)
 	}
 	return id.String(), nil
@@ -332,7 +335,7 @@ func (h *VpcEndpointAccess) Delete(ctx context.Context, region string, identifie
 	} else {
 		input.Service = types.AWSServicePrincipal(id.principal)
 	}
-	_, err = h.api.RevokeVpcEndpointAccess(ctx, input, inRegion(region))
+	_, err = h.api.RevokeVpcEndpointAccess(ctx, input, inRegion(region), sendWithoutRetry)
 	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))
 }
 

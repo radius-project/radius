@@ -80,6 +80,14 @@ func (h *VpcEndpoint) Options() native.Options {
 	}
 }
 
+// sendWithoutRetry is the option of a call that changes AWS and takes no idempotency token, so the SDK never sends
+// it again on its own. After a first attempt that reached AWS, a retry fails, such as an update that finds the
+// endpoint UPDATING or an authorization AWS already lists, and UCP would take that as a change AWS rejected. A
+// connection error instead reaches UCP as an unknown outcome, and the next deploy reads what AWS has.
+func sendWithoutRetry(o *opensearch.Options) {
+	o.RetryMaxAttempts = 1
+}
+
 // checkEndpointID returns a client failure for an identifier that isn't a VPC endpoint ID, so it is never sent.
 func checkEndpointID(identifier string) error {
 	if len(identifier) < 5 || len(identifier) > 256 || !endpointIDPattern.MatchString(identifier) {
@@ -271,7 +279,7 @@ func (h *VpcEndpoint) Update(ctx context.Context, request native.UpdateRequest) 
 	_, err = h.api.UpdateVpcEndpoint(ctx, &opensearch.UpdateVpcEndpointInput{
 		VpcEndpointId: aws.String(request.Identifier),
 		VpcOptions:    &types.VPCOptions{SubnetIds: subnets, SecurityGroupIds: groups},
-	}, inRegion(request.Region))
+	}, inRegion(request.Region), sendWithoutRetry)
 	if err != nil {
 		return startError(err, fmt.Sprintf("the VPC endpoint %q or its domain", request.Identifier))
 	}
@@ -309,7 +317,7 @@ func (h *VpcEndpoint) Delete(ctx context.Context, region string, identifier stri
 	case types.VpcEndpointStatusCreating, types.VpcEndpointStatusUpdating:
 		return busy(fmt.Sprintf("the VPC endpoint %q (%s)", identifier, e.Status), nil)
 	}
-	_, err = h.api.DeleteVpcEndpoint(ctx, &opensearch.DeleteVpcEndpointInput{VpcEndpointId: aws.String(identifier)}, inRegion(region))
+	_, err = h.api.DeleteVpcEndpoint(ctx, &opensearch.DeleteVpcEndpointInput{VpcEndpointId: aws.String(identifier)}, inRegion(region), sendWithoutRetry)
 	return startError(err, fmt.Sprintf("the VPC endpoint %q or its domain", identifier))
 }
 

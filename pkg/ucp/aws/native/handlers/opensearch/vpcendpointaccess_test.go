@@ -252,8 +252,9 @@ func Test_VpcEndpointAccess_OtherServiceOptions(t *testing.T) {
 	properties := map[string]any{"DomainName": "logs", "Service": service, "ServiceOptions": map[string]any{"SupportedRegions": list("us-east-1")}}
 	createAccess(t, h, with(properties, map[string]any{"ServiceOptions": map[string]any{"SupportedRegions": list("eu-west-1")}}))
 	for _, template := range []map[string]any{properties, {"DomainName": "logs", "Service": service}} {
-		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template})
+		id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template})
 		requireRejectedBefore(t, err, "SupportedRegions")
+		require.Empty(t, id, "UCP must not take the other authorization as this create's")
 	}
 
 	// The same Regions in another order are the same options.

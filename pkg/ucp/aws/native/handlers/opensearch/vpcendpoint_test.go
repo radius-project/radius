@@ -534,3 +534,61 @@ func Test_VpcEndpoint_EmptyLists(t *testing.T) {
 	}
 	require.Zero(t, api.calls["CreateVpcEndpoint"])
 }
+
+// optionsOf records the SDK options of each call that changes AWS, by method.
+type optionsOf struct {
+	*fakeAPI
+	options map[string]opensearch.Options
+}
+
+func (o *optionsOf) record(method string, fns []func(*opensearch.Options)) {
+	opts := opensearch.Options{RetryMaxAttempts: 3}
+	for _, fn := range fns {
+		fn(&opts)
+	}
+	o.options[method] = opts
+}
+
+func (o *optionsOf) UpdateVpcEndpoint(ctx context.Context, in *opensearch.UpdateVpcEndpointInput, fns ...func(*opensearch.Options)) (*opensearch.UpdateVpcEndpointOutput, error) {
+	o.record("UpdateVpcEndpoint", fns)
+	return o.fakeAPI.UpdateVpcEndpoint(ctx, in, fns...)
+}
+
+func (o *optionsOf) DeleteVpcEndpoint(ctx context.Context, in *opensearch.DeleteVpcEndpointInput, fns ...func(*opensearch.Options)) (*opensearch.DeleteVpcEndpointOutput, error) {
+	o.record("DeleteVpcEndpoint", fns)
+	return o.fakeAPI.DeleteVpcEndpoint(ctx, in, fns...)
+}
+
+func (o *optionsOf) AuthorizeVpcEndpointAccess(ctx context.Context, in *opensearch.AuthorizeVpcEndpointAccessInput, fns ...func(*opensearch.Options)) (*opensearch.AuthorizeVpcEndpointAccessOutput, error) {
+	o.record("AuthorizeVpcEndpointAccess", fns)
+	return o.fakeAPI.AuthorizeVpcEndpointAccess(ctx, in, fns...)
+}
+
+func (o *optionsOf) RevokeVpcEndpointAccess(ctx context.Context, in *opensearch.RevokeVpcEndpointAccessInput, fns ...func(*opensearch.Options)) (*opensearch.RevokeVpcEndpointAccessOutput, error) {
+	o.record("RevokeVpcEndpointAccess", fns)
+	return o.fakeAPI.RevokeVpcEndpointAccess(ctx, in, fns...)
+}
+
+// Test_SendOnce checks that the SDK never sends again on its own a call that changes AWS and takes no idempotency
+// token. A retry after AWS applied the first attempt fails, such as an update that finds the endpoint UPDATING, and
+// UCP would read that as a change AWS rejected and drop the values AWS has.
+func Test_SendOnce(t *testing.T) {
+	api := &optionsOf{fakeAPI: newFakeAPI(awsfake.NewCloudControl()), options: map[string]opensearch.Options{}}
+	endpoints := NewVpcEndpoint(api, api.fakeAPI)
+	id := createEndpointWith(t, endpoints, endpointTemplate(list("subnet-a"), nil), "a")
+	require.NoError(t, endpoints.Update(t.Context(), updateRequest(t, endpoints, id, endpointTemplate(list("subnet-b"), nil))))
+	wait(t, endpoints, id, native.OperationUpdate)
+	require.NoError(t, endpoints.Delete(t.Context(), region, id))
+	wait(t, endpoints, id, native.OperationDelete)
+
+	access := NewVpcEndpointAccess(api)
+	accessID, err := access.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"DomainName": "logs", "Account": otherAccount}})
+	require.NoError(t, err)
+	require.NoError(t, access.Delete(t.Context(), region, accessID))
+
+	for _, method := range []string{"UpdateVpcEndpoint", "DeleteVpcEndpoint", "AuthorizeVpcEndpointAccess", "RevokeVpcEndpointAccess"} {
+		require.Contains(t, api.options, method)
+		require.Equal(t, 1, api.options[method].RetryMaxAttempts, method)
+		require.Equal(t, region, api.options[method].Region, method)
+	}
+}
