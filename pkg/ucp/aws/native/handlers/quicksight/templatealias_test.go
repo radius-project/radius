@@ -198,3 +198,27 @@ type emptyDescribe struct {
 func (emptyDescribe) DescribeTemplateAlias(context.Context, *quicksight.DescribeTemplateAliasInput, ...func(*quicksight.Options)) (*quicksight.DescribeTemplateAliasOutput, error) {
 	return &quicksight.DescribeTemplateAliasOutput{}, nil
 }
+
+// Test_TemplateAlias_SparseAnswer checks a read of an alias AWS returns without its optional TemplateVersionNumber and
+// Arn: the version is the recorded one, or unknown without a record, and Arn is left out.
+func Test_TemplateAlias_SparseAnswer(t *testing.T) {
+	h, api := newAliasHandler()
+	id := makeAlias(t, h, aliasTemplate())
+	api.noVersion, api.noAliasArn = true, true
+
+	read, unknown, err := h.ReadRecorded(t.Context(), region, id, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"TemplateVersionNumber"}, unknown)
+	require.Equal(t, map[string]any{"AwsAccountId": account, "TemplateId": "report", "AliasName": "live"}, read)
+
+	read, unknown, err = h.ReadRecorded(t.Context(), region, id, aliasTemplate())
+	require.NoError(t, err)
+	require.Empty(t, unknown)
+	require.Equal(t, float64(2), read["TemplateVersionNumber"])
+
+	// AWS's version wins over the record's.
+	api.noVersion = false
+	read, _, err = h.ReadRecorded(t.Context(), region, id, with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(3)}))
+	require.NoError(t, err)
+	require.Equal(t, float64(2), read["TemplateVersionNumber"])
+}

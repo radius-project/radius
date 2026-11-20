@@ -40,6 +40,7 @@ const (
 var (
 	_ native.Handler           = (*TemplateAlias)(nil)
 	_ native.IdentifierEncoder = (*TemplateAlias)(nil)
+	_ native.RecordReader      = (*TemplateAlias)(nil)
 )
 
 // TemplateAlias serves AWS::QuickSight::TemplateAlias: a name that points to a version of a template. Its identifier
@@ -153,26 +154,42 @@ func (h *TemplateAlias) describe(ctx context.Context, region string, id aliasID)
 	return out.TemplateAlias, nil
 }
 
-// Read returns the alias's properties.
+// Read returns the alias's properties, as ReadRecorded does without a record.
 func (h *TemplateAlias) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
+	properties, _, err := h.ReadRecorded(ctx, region, identifier, nil)
+	return properties, err
+}
+
+// ReadRecorded returns the alias's properties. AWS's TemplateAlias marks every field optional, so when AWS leaves out
+// TemplateVersionNumber, it is recorded's, the version the last deploy applied, and with no record it is left out and
+// returned as unknown, so an unchanged deploy doesn't send an update each time. Arn is left out when AWS doesn't
+// return it.
+func (h *TemplateAlias) ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, []string, error) {
 	id, err := parseAliasID(identifier)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	alias, err := h.describe(ctx, region, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	properties := map[string]any{
 		"AwsAccountId": id.account,
 		"TemplateId":   id.template,
 		"AliasName":    id.alias,
-		"Arn":          aws.ToString(alias.Arn),
 	}
-	if alias.TemplateVersionNumber != nil {
+	if alias.Arn != nil {
+		properties["Arn"] = *alias.Arn
+	}
+	switch version, ok := recorded["TemplateVersionNumber"]; {
+	case alias.TemplateVersionNumber != nil:
 		properties["TemplateVersionNumber"] = float64(*alias.TemplateVersionNumber)
+	case ok && version != nil:
+		properties["TemplateVersionNumber"] = version
+	default:
+		return properties, []string{"TemplateVersionNumber"}, nil
 	}
-	return properties, nil
+	return properties, nil, nil
 }
 
 // point points the alias to version, for an alias that exists.

@@ -53,6 +53,16 @@ func aliasTemplate() map[string]any {
 }
 
 func Test_Suite_FolderMembership(t *testing.T) {
+	runMembershipSuite(t, func(*fakeAPI) {})
+}
+
+// Test_Suite_FolderMembershipWithoutIDs runs the suite against AWS answers that leave out each member's optional
+// MemberId, which the API reference allows, so the handler finds members by their ARN.
+func Test_Suite_FolderMembershipWithoutIDs(t *testing.T) {
+	runMembershipSuite(t, func(f *fakeAPI) { f.noMemberID = true })
+}
+
+func runMembershipSuite(t *testing.T, configure func(*fakeAPI)) {
 	properties := membershipTemplate()
 	nativetest.Run(t, nativetest.Suite{
 		TypeName:    folderMembershipType,
@@ -60,7 +70,9 @@ func Test_Suite_FolderMembership(t *testing.T) {
 		Metadata:    readFile(t, "aws-quicksight-foldermembership.metadata.json"),
 		HandWritten: true,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			return NewFolderMembership(newFakeAPI(store))
+			f := newFakeAPI(store)
+			configure(f)
+			return NewFolderMembership(f)
 		},
 		Properties: properties,
 		Identifier: strings.Join([]string{account, "sales", "DASHBOARD", "dash-1"}, "|"),
@@ -84,15 +96,36 @@ func Test_Suite_FolderMembership(t *testing.T) {
 }
 
 func Test_Suite_TemplateAlias(t *testing.T) {
+	runAliasSuite(t, nil)
+}
+
+// Test_Suite_TemplateAliasSparse runs the suite against AWS answers that leave out the alias's optional
+// TemplateVersionNumber and Arn, which the API reference allows.
+func Test_Suite_TemplateAliasSparse(t *testing.T) {
+	runAliasSuite(t, func(f *fakeAPI) { f.noVersion, f.noAliasArn = true, true })
+}
+
+// runAliasSuite runs the suite with a fake configure changes, when it is set. Without a record, a read of a fake that
+// leaves out the version can't return it.
+func runAliasSuite(t *testing.T, configure func(*fakeAPI)) {
 	properties := aliasTemplate()
+	var unrecorded []string
+	if configure != nil {
+		unrecorded = []string{"TemplateVersionNumber"}
+	}
 	nativetest.Run(t, nativetest.Suite{
 		TypeName:    templateAliasType,
 		Schema:      readFile(t, "aws-quicksight-templatealias.json"),
 		Metadata:    readFile(t, "aws-quicksight-templatealias.metadata.json"),
 		HandWritten: true,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			return NewTemplateAlias(newFakeAPI(store))
+			f := newFakeAPI(store)
+			if configure != nil {
+				configure(f)
+			}
+			return NewTemplateAlias(f)
 		},
+		Unrecorded:       unrecorded,
 		Properties:       properties,
 		Identifier:       strings.Join([]string{account, "report", "live"}, "|"),
 		Changed:          with(properties, map[string]any{"TemplateVersionNumber": float64(3)}),

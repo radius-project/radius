@@ -109,8 +109,13 @@ type fakeAPI struct {
 	// standard makes every call fail as on Standard edition, which has no folders or templates.
 	standard bool
 
-	// noArn makes ListFolderMembers leave out each member's ARN.
-	noArn bool
+	// noArn and noMemberID make ListFolderMembers leave out each member's ARN or ID. The API reference marks both
+	// optional.
+	noArn, noMemberID bool
+
+	// noVersion and noAliasArn make the alias calls leave out an alias's TemplateVersionNumber or Arn. The API
+	// reference marks both optional.
+	noVersion, noAliasArn bool
 
 	// calls counts the calls that reached the fake, by method.
 	calls map[string]int
@@ -292,7 +297,10 @@ func (f *fakeAPI) ListFolderMembers(ctx context.Context, in *quicksight.ListFold
 		if len(parts) != 4 || parts[0] != account || parts[1] != folder || !f.listed(id) {
 			continue
 		}
-		m := types.MemberIdArnPair{MemberId: aws.String(parts[3])}
+		m := types.MemberIdArnPair{}
+		if !f.noMemberID {
+			m.MemberId = aws.String(parts[3])
+		}
 		if !f.noArn {
 			m.MemberArn = aws.String(memberArn(types.MemberType(parts[2]), parts[3]))
 		}
@@ -362,8 +370,11 @@ func (f *fakeAPI) pointable(template string, version *int64) error {
 // templateAlias returns the alias as AWS returns it. A record the suite put in the store may have no version.
 func (f *fakeAPI) templateAlias(id string) *types.TemplateAlias {
 	parts := strings.Split(id, "|")
-	out := &types.TemplateAlias{AliasName: aws.String(parts[2]), Arn: aws.String(aliasArn(parts[1], parts[2]))}
-	if v, ok := f.store.Resource(templateAliasType, id)["TemplateVersionNumber"].(float64); ok {
+	out := &types.TemplateAlias{AliasName: aws.String(parts[2])}
+	if !f.noAliasArn {
+		out.Arn = aws.String(aliasArn(parts[1], parts[2]))
+	}
+	if v, ok := f.store.Resource(templateAliasType, id)["TemplateVersionNumber"].(float64); ok && !f.noVersion {
 		out.TemplateVersionNumber = aws.Int64(int64(v))
 	}
 	return out

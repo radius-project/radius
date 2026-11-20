@@ -133,16 +133,22 @@ func (h *FolderMembership) Identifier(properties map[string]any) (string, error)
 
 // isMember reports whether AWS's folder member m is the asset id names. AWS lists a member's ID and ARN but not its
 // type, and assets of different types can have the same ID, so the type comes from the ARN's resource, such as
-// dashboard/<id>. It fails when m has the ID but no ARN it can read, so a member is never taken for another.
+// dashboard/<id>. AWS marks both fields optional: a member without an ID is matched by its ARN. It fails when m may be
+// the asset but has no ARN it can read, or its ID and ARN disagree, so a member is never taken for another.
 func (id membershipID) isMember(m types.MemberIdArnPair) (bool, error) {
-	if aws.ToString(m.MemberId) != id.member {
+	memberID := aws.ToString(m.MemberId)
+	parsed, err := arn.Parse(aws.ToString(m.MemberArn))
+	kind, arnID, found := strings.Cut(parsed.Resource, "/")
+	readable := err == nil && parsed.Service == "quicksight" && found && arnID != ""
+	if memberID != id.member && memberID != "" && (!readable || arnID != id.member) {
 		return false, nil
 	}
-	parsed, err := arn.Parse(aws.ToString(m.MemberArn))
-	kind, memberID, found := strings.Cut(parsed.Resource, "/")
-	if err != nil || parsed.Service != "quicksight" || !found || memberID != id.member {
-		return false, fmt.Errorf("%s: AWS listed the member %q of the folder %q with the ARN %q, which isn't the ARN of a Quick Sight asset with that ID",
-			folderMembershipType, id.member, id.folder, aws.ToString(m.MemberArn))
+	if readable && memberID == "" && arnID != id.member {
+		return false, nil
+	}
+	if !readable || (memberID != "" && memberID != arnID) {
+		return false, fmt.Errorf("%s: AWS listed a member of the folder %q with the ID %q and the ARN %q, which isn't the ARN of a Quick Sight asset with that ID",
+			folderMembershipType, id.folder, memberID, aws.ToString(m.MemberArn))
 	}
 	return strings.EqualFold(kind, string(id.kind)), nil
 }

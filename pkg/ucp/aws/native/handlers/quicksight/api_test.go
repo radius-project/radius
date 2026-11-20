@@ -290,7 +290,9 @@ var membershipAPI = map[string]nativetest.Call{
 		},
 		Unclear: "Whether the list has DATASOURCE and TOPIC members: the page's summary names only dashboards, analyses, and " +
 			"datasets, but MemberIdArnPair has no type, and the fake lists every type. The page size: the fake returns two " +
-			"members a page." + addNote + removeNote,
+			"members a page. Whether AWS always returns both fields of a member, which the page marks optional: the " +
+			"handler's suite also runs without MemberId, and fails a read of a member without a readable ARN." +
+			addNote + removeNote,
 	},
 }
 
@@ -375,6 +377,7 @@ var aliasAPI = map[string]nativetest.Call{
 				Check: against(createAlias(), describeAlias("live", 2)),
 			},
 		},
-		Unclear: addNote[1:],
+		Unclear: "Whether AWS always returns TemplateVersionNumber and Arn, which TemplateAlias marks optional: the " +
+			"handler's suite also runs without them." + addNote,
 	},
 }

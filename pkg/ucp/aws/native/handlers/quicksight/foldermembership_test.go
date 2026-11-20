@@ -170,12 +170,27 @@ func Test_FolderMembership_BadArn(t *testing.T) {
 	require.NotErrorIs(t, err, native.ErrNotFound)
 
 	for _, m := range []types.MemberIdArnPair{
+		{},
+		{MemberArn: aws.String("arn:aws:s3:::dashboard/dash-1")},
 		{MemberId: aws.String("dash-1"), MemberArn: aws.String("arn:aws:s3:::dashboard/dash-1")},
 		{MemberId: aws.String("dash-1"), MemberArn: aws.String(memberArn(types.MemberTypeDashboard, "dash-2"))},
 		{MemberId: aws.String("dash-1"), MemberArn: aws.String("arn:aws:quicksight:us-west-2:" + account + ":dashboard")},
 	} {
 		_, err := membershipID{account: account, folder: "sales", kind: types.MemberTypeDashboard, member: "dash-1"}.isMember(m)
 		require.Error(t, err, aws.ToString(m.MemberArn))
+	}
+
+	// A member without an ID is matched by its ARN, and one with another asset's ID or ARN isn't the asset.
+	dashboard := membershipID{account: account, folder: "sales", kind: types.MemberTypeDashboard, member: "dash-1"}
+	for m, want := range map[types.MemberIdArnPair]bool{
+		{MemberArn: aws.String(memberArn(types.MemberTypeDashboard, "dash-1"))}: true,
+		{MemberArn: aws.String(memberArn(types.MemberTypeDataset, "dash-1"))}:   false,
+		{MemberArn: aws.String(memberArn(types.MemberTypeDashboard, "dash-2"))}: false,
+		{MemberId: aws.String("dash-2")}:                                        false,
+	} {
+		got, err := dashboard.isMember(m)
+		require.NoError(t, err)
+		require.Equal(t, want, got, "%s %s", aws.ToString(m.MemberId), aws.ToString(m.MemberArn))
 	}
 }
 
