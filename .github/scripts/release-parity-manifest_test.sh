@@ -213,9 +213,17 @@ if [[ "$1" == "api" ]]; then
             cat "${FIXTURES}/release-note.md"
             ;;
         */contents/.github/release-parity/targets.json*)
+            if [[ -n "${SOURCE_TARGETS_ERROR:-}" ]]; then
+                echo "${SOURCE_TARGETS_ERROR}" >&2
+                exit 1
+            fi
             cat "${FIXTURES}/targets.json"
             ;;
-        */contents/.github/release-plans/v0.60.0.yaml*)
+        */contents/.github/release-plans/v0.60.*yaml*)
+            if [[ -n "${SOURCE_PLAN_ERROR:-}" ]]; then
+                echo "${SOURCE_PLAN_ERROR}" >&2
+                exit 1
+            fi
             cat "${FIXTURES}/plan.json"
             ;;
         *)
@@ -423,6 +431,45 @@ run_collector() {
         --version 0.60.0 \
         --output "${OUTPUT}" "$@" >/dev/null
 }
+
+check_source_targets() {
+    PATH="${FAKE_BIN}:${PATH}" bash -eu -c '
+        source "$1"
+        TEMP_DIR="$(mktemp -d)"
+        resolve_source_targets radius-project/radius "${SOURCE_COMMIT}" "$2"
+        cmp "${TARGETS_FILE}" "$3"
+    ' bash "${SCRIPT_DIR}/release-parity-manifest.sh" "$@"
+}
+
+for historical_tag in v0.60.0 v0.60.1; do
+    SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' \
+        SOURCE_PLAN_ERROR='gh: Not Found (HTTP 404)' \
+        check_source_targets "${historical_tag}" \
+        "${SCRIPT_DIR}/../release-parity/legacy-targets.json" ||
+        fail "missing historical targets did not select frozen legacy inventory"
+done
+for error in 'gh: Unauthorized (HTTP 401)' 'gh: Forbidden (HTTP 403)' \
+    'gh: Service Unavailable (HTTP 503)' 'network timeout' 'connection failed near /404'; do
+    if SOURCE_TARGETS_ERROR="${error}" SOURCE_PLAN_ERROR='gh: Not Found (HTTP 404)' \
+        check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+        fail "non-404 source lookup failure selected legacy inventory"
+    fi
+    if SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' SOURCE_PLAN_ERROR="${error}" \
+        check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+        fail "failed plan lookup selected legacy inventory"
+    fi
+done
+if RELEASE_PARITY_STAGED=true SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' \
+    SOURCE_PLAN_ERROR='gh: Not Found (HTTP 404)' \
+    check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+    fail "staged release selected historical fallback"
+fi
+printf 'schemaVersion: 2\n' >"${FIXTURES}/plan.json"
+if SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' \
+    check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+    fail "approved plan with missing targets selected historical fallback"
+fi
+rm "${FIXTURES}/plan.json"
 
 run_collector
 cp "${OUTPUT}" "${FIRST_OUTPUT}"
