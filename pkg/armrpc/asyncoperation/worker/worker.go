@@ -470,7 +470,7 @@ func (w *AsyncRequestProcessWorker) getMessageExtendDuration(visibleAt time.Time
 // updateResourceState sets the provisioningState of the resource id to state. When asyncCtrl is a
 // ctrl.OwnershipChecker and the operation req no longer owns the resource, it leaves the resource alone. The ownership
 // check reads the same version of the resource that is saved, with its ETag, so a newer operation that takes the
-// resource in between makes the save fail instead of being overwritten.
+// resource in between makes the save fail, and the retry sees the new owner.
 func updateResourceState(ctx context.Context, asyncCtrl ctrl.Controller, req *ctrl.Request, id string, state v1.ProvisioningState) error {
 	obj, err := asyncCtrl.DatabaseClient().Get(ctx, id)
 	if err != nil {
@@ -483,7 +483,7 @@ func updateResourceState(ctx context.Context, asyncCtrl ctrl.Controller, req *ct
 			return err
 		}
 		if !owns {
-			ucplog.FromContextOrDiscard(ctx).Info("A newer operation owns the resource, so its provisioningState is left unchanged.", "provisioningState", string(state))
+			ucplog.FromContextOrDiscard(ctx).Info("The operation no longer owns the resource, so the resource's provisioningState is left unchanged.", "provisioningState", string(state))
 			return nil
 		}
 	}
