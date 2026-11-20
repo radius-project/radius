@@ -1,6 +1,6 @@
 {
   "typeName": "AWS::Chime::VoiceConnectorStreamingConfiguration",
-  "description": "The media streaming settings of an Amazon Chime SDK Voice Connector: whether it streams call audio to Amazon Kinesis Video Streams, how long Kinesis keeps the data, where it sends streaming notifications, and its call analytics configuration. Set it with PutVoiceConnectorStreamingConfiguration. Deleting the resource deletes the settings, which turns streaming off.",
+  "description": "The media streaming settings of an Amazon Chime SDK Voice Connector: whether it streams call audio to Amazon Kinesis Video Streams, how long Kinesis keeps the data, where it sends streaming notifications, and its call analytics configuration. Set it with PutVoiceConnectorStreamingConfiguration. Deleting the resource deletes the settings, which turns streaming off. With an SNS or SQS notification target, AWS creates an SNS topic or SQS queue whose name starts with ChimeVoiceConnector-Streaming, which a delete leaves in place.",
   "additionalProperties": false,
   "properties": {
     "VoiceConnectorId": {

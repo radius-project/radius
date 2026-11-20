@@ -128,8 +128,10 @@ var loggingAPI = map[string]nativetest.Call{
 		},
 		Unclear: "The page doesn't say what a Put does to a log it leaves out. In live calls it turned the log off, and " +
 			"returned only the logs it was sent; the fake does the same. The SDK rejects a call without " +
-			"LoggingConfiguration before it sends it, and so does the fake. The page doesn't name the permissions " +
-			"CloudWatch Logs needs to receive the logs.",
+			"LoggingConfiguration before it sends it, and so does the fake. The page doesn't name the permissions it " +
+			"needs to deliver the logs. A recording with only the schema's permissions found that AWS checks the " +
+			"caller for logs:CreateLogGroup, logs:DescribeLogGroups, logs:CreateLogDelivery, logs:GetLogDelivery, " +
+			"logs:ListLogDeliveries, logs:DeleteLogDelivery, and logs:PutResourcePolicy.",
 	},
 }
 
@@ -186,7 +188,10 @@ var streamingAPI = map[string]nativetest.Call{
 			"In live calls it set them to EventBridge, even after a Put that set SNS; the fake does the same. A " +
 			"MediaInsightsConfiguration ConfigurationArn that doesn't match its pattern got AccessDeniedException in a " +
 			"live call, because AWS authorizes the call on that ARN; the fake doesn't check it. The SDK rejects a call " +
-			"without DataRetentionInHours or Disabled before it sends it, and so does the fake.",
+			"without DataRetentionInHours or Disabled before it sends it, and so does the fake. The page doesn't name " +
+			"the permissions a notification target needs: AWS checks the caller for sns:CreateTopic for SNS and " +
+			"sqs:CreateQueue for SQS, and creates a topic or queue named ChimeVoiceConnector-Streaming, which stays " +
+			"after a delete.",
 	},
 	"DeleteVoiceConnectorStreamingConfiguration": {
 		Doc: doc("DeleteVoiceConnectorStreamingConfiguration"),
