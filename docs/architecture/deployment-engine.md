@@ -287,6 +287,12 @@ If that inventory is missing, invalid, or not yet final, Radius saves the deploy
 
 PUT retries preserve stored cleanup state. During deletion, Radius saves each recovered inventory and clears its pending deployment ID before it deletes infrastructure. If a later delete step fails, the next attempt uses the saved resource IDs without reading that deployment again.
 
+Some pending inventory can never be recovered: the deployment engine answers `204 No Content` once it no longer has the deployment (after a restart, after its idle retention expires, or when its state was not restored), and a finished deployment without a complete inventory stays that way. Radius treats these as unrecoverable. Other errors, such as an unreachable engine or a deployment that is still running, are transient.
+
+- **Redeploy.** Before a Bicep recipe deploys, the driver reads each pending deployment. Recovered resource IDs join the previous state, so garbage collection deletes the ones the new deployment no longer creates and keeps tracking any it fails to delete. Recovered entries are cleared whether or not the new deployment succeeds. Unrecoverable entries are cleared only when the new deployment succeeds. Transient entries stay pending.
+- **Delete.** An unrecoverable entry fails deletion with `RecipeCleanupInventoryUnavailable`, naming the deployment and recipe and pointing to force. A transient entry fails with `RecipeDeletionFailed` and asks for a retry.
+- **Forced delete.** `force=true` on DELETE (`--force` in `rad`) reaches the backend controller as `Request.Force`. The driver still recovers what it can and deletes every known resource, but it skips pending deployments it can't recover. Skipped entries stay pending until the Radius resource is removed, so a failed forced delete doesn't hide them. A successful forced delete lists them in the operation status as `properties.skippedRecipeDeployments`, and `rad` prints a warning for each resource, because resources those deployments created may remain.
+
 ## Component Interaction Diagram
 
 ```mermaid

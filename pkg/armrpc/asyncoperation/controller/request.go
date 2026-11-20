@@ -56,6 +56,9 @@ type Request struct {
 
 	// OperationTimeout represents the timeout duration of async operation.
 	OperationTimeout *time.Duration `json:"asyncOperationTimeout"`
+
+	// Force reports that the caller asked to force the operation (the "force=true" query parameter on DELETE).
+	Force bool `json:"force,omitempty"`
 }
 
 // Timeout gets the operation timeout and returns the default timeout unless it specifies.

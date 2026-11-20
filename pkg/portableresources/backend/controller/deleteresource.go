@@ -34,6 +34,10 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
+// SkippedRecipeDeploymentsProperty is the operation status property that lists the recipe deployments a forced
+// delete skipped because their resource inventory was unknown. Resources they created may remain.
+const SkippedRecipeDeploymentsProperty = "skippedRecipeDeployments"
+
 // DeleteResource is the async operation controller to delete a portable resource.
 type DeleteResource[P interface {
 	*T
@@ -80,6 +84,9 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
 	// A setup error skips recipe deletion only when no earlier deployment left cleanup state.
 	pendingDeployments := data.ResourceMetadata().GetResourceStatus().PendingRecipeDeployments
+	// unresolved tracks the pending deployments not yet recovered. After a successful forced delete,
+	// these are the ones it skipped.
+	unresolved := pendingDeployments
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil &&
 		(recipeDataModel.GetRecipe().DeploymentStatus != util.RecipeSetupError || len(data.OutputResources()) > 0 || len(pendingDeployments) > 0) {
 		resourceProperties, err := resourceutil.GetPropertiesFromResource(data)
@@ -99,6 +106,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 			Recipe:             recipeData,
 			OutputResources:    data.OutputResources(),
 			PendingDeployments: pendingDeployments,
+			Force:              request.Force,
 		}
 		if len(pendingDeployments) > 0 {
 			deleteOptions.PersistCleanup = func(ctx context.Context, outputs []rpv1.OutputResource, pending []string) error {
@@ -112,6 +120,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 					return err
 				}
 				obj.ETag = update.ETag
+				unresolved = slices.Clone(pending)
 				return nil
 			}
 		}
@@ -142,7 +151,11 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{}, err
+	if len(unresolved) > 0 {
+		// A forced delete skipped these deployments, so resources they created may remain. Report them to the caller.
+		return ctrl.Result{Properties: map[string]any{SkippedRecipeDeploymentsProperty: unresolved}}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 func (c *DeleteResource[P, T]) loadRuntimeConfiguration(ctx context.Context, environmentID string, applicationID string, resourceID string) (*recipes.RuntimeConfiguration, error) {

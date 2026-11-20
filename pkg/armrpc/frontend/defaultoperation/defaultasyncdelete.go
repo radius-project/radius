@@ -43,7 +43,8 @@ func NewDefaultAsyncDelete[P interface {
 
 // Run executes asynchronous delete operation by validating the request, executing custom delete filters, and starting async job, and returns an async response.
 // When the "force" query parameter is set to "true", the provisioning state check is skipped,
-// allowing deletion of resources stuck in non-terminal states (e.g., "Updating").
+// allowing deletion of resources stuck in non-terminal states (e.g., "Updating"), and the backend
+// controller receives Request.Force.
 func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
@@ -73,7 +74,7 @@ func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWrite
 		}
 	}
 
-	if r, err := e.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, e.AsyncOperationTimeout(), &etag); r != nil || err != nil {
+	if r, err := e.PrepareAsyncDeleteOperation(ctx, old, e.AsyncOperationTimeout(), &etag, force); r != nil || err != nil {
 		return r, err
 	}
 

@@ -18,6 +18,7 @@ package clients
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"golang.org/x/exp/maps"
 	"golang.org/x/sync/errgroup"
 
@@ -192,21 +194,21 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResource(ctx context.C
 }
 
 // DeleteResource deletes a resource by its type and name (or id).
-func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (bool, error) {
+func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (DeleteResourceResult, error) {
 	apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
 	if err != nil {
-		return false, err
+		return DeleteResourceResult{}, err
 	}
 
 	scope, name, err := amc.extractScopeAndName(resourceNameOrID)
 	if err != nil {
-		return false, err
+		return DeleteResourceResult{}, err
 	}
 
 	var client genericResourceClient
 	client, err = amc.getGenericClient(scope, resourceType, apiVersion, force)
 	if err != nil {
-		return false, err
+		return DeleteResourceResult{}, err
 	}
 
 	var response *http.Response
@@ -214,15 +216,39 @@ func (amc *UCPApplicationsManagementClient) DeleteResource(ctx context.Context, 
 
 	poller, err := client.BeginDelete(ctx, name, nil)
 	if err != nil {
-		return false, err
+		return DeleteResourceResult{}, err
 	}
 
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
-		return false, err
+		return DeleteResourceResult{}, err
 	}
 
-	return response.StatusCode != 204, nil
+	return DeleteResourceResult{
+		Deleted:                  response.StatusCode != http.StatusNoContent,
+		SkippedRecipeDeployments: skippedRecipeDeployments(response),
+	}, nil
+}
+
+// skippedRecipeDeployments reads the recipe deployments a forced delete skipped from the final operation status.
+// A response without them, or one that isn't an operation status, reports none.
+func skippedRecipeDeployments(response *http.Response) []string {
+	if response.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	body, err := runtime.Payload(response)
+	if err != nil {
+		return nil
+	}
+	var status struct {
+		Properties struct {
+			SkippedRecipeDeployments []string `json:"skippedRecipeDeployments"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(body, &status); err != nil {
+		return nil
+	}
+	return status.Properties.SkippedRecipeDeployments
 }
 
 // ListApplications lists all applications in the configured scope.

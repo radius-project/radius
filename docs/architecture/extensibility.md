@@ -601,7 +601,7 @@ sequenceDiagram
   end
 ```
 
-`DeleteResource` skips driver deletion after a recipe setup failure only when no stored output resources or pending deployments remain. Otherwise it passes both cleanup fields to the driver. Before deleting infrastructure, the Bicep driver must recover final, explicit inventory for pending deployments and save the recovered IDs through the controller. Unknown inventory blocks deletion; a missing list is not an empty inventory. The Radius resource record is removed only after cleanup succeeds.
+`DeleteResource` skips driver deletion after a recipe setup failure only when no stored output resources or pending deployments remain. Otherwise it passes both cleanup fields to the driver. Before deleting infrastructure, the Bicep driver must recover final, explicit inventory for pending deployments and save the recovered IDs through the controller. Unknown inventory blocks deletion; a missing list is not an empty inventory. A forced delete skips pending deployments it can't recover and reports them in the operation status as `properties.skippedRecipeDeployments`. The Radius resource record is removed only after cleanup succeeds. See [failed deployment inventory](deployment-engine.md) for how redeploys and forced deletes handle pending deployments.
 
 ## Invariants
 

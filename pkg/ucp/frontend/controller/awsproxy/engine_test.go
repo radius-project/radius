@@ -286,7 +286,7 @@ func (h *harness) finish() []ctrl.Result {
 		h.setState(req.ResourceID, result.ProvisioningState())
 		id, err := resources.ParseResource(req.ResourceID)
 		require.NoError(h.t, err)
-		require.NoError(h.t, h.sm.Update(h.t.Context(), id, req.OperationID, result.ProvisioningState(), nil, result.Error))
+		require.NoError(h.t, h.sm.Update(h.t.Context(), id, req.OperationID, result.ProvisioningState(), nil, result.Error, result.Properties))
 		require.NoError(h.t, h.queue.FinishMessage(h.t.Context(), msg))
 		results = append(results, result)
 	}

@@ -210,7 +210,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 		Return(&manager.Status{
 			Status: v1.ProvisioningStateUpdating,
 		}, nil).AnyTimes()
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	expectedDequeueCount := 2
 
@@ -277,7 +277,7 @@ func TestStart_MaxDequeueCount_AlreadyTerminal(t *testing.T) {
 			Status: v1.ProvisioningStateFailed,
 		}, nil).AnyTimes()
 	// No Update must happen: the recorded terminal status must not be overwritten.
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 	expectedDequeueCount := 2
 
@@ -330,7 +330,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	registry := NewControllerRegistry()
 	worker := New(Options{DequeueIntervalDuration: defaultTestDequeueInterval}, tCtx.mockSM, tCtx.testQueue, registry)
@@ -406,7 +406,7 @@ func TestStart_RunOperation(t *testing.T) {
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	registry := NewControllerRegistry()
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
@@ -474,7 +474,7 @@ func TestRunOperation_Successfully(t *testing.T) {
 			return newTestResourceObject(), nil
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
 	err := tCtx.testQueue.Enqueue(tCtx.ctx, testMessage)
@@ -502,6 +502,29 @@ func TestRunOperation_Successfully(t *testing.T) {
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
 }
 
+func TestRunOperation_SavesResultProperties(t *testing.T) {
+	tCtx, mctrl := newTestContext(t, defaultTestLockTime)
+	defer mctrl.Finish()
+
+	properties := map[string]any{"skippedRecipeDeployments": []string{"deployment"}}
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(newTestResourceObject(), nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), v1.ProvisioningStateSucceeded, gomock.Any(), gomock.Any(), properties).Return(nil).Times(1)
+
+	require.NoError(t, tCtx.testQueue.Enqueue(tCtx.ctx, genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)))
+	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
+	testCtrl := &testAsyncController{
+		BaseController: ctrl.NewBaseAsyncController(ctrl.Options{DatabaseClient: tCtx.mockSC}),
+		fn: func(ctx context.Context) (ctrl.Result, error) {
+			return ctrl.Result{Properties: properties}, nil
+		},
+	}
+
+	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
+	require.NoError(t, err)
+	worker.runOperation(t.Context(), msg, testCtrl)
+}
+
 func TestRunOperation_ExtendMessageLock(t *testing.T) {
 	tCtx, mctrl := newTestContext(t, defaultTestLockTime)
 	defer mctrl.Finish()
@@ -512,7 +535,7 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 			return newTestResourceObject(), nil
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
 	err := tCtx.testQueue.Enqueue(tCtx.ctx, testMessage)
@@ -603,8 +626,8 @@ func TestRunOperation_Timeout(t *testing.T) {
 			return newTestResourceObject(), nil
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, state v1.ProvisioningState, _ *time.Time, opError *v1.ErrorDetails) error {
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, state v1.ProvisioningState, _ *time.Time, opError *v1.ErrorDetails, _ map[string]any) error {
 			if state == v1.ProvisioningStateCanceled && strings.HasPrefix(opError.Message, "Operation (APPLICATIONS.CORE/ENVIRONMENTS|PUT) has timed out because it was processing longer than") &&
 				strings.HasPrefix(opError.Target, "/subscriptions/00000000-0000-0000-0000-000000000000") {
 				return nil
@@ -701,8 +724,8 @@ func TestRunOperation_PanicController_FinalAttempt(t *testing.T) {
 
 	var terminalErr *v1.ErrorDetails
 	tCtx.mockSM.EXPECT().
-		Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, _ v1.ProvisioningState, _ *time.Time, opErr *v1.ErrorDetails) error {
+		Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, _ v1.ProvisioningState, _ *time.Time, opErr *v1.ErrorDetails, _ map[string]any) error {
 			terminalErr = opErr
 			return nil
 		}).Times(1)

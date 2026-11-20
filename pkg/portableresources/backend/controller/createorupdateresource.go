@@ -220,6 +220,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		if recipeOutput != nil && recipeOutput.Status != nil {
 			setRecipeStatus(resource, *recipeOutput.Status)
 		}
+		if recipeOutput != nil {
+			clearResolvedPendingDeployments(resource, recipeOutput)
+		}
 		if cleanupErr != nil {
 			keepUndeletedOutputResources(resource, previousOutputs, recipeOutput.UndeletedResources)
 		}
@@ -260,11 +263,26 @@ func retainFailedRecipeOutput(resource rpv1.RadiusResourceModel, output *recipes
 			status.OutputResources = append(status.OutputResources, outputResource)
 		}
 	}
+	status.PendingRecipeDeployments = withoutResolvedDeployments(status.PendingRecipeDeployments, output.ResolvedPendingDeployments)
 	if output.PendingDeploymentID != "" && !slices.Contains(status.PendingRecipeDeployments, output.PendingDeploymentID) {
 		status.PendingRecipeDeployments = append(status.PendingRecipeDeployments, output.PendingDeploymentID)
 	}
 	metadata.SetResourceStatus(status)
 	return nil
+}
+
+// clearResolvedPendingDeployments removes the pending deployments that the recipe output resolved.
+func clearResolvedPendingDeployments(resource rpv1.RadiusResourceModel, output *recipes.RecipeOutput) {
+	metadata := resource.ResourceMetadata()
+	status := metadata.GetResourceStatus()
+	status.PendingRecipeDeployments = withoutResolvedDeployments(status.PendingRecipeDeployments, output.ResolvedPendingDeployments)
+	metadata.SetResourceStatus(status)
+}
+
+func withoutResolvedDeployments(pending, resolved []string) []string {
+	return slices.DeleteFunc(slices.Clone(pending), func(id string) bool {
+		return slices.Contains(resolved, id)
+	})
 }
 
 // handleRecipeError handles recipe execution errors: logs, updates status, persists, and returns the appropriate result.
@@ -361,9 +379,10 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	}
 
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
-		Recipe:        metadata,
-		PreviousState: prevState,
-		Simulated:     simulated,
+		Recipe:             metadata,
+		PreviousState:      prevState,
+		Simulated:          simulated,
+		PendingDeployments: resource.ResourceMetadata().GetResourceStatus().PendingRecipeDeployments,
 	})
 }
 
@@ -497,6 +516,7 @@ func (c *CreateOrUpdateResource[P, T]) saveRecipeOutputResources(ctx context.Con
 	if cleanupFailed {
 		keepUndeletedOutputResources(resource, previous, output.UndeletedResources)
 	}
+	clearResolvedPendingDeployments(resource, output)
 
 	// Delete skips the recipe for a setup error, so record an execution error.
 	recipe := recipeDataModel.GetRecipe()
@@ -510,21 +530,32 @@ func (c *CreateOrUpdateResource[P, T]) saveRecipeOutputResources(ctx context.Con
 
 // keepUndeletedOutputResources adds the previous output resources that the recipe failed to delete, so a later
 // deployment or delete retries deleting them. Previous output resources that were deleted are not kept, so a later
-// delete can't remove an unrelated resource created with the same ID.
+// delete can't remove an unrelated resource created with the same ID. An undeleted ID that isn't a previous output
+// resource came from a recovered pending deployment, so it is kept as a new output resource.
 func keepUndeletedOutputResources[P rpv1.RadiusResourceModel](data P, previous []rpv1.OutputResource, undeleted []string) {
 	rm := data.ResourceMetadata()
 	status := rm.GetResourceStatus()
-	for _, output := range previous {
-		id := output.ID.String()
-		if !slices.Contains(undeleted, id) {
-			continue
-		}
-		kept := slices.ContainsFunc(status.OutputResources, func(current rpv1.OutputResource) bool {
+	isKept := func(id string) bool {
+		return slices.ContainsFunc(status.OutputResources, func(current rpv1.OutputResource) bool {
 			return current.ID.String() == id
 		})
-		if !kept {
+	}
+	for _, output := range previous {
+		id := output.ID.String()
+		if slices.Contains(undeleted, id) && !isKept(id) {
 			status.OutputResources = append(status.OutputResources, output)
 		}
+	}
+	for _, id := range undeleted {
+		if isKept(id) {
+			continue
+		}
+		recovered, err := processors.GetOutputResourcesFromRecipe(&recipes.RecipeOutput{Resources: []string{id}})
+		if err != nil {
+			// The driver already validated recovered IDs, so this is not expected.
+			continue
+		}
+		status.OutputResources = append(status.OutputResources, recovered...)
 	}
 	rm.SetResourceStatus(status)
 }

@@ -17,6 +17,8 @@ limitations under the License.
 package statusmanager
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -25,6 +27,7 @@ import (
 	"uuid"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/queue"
@@ -307,7 +310,7 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			testAos.Status = v1.ProvisioningStateSucceeded
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
-			err = aomTest.manager.Update(t.Context(), rid, opID, v1.ProvisioningStateAccepted, nil, nil)
+			err = aomTest.manager.Update(t.Context(), rid, opID, v1.ProvisioningStateAccepted, nil, nil, nil)
 
 			if tt.GetErr == nil && tt.SaveErr == nil {
 				require.NoError(t, err)
@@ -322,4 +325,41 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestQueueAsyncOperation_PassesForce(t *testing.T) {
+	for _, force := range []bool{false, true} {
+		t.Run(fmt.Sprintf("force=%t", force), func(t *testing.T) {
+			aomTest, _ := setup(t)
+			aomTest.databaseClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+
+			var queued ctrl.Request
+			aomTest.queueClient.EXPECT().Enqueue(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, msg *queue.Message, _ ...queue.EnqueueOptions) error {
+					return json.Unmarshal(msg.Data, &queued)
+				})
+
+			err := aomTest.manager.QueueAsyncOperation(t.Context(), reqCtx, QueueOperationOptions{OperationTimeout: operationTimeoutDuration, Force: force})
+			require.NoError(t, err)
+			require.Equal(t, force, queued.Force)
+		})
+	}
+}
+
+func TestUpdateAsyncOperationStatus_SavesProperties(t *testing.T) {
+	aomTest, _ := setup(t)
+	aomTest.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(&database.Object{ID: opID.String(), Data: &Status{AsyncOperationStatus: v1.AsyncOperationStatus{ID: opID.String()}}}, nil)
+
+	var saved *Status
+	aomTest.databaseClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+			saved = obj.Data.(*Status)
+			return nil
+		})
+
+	properties := map[string]any{"skippedRecipeDeployments": []string{"deployment"}}
+	err := aomTest.manager.Update(t.Context(), resources.MustParse(azureEnvResourceID), opID, v1.ProvisioningStateSucceeded, nil, nil, properties)
+	require.NoError(t, err)
+	require.Equal(t, properties, saved.Properties)
 }

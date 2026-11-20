@@ -51,6 +51,8 @@ type ExecuteOptions struct {
 	PreviousState []string
 	// Simulated is the flag to indicate if the execution is a simulation.
 	Simulated bool
+	// PendingDeployments identifies earlier Bicep deployments whose output inventory is still unknown.
+	PendingDeployments []string
 }
 
 // DeleteOptions is the options for the Delete method.
@@ -65,6 +67,9 @@ type DeleteOptions struct {
 
 	// PersistCleanup saves recovered inventory before any infrastructure is deleted.
 	PersistCleanup func(context.Context, []rpv1.OutputResource, []string) error
+
+	// Force skips pending deployments whose inventory can't be recovered instead of failing the delete.
+	Force bool
 }
 
 type GetRecipeMetadataOptions struct {

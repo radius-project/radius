@@ -62,13 +62,41 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		second := testResource("b")
 
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
-		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *first.ID, false).Return(true, nil).Times(1)
-		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *second.ID, false).Return(true, nil).Times(1)
+		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *first.ID, false).Return(clients.DeleteResourceResult{Deleted: true}, nil).Times(1)
+		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *second.ID, false).Return(clients.DeleteResourceResult{Deleted: true}, nil).Times(1)
 
 		sink := &output.MockOutput{}
 		err := DeleteResourcesInParallel(t.Context(), mock, sink, []generated.GenericResource{first, second}, false)
 		require.NoError(t, err)
 		require.Len(t, sink.Writes, 2)
+	})
+
+	t.Run("warns about recipe deployments a forced delete skipped", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		first := testResource("a")
+		second := testResource("b")
+
+		// The failure waits for the successful delete, so it can't cancel that delete before it starts.
+		firstDeleted := make(chan struct{})
+		mock := clients.NewMockApplicationsManagementClient(ctrl)
+		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *first.ID, true).
+			DoAndReturn(func(context.Context, string, string, bool) (clients.DeleteResourceResult, error) {
+				close(firstDeleted)
+				return clients.DeleteResourceResult{Deleted: true, SkippedRecipeDeployments: []string{"deployment-1", "deployment-2"}}, nil
+			})
+		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *second.ID, true).
+			DoAndReturn(func(context.Context, string, string, bool) (clients.DeleteResourceResult, error) {
+				<-firstDeleted
+				return clients.DeleteResourceResult{}, errors.New("simulated failure")
+			})
+
+		sink := &output.MockOutput{}
+		err := DeleteResourcesInParallel(t.Context(), mock, sink, []generated.GenericResource{first, second}, true)
+		// The warning is shown even when another delete fails.
+		require.Error(t, err)
+		require.Contains(t, sink.Writes, output.LogOutput{Format: MsgSkippedRecipeDeployments, Params: []any{*first.ID, "deployment-1, deployment-2"}})
 	})
 
 	t.Run("warns about resources without an ID or type instead of skipping them silently", func(t *testing.T) {
@@ -80,7 +108,7 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		noType := generated.GenericResource{ID: new(testScope + "/providers/" + testResourceType + "/c")}
 
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
-		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *valid.ID, false).Return(true, nil).Times(1)
+		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *valid.ID, false).Return(clients.DeleteResourceResult{Deleted: true}, nil).Times(1)
 
 		sink := &output.MockOutput{}
 		err := DeleteResourcesInParallel(t.Context(), mock, sink, []generated.GenericResource{valid, noID, noType}, false)
@@ -120,7 +148,7 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
 		mock.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, *resource.ID, false).
-			Return(false, &azcore.ResponseError{StatusCode: http.StatusNotFound}).
+			Return(clients.DeleteResourceResult{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}).
 			Times(1)
 
 		err := DeleteResourcesInParallel(t.Context(), mock, &output.MockOutput{}, []generated.GenericResource{resource}, false)
@@ -136,7 +164,7 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
 		mock.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, *resource.ID, false).
-			Return(false, fmt.Errorf("simulated failure")).
+			Return(clients.DeleteResourceResult{}, fmt.Errorf("simulated failure")).
 			Times(1)
 
 		err := DeleteResourcesInParallel(t.Context(), mock, &output.MockOutput{}, []generated.GenericResource{resource}, false)
@@ -151,7 +179,7 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		resource := testResource("a")
 
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
-		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *resource.ID, true).Return(true, nil).Times(1)
+		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *resource.ID, true).Return(clients.DeleteResourceResult{Deleted: true}, nil).Times(1)
 
 		err := DeleteResourcesInParallel(t.Context(), mock, &output.MockOutput{}, []generated.GenericResource{resource}, true)
 		require.NoError(t, err)
@@ -329,14 +357,14 @@ func Test_DeleteResourcesInParallel_MissingProducer(t *testing.T) {
 				owner, child := managedSecretPair()
 				id := deleteResourceKey(*child.ID)
 				client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
-				client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, tt.force).Return(false, tt.ownerError)
+				client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, tt.force).Return(clients.DeleteResourceResult{}, tt.ownerError)
 				var sequence []any
 				for _, state := range tt.states {
 					sequence = append(sequence, client.EXPECT().GetResource(gomock.Any(), *child.Type, id).
 						Return(generated.GenericResource{Properties: map[string]any{"provisioningState": state}}, nil))
 				}
 				if tt.direct {
-					sequence = append(sequence, client.EXPECT().DeleteResource(gomock.Any(), *child.Type, id, tt.force).Return(true, tt.deleteError))
+					sequence = append(sequence, client.EXPECT().DeleteResource(gomock.Any(), *child.Type, id, tt.force).Return(clients.DeleteResourceResult{Deleted: true}, tt.deleteError))
 				}
 				if tt.deleteError == nil || clients.Is404Error(tt.deleteError) {
 					sequence = append(sequence, client.EXPECT().GetResource(gomock.Any(), *child.Type, id).
@@ -360,7 +388,7 @@ func Test_DeleteResourcesInParallel_ProducerErrors(t *testing.T) {
 		t.Run(deleteErr.Error(), func(t *testing.T) {
 			owner, child := managedSecretPair()
 			client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
-			client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).Return(false, deleteErr)
+			client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).Return(clients.DeleteResourceResult{}, deleteErr)
 			if clients.Is404Error(deleteErr) {
 				client.EXPECT().GetResource(gomock.Any(), *child.Type, deleteResourceKey(*child.ID)).
 					Return(generated.GenericResource{}, &azcore.ResponseError{StatusCode: http.StatusNotFound})
@@ -383,14 +411,14 @@ func Test_DeleteResourcesInParallel_StandaloneAndOrphanSecrets(t *testing.T) {
 			orphan := generated.GenericResource{ID: new(testScope + "/providers/Radius.Security/secrets/orphan"), Type: managed.Type}
 			client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
 			for _, resource := range []generated.GenericResource{owner, standalone, orphan} {
-				client.EXPECT().DeleteResource(gomock.Any(), *resource.Type, *resource.ID, force).Return(true, nil)
+				client.EXPECT().DeleteResource(gomock.Any(), *resource.Type, *resource.ID, force).Return(clients.DeleteResourceResult{Deleted: true}, nil)
 			}
 			client.EXPECT().GetResource(gomock.Any(), *managed.Type, deleteResourceKey(*managed.ID)).
 				Return(generated.GenericResource{}, &azcore.ResponseError{StatusCode: http.StatusNotFound})
 			require.NoError(t, DeleteResourcesInParallel(t.Context(), client, &output.MockOutput{}, []generated.GenericResource{owner, managed, managed, standalone, orphan}, force))
 
 			// After a prior invocation removed the producer, a remaining secret must be deleted directly.
-			client.EXPECT().DeleteResource(gomock.Any(), *managed.Type, *managed.ID, force).Return(true, nil)
+			client.EXPECT().DeleteResource(gomock.Any(), *managed.Type, *managed.ID, force).Return(clients.DeleteResourceResult{Deleted: true}, nil)
 			require.NoError(t, DeleteResourcesInParallel(t.Context(), client, &output.MockOutput{}, []generated.GenericResource{managed}, force))
 		})
 	}
@@ -411,11 +439,11 @@ func Test_DeleteResourcesInParallel_ConcurrencyAndCancellation(t *testing.T) {
 			child := generated.GenericResource{ID: new(testScope + "/providers/Radius.Security/secrets/" + name), Type: new("Radius.Security/secrets")}
 			selected = append(selected, owner, child)
 			client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).
-				DoAndReturn(func(context.Context, string, string, bool) (bool, error) {
+				DoAndReturn(func(context.Context, string, string, bool) (clients.DeleteResourceResult, error) {
 					deleting.Add(1)
 					defer deleting.Add(-1)
 					<-releaseDeletes
-					return true, nil
+					return clients.DeleteResourceResult{Deleted: true}, nil
 				})
 		}
 		client.EXPECT().GetResource(gomock.Any(), "Radius.Security/secrets", gomock.Any()).
@@ -468,7 +496,7 @@ func Test_DeleteResourcesInParallel_ManagedSecretDeadline(t *testing.T) {
 					owner.Properties = map[string]any{"secrets": map[string]any{"name": name}}
 					child := generated.GenericResource{ID: new(testScope + "/providers/Radius.Security/secrets/" + name), Type: new("Radius.Security/secrets")}
 					selected = append(selected, owner, child)
-					client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).Return(true, nil)
+					client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).Return(clients.DeleteResourceResult{Deleted: true}, nil)
 				}
 				client.EXPECT().GetResource(gomock.Any(), "Radius.Security/secrets", gomock.Any()).
 					Return(generated.GenericResource{Properties: map[string]any{"provisioningState": "Updating"}}, nil).AnyTimes()
@@ -491,18 +519,18 @@ func Test_DeleteResourcesInParallel_ManagedSecretOverlap(t *testing.T) {
 		finishCascade := make(chan struct{})
 		var directDeletes atomic.Int32
 		client.EXPECT().DeleteResource(gomock.Any(), secretType, *child.ID, false).
-			DoAndReturn(func(ctx context.Context, _, _ string, _ bool) (bool, error) {
+			DoAndReturn(func(ctx context.Context, _, _ string, _ bool) (clients.DeleteResourceResult, error) {
 				directDeletes.Add(1)
 				<-ctx.Done()
-				return false, ctx.Err()
+				return clients.DeleteResourceResult{}, ctx.Err()
 			}).AnyTimes()
 		client.EXPECT().DeleteResource(gomock.Any(), testResourceType, *owner.ID, false).
-			DoAndReturn(func(context.Context, string, string, bool) (bool, error) {
+			DoAndReturn(func(context.Context, string, string, bool) (clients.DeleteResourceResult, error) {
 				<-startCascade
 				if directDeletes.Load() != 0 {
-					return false, fmt.Errorf("managed secret DELETE: 409 Conflict, state Updating")
+					return clients.DeleteResourceResult{}, fmt.Errorf("managed secret DELETE: 409 Conflict, state Updating")
 				}
-				return true, nil
+				return clients.DeleteResourceResult{Deleted: true}, nil
 			})
 		client.EXPECT().GetResource(gomock.Any(), secretType, deleteResourceKey(*child.ID)).
 			DoAndReturn(func(ctx context.Context, _, _ string) (generated.GenericResource, error) {

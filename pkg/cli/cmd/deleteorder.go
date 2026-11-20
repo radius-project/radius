@@ -239,6 +239,7 @@ func deleteResourceTier(ctx context.Context, client clients.ApplicationsManageme
 	}
 
 	errs := make([]error, len(deletable))
+	results := make([]clients.DeleteResourceResult, len(deletable))
 
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, maxParallelDeletes)
@@ -255,14 +256,19 @@ func deleteResourceTier(ctx context.Context, client clients.ApplicationsManageme
 
 			// ctx is deliberately not derived from an errgroup: one failure must not cancel the
 			// deletes running alongside it.
-			_, err := client.DeleteResource(ctx, *resource.Type, *resource.ID, force)
+			result, err := client.DeleteResource(ctx, *resource.Type, *resource.ID, force)
 			if err != nil && !clients.Is404Error(err) {
 				errs[i] = fmt.Errorf("failed to delete %s: %w", *resource.ID, err)
 			}
+			results[i] = result
 		})
 	}
 
 	wg.Wait()
+
+	for i, result := range results {
+		LogSkippedRecipeDeployments(out, *deletable[i].ID, result)
+	}
 
 	return errors.Join(append(errs, unaddressable...)...)
 }

@@ -40,6 +40,17 @@ import (
 // MsgDeletingResource is logged for each resource before its deletion is started.
 const MsgDeletingResource = "  Deleting %s..."
 
+// MsgSkippedRecipeDeployments warns that a forced delete skipped recipe deployments whose resources Radius
+// could not confirm.
+const MsgSkippedRecipeDeployments = "  Warning: %s was deleted, but Radius could not confirm which resources its failed recipe deployments created, so the forced delete skipped them: %s. Check for leftover resources and remove them by hand."
+
+// LogSkippedRecipeDeployments warns about the recipe deployments a forced delete of the resource skipped.
+func LogSkippedRecipeDeployments(out output.Interface, resourceID string, result clients.DeleteResourceResult) {
+	if len(result.SkippedRecipeDeployments) > 0 {
+		out.LogInfo(MsgSkippedRecipeDeployments, resourceID, strings.Join(result.SkippedRecipeDeployments, ", "))
+	}
+}
+
 // MsgSkippingResource is logged for each resource the cascade cannot delete, so the count shown in
 // the confirmation prompt cannot quietly disagree with what was actually deleted.
 const MsgSkippingResource = "  Warning: skipping %s because its resource ID or type is missing. It must be deleted manually."
@@ -100,6 +111,7 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 	g, groupCtx := errgroup.WithContext(ctx)
 	g.SetLimit(maxParallelDeletes)
 	missing := make([]bool, len(selected))
+	results := make([]clients.DeleteResourceResult, len(selected))
 
 	for i, resource := range selected {
 		if resource.ID == nil || resource.Type == nil {
@@ -120,16 +132,24 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 			if err := groupCtx.Err(); err != nil {
 				return err
 			}
-			deleted, err := client.DeleteResource(groupCtx, resourceType, resourceID, force)
+			result, err := client.DeleteResource(groupCtx, resourceType, resourceID, force)
 			if err != nil && !clients.Is404Error(err) {
 				return err
 			}
-			missing[i] = !deleted || clients.Is404Error(err)
+			missing[i] = !result.Deleted || clients.Is404Error(err)
+			results[i] = result
 			return nil
 		})
 	}
 
-	if err := g.Wait(); err != nil {
+	err = g.Wait()
+	// Warn after the parallel deletes finish, because output isn't safe for concurrent use.
+	for i, result := range results {
+		if len(result.SkippedRecipeDeployments) > 0 {
+			LogSkippedRecipeDeployments(out, *selected[i].ID, result)
+		}
+	}
+	if err != nil {
 		return err
 	}
 	if len(managedSecrets) == 0 {

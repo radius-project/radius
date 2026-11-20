@@ -509,10 +509,10 @@ func (c *MockApplicationsManagementClientDeleteRecipePackCall) DoAndReturn(f fun
 }
 
 // DeleteResource mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType, resourceNameOrID string, force bool) (bool, error) {
+func (m *MockApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType, resourceNameOrID string, force bool) (DeleteResourceResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteResource", ctx, resourceType, resourceNameOrID, force)
-	ret0, _ := ret[0].(bool)
+	ret0, _ := ret[0].(DeleteResourceResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -530,19 +530,19 @@ type MockApplicationsManagementClientDeleteResourceCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockApplicationsManagementClientDeleteResourceCall) Return(arg0 bool, arg1 error) *MockApplicationsManagementClientDeleteResourceCall {
+func (c *MockApplicationsManagementClientDeleteResourceCall) Return(arg0 DeleteResourceResult, arg1 error) *MockApplicationsManagementClientDeleteResourceCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockApplicationsManagementClientDeleteResourceCall) Do(f func(context.Context, string, string, bool) (bool, error)) *MockApplicationsManagementClientDeleteResourceCall {
+func (c *MockApplicationsManagementClientDeleteResourceCall) Do(f func(context.Context, string, string, bool) (DeleteResourceResult, error)) *MockApplicationsManagementClientDeleteResourceCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationsManagementClientDeleteResourceCall) DoAndReturn(f func(context.Context, string, string, bool) (bool, error)) *MockApplicationsManagementClientDeleteResourceCall {
+func (c *MockApplicationsManagementClientDeleteResourceCall) DoAndReturn(f func(context.Context, string, string, bool) (DeleteResourceResult, error)) *MockApplicationsManagementClientDeleteResourceCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

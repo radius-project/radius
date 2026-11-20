@@ -193,13 +193,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	deleted, err := client.DeleteResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName, r.Force)
+	result, err := client.DeleteResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName, r.Force)
 	if err != nil {
 		return err
 	}
 
-	if deleted {
+	if result.Deleted {
 		r.Output.LogInfo("%s/%s deleted", r.FullyQualifiedResourceTypeName, r.ResourceName)
+		cmd.LogSkippedRecipeDeployments(r.Output, r.FullyQualifiedResourceTypeName+"/"+r.ResourceName, result)
 	} else {
 		r.Output.LogInfo("%s/%s not found", r.FullyQualifiedResourceTypeName, r.ResourceName)
 	}

@@ -76,9 +76,10 @@ func AddConfirmationFlag(cmd *cobra.Command) {
 	cmd.Flags().BoolP("yes", "y", false, "The confirmation flag")
 }
 
-// AddForceFlag adds a flag to the given command that allows the user to force an operation even when the resource is in a non-terminal state.
+// AddForceFlag adds a flag to the given command that allows the user to force an operation even when the resource is in a
+// non-terminal state or has recipe deployments whose resources Radius can't confirm.
 func AddForceFlag(cmd *cobra.Command) {
-	cmd.Flags().Bool("force", false, "Force the operation even if the resource is in a non-terminal provisioning state")
+	cmd.Flags().Bool("force", false, "Force the operation even if the resource is in a non-terminal provisioning state or Radius can't confirm which resources a failed recipe deployment created")
 }
 
 // AddEnvironmentNameFlag adds a flag to the given command that allows the user to specify an environment name.
