@@ -86,8 +86,7 @@ func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, in
 	return err
 }
 
-// unsent returns err, from the read of the instance before call, as a failure AWS applied none of, because call was
-// never sent. It is a client or throttled failure when awsapi.Rejected makes it one, and ErrNotFound stays as it is.
+// unsent returns err, from a read before any change, as a failure AWS applied none of, because no change was sent. It is a client or throttled failure when awsapi.Rejected makes it one, and ErrNotFound stays as it is.
 func unsent(err error) error {
 	if errors.Is(err, native.ErrNotFound) {
 		return err
@@ -251,11 +250,12 @@ func only(properties map[string]any, names []string) map[string]any {
 
 // Update sets the master user password, or whether RDS manages it, with ModifyTenantDatabase, then removes and adds
 // tags. Removing ManageMasterUserPassword turns RDS's management off, AWS's default, which takes MasterUserPassword in
-// the same call. A removed password or key stays as AWS has it, because AWS can't clear either.
+// the same call. A removed password or key stays as AWS has it, because AWS can't clear either. A failed read before
+// the calls changed nothing.
 func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateRequest) error {
 	tenant, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
-		return err
+		return unsent(err)
 	}
 	opt := inRegion(request.Region)
 	changed := awsapi.Changed(request)

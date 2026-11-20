@@ -242,6 +242,31 @@ func Test_TenantDatabase_Update(t *testing.T) {
 		err = h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: tenantID, Current: current, Desired: tenant})
 		require.ErrorIs(t, err, native.ErrNotFound)
 	})
+
+	t.Run("a failed read before any change applied none of the update", func(t *testing.T) {
+		for name, readErr := range map[string]error{
+			"server error": &smithyhttp.ResponseError{
+				Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusServiceUnavailable}},
+				Err:      &smithy.GenericAPIError{Code: "ServiceUnavailable", Message: "Service unavailable."},
+			},
+			"throttled": throttling(),
+		} {
+			h, api := newTenant(t, tenant)
+			current, err := h.Read(t.Context(), region, tenantID)
+			require.NoError(t, err)
+			api.errs["DescribeTenantDatabases"] = readErr
+			api.errs["ModifyTenantDatabase"] = fmt.Errorf("unexpected call")
+			err = h.Update(t.Context(), native.UpdateRequest{
+				Region: region, Identifier: tenantID, Current: current, Desired: with(tenant, map[string]any{"MasterUserPassword": "pass-two-5678"}),
+				Patch: jsondiff.Patch{replace("MasterUserPassword", "pass-two-5678")},
+			})
+			var failure *native.Failure
+			require.ErrorAs(t, err, &failure, name)
+			require.Equal(t, native.OutcomeRejected, failure.Outcome, "%s: nothing was sent, so the last-applied values stay", name)
+			require.False(t, failure.ClientError, name)
+			require.Equal(t, name == "throttled", failure.Throttled, name)
+		}
+	})
 }
 
 func Test_TenantDatabase_DeleteToken(t *testing.T) {

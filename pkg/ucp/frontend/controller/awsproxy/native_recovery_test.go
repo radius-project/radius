@@ -824,6 +824,12 @@ func Test_Native_FindLostCreate_DeleteFails(t *testing.T) {
 
 	h.deploy(nativePath, nativeProperties(1))
 	require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Tier")
+
+	h.fake.Errors["Delete"] = retriedCreateError(t)
+	resp = h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusInternalServerError, resp.status, "a retry's client fault doesn't show that AWS rejected the delete: %s", resp.raw)
+	require.Contains(t, resp.message(), "an earlier attempt may have reached AWS")
+	require.NotNil(t, h.record(nativePath), "the record stays")
 }
 
 // Test_Native_FindLostCreate_PutOwnsLostValues loses a create that set Tier, and recovers it with a PUT whose template

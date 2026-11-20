@@ -45,6 +45,7 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -401,7 +402,7 @@ func (e *engine) startUpdate(ctx context.Context, r *request, rec *datamodel.AWS
 			Token: rec.Properties.UpdateToken, State: rec.Properties.UpdateState,
 		})
 		if err != nil {
-			return "", err
+			return "", startError(err)
 		}
 		return uuid.New().String(), nil
 	}
@@ -428,7 +429,7 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 		identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
 		if err != nil {
 			// A create that failed partway can return the identifier of the resource it left.
-			return identifier, "", err
+			return identifier, "", startError(err)
 		}
 		return identifier, uuid.New().String(), nil
 	}
@@ -494,7 +495,7 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 			err = r.handler.Delete(ctx, r.region, identifier)
 		}
 		if err != nil {
-			return "", err
+			return "", startError(err)
 		}
 		return uuid.New().String(), nil
 	}
@@ -772,10 +773,22 @@ func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AW
 		return "", err
 	}
 	identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
+	err = startError(err)
 	if err == nil && identifier == "" {
 		return "", fmt.Errorf("the native handler for %s sent the create of the AWS resource %q again, but returned no identifier", r.typeName, r.id.Name())
 	}
 	return identifier, err
+}
+
+// startError returns err, from a native handler's start call or resend, as awsapi.Rejected reports it when the SDK
+// retried a call an earlier attempt of which may have reached AWS, so a 4xx on the last attempt, such as an
+// AlreadyExists for a create whose first response was lost, isn't taken as AWS rejecting the operation. A handler's
+// own failure, and any other error, stays as it is.
+func startError(err error) error {
+	if err != nil && awsapi.Retried(err) {
+		return awsapi.Rejected(err)
+	}
+	return err
 }
 
 // identifierError returns the response for an error computing the identifier from a template's properties, including

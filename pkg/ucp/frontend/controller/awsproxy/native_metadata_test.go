@@ -19,6 +19,7 @@ package awsproxy
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -27,9 +28,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	awsretry "github.com/aws/aws-sdk-go-v2/aws/retry"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/smithy-go"
+	smithymiddleware "github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 
@@ -69,6 +74,7 @@ func Test_Native_StartCallOutcomes(t *testing.T) {
 		{"the handler reports an applied update", failure(native.OutcomeApplied), http.StatusBadRequest, true},
 		{"AWS throttles every attempt", awsapi.Rejected(answer(http.StatusBadRequest, "Throttling")), http.StatusTooManyRequests, false},
 		{"AWS throttles a retry after a lost response", awsapi.Rejected(&awsretry.MaxAttemptsError{Attempt: 2, Err: answer(http.StatusBadRequest, "Throttling")}), http.StatusTooManyRequests, true},
+		{"AWS answers a retry with a modeled client fault", retriedCreateError(t), http.StatusInternalServerError, true},
 		{"AWS rejects a retry after a lost response", awsapi.Rejected(&awsretry.MaxAttemptsError{Attempt: 2, Err: answer(http.StatusConflict, "ConflictException")}), http.StatusInternalServerError, true},
 	}
 	for _, tt := range tests {
@@ -125,6 +131,15 @@ func answer(status int, code string) error {
 }
 
 func Test_Native_CreateOutcomes(t *testing.T) {
+	t.Run("a first create whose retry AWS answers with a client fault keeps the record", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.Errors["Create"] = retriedCreateError(t)
+		resp := h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "an earlier attempt may have reached AWS")
+		h.requireCreateKept(nativePath)
+	})
+
 	t.Run("a throttled first create removes the record and isn't the request's fault", func(t *testing.T) {
 		h := newNativeHarness(t)
 		h.fake.Errors["Create"] = awsapi.Rejected(answer(http.StatusBadRequest, "Throttling"))
@@ -1118,3 +1133,45 @@ func asList(v any) []any {
 	l, _ := v.([]any)
 	return l
 }
+
+// retriedCreateError returns the error a real RDS client, with the attempts awsapi.RecordAttempts keeps, returns for a
+// create that RDS answered with 503 and then, on the SDK's retry, with TenantDatabaseAlreadyExists, which the SDK models
+// as a client fault. The first attempt may have made the tenant database.
+func retriedCreateError(t *testing.T) error {
+	t.Helper()
+	answers := []struct {
+		status int
+		body   string
+	}{
+		{http.StatusServiceUnavailable, "<ErrorResponse><Error><Type>Receiver</Type><Code>ServiceUnavailable</Code><Message>Service unavailable.</Message></Error><RequestId>1</RequestId></ErrorResponse>"},
+		{http.StatusBadRequest, "<ErrorResponse><Error><Type>Sender</Type><Code>TenantDatabaseAlreadyExists</Code><Message>The tenant database pdb1 already exists.</Message></Error><RequestId>2</RequestId></ErrorResponse>"},
+	}
+	calls := 0
+	client := rds.NewFromConfig(aws.Config{
+		Region:           "us-west-2",
+		Credentials:      credentials.NewStaticCredentialsProvider("AKIATEST", "secret", ""),
+		RetryMaxAttempts: 3,
+		Retryer: func() aws.Retryer {
+			return awsretry.NewStandard(func(o *awsretry.StandardOptions) {
+				o.Backoff = awsretry.BackoffDelayerFunc(func(int, error) (time.Duration, error) { return 0, nil })
+			})
+		},
+		APIOptions: []func(*smithymiddleware.Stack) error{awsapi.RecordAttempts},
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			answer := answers[min(calls, len(answers)-1)]
+			calls++
+			return &http.Response{StatusCode: answer.status, Header: http.Header{"Content-Type": {"text/xml"}}, Body: io.NopCloser(strings.NewReader(answer.body)), Request: req}, nil
+		})},
+	})
+	_, err := client.CreateTenantDatabase(t.Context(), &rds.CreateTenantDatabaseInput{
+		DBInstanceIdentifier: aws.String("app-cdb"), TenantDBName: aws.String("pdb1"),
+		MasterUsername: aws.String("admin"), MasterUserPassword: aws.String("pass-word-1234"),
+	})
+	require.Equal(t, 2, calls, "the SDK retried the 503")
+	require.True(t, ucp_aws.IsClientFault(err), "the SDK models the last answer as a client fault")
+	return err
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
