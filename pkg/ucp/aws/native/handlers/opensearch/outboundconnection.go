@@ -411,9 +411,9 @@ func (h *OutboundConnection) search(ctx context.Context, region string, t connec
 }
 
 // Find returns the ID of the connection from the template's source domain with its alias to its destination domain,
-// or "" when AWS lists none. A live connection comes first, and otherwise one that failed, which AWS keeps, so a
-// delete after a lost create removes it. It fails when more than one matches, or the one that matches has another
-// value the template sets. A connection AWS made moments ago may not be listed yet, which the create's duplicate
+// live or failed, or "" when AWS lists none. AWS keeps a connection that failed, so a delete after a lost create
+// removes it. It fails when more than one matches, because any of them could be the lost create's, or the one that
+// matches has another value the template sets. A connection AWS made moments ago may not be listed yet, which the create's duplicate
 // rejection covers.
 func (h *OutboundConnection) Find(ctx context.Context, request native.CreateRequest) (string, error) {
 	t, err := parseConnectionRequest(request.Properties, request.Region)
@@ -424,10 +424,7 @@ func (h *OutboundConnection) Find(ctx context.Context, request native.CreateRequ
 	if err != nil {
 		return "", err
 	}
-	if len(s.live) > 0 {
-		return t.one(s.live)
-	}
-	return t.one(s.failed)
+	return t.one(slices.Concat(s.live, s.failed))
 }
 
 // one returns the ID of the only connection in found, or "" when found is empty. It returns no ID with an error,
@@ -509,7 +506,7 @@ func (h *OutboundConnection) existing(ctx context.Context, region string, t conn
 		return "", beforeChange(err)
 	}
 	if len(s.live) > 0 {
-		id, err := t.one(s.live)
+		id, err := t.one(slices.Concat(s.live, s.failed))
 		if err != nil {
 			return "", beforeChange(err)
 		}

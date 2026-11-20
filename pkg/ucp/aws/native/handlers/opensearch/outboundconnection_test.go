@@ -713,11 +713,20 @@ func Test_OutboundConnection_Find(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, "cc-outside00001", found, "a lost create that failed is still in AWS, so a delete must find it")
 
-				// A live connection is the one a later create made.
+				// Either could be the lost create's, so Find can't tell which one to take.
 				connPut(f, "cc-outside00002", nil, types.OutboundConnectionStatusCodeActive)
 				found, err = h.Find(t.Context(), connRequest(connTemplate(nil)))
-				require.NoError(t, err)
-				require.Equal(t, "cc-outside00002", found)
+				require.ErrorContains(t, err, "cc-outside00001")
+				require.ErrorContains(t, err, "cc-outside00002")
+				require.Empty(t, found)
+
+				f.errs["CreateOutboundConnection"] = connFault("ResourceAlreadyExistsException", "already exists")
+				_, err = h.Create(t.Context(), connRequest(connTemplate(nil)))
+				require.ErrorContains(t, err, "cc-outside00001")
+				require.ErrorContains(t, err, "cc-outside00002")
+				var failure *native.Failure
+				require.ErrorAs(t, err, &failure)
+				require.Equal(t, native.OutcomeUnknown, failure.Outcome, "UCP keeps the record, since either could be its own")
 			})
 		}
 		h, f := newConnHandler()
