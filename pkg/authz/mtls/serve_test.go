@@ -735,6 +735,20 @@ func TestServe_StaleSigningKeysByMode(t *testing.T) {
 					require.Empty(t, seen.authorization)
 				})
 			}
+			// The same verifier must not turn a dryRun would-deny into receipt evidence.
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://"+srv.url+InternalIdentityPath, nil)
+			require.NoError(t, err)
+			req.Header.Set("Authorization", credentials["valid token"])
+			resp, err := c.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			require.Equal(t, "no-store", resp.Header.Get("Cache-Control"))
+			var denial v1.ErrorResponse
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&denial))
+			require.NotNil(t, denial.Error)
+			require.Equal(t, v1.CodeAuthorizationUnavailable, denial.Error.Code)
+			require.Empty(t, srv.seen)
 		})
 	}
 }

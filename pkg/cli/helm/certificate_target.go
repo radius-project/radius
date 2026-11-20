@@ -25,6 +25,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -157,6 +158,9 @@ func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterO
 // prepareCertificateTarget runs before the ordinary anti-switch guard so the lifecycle
 // can compare a validated target with its journal. The import handle never enters target.
 func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string) (*certificateTarget, *certificatePlan, error) {
+	if (options.Certificates.RotateCA || options.Certificates.RotationPhase != "") && options.TLS.Provider != "" {
+		return nil, nil, errors.New("CA rotation cannot be combined with a TLS provider selection")
+	}
 	plan, err := i.prepareCertificateSelection(ctx, options, selected, current, kubeContext)
 	if err != nil {
 		return nil, nil, err

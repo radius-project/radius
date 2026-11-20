@@ -20,7 +20,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
+	"unicode"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -84,6 +86,18 @@ func rotationOwned(object metav1.Object, namespace, release string) bool {
 		object.GetAnnotations()["meta.helm.sh/release-namespace"] == namespace
 }
 
+// journalFieldKey matches encoding/json's case-insensitive struct field matching,
+// including Unicode simple-fold equivalents that plain lowercasing misses.
+func journalFieldKey(field string) string {
+	return strings.Map(func(r rune) rune {
+		key := r
+		for s := unicode.SimpleFold(r); s != r; s = unicode.SimpleFold(s) {
+			key = min(key, s)
+		}
+		return key
+	}, field)
+}
+
 func checkRotationJSON(decoder *json.Decoder, token json.Token, depth int) error {
 	if depth > 16 || token == nil {
 		return errors.New("invalid or null CA rotation journal field")
@@ -100,6 +114,7 @@ func checkRotationJSON(decoder *json.Decoder, token json.Token, depth int) error
 				return errors.New("invalid CA rotation journal")
 			}
 			field, ok := key.(string)
+			field = journalFieldKey(field)
 			if !ok || fields[field] {
 				return errors.New("duplicate CA rotation journal field")
 			}

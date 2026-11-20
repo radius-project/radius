@@ -221,7 +221,7 @@ func decodeInitialCertificateState(raw string, store *rotationStore, bound bool)
 }
 
 func (b *initialCertificateInstaller) check(ctx context.Context) error {
-	if err := b.operation.checkProviderJournal(ctx, b.store.release, b.impl.validateCompletedProviderJournal); err != nil {
+	if err := b.operation.checkProviderJournal(ctx, b.store.release, b.impl.completedProviderJournalValidator(b.store.namespace, b.store.release)); err != nil {
 		return err
 	}
 	return b.checkJournal(ctx)

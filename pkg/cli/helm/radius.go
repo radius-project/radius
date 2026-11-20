@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
@@ -46,25 +47,36 @@ type RadiusChartOptions struct {
 // radiusActionMode checks the selected chart before changing any dependencies. The caller
 // supplies stored values only for actions that reuse them; coalesced defaults never go to Helm.
 func radiusActionMode(selected *chart.Chart, current, stored map[string]any, options ChartOptions, upgrade bool) (authz.Mode, error) {
+	settings, err := radiusActionSettings(selected, current, stored, options, upgrade)
+	return settings.mode, err
+}
+
+type chartAuthSettings struct {
+	mode     authz.Mode
+	provider authz.TLSProvider
+}
+
+func radiusActionSettings(selected *chart.Chart, current, stored map[string]any, options ChartOptions, upgrade bool) (chartAuthSettings, error) {
 	if selected == nil {
-		return "", fmt.Errorf("missing target Radius chart")
+		return chartAuthSettings{}, fmt.Errorf("missing target Radius chart")
 	}
 	values := resolveEffectiveChartValues(selected.Values, stored, current)
 	if nestedValue(selected.Values, "global", "rbac", "tls", "provider") == nil {
 		for _, key := range []string{"tls", "tlsProvider", "mtls"} {
 			if nestedValue(values, "global", "rbac", key) != nil {
-				return "", fmt.Errorf("selected Radius chart does not support global.rbac.%s", key)
+				return chartAuthSettings{}, fmt.Errorf("selected Radius chart does not support global.rbac.%s", key)
 			}
 		}
 		if nestedValue(values, "de", "internalAuth") != nil {
-			return "", fmt.Errorf("selected Radius chart does not support de.internalAuth.enabled")
+			return chartAuthSettings{}, fmt.Errorf("selected Radius chart does not support de.internalAuth.enabled")
 		}
 		for _, key := range []string{"ucpMTLS", "externalIdentity"} {
 			if isTrue(nestedValue(values, "de", key, "enabled")) {
-				return "", fmt.Errorf("de.%s.enabled is retired; use de.internalAuth.enabled", key)
+				return chartAuthSettings{}, fmt.Errorf("de.%s.enabled is retired; use de.internalAuth.enabled", key)
 			}
 		}
-		return resolveAuthzMode(selected.Values, stored, current)
+		mode, err := resolveAuthzMode(selected.Values, stored, current)
+		return chartAuthSettings{mode, authz.TLSProviderRadius}, err
 	}
 	// Use the chart's own mode and engine gates without running hooks, lookups or Secret templates.
 	c := &chart.Chart{Metadata: selected.Metadata}
@@ -74,17 +86,22 @@ func radiusActionMode(selected *chart.Chart, current, stored map[string]any, opt
 		}
 	}
 	const name = "templates/action-mode"
-	c.Templates = append(c.Templates, &common.File{Name: name, Data: []byte(`{{- $_ := include "radius.de.internalAuth.enabled" . -}}{{ include "radius.authz.mode" . }}`)})
+	c.Templates = append(c.Templates, &common.File{Name: name, Data: []byte(`{{- $_ := include "radius.de.internalAuth.enabled" . -}}{{ include "radius.authz.mode" . }}/{{ include "radius.authz.tls.provider" . }}`)})
 	result, err := engine.Render(c, common.Values{"Values": values, "Capabilities": common.DefaultCapabilities, "Release": map[string]any{"Name": options.ReleaseName, "Namespace": options.Namespace, "IsUpgrade": upgrade, "IsInstall": !upgrade}})
 	if err != nil {
-		return "", fmt.Errorf("resolve selected Radius chart authorization: %w", err)
+		return chartAuthSettings{}, fmt.Errorf("resolve selected Radius chart authorization: %w", err)
 	}
-	mode := authz.Mode(result[c.Name()+"/"+name])
+	rawMode, rawProvider, _ := strings.Cut(result[c.Name()+"/"+name], "/")
+	provider := authz.TLSProvider(rawProvider)
+	if provider != authz.TLSProviderRadius && provider != authz.TLSProviderExternal {
+		return chartAuthSettings{}, fmt.Errorf("unsupported Radius TLS provider %q", provider)
+	}
+	mode := authz.Mode(rawMode)
 	switch mode {
 	case authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce:
-		return mode, nil
+		return chartAuthSettings{mode, provider}, nil
 	default:
-		return "", fmt.Errorf("unsupported Radius authorization mode %q", mode)
+		return chartAuthSettings{}, fmt.Errorf("unsupported Radius authorization mode %q", mode)
 	}
 }
 

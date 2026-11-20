@@ -39,6 +39,7 @@ import (
 )
 
 type CLIClusterOptions struct {
+	TLS          TLSProviderOptions
 	Certificates CertificateOptions
 	Radius       ChartOptions
 	Contour      ChartOptions
@@ -52,6 +53,7 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
+	TLS TLSProviderOptions
 	// ConfirmedLeftovers limits an absent-release retry to the inventory the operator approved.
 	ConfirmedLeftovers []string
 	Certificates       CertificateOptions
@@ -125,6 +127,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions {
 	options := NewDefaultClusterOptions()
 	options.Certificates = cliOptions.Certificates
+	options.TLS = cliOptions.TLS
 
 	// If any of the Radius CLI options are provided, override the default options.
 	if cliOptions.Radius.Reinstall {
@@ -897,6 +900,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 		}
 	}
 
+	if _, err := rollbackProviderMode(history, targetRevision); err != nil {
+		return err
+	}
 	return i.withRollbackCertificateOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, releaseRevision(history, targetRevision), func(ctx context.Context) error {
 		if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
 			return err
@@ -959,6 +965,9 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 
 	if !targetFound {
 		return fmt.Errorf("revision %d not found in release history", revision)
+	}
+	if _, err := rollbackProviderMode(history, revision); err != nil {
+		return err
 	}
 	return i.withRollbackCertificateOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, releaseRevision(history, revision), func(ctx context.Context) error {
 

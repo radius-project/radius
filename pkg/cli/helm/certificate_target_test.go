@@ -71,6 +71,7 @@ func TestInstalledChartDefaultsCannotSwitchIssuer(t *testing.T) {
 	old.Values = resolveEffectiveChartValues(old.Values, nil, issuerReleaseValues(ca))
 	stored := map[string]any{}
 	setValue(stored, true, "global", "rbac", "enabled")
+	setValue(stored, false, "global", "rbac", "dryRun")
 	runInstalledChartSwitchCommands(t, old, selected, stored, "selected-context")
 }
 
@@ -86,6 +87,7 @@ spec:
 	opts := NewDefaultClusterOptions()
 	opts.Radius.ChartPath = "chart"
 	opts.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
+	opts.RadiusReleaseValues = providerTestValues("external")
 	mock := NewMockHelmClient(gomock.NewController(t))
 	mock.EXPECT().LoadChart("chart").Return(c, nil)
 	opts.RadiusReleaseChart = c
@@ -132,6 +134,9 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 				options := NewDefaultClusterOptions()
 				options.Contour.Disabled = true
 				options.RadiusInstalled = true
+				// Keep the deployed provider external even on reset, without a saved provider override.
+				setValue(c.Values, "external", "global", "rbac", "tls", "provider")
+				options.RadiusReleaseChart = c
 				options.RadiusReleaseValues = authzOnValues
 				options.Radius.Reinstall = action == "reinstall"
 				options.ResetValues = action == "reset"
@@ -151,7 +156,8 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: c, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil)
 					}
 				}
-				impl := newStageCluster(t, nil, true).impl(client)
+				cluster := newStageCluster(t, nil, true)
+				impl := cluster.impl(client)
 				run := impl.UpgradeRadius
 				if options.Radius.Reinstall {
 					run = impl.InstallRadius
@@ -160,6 +166,7 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 				switch {
 				case invalid:
 					require.ErrorContains(t, err, "provider")
+					requireOnlyCertificateGuardReads(t, cluster)
 				default:
 					require.ErrorContains(t, err, "rendered upgrade")
 				}

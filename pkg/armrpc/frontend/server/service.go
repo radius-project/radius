@@ -24,6 +24,7 @@ import (
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/authentication"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
@@ -96,6 +97,12 @@ func (s *Service) Start(ctx context.Context, opt Options) error {
 	server, err := New(ctx, opt)
 	if err != nil {
 		return err
+	}
+	if s.Options.Config.Authorization.EffectiveMode() != authz.ModeOff {
+		server.Handler, err = s.Options.Config.UCP.WithRPIdentityHandler(server.Handler, s.Options.Config.Authorization, opt.ReceiverName, s.Options.UCPConnection)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Handle shutdown based on the context
