@@ -501,11 +501,19 @@ func IsWaiting(rec *datamodel.AWSResource) bool {
 	return rec.Properties.StartState == StartWaiting
 }
 
+// IsSendingNow reports whether a worker saved that it sends the record's call less than StaleAfter ago, so it may still
+// run. A claim with no time, or an older one, has no running sender.
+func IsSendingNow(rec *datamodel.AWSResource) bool {
+	sent := rec.Properties.StartSentAt
+	return rec.Properties.StartState == StartSending && sent != nil && Now().Sub(*sent) <= StaleAfter
+}
+
 // ClearStart drops what the record keeps for a first call that waits for AWS, once AWS took it or the operation
 // ended.
 func ClearStart(rec *datamodel.AWSResource) {
 	rec.Properties.StartState = ""
 	rec.Properties.StartReason = ""
+	rec.Properties.StartSentAt = nil
 	rec.Properties.StartPatch = nil
 	rec.Properties.StartCurrent = nil
 }

@@ -251,6 +251,20 @@ func Test_Native_Wait_Timeout(t *testing.T) {
 		require.NotEqual(t, first, creates[len(creates)-1].ClientToken, "the next deploy is a new create")
 	})
 
+	t.Run("create of a type whose delete leaves the resource", func(t *testing.T) {
+		h := newWaitHarness(t)
+		h.withMetadata(schemas.Metadata{TypeName: nativeType, OnDelete: schemas.OnDeleteLeave})
+		h.fake.Opts.ReadyTimeout = time.Nanosecond
+		h.fake.SetBusy(-1)
+		require.Equal(t, http.StatusCreated, h.put(nativePath, map[string]any{"Name": "app-native", "Size": 1}).status)
+		h.finish()
+		h.requireNoResource(nativePath)
+
+		resp := h.delete(nativePath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(nativePath), "a record that holds no resource has nothing to leave")
+	})
+
 	t.Run("update", func(t *testing.T) {
 		h := newWaitHarness(t)
 		h.deploy(nativePath, nativeProperties(1))

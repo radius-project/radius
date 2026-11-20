@@ -603,3 +603,22 @@ func Test_DropCreate(t *testing.T) {
 	require.Empty(t, rec.Properties.PendingOperation)
 	require.Equal(t, "owner", rec.Properties.Owner)
 }
+
+func Test_IsSendingNow(t *testing.T) {
+	now := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	Now = func() time.Time { return now }
+	t.Cleanup(func() { Now = time.Now })
+	at := func(d time.Duration) *time.Time { sent := now.Add(-d); return &sent }
+
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.StartState = StartSending
+	require.False(t, IsSendingNow(rec), "a claim with no time has no running sender")
+	rec.Properties.StartSentAt = at(time.Minute)
+	require.True(t, IsSendingNow(rec))
+	rec.Properties.StartSentAt = at(StaleAfter + time.Second)
+	require.False(t, IsSendingNow(rec), "an old claim's sender stopped")
+	rec.Properties.StartState, rec.Properties.StartSentAt = StartWaiting, at(time.Minute)
+	require.False(t, IsSendingNow(rec))
+	ClearStart(rec)
+	require.Nil(t, rec.Properties.StartSentAt)
+}

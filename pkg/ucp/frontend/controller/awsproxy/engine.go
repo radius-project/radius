@@ -999,8 +999,8 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 // first. When AWS has no resource, or the identifier now names a resource of another product, only the record is
 // removed (see isGoneForDelete).
 //
-// The type's onDelete metadata can change that: nothing removes only the record, leave keeps the record and returns
-// 204, and reset has the native handler reset the resource instead of deleting it (see startDeleteCall). Neither
+// The type's onDelete metadata can change that, for a record that holds a resource: nothing removes only the record,
+// leave keeps the record and returns 204, and reset has the native handler reset the resource instead of deleting it (see startDeleteCall). Neither
 // nothing nor leave calls AWS. reject returns 400 and changes nothing when AWS has the resource, and removes the record
 // when it doesn't: a record whose create may have reached AWS finds the resource first, as for any delete, except that
 // it never sends the create again, so a create only a resend could find removes only the record.
@@ -1012,6 +1012,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	}
 	r.managed = managed
 	r.recorded = recordedValues(rec)
+	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
+		// The record holds no resource, such as after a first create AWS never had, so there is nothing to leave.
+		return e.removeRecord(ctx, r, etag)
+	}
 	switch onDelete(r) {
 	case schemas.OnDeleteNothing:
 		logger.Info("Removing the record of an AWS resource without changing it in AWS", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
@@ -1019,9 +1023,6 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	case schemas.OnDeleteLeave:
 		logger.Info("Leaving an AWS resource and its record as they are", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
 		return armrpc_rest.NewNoContentResponse(), nil
-	}
-	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
-		return e.removeRecord(ctx, r, etag)
 	}
 	// A native first create is found below, with the steps a PUT takes. Any other record with an identifier is read by it,
 	// including a Cloud Control first create, whose identifier the template gave.

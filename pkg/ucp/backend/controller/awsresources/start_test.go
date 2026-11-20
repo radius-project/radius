@@ -161,7 +161,7 @@ func Test_SendStart_RecordErrors(t *testing.T) {
 	t.Run("a request removes the record before the worker saves that it sends", func(t *testing.T) {
 		f := newStartFixture(t, records.OperationCreate)
 		db := newSaveFails(f.db, 0)
-		db.at, db.beforeRead = 2, func() { require.NoError(t, f.db.Delete(t.Context(), startID)) }
+		db.at, db.beforeRead = 1, func() { require.NoError(t, f.db.Delete(t.Context(), startID)) }
 		rec, result, err := f.send(t.Context(), db, records.OperationCreate)
 		require.NoError(t, err)
 		require.Nil(t, rec)
@@ -535,11 +535,11 @@ func Test_SendStart_RecordRemovedDuringSave(t *testing.T) {
 // Test_SendStart_OverlappingDeliveries runs a second delivery of the operation, as when the queue hands it out again
 // while the first still runs. Only one delivery can send the call.
 func Test_SendStart_OverlappingDeliveries(t *testing.T) {
-	t.Run("the other delivery claims the call after this one read it waiting", func(t *testing.T) {
+	t.Run("a claim another delivery left behind", func(t *testing.T) {
 		f := newStartFixture(t, records.OperationCreate)
 		db := newSaveFails(f.db, 0)
-		// The second read is the one before this delivery saves that it sends the call.
-		db.at, db.beforeRead = 2, func() {
+		// The first read is the one before this delivery saves that it sends the call.
+		db.at, db.beforeRead = 1, func() {
 			rec, etag, err := f.store.Get(t.Context(), f.id)
 			require.NoError(t, err)
 			rec.Properties.StartState = records.StartSending
@@ -559,7 +559,7 @@ func Test_SendStart_OverlappingDeliveries(t *testing.T) {
 	t.Run("the other delivery already sent the call AWS took", func(t *testing.T) {
 		f := newStartFixture(t, records.OperationCreate)
 		db := newSaveFails(f.db, 0)
-		db.at, db.beforeRead = 2, func() {
+		db.at, db.beforeRead = 1, func() {
 			rec, etag, err := f.store.Get(t.Context(), f.id)
 			require.NoError(t, err)
 			records.ClearStart(rec)
@@ -572,20 +572,69 @@ func Test_SendStart_OverlappingDeliveries(t *testing.T) {
 		require.Empty(t, f.fake.Calls())
 	})
 
-	t.Run("a late busy answer never makes a call AWS took replaceable", func(t *testing.T) {
+	t.Run("waits while another delivery sends the call, and then follows it", func(t *testing.T) {
 		f := newStartFixture(t, records.OperationCreate)
-		f.fake.SetBusy(1)
-		f.fake.OnStart = func() {
-			f.fake.OnStart = nil
-			// The other delivery finds this one's claim, and ends the operation as unknown.
-			_, result, err := f.send(t.Context(), f.db, records.OperationCreate)
-			require.NoError(t, err)
-			require.NotNil(t, result.Error)
-		}
-		_, result, err := f.send(t.Context(), f.db, records.OperationCreate)
+		rec, etag, err := f.store.Get(t.Context(), f.id)
 		require.NoError(t, err)
-		require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
-		require.False(t, records.IsWaiting(f.record()))
+		sent := records.Now().UTC()
+		rec.Properties.StartState, rec.Properties.StartSentAt = records.StartSending, &sent
+		_, err = f.store.Save(t.Context(), rec, etag)
+		require.NoError(t, err)
+
+		db := newSaveFails(f.db, 0)
+		// The other delivery's call is taken before this one reads the record again.
+		db.at, db.beforeRead = 2, func() {
+			rec, etag, err := f.store.Get(t.Context(), f.id)
+			require.NoError(t, err)
+			records.ClearStart(rec)
+			_, err = f.store.Save(t.Context(), rec, etag)
+			require.NoError(t, err)
+		}
+		got, result, err := f.send(t.Context(), db, records.OperationCreate)
+		require.NoError(t, err)
+		require.Nil(t, result.Error, "a live claim is never released by another delivery")
+		require.NotNil(t, got)
+		require.Empty(t, f.fake.Calls())
+		require.Equal(t, f.op.String(), f.record().Properties.RequestToken)
+	})
+
+	t.Run("follows another delivery that finished the operation", func(t *testing.T) {
+		f := newStartFixture(t, records.OperationCreate)
+		rec, etag, err := f.store.Get(t.Context(), f.id)
+		require.NoError(t, err)
+		sent := records.Now().UTC()
+		rec.Properties.StartState, rec.Properties.StartSentAt = records.StartSending, &sent
+		_, err = f.store.Save(t.Context(), rec, etag)
+		require.NoError(t, err)
+
+		db := newSaveFails(f.db, 0)
+		db.at, db.beforeRead = 2, func() {
+			rec, etag, err := f.store.Get(t.Context(), f.id)
+			require.NoError(t, err)
+			records.ClearStart(rec)
+			records.ApplyPending(rec)
+			_, err = f.store.Save(t.Context(), rec, etag)
+			require.NoError(t, err)
+		}
+		_, result, err := f.send(t.Context(), db, records.OperationCreate)
+		require.NoError(t, err)
+		require.Equal(t, v1.ProvisioningStateSucceeded, result.ProvisioningState(), "the saved result, not canceled")
+		require.Empty(t, f.fake.Calls())
+	})
+
+	t.Run("stops while it waits for another delivery", func(t *testing.T) {
+		f := newStartFixture(t, records.OperationCreate)
+		rec, etag, err := f.store.Get(t.Context(), f.id)
+		require.NoError(t, err)
+		sent := records.Now().UTC()
+		rec.Properties.StartState, rec.Properties.StartSentAt = records.StartSending, &sent
+		_, err = f.store.Save(t.Context(), rec, etag)
+		require.NoError(t, err)
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		_, _, err = f.send(ctx, f.db, records.OperationCreate)
+		require.ErrorIs(t, err, context.Canceled)
+		require.Equal(t, records.StartSending, f.record().Properties.StartState, "the other delivery's claim stays")
 	})
 }
 
@@ -691,4 +740,31 @@ func Test_Run_FailedCreateAfterResourceGone(t *testing.T) {
 	require.Empty(t, kept.Properties.DeleteToken)
 	require.Equal(t, "owner", kept.Properties.Owner)
 	require.Equal(t, records.HandlerNative, kept.Properties.Handler)
+}
+
+func Test_SendStart_TimeoutSaveErrors(t *testing.T) {
+	t.Run("a request replaced it", func(t *testing.T) {
+		f := newStartFixture(t, records.OperationUpdate)
+		f.fake.Opts.ReadyTimeout = time.Nanosecond
+		db := newSaveFails(f.db, 0)
+		db.at, db.beforeRead = 2, func() {
+			rec, etag, err := f.store.Get(t.Context(), f.id)
+			require.NoError(t, err)
+			rec.Properties.RequestToken = uuid.New().String()
+			_, err = f.store.Save(t.Context(), rec, etag)
+			require.NoError(t, err)
+		}
+		_, result, err := f.send(t.Context(), db, records.OperationUpdate)
+		require.NoError(t, err)
+		require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
+	})
+
+	t.Run("the record can't be saved", func(t *testing.T) {
+		f := newStartFixture(t, records.OperationUpdate)
+		f.fake.Opts.ReadyTimeout = time.Nanosecond
+		_, result, err := f.send(t.Context(), newSaveFails(f.db, 1), records.OperationUpdate)
+		require.NoError(t, err)
+		require.True(t, result.Requeue)
+		require.True(t, records.IsWaiting(f.record()))
+	})
 }

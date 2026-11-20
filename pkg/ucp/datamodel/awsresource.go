@@ -127,6 +127,10 @@ type AWSResourceProperties struct {
 	StartState  string `json:"startState,omitempty"`
 	StartReason string `json:"startReason,omitempty"`
 
+	// StartSentAt is when a worker saved that it sends the call (StartState "sending"). Another worker that finds the
+	// call claimed waits while the claim is younger than records.StaleAfter, because its sender may still run.
+	StartSentAt *time.Time `json:"startSentAt,omitempty"`
+
 	// StartPatch and StartCurrent are the patch and the properties AWS had, without write-only or secret values, of
 	// a waiting native update, which the worker sends. They are cleared once AWS took the call.
 	StartPatch   []map[string]any `json:"startPatch,omitempty"`
