@@ -1,0 +1,18 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "bbf558"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "RegisterNamespace",
+      "request": "Action=RegisterNamespace\u0026ConsumerIdentifiers.member.1=111122223333\u0026NamespaceIdentifier.ProvisionedIdentifier.ClusterIdentifier=radius-rec-bbf558\u0026Version=2012-12-01",
+      "status": 404,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eClusterNotFound\u003c/Code\u003e\n    \u003cMessage\u003eCluster radius-rec-bbf558 can't be found.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003ef7b90e24-d39d-4b37-9901-8fc1092ca3f8\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    }
+  ]
+}
