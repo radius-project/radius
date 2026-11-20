@@ -38,9 +38,10 @@ trap cleanup EXIT
 
 write_pipeline() {
     rm -rf "${REPO}/.github" "${REPO}/.goreleaser.yaml"
-    mkdir -p "${WORKFLOWS}"
+    mkdir -p "${WORKFLOWS}" "${REPO}/.github/scripts"
     cp "${ROOT}/.goreleaser.yaml" "${REPO}/.goreleaser.yaml"
     cp "${ROOT}/.github/workflows/build-release.yaml" "${WORKFLOWS}/build-release.yaml"
+    cp "${ROOT}/.github/scripts/coordinate-release.mjs" "${REPO}/.github/scripts/"
     # Both run on tag pushes without publishing a release.
     printf '%s\n' 'on:' '  push:' '    paths: [setup.yaml]' > "${WORKFLOWS}/setup.yml"
     printf '%s\n' 'on: [push, pull_request]' > "${WORKFLOWS}/lint.yaml"
@@ -85,6 +86,16 @@ main() {
     write_pipeline
     expect pass "current release pipeline beside non-publishing push workflows"
     expect pass "new preparations require sibling publication" HEAD --require-sibling-releases
+    REQUIRE_BICEP_RECIPES=true expect pass "new finals require the recipe coordinator" HEAD --require-sibling-releases
+
+    rm "${REPO}/.github/scripts/coordinate-release.mjs"
+    REQUIRE_BICEP_RECIPES=true expect "does not coordinate the Bicep recipe publisher" \
+        "new final cannot use an old coordination script"
+    yq -i 'del(.jobs."coordinate-release".steps[].env.RECIPE_TOKEN)' \
+        "${WORKFLOWS}/build-release.yaml"
+    expect pass "existing plans need no recipe coordinator"
+    REQUIRE_BICEP_RECIPES=true expect "has no final Bicep recipe coordinator" \
+        "new final cannot use an old tagged workflow"
 
     write_pipeline
     yq -i 'del(.jobs."publish-sibling-releases") |

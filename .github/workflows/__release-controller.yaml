@@ -172,6 +172,8 @@ jobs:
           if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
             args+=(--require-sibling-releases)
           fi
+          REQUIRE_BICEP_RECIPES="$(yq -r 'has("recipeSourceCommit")' "${RUNNER_TEMP}/release-plan.yaml")"
+          export REQUIRE_BICEP_RECIPES
           bash ./.github/scripts/verify-release-build-contract.sh \
             "${args[@]}"
 
@@ -321,6 +323,7 @@ jobs:
           DE_COMMIT: ${{ steps.de-tag.outputs.commit }}
           DE_STATE: ${{ steps.de-tag.outputs.state }}
           DE_IMAGE_TAG: ${{ steps.plan.outputs.de-image-tag }}
+          RECIPE_SOURCE_COMMIT: ${{ steps.plan.outputs.recipe-source-commit }}
           RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
           DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
           BICEP_TYPES_AWS_COMMIT: >-
@@ -343,6 +346,9 @@ jobs:
                   "${DE_COMMIT}, image tag ${DE_IMAGE_TAG}"
               fi
               echo "- recipes: ${RECIPES_COMMIT}"
+              if [[ -n "${RECIPE_SOURCE_COMMIT}" ]]; then
+                echo "- Final Bicep recipes (resource-types-contrib): ${RECIPE_SOURCE_COMMIT}"
+              fi
               echo "- dashboard: ${DASHBOARD_COMMIT}"
               echo "- bicep-types-aws: ${BICEP_TYPES_AWS_COMMIT}"
             else

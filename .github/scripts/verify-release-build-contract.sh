@@ -201,6 +201,18 @@ main() {
                                                                    || reject "does not stage a draft GoReleaser release"
     verify_publication_gate
     verify_sibling_publication_gate
+    if [[ "${REQUIRE_BICEP_RECIPES:-false}" == true ]]; then
+        yq_true "${BUILD_WORKFLOW}" '
+            [.jobs."coordinate-release".steps[] |
+                select(.id == "coordinate" and .if == null and
+                    .env.RECIPE_TOKEN != null and
+                    (."continue-on-error" // false) == false)] |
+                length == 1' || reject "has no final Bicep recipe coordinator"
+        if ! git grep -q -F 'publish-bicep-recipes.yaml' "${COMMIT}" -- \
+            .github/scripts/coordinate-release.mjs; then
+            reject "does not coordinate the Bicep recipe publisher"
+        fi
+    fi
 
     # Path-only push triggers also run for tags; only a tag filter marks a publisher.
     while IFS= read -r name; do
