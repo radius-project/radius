@@ -46,6 +46,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
+	github.com/aws/aws-sdk-go-v2/service/s3control v1.81.0
+	github.com/aws/aws-sdk-go-v2/service/s3tables v1.26.0
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1
 	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.50.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0
