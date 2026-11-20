@@ -794,13 +794,13 @@ func startError(err error) error {
 }
 
 // isRead reports whether err is the error of an AWS call that only reads, by the operation's name, such as
-// DescribeDBClusters. AWS names its read operations this way across services.
+// DescribeDBClusters or CodeBuild's BatchGetProjects. AWS names its read operations this way across services.
 func isRead(err error) bool {
 	var op *smithy.OperationError
 	if !errors.As(err, &op) {
 		return false
 	}
-	return slices.ContainsFunc([]string{"Get", "Describe", "List", "Head"}, func(prefix string) bool {
+	return slices.ContainsFunc([]string{"Get", "BatchGet", "Describe", "List", "Head"}, func(prefix string) bool {
 		return strings.HasPrefix(op.Operation(), prefix)
 	})
 }

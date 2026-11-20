@@ -599,6 +599,8 @@ func Test_startError(t *testing.T) {
 
 	read := &smithy.OperationError{ServiceID: "LakeFormation", OperationName: "GetDataLakeSettings", Err: &awsretry.MaxAttemptsError{Attempt: 3, Err: answer(http.StatusBadRequest, "AccessDeniedException")}}
 	require.Same(t, read, startError(read), "a read before any change applied nothing, however the SDK retried it")
+	batch := &smithy.OperationError{ServiceID: "CodeBuild", OperationName: "BatchGetProjects", Err: &awsretry.MaxAttemptsError{Attempt: 3, Err: answer(http.StatusBadRequest, "InvalidInputException")}}
+	require.Same(t, batch, startError(batch))
 	notFound := fmt.Errorf("%w: %w", native.ErrNotFound, retried)
 	require.Same(t, notFound, startError(notFound))
 	once := answer(http.StatusBadRequest, "ValidationException")
