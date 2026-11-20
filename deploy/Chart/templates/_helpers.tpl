@@ -181,7 +181,33 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
 {{- $spiffe = append $spiffe (printf "%s-spiffe" .) -}}
 {{- end -}}
-{{- concat (list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
+{{- concat (list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" "ucp-apiserver-tls" "radius-ca" "radius-apiserver-ca" "radius-apiserver-trust" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
+{{- end -}}
+
+{{/*
+Name of the Secret holding UCP's aggregated API server certificate. When the authorization mode is
+not off, cert-manager issues it from radius-apiserver-issuer into ucp-apiserver-tls; otherwise the
+chart generates the ucp-cert Secret.
+*/}}
+{{- define "radius.ucp.apiServerSecretName" -}}
+{{- if ne (include "radius.authz.mode" .) "off" -}}
+ucp-apiserver-tls
+{{- else -}}
+ucp-cert
+{{- end -}}
+{{- end -}}
+
+{{/*
+Hash of the authorization settings a component reads at startup, for the checksum/authz-config pod
+annotation, so changing any of them rolls the pods.
+*/}}
+{{- define "radius.authz.configChecksum" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- $config := $mode -}}
+{{- if ne $mode "off" -}}
+{{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.controlPlaneSecrets" .) | join "\n" -}}
+{{- end -}}
+{{- $config | sha256sum -}}
 {{- end -}}
 
 {{/*
@@ -238,21 +264,6 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
 {{- end -}}
 {{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Renders the authorization settings that a component reads only at startup, for its
-checksum/authz-config pod annotation. Clients fix the receiver's expected SPIFFE ID when they
-start, so the trust domain is included and a trust-domain-only upgrade rolls every caller.
-Renders only the mode when authorization is off, so the default checksum is unchanged.
-*/}}
-{{- define "radius.authz.checksumInput" -}}
-{{- $mode := include "radius.authz.mode" . -}}
-{{- if eq $mode "off" -}}
-{{- $mode -}}
-{{- else -}}
-{{- printf "%s:%s" $mode (include "radius.authz.spiffe.trustDomain" .) -}}
 {{- end -}}
 {{- end -}}
 
