@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/utils/clock"
+	clocktesting "k8s.io/utils/clock/testing"
 )
 
 func TestInspectionEveryMode(t *testing.T) {
@@ -53,12 +54,12 @@ func TestInspectionEveryMode(t *testing.T) {
 					*current.Mode = api.UserAuthorizationMode("tampered")
 					require.Equal(t, mode, runtime.State().LastKnownMode)
 				}
-				checks := []*api.AccessCheck{
+				checks := []*api.BoundedAccessCheck{
 					{Permission: to.Ptr("RADIUS.CORE/APPLICATIONS/READ"), Target: to.Ptr(strings.ToUpper(appA))},
 					{Permission: to.Ptr("Radius.Core/applications/write"), Target: to.Ptr(appA)},
 				}
 				for _, identity := range []Identity{reader, groupMember} {
-					result, err := runtime.CheckAccess(identity, "/", api.AccessCheckRequest{Checks: checks})
+					result, err := runtime.CheckAccess(identity, "/", api.BoundedAccessCheckRequest{Checks: checks})
 					require.NoError(t, err)
 					require.Equal(t, mode, *result.Mode)
 					require.Equal(t, int64(0), *result.Generation)
@@ -68,33 +69,33 @@ func TestInspectionEveryMode(t *testing.T) {
 						require.Equal(t, checks[i].Permission, check.Permission)
 						require.Equal(t, checks[i].Target, check.Target)
 					}
-					self, err := runtime.CheckAccess(identity, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&identity.Principal)})
+					self, err := runtime.CheckAccess(identity, "/", api.BoundedAccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&identity.Principal)})
 					require.NoError(t, err)
 					require.Equal(t, result, self)
 				}
 				for _, principal := range []api.Principal{admin.Principal, admin.Groups[0]} {
-					_, err := runtime.CheckAccess(reader, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&principal)})
+					_, err := runtime.CheckAccess(reader, "/", api.BoundedAccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&principal)})
 					require.ErrorIs(t, err, ErrCheckAccessDenied)
 				}
-				_, err = runtime.CheckAccess(admin, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&reader.Principal)})
+				_, err = runtime.CheckAccess(admin, "/", api.BoundedAccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&reader.Principal)})
 				require.ErrorIs(t, err, ErrMembershipUnavailable)
-				otherGroup, err := runtime.CheckAccess(admin, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&admin.Groups[0])})
+				otherGroup, err := runtime.CheckAccess(admin, "/", api.BoundedAccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&admin.Groups[0])})
 				require.NoError(t, err)
 				require.True(t, *otherGroup.Checks[0].Allowed)
-				for _, request := range []api.AccessCheckRequest{
+				for _, request := range []api.BoundedAccessCheckRequest{
 					{},
-					{Checks: []*api.AccessCheck{nil}},
-					{Checks: []*api.AccessCheck{{}}},
-					{Checks: []*api.AccessCheck{{Permission: to.Ptr("not/a/permission"), Target: to.Ptr(appA)}}},
-					{Checks: []*api.AccessCheck{{Permission: checks[0].Permission, Target: to.Ptr(appA + "/../escape")}}},
+					{Checks: []*api.BoundedAccessCheck{nil}},
+					{Checks: []*api.BoundedAccessCheck{{}}},
+					{Checks: []*api.BoundedAccessCheck{{Permission: to.Ptr("not/a/permission"), Target: to.Ptr(appA)}}},
+					{Checks: []*api.BoundedAccessCheck{{Permission: checks[0].Permission, Target: to.Ptr(appA + "/../escape")}}},
 					{Checks: checks, Principal: &api.AccessCheckPrincipal{}},
 				} {
 					_, err := runtime.CheckAccess(admin, "/", request)
 					require.Error(t, err)
 				}
-				_, err = runtime.CheckAccess(admin, appA+"/child", api.AccessCheckRequest{Checks: checks})
+				_, err = runtime.CheckAccess(admin, appA+"/child", api.BoundedAccessCheckRequest{Checks: checks})
 				require.Error(t, err)
-				_, err = runtime.CheckAccess(admin, teamB, api.AccessCheckRequest{Checks: checks})
+				_, err = runtime.CheckAccess(admin, teamB, api.BoundedAccessCheckRequest{Checks: checks})
 				require.ErrorContains(t, err, "within the inspection scope")
 
 				for _, identified := range []bool{false, true} {
@@ -134,8 +135,8 @@ func TestInspectionUnavailable(t *testing.T) {
 			result, err := runtime.WhoAmI(policyActor().Identity)
 			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 			require.Nil(t, result.Mode)
-			batch, err := runtime.CheckAccess(policyActor().Identity, "/", api.AccessCheckRequest{
-				Checks: []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}},
+			batch, err := runtime.CheckAccess(policyActor().Identity, "/", api.BoundedAccessCheckRequest{
+				Checks: []*api.BoundedAccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}},
 			})
 			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 			require.Nil(t, batch.Mode)
@@ -150,6 +151,36 @@ func TestInspectionUnavailable(t *testing.T) {
 	})
 }
 
+func TestInspectionSnapshotAvailabilityChanges(t *testing.T) {
+	for _, scenario := range []string{"expired", "refreshed after expiry", "cancelled"} {
+		t.Run(scenario, func(t *testing.T) {
+			clk := clocktesting.NewFakeClock(time.Now())
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			snapshot := testPolicySnapshot(t, 1)
+			runtime := &PolicyRuntime{ctx: ctx, cache: &PolicyCache{value: snapshot, asOf: clk.Now(), clock: clk}}
+			err := runtime.inspectPolicy(func(captured *PolicySnapshot) error {
+				require.Same(t, snapshot, captured)
+				require.True(t, runtime.mu.TryLock(), "inspection must not hold the runtime lock")
+				runtime.mu.Unlock()
+				require.True(t, runtime.cache.mu.TryLock(), "inspection must not block refresh")
+				defer runtime.cache.mu.Unlock()
+				if scenario == "cancelled" {
+					cancel()
+				} else {
+					clk.Step(PolicyMaxAge)
+					if scenario == "refreshed after expiry" {
+						runtime.cache.value = testPolicySnapshot(t, 2)
+						runtime.cache.asOf = clk.Now()
+					}
+				}
+				return nil
+			})
+			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+		})
+	}
+}
+
 func TestInspectionInputLimits(t *testing.T) {
 	snapshot := testPolicySnapshot(t, 1)
 	longPermission := "Test.Long/" + strings.Repeat("x", maxPermissionLength-len("Test.Long//read")) + "/read"
@@ -158,38 +189,40 @@ func TestInspectionInputLimits(t *testing.T) {
 	for _, field := range []struct {
 		name  string
 		limit int
-		set   func(*api.AccessCheckRequest, *string, int)
+		set   func(*api.BoundedAccessCheckRequest, *string, int)
 	}{
-		{"checks", maxAccessChecks, func(r *api.AccessCheckRequest, _ *string, n int) {
+		{"checks", maxAccessChecks, func(r *api.BoundedAccessCheckRequest, _ *string, n int) {
 			check := r.Checks[0]
-			r.Checks = make([]*api.AccessCheck, n)
+			r.Checks = make([]*api.BoundedAccessCheck, n)
 			for i := range r.Checks {
 				r.Checks[i] = check
 			}
 		}},
-		{"principal.issuer", maxPrincipalIssuerLength, func(r *api.AccessCheckRequest, _ *string, n int) { r.Principal.Issuer = to.Ptr(strings.Repeat("i", n)) }},
-		{"principal.subject", maxPrincipalSubjectLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+		{"principal.issuer", maxPrincipalIssuerLength, func(r *api.BoundedAccessCheckRequest, _ *string, n int) {
+			r.Principal.Issuer = to.Ptr(strings.Repeat("i", n))
+		}},
+		{"principal.subject", maxPrincipalSubjectLength, func(r *api.BoundedAccessCheckRequest, _ *string, n int) {
 			r.Principal.Subject = to.Ptr(strings.Repeat("s", n))
 		}},
-		{"principal.displayName", maxPrincipalDisplayNameLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+		{"principal.displayName", maxPrincipalDisplayNameLength, func(r *api.BoundedAccessCheckRequest, _ *string, n int) {
 			r.Principal.DisplayName = to.Ptr(strings.Repeat("\u754c", n))
 		}},
-		{"permission", maxPermissionLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+		{"permission", maxPermissionLength, func(r *api.BoundedAccessCheckRequest, _ *string, n int) {
 			r.Checks[0].Permission = to.Ptr(longPermission + strings.Repeat("x", n-maxPermissionLength))
 		}},
-		{"target", maxAccessScopeLength, func(r *api.AccessCheckRequest, _ *string, n int) {
+		{"target", maxAccessScopeLength, func(r *api.BoundedAccessCheckRequest, _ *string, n int) {
 			r.Checks[0].Target = to.Ptr("/planes/radius/" + strings.Repeat("t", n-len("/planes/radius/")))
 		}},
-		{"scope", maxAccessScopeLength, func(r *api.AccessCheckRequest, scope *string, n int) {
+		{"scope", maxAccessScopeLength, func(r *api.BoundedAccessCheckRequest, scope *string, n int) {
 			*scope = "/planes/radius/" + strings.Repeat("s", n-len("/planes/radius/"))
 			r.Checks[0].Target = scope
 		}},
 	} {
 		for _, above := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/above=%t", field.name, above), func(t *testing.T) {
-				request := api.AccessCheckRequest{
+				request := api.BoundedAccessCheckRequest{
 					Principal: to.Ptr(api.AccessCheckPrincipal(testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "other-group"))),
-					Checks:    []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}},
+					Checks:    []*api.BoundedAccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}},
 				}
 				scope, n := "/", field.limit
 				if above {
@@ -235,7 +268,7 @@ func TestInspectionBatchGeneration(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runtime, _ := startPolicyRuntime(t, newTestPolicyStore(t, inmemory.NewClient(), true))
 		bob := Identity{Principal: testPrincipal(api.PrincipalTypeUser, "kubernetes:cluster-a", "bob")}
-		request := api.AccessCheckRequest{Checks: []*api.AccessCheck{
+		request := api.BoundedAccessCheckRequest{Checks: []*api.BoundedAccessCheck{
 			{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr(appA)},
 			{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr(appA)},
 		}}
@@ -300,12 +333,12 @@ func TestInspectionContractLimits(t *testing.T) {
 		{"AccessCheckPrincipal", "issuer", maxPrincipalIssuerLength},
 		{"AccessCheckPrincipal", "subject", maxPrincipalSubjectLength},
 		{"AccessCheckPrincipal", "displayName", maxPrincipalDisplayNameLength},
-		{"AccessCheck", "target", maxAccessScopeLength},
-		{"AccessCheck", "permission", maxPermissionLength},
+		{"BoundedAccessCheck", "target", maxAccessScopeLength},
+		{"BoundedAccessCheck", "permission", maxPermissionLength},
 	} {
 		require.Equal(t, field.limit, document.Definitions[field.model].Properties[field.property].MaxLength, "%s.%s", field.model, field.property)
 	}
-	require.Equal(t, maxAccessChecks, document.Definitions["AccessCheckRequest"].Properties["checks"].MaxItems)
+	require.Equal(t, maxAccessChecks, document.Definitions["BoundedAccessCheckRequest"].Properties["checks"].MaxItems)
 	require.Zero(t, document.Definitions["PermissionName"].MaxLength)
 	require.Zero(t, document.Definitions["AuthorizationScope"].MaxLength)
 	require.Zero(t, document.Definitions["AuthorizationScopePath"].MaxLength)
@@ -499,7 +532,7 @@ func TestInspectionPreservesVerifiedIdentity(t *testing.T) {
 					method, route, body := http.MethodGet, "whoAmI", ""
 					if operation != "whoAmI" {
 						method, route = http.MethodPost, "checkAccess"
-						request := api.AccessCheckRequest{Checks: []*api.AccessCheck{
+						request := api.BoundedAccessCheckRequest{Checks: []*api.BoundedAccessCheck{
 							{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")},
 						}}
 						if operation == "explicit" {
@@ -560,7 +593,7 @@ func TestInspectionUnicodeScope(t *testing.T) {
 				value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clock.RealClock{},
 			}}
 			for _, target := range []string{scope, scope + "/providers/Radius.Core/applications/app", scope + "-neighbor"} {
-				body, err := json.Marshal(api.AccessCheckRequest{Checks: []*api.AccessCheck{
+				body, err := json.Marshal(api.BoundedAccessCheckRequest{Checks: []*api.BoundedAccessCheck{
 					{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr(target)},
 				}})
 				require.NoError(t, err)
@@ -633,7 +666,7 @@ func TestInspectionInvalidCaller(t *testing.T) {
 	runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{
 		value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clock.RealClock{},
 	}}
-	checks := []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}}
+	checks := []*api.BoundedAccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}}
 	for _, tt := range []struct {
 		name     string
 		identity Identity
@@ -649,10 +682,10 @@ func TestInspectionInvalidCaller(t *testing.T) {
 			require.Error(t, err)
 			require.Nil(t, current.Principal)
 			require.Nil(t, current.Mode)
-			result, err := runtime.CheckAccess(tt.identity, "/", api.AccessCheckRequest{Checks: checks})
+			result, err := runtime.CheckAccess(tt.identity, "/", api.BoundedAccessCheckRequest{Checks: checks})
 			require.Error(t, err)
 			require.Nil(t, result.Checks)
-			result, err = runtime.CheckAccess(tt.identity, "/", api.AccessCheckRequest{
+			result, err = runtime.CheckAccess(tt.identity, "/", api.BoundedAccessCheckRequest{
 				Checks: checks, Principal: to.Ptr(api.AccessCheckPrincipal(policyActor().Identity.Groups[0])),
 			})
 			require.Error(t, err)

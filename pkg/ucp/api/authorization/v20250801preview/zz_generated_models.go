@@ -57,10 +57,10 @@ type AccessChangeResource struct {
 
 // AccessCheck - A permission and concrete target to evaluate. A reference never implies access to its target.
 type AccessCheck struct {
-	// REQUIRED; The permission being evaluated, up to 256 characters.
+	// REQUIRED; The permission being evaluated.
 	Permission *string
 
-	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
+	// REQUIRED; The concrete target resource or scope ID.
 	Target *string
 }
 
@@ -84,12 +84,11 @@ type AccessCheckPrincipal struct {
 // AccessCheckRequest - Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action.
 // Group membership is resolved from trusted identity context, not caller-provided groups.
 type AccessCheckRequest struct {
-	// REQUIRED; The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with
-	// its own policy generation.
+	// REQUIRED; The checks to evaluate.
 	Checks []*AccessCheck
 
 	// The principal to check, or the authenticated caller when omitted.
-	Principal *AccessCheckPrincipal
+	Principal *Principal
 }
 
 // AccessCheckResult - The policy evaluation, independent of whether the current mode blocks requests.
@@ -97,10 +96,10 @@ type AccessCheckResult struct {
 	// REQUIRED; Whether the evaluated policy grants the permission.
 	Allowed *bool
 
-	// REQUIRED; The permission being evaluated, up to 256 characters.
+	// REQUIRED; The permission being evaluated.
 	Permission *string
 
-	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
+	// REQUIRED; The concrete target resource or scope ID.
 	Target *string
 }
 
@@ -205,6 +204,27 @@ type AuthorizationSettingsResource struct {
 	Type *string
 }
 
+// BoundedAccessCheck - A bounded permission and concrete target for checkAccess input.
+type BoundedAccessCheck struct {
+	// REQUIRED; The permission being evaluated.
+	Permission *string
+
+	// REQUIRED; The concrete target resource or scope ID.
+	Target *string
+}
+
+// BoundedAccessCheckRequest - Bounded checkAccess input. Omitting principal checks the caller. Checking another principal
+// requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided
+// groups.
+type BoundedAccessCheckRequest struct {
+	// REQUIRED; The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with
+	// its own policy generation.
+	Checks []*BoundedAccessCheck
+
+	// The principal to check, or the authenticated caller when omitted.
+	Principal *AccessCheckPrincipal
+}
+
 // CheckAccessResponse - The results under one consistent policy generation.
 type CheckAccessResponse struct {
 	// REQUIRED; One result for each requested check, in request order.
@@ -268,10 +288,10 @@ type ExplainedAccessCheck struct {
 	// REQUIRED; Whether the evaluated policy grants the permission.
 	Allowed *bool
 
-	// REQUIRED; The permission being evaluated, up to 256 characters.
+	// REQUIRED; The permission being evaluated.
 	Permission *string
 
-	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
+	// REQUIRED; The concrete target resource or scope ID.
 	Target *string
 
 	// Readable assignments and roles that granted the permission. Absence can mean that grant details are not readable.

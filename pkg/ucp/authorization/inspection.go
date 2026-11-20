@@ -29,8 +29,8 @@ var (
 	ErrMembershipUnavailable = errors.New("trusted group membership for another user or workload is unavailable; check as that caller or inspect a group")
 )
 
-// inspectPolicy checks freshness before evaluating one immutable snapshot without
-// blocking refresh.
+// inspectPolicy captures one immutable snapshot without blocking refresh during
+// evaluation. Its age and lifetime are rechecked before publishing any result.
 func (r *PolicyRuntime) inspectPolicy(inspect func(*PolicySnapshot) error) error {
 	if r == nil {
 		return ErrAuthorizationUnavailable
@@ -41,11 +41,18 @@ func (r *PolicyRuntime) inspectPolicy(inspect func(*PolicySnapshot) error) error
 	r.cache.mu.RLock()
 	snapshot, asOf := r.cache.value, r.cache.asOf
 	r.cache.mu.RUnlock()
-	if lifetime == nil || snapshot == nil ||
-		r.cache.clock.Since(asOf) >= PolicyMaxAge || lifetime.Err() != nil {
+	fresh := func() bool {
+		return lifetime != nil && snapshot != nil &&
+			r.cache.clock.Since(asOf) < PolicyMaxAge && lifetime.Err() == nil
+	}
+	if !fresh() {
 		return ErrAuthorizationUnavailable
 	}
-	return inspect(snapshot)
+	err := inspect(snapshot)
+	if !fresh() {
+		return ErrAuthorizationUnavailable
+	}
+	return err
 }
 
 // WhoAmI returns identity and installation-administrator status from fresh policy.
@@ -103,7 +110,7 @@ func (r *PolicyRuntime) WhoAmI(identity Identity) (api.WhoAmIResult, error) {
 // CheckAccess evaluates a batch and its inspection permission at one generation,
 // independently of workload mode. Group inspection uses only that group's grants.
 // Another user's memberships cannot be asserted or inferred from request input.
-func (r *PolicyRuntime) CheckAccess(caller Identity, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
+func (r *PolicyRuntime) CheckAccess(caller Identity, scope string, request api.BoundedAccessCheckRequest) (api.CheckAccessResponse, error) {
 	checks, err := validateAccessCheck(scope, request)
 	if err != nil {
 		return api.CheckAccessResponse{}, err
@@ -165,7 +172,7 @@ func ValidateInspectionScope(scope string) error {
 	return ValidateScope(scope)
 }
 
-func validateAccessCheck(scope string, request api.AccessCheckRequest) ([]Check, error) {
+func validateAccessCheck(scope string, request api.BoundedAccessCheckRequest) ([]Check, error) {
 	if len(request.Checks) == 0 || len(request.Checks) > maxAccessChecks {
 		return nil, fmt.Errorf("checks must contain between 1 and %d items", maxAccessChecks)
 	}

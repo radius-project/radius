@@ -73,7 +73,7 @@ func Inspection(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 			if operation == "whoami" {
 				result, err = runtime.WhoAmI(identity)
 			} else {
-				var request api.AccessCheckRequest
+				var request api.BoundedAccessCheckRequest
 				request, err = decodeAccessCheck(w, r)
 				if err == nil {
 					_, err = validateAccessCheck(scope, request)
@@ -103,17 +103,17 @@ func Inspection(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 
 // Validate exact wire keys before generated decoding, which ignores unknown
 // properties. Struct decoding would also accept case variants of trusted fields.
-func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckRequest, error) {
+func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.BoundedAccessCheckRequest, error) {
 	var body json.RawMessage
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
 	if err := decoder.Decode(&body); err != nil {
-		return api.AccessCheckRequest{}, err
+		return api.BoundedAccessCheckRequest{}, err
 	}
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {
-		return api.AccessCheckRequest{}, errors.New("expected exactly one JSON request object")
+		return api.BoundedAccessCheckRequest{}, errors.New("expected exactly one JSON request object")
 	}
-	request := api.AccessCheckRequest{}
+	request := api.BoundedAccessCheckRequest{}
 	wire, err := inspectionRequestObject(body, "principal", "checks")
 	if err != nil {
 		return request, err
@@ -146,7 +146,7 @@ func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckR
 		if _, err := inspectionRequestObject(raw, "permission", "target"); err != nil {
 			return request, err
 		}
-		var check api.AccessCheck
+		var check api.BoundedAccessCheck
 		if err := json.Unmarshal(raw, &check); err != nil {
 			return request, err
 		}

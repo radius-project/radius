@@ -35,7 +35,7 @@ type testClient struct {
 	err      error
 	identity *api.WhoAmIResult
 	scope    string
-	request  api.AccessCheckRequest
+	request  api.BoundedAccessCheckRequest
 	calls    int
 }
 
@@ -52,7 +52,7 @@ func (c *testClient) whoAmI(context.Context) (api.WhoAmIResult, error) {
 	}, c.err
 }
 
-func (c *testClient) checkAccess(_ context.Context, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
+func (c *testClient) checkAccess(_ context.Context, scope string, request api.BoundedAccessCheckRequest) (api.CheckAccessResponse, error) {
 	c.scope, c.request = scope, request
 	result := api.CheckAccessResponse{
 		Principal: (*api.Principal)(request.Principal), Generation: to.Ptr(int64(7)), Mode: to.Ptr(api.UserAuthorizationModeDryRun),

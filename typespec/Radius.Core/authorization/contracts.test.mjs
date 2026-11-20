@@ -10,6 +10,55 @@ const examples = readdirSync(examplesDir)
   .filter((file) => file.endsWith(".json"))
   .map((file) => ({ file, ...json(new URL(file, examplesDir)) }));
 
+test("checkAccess bounds do not restrict either explainAccess request", async (t) => {
+  const { definitions, paths } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  const resolve = (schema) =>
+    schema.$ref ?
+      definitions[schema.$ref.slice("#/definitions/".length)]
+    : schema;
+  for (const prefix of ["", "/{scope}"]) {
+    for (const operation of ["checkAccess", "explainAccess"]) {
+      const path = `${prefix}/providers/Radius.Core/${operation}`;
+      await t.test(path, () => {
+        const parameter = paths[path].post.parameters.find(
+          (parameter) => parameter.in === "body"
+        );
+        const request = resolve(parameter.schema);
+        const checks = request.properties.checks;
+        const check = resolve(checks.items);
+        const principal = resolve(request.properties.principal);
+        const bounded = operation === "checkAccess";
+        assert.equal(checks.minItems, 1);
+        assert.equal(checks.maxItems, bounded ? 100 : undefined);
+        assert.equal(
+          check.properties.target.maxLength,
+          bounded ? 2048 : undefined
+        );
+        assert.equal(
+          check.properties.permission.maxLength,
+          bounded ? 256 : undefined
+        );
+        for (const [field, maximum] of [
+          ["issuer", 256],
+          ["subject", 512],
+          ["displayName", 128]
+        ]) {
+          assert.equal(
+            principal.properties[field].maxLength,
+            bounded ? maximum : undefined,
+            field
+          );
+        }
+      });
+    }
+  }
+});
+
 test("access-check input bounds do not constrain verified identity output", () => {
   const { definitions } = json(
     new URL(
@@ -18,7 +67,7 @@ test("access-check input bounds do not constrain verified identity output", () =
     )
   );
   assert.equal(
-    definitions.AccessCheckRequest.properties.principal.$ref,
+    definitions.BoundedAccessCheckRequest.properties.principal.$ref,
     "#/definitions/AccessCheckPrincipal"
   );
   for (const [field, maximum] of [
@@ -61,7 +110,10 @@ test("inspection scope limits preserve existing policy and management contracts"
     assert.equal(field.maxLength, undefined);
     if (field.items) assert.equal(field.items.maxLength, undefined);
   }
-  assert.equal(definitions.AccessCheck.properties.target.maxLength, 2048);
+  assert.equal(
+    definitions.BoundedAccessCheck.properties.target.maxLength,
+    2048
+  );
   let scopedCheck = false;
   for (const [path, methods] of Object.entries(paths)) {
     for (const operation of Object.values(methods)) {
@@ -109,7 +161,9 @@ test("inspection permission limits preserve existing catalog and policy contract
     assert.match(permission, new RegExp(schema.pattern), model);
     assert.equal(schema.maxLength, undefined, model);
   }
-  const inspection = resolve(definitions.AccessCheck.properties.permission);
+  const inspection = resolve(
+    definitions.BoundedAccessCheck.properties.permission
+  );
   assert.match(permission, new RegExp(inspection.pattern));
   assert.equal(inspection.maxLength, 256);
   assert.ok(permission.length > inspection.maxLength);

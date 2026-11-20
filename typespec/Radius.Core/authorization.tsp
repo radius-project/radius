@@ -353,24 +353,40 @@ model WhoAmIResult {
 
 @doc("A permission and concrete target to evaluate. A reference never implies access to its target.")
 model AccessCheck {
-  @doc("The permission being evaluated, up to 256 characters.")
-  @maxLength(256)
+  @doc("The permission being evaluated.")
   permission: PermissionName;
 
-  @doc("The concrete target resource or scope ID, up to 2048 characters including the leading slash.")
-  @maxLength(2048)
+  @doc("The concrete target resource or scope ID.")
   target: string;
 }
 
+@doc("A bounded permission and concrete target for checkAccess input.")
+model BoundedAccessCheck {
+  ...AccessCheck;
+}
+
+@@maxLength(BoundedAccessCheck.permission, 256);
+@@maxLength(BoundedAccessCheck.target, 2048);
+
 @doc("Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.")
 model AccessCheckRequest {
+  @doc("The principal to check, or the authenticated caller when omitted.")
+  principal?: Principal;
+
+  @doc("The checks to evaluate.")
+  @minItems(1)
+  checks: AccessCheck[];
+}
+
+@doc("Bounded checkAccess input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.")
+model BoundedAccessCheckRequest {
   @doc("The principal to check, or the authenticated caller when omitted.")
   principal?: AccessCheckPrincipal;
 
   @doc("The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.")
   @minItems(1)
   @maxItems(100)
-  checks: AccessCheck[];
+  checks: BoundedAccessCheck[];
 }
 
 @doc("The policy evaluation, independent of whether the current mode blocks requests.")
@@ -731,7 +747,7 @@ interface InstallationAccess {
 
   @post
   @route("/checkAccess")
-  checkAccess(...AuthorizationParameters, @body request: AccessCheckRequest):
+  checkAccess(...AuthorizationParameters, @body request: BoundedAccessCheckRequest):
     | ArmResponse<CheckAccessResponse>
     | ErrorResponse;
 
@@ -756,7 +772,7 @@ interface ScopedAccess {
   checkAccess(
     ...AuthorizationParameters,
     ...AccessCheckScopeParameter,
-    @body request: AccessCheckRequest,
+    @body request: BoundedAccessCheckRequest,
   ): ArmResponse<CheckAccessResponse> | ErrorResponse;
 
   @post
