@@ -144,7 +144,8 @@ func checkTemplateName(value string) error {
 }
 
 // checkRuleTags returns a client failure for Tags that aren't a list of at most 50 tags with distinct keys of 1 to 128
-// characters and values of up to 256.
+// characters and values of up to 256. AWS reserves keys that start with aws:, and Read leaves them out, so a template
+// can't set one.
 func checkRuleTags(properties map[string]any) error {
 	value, present := properties["Tags"]
 	if !present || value == nil {
@@ -164,6 +165,9 @@ func checkRuleTags(properties map[string]any) error {
 		}
 		if keys[key] {
 			return ruleInvalid("Tags has the key %q more than once", key)
+		}
+		if strings.HasPrefix(key, "aws:") {
+			return ruleInvalid("AWS reserves tag keys that start with aws:, so Tags can't have %q", key)
 		}
 		keys[key] = true
 	}

@@ -165,13 +165,12 @@ func (h *WorkspaceServiceAccount) Identifier(properties map[string]any) (string,
 	return accountID{workspace: a.workspace, id: a.id}.String(), nil
 }
 
-// busy returns the conflict of a change AWS can't make now, because the workspace is changing. UCP answers 409 and
-// sends nothing more, so the caller tries again later.
+// busy returns the conflict of a call AWS rejected because the workspace is changing. UCP answers 409, so the caller
+// tries again later.
 func busy(workspace string, cause error) error {
 	return &native.Failure{
-		Message: fmt.Sprintf("AWS can't change the service accounts of the Grafana workspace %q now, so nothing was changed. Try again once the workspace is active, "+
-			"and give the service account dependsOn on the workspace. If the workspace is active, another service account may have this name, or one that differs "+
-			"only in case or punctuation: %v", workspace, cause),
+		Message: fmt.Sprintf("AWS rejected the call because the Grafana workspace %q is busy, so nothing was changed. Try again once the workspace is active, "+
+			"and give the service account dependsOn on the workspace: %v", workspace, cause),
 		ClientError: true,
 		Conflict:    true,
 		Outcome:     native.OutcomeRejected,
@@ -267,8 +266,13 @@ func (h *WorkspaceServiceAccount) Create(ctx context.Context, request native.Cre
 	}, inRegion(request.Region))
 	if err != nil {
 		err = callError(err, a.workspace)
-		if errors.Is(err, native.ErrNotFound) {
+		var failure *native.Failure
+		switch {
+		case errors.Is(err, native.ErrNotFound):
 			return "", invalid("the Grafana workspace %q doesn't exist", a.workspace)
+		case errors.As(err, &failure) && failure.Conflict:
+			// The page names no error for a taken name, so it may be this one.
+			failure.Message += ". If the workspace is active, another service account may have this name, or one that differs only in case or punctuation"
 		}
 		return "", err
 	}

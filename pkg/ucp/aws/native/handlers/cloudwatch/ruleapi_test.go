@@ -36,7 +36,7 @@ const (
 	tagDoc         = apiReference + "API_Tag.html"
 	quotasDoc      = "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html"
 
-	// ruleNameRules is what the calls that take rule names document about them.
+	// ruleNamesUnclear is what the calls that take rule names leave unclear.
 	ruleNamesUnclear = "What AWS reports for a rule name it doesn't have: the fake reports a failure in the 200 response, " +
 		"because the page says the response lists the rules it couldn't process."
 )

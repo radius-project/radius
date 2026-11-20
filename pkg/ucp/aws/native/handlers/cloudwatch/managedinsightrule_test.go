@@ -87,6 +87,7 @@ func Test_Suite_ManagedInsightRule(t *testing.T) {
 			with(properties, map[string]any{"ResourceARN": "vpce-svc-0a1b2c3d4e5f60718"}),
 			with(properties, map[string]any{"State": "enabled"}),
 			with(properties, map[string]any{"Tags": tags("a", "1", "a", "2")}),
+			with(properties, map[string]any{"Tags": tags("aws:team", "network")}),
 			with(properties, map[string]any{"Tags": tooManyTags}),
 		},
 		IdentifierProperties: func(identifier string) map[string]any {

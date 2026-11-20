@@ -179,8 +179,10 @@ func Test_WorkspaceServiceAccount_Busy(t *testing.T) {
 	id := createAccount(t, h, serviceAccount("ci"))
 	api.busy[workspace] = 3
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: serviceAccount("other")})
+	requireFailure(t, err, true, "another service account may have this name")
+	err = h.Delete(t.Context(), region, id)
 	requireFailure(t, err, true, "dependsOn")
-	requireFailure(t, h.Delete(t.Context(), region, id), true, "dependsOn")
+	require.NotContains(t, err.Error(), "this name", "only a create can clash on the name")
 	_, err = h.Read(t.Context(), region, id)
 	requireFailure(t, err, true, "dependsOn")
 	require.Len(t, api.store.List(serviceAccountType), 1)
