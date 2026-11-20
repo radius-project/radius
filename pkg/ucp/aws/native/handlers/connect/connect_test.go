@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -285,6 +287,17 @@ func Test_PhoneNumberContactFlowAssociation_UnconfirmedChange(t *testing.T) {
 		requireUnknown(t, err, "Rate exceeded")
 		require.Equal(t, testIdentifier, identifier, "UCP keeps the identifier of a create AWS accepted")
 		require.Equal(t, confirmReads, count(api.calls, "ListFlowAssociations"))
+	})
+
+	t.Run("a create AWS failed on its side keeps the identifier", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		api.errs["AssociatePhoneNumberContactFlow"] = &smithy.OperationError{ServiceID: "Connect", OperationName: "AssociatePhoneNumberContactFlow", Err: &smithyhttp.ResponseError{
+			Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusInternalServerError}},
+			Err:      &smithy.GenericAPIError{Code: "InternalServiceException", Message: "internal error", Fault: smithy.FaultServer},
+		}}
+		identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: association(testPhoneARN, testInstance, testFlow)})
+		require.ErrorContains(t, err, "internal error")
+		require.Equal(t, testIdentifier, identifier, "AWS may have associated the flow")
 	})
 
 	t.Run("a create no list shows in time is unknown", func(t *testing.T) {

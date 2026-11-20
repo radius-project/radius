@@ -243,8 +243,9 @@ func (h *PlatformApplication) Read(ctx context.Context, region string, identifie
 	return properties(platform, name, arn, attributes), nil
 }
 
-// Create creates the application with the template's attributes and returns its identifier. AWS checks the
-// credentials with the push notification service before it creates anything.
+// Create creates the application with the template's attributes and returns its identifier, also with an error, because
+// AWS may have created the application before it. AWS checks the credentials with the push notification service before
+// it creates anything.
 func (h *PlatformApplication) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	identifier, err := h.Identifier(request.Properties)
 	if err != nil {
@@ -261,7 +262,8 @@ func (h *PlatformApplication) Create(ctx context.Context, request native.CreateR
 		Attributes: sent,
 	}, inRegion(request.Region))
 	if err != nil {
-		return "", withoutSecrets(err, sent)
+		// AWS may have created the application before the error, so the identifier comes back with it.
+		return identifier, withoutSecrets(err, sent)
 	}
 	return identifier, h.confirm(ctx, request.Region, identifier, sent)
 }

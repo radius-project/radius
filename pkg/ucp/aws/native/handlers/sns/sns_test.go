@@ -548,7 +548,8 @@ func Test_PlatformApplication_ErrorsHideSecrets(t *testing.T) {
 			Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusInternalServerError}},
 			Err:      &smithy.GenericAPIError{Code: "InternalError", Message: echoed, Fault: smithy.FaultServer},
 		}}
-		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(secrets)})
+		identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(secrets)})
+		require.Equal(t, testIdentifier, identifier, "AWS may have created the application")
 		var failure *native.Failure
 		require.ErrorAs(t, err, &failure)
 		require.Equal(t, native.OutcomeUnknown, failure.Outcome)
