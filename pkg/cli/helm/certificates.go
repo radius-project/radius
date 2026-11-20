@@ -26,6 +26,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -48,11 +49,13 @@ import (
 
 // CertificateOptions selects a dedicated signing CA without passing private material through Helm.
 type CertificateOptions struct {
-	CACert     string
-	CAKey      string
-	CASecret   string
-	CertIssuer string
-	CABundle   string
+	CACert        string
+	CAKey         string
+	CASecret      string
+	CertIssuer    string
+	CABundle      string
+	RotationPhase string
+	RotateCA      bool
 }
 
 // AddFlags registers the certificate options shared by install and upgrade.
@@ -62,10 +65,22 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CASecret, "ca-secret", "", "Existing operator-owned TLS signing Secret in radius-system; never adopted or overwritten")
 	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "Existing cert-manager.io Issuer/name or ClusterIssuer/name; requires dedicated public --ca-bundle on fresh install; connected checks establish issuer readiness only")
 	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
+	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "CA rotation phase (blocked pending authenticated consumer observation; CA recovery is unsupported)")
+	flags.BoolVar(&o.RotateCA, "rotate-ca", false, "Replace both Radius-owned CAs (aggregation only with external TLS); currently blocked pending authenticated consumer observation")
 }
 
 // Validate checks flag combinations before contacting the cluster.
 func (o CertificateOptions) Validate() error {
+	if o.RotateCA && (o.RotationPhase != "" || o.Specified()) {
+		return errors.New("--rotate-ca cannot be combined with a phase or a supplied CA; use certificate selection flags for a BYO CA transition")
+	}
+	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "adopt" &&
+		o.RotationPhase != "issue" && o.RotationPhase != "retire" && o.RotationPhase != "recover" {
+		return fmt.Errorf("unrecognized --ca-rotation-phase; this CLI cannot rotate or recover a CA")
+	}
+	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "recover" && o.Specified() {
+		return fmt.Errorf("cannot select a target CA during the %s phase", o.RotationPhase)
+	}
 	if (o.CACert == "") != (o.CAKey == "") {
 		return fmt.Errorf("--ca-cert and --ca-key must be supplied together")
 	}
@@ -94,7 +109,7 @@ func (o CertificateOptions) Validate() error {
 
 // ValidateFlags also rejects explicitly empty certificate flags rather than treating them as omitted.
 func (o CertificateOptions) ValidateFlags(flags *pflag.FlagSet) error {
-	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer", "ca-bundle"} {
+	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer", "ca-bundle", "ca-rotation-phase"} {
 		flag := flags.Lookup(name)
 		if flag != nil && flag.Changed && flag.Value.String() == "" {
 			return fmt.Errorf("--%s must not be empty", name)
@@ -541,23 +556,7 @@ func (i *Impl) prepareIssuerCertificates(settings, current map[string]any) error
 }
 
 func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, error) {
-	var history []*releasev1.Release
-	var deployed map[string]any
-	if installed {
-		var err error
-		history, err = i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot read Radius history for certificate selection: %w", err)
-		}
-		baseline, err := certificatePolicyBaseline(options, history)
-		if err != nil {
-			return nil, nil, err
-		}
-		options.RadiusReleaseChart, options.RadiusReleaseValues = baseline.Chart, baseline.Config
-		options.RadiusInstalled = true
-		deployed = resolveEffectiveChartValues(baseline.Chart.Values, nil, baseline.Config)
-	}
-	target, plan, err := i.prepareSelectedCertificates(ctx, options, selected, current, kubeContext, deployed)
+	target, plan, history, err := i.selectActionCertificates(ctx, &options, selected, source, current, kubeContext, installed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -565,6 +564,30 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 		if err := checkSteadyBYOCertificates(latestRevision(history), target.Values); err != nil {
 			return nil, nil, err
 		}
+	}
+	return target, plan, nil
+}
+
+func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, []*releasev1.Release, error) {
+	var history []*releasev1.Release
+	var deployed map[string]any
+	if installed {
+		var err error
+		history, err = i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("cannot read Radius history for certificate selection: %w", err)
+		}
+		baseline, err := certificatePolicyBaseline(*options, history)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		options.RadiusReleaseChart, options.RadiusReleaseValues = baseline.Chart, baseline.Config
+		options.RadiusInstalled = true
+		deployed = resolveEffectiveChartValues(baseline.Chart.Values, nil, baseline.Config)
+	}
+	target, plan, err := i.prepareSelectedCertificates(ctx, *options, selected, current, kubeContext, deployed)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	if installed {
 		if plan == nil {
@@ -576,7 +599,7 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 			if err != nil {
 				return err
 			}
-			if _, err := certificatePolicyBaseline(options, revisions); err != nil {
+			if _, err := certificatePolicyBaseline(*options, revisions); err != nil {
 				return err
 			}
 			if latestRevision(revisions).Version != version {
@@ -594,7 +617,7 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 			return nil
 		}
 	}
-	return target, plan, nil
+	return target, plan, history, nil
 }
 
 func selectedCertificateValues(options ClusterOptions, selected *chart.Chart, current map[string]any) (map[string]any, authz.Mode, error) {
@@ -701,6 +724,12 @@ func (i *Impl) ensureSelectedCertManager(ctx context.Context, mode string, optio
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.
 func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptions, kubeContext string) error {
+	if options.Certificates.RotationPhase != "" || options.Certificates.RotateCA {
+		return i.runCertificateRotation(ctx, options, kubeContext, true)
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, options.Radius.Namespace, "upgrade preflight", nil); err != nil {
+		return err
+	}
 	chart, configuration, current, err := prepareRadiusChart(ctx, NewHelmAction(i.Helm), options.Radius, kubeContext)
 	if err != nil {
 		return err

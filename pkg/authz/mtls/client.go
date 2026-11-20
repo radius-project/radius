@@ -19,6 +19,7 @@ package mtls
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -167,6 +168,8 @@ type clientTransport struct {
 type connectionValidity struct {
 	notBefore time.Time
 	notAfter  time.Time
+	trust     [sha256.Size]byte
+	epoch     uint64
 }
 
 // trackedConn is a connection that clientTransport stops tracking when it is closed.
@@ -238,7 +241,7 @@ func (t *clientTransport) newPool() *http.Transport {
 
 func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, pool *http.Transport) (net.Conn, error) {
 	var validity connectionValidity
-	config, err := t.source.clientConfig(t.spiffeID, func(chain []*x509.Certificate) {
+	config, snapshot, err := t.source.clientSnapshot(t.spiffeID, func(chain []*x509.Certificate) {
 		validity = chainValidity(chain)
 	})
 	if err != nil {
@@ -259,6 +262,13 @@ func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, poo
 	if err := conn.HandshakeContext(ctx); err != nil {
 		_ = raw.Close()
 		return nil, err
+	}
+	validity.trust, validity.epoch = snapshot.trust, snapshot.epoch
+	if snapshot.notBefore.After(validity.notBefore) {
+		validity.notBefore = snapshot.notBefore
+	}
+	if snapshot.notAfter.Before(validity.notAfter) {
+		validity.notAfter = snapshot.notAfter
 	}
 
 	t.mu.Lock()
@@ -304,7 +314,14 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		closeBody(req)
 		return nil, err
 	}
-	pool := t.transportForRequest()
+	current, err := t.source.load()
+	pool := t.transportForRequest(current)
+	if err != nil {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
+		return nil, err
+	}
 
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
@@ -351,13 +368,14 @@ func (t *clientTransport) poolsLocked() []*http.Transport {
 	return pools
 }
 
-func (t *clientTransport) transportForRequest() *http.Transport {
+func (t *clientTransport) transportForRequest(material *material) *http.Transport {
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
 	replace := t.current == nil
 	for conn, validity := range t.conns {
-		if now.Before(validity.notBefore) || now.After(validity.notAfter) {
+		if material == nil || validity.trust != material.trust || validity.epoch != material.epoch ||
+			now.Before(validity.notBefore) || now.After(validity.notAfter) {
 			expired = append(expired, conn)
 			// An expired connection in a retired pool cannot serve this request, so closing
 			// it is enough.

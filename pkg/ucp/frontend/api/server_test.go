@@ -405,21 +405,58 @@ func newTestService(dir string, mode authz.Mode) *Service {
 	}}}
 }
 
-// TLSCertificateDirectory documents only tls.crt and tls.key, so the server must not require ca.crt in any mode.
+func TestRunOffServesCertificateAndKeyWithoutCAFile(t *testing.T) {
+	dir := t.TempDir()
+	leaf := writeServingCert(t, dir)
+	ca, err := os.ReadFile(filepath.Join(dir, "ca.crt"))
+	require.NoError(t, err)
+	roots := x509.NewCertPool()
+	require.True(t, roots.AppendCertsFromPEM(ca))
+	require.NoError(t, os.Remove(filepath.Join(dir, "ca.crt")))
+
+	config := &ucp.Config{
+		Authorization: authz.Options{Mode: authz.ModeOff},
+		Server:        hostoptions.ServerOptions{Host: "127.0.0.1", Port: freePort(t), TLSCertificateDirectory: dir},
+	}
+	service := NewService(identityTestOptions(t, config, http.NotFoundHandler()))
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- service.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatal("Run did not stop after cancellation")
+		}
+	})
+	require.Eventually(t, func() bool {
+		conn, err := tls.Dial("tcp", config.Server.Address(), &tls.Config{
+			RootCAs: roots, ServerName: leaf.DNSNames[0], MinVersion: tls.VersionTLS12,
+		})
+		if err != nil {
+			return false
+		}
+		defer conn.Close()
+		return leaf.Equal(conn.ConnectionState().PeerCertificates[0])
+	}, 5*time.Second, 10*time.Millisecond)
+}
+
 func Test_listenAndServe_ServesCertificateFromDirectory(t *testing.T) {
 	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
-		for _, withCA := range []bool{true, false} {
-			t.Run(fmt.Sprintf("%s/ca.crt=%t", mode, withCA), func(t *testing.T) {
+		for _, provider := range []authz.TLSProvider{authz.TLSProviderRadius, authz.TLSProviderExternal} {
+			t.Run(string(mode)+"/"+string(provider), func(t *testing.T) {
 				dir := t.TempDir()
 				leaf := writeServingCert(t, dir)
-				if !withCA {
-					require.NoError(t, os.Remove(filepath.Join(dir, "ca.crt")))
-				}
+				require.NoError(t, os.Remove(filepath.Join(dir, "ca.crt"))) // Only the serving key pair is required.
 
 				addr := "127.0.0.1:" + strconv.Itoa(freePort(t))
 				server := &http.Server{Addr: addr, Handler: http.NotFoundHandler(), ReadHeaderTimeout: time.Second}
 				errs := make(chan error, 1)
-				go func() { errs <- newTestService(dir, mode).listenAndServe(t.Context(), server) }()
+				svc := newTestService(dir, mode)
+				svc.options.Config.Authorization.TLSProvider = provider
+				go func() { errs <- svc.listenAndServe(t.Context(), server) }()
 				t.Cleanup(func() {
 					_ = server.Close()
 					require.ErrorIs(t, <-errs, http.ErrServerClosed)
@@ -443,7 +480,7 @@ func Test_listenAndServe_ServesCertificateFromDirectory(t *testing.T) {
 
 func Test_listenAndServe_FailsWithoutCertificateWhenAuthorizationIsOn(t *testing.T) {
 	err := newTestService(t.TempDir(), authz.ModeEnforce).listenAndServe(t.Context(), &http.Server{Addr: "127.0.0.1:0", ReadHeaderTimeout: time.Second})
-	require.ErrorContains(t, err, "failed to load the API server certificate")
+	require.ErrorContains(t, err, "failed to initialize aggregation serving certificate")
 }
 
 // newProxyClientCert returns a CA pool and a client certificate it signs, like the Kubernetes

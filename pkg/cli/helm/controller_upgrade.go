@@ -139,6 +139,9 @@ func migrateControllerDeployment(ctx context.Context, deployments typedapps.Depl
 	if err != nil {
 		return fmt.Errorf("failed to encode controller strategy migration: %w", err)
 	}
+	if err := checkCertificateOffOperation(ctx); err != nil {
+		return err
+	}
 	if _, err := deployments.Patch(ctx, deployment.Name, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
 		return fmt.Errorf("failed to migrate controller Deployment in namespace %q to Recreate; retry after resolving the error: %w", namespace, err)
 	}

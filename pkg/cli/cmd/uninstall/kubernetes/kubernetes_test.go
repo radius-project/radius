@@ -785,7 +785,9 @@ func Test_Run_NotInstalled_ResumesUninstallCleanup(t *testing.T) {
 				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).Return(tt.promptAnswer, nil)
 			}
 			if tt.wantDelete {
-				helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(tt.deleteErr)
+				options := helm.NewDefaultClusterOptions()
+				options.ConfirmedLeftovers = found
+				helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, options, "test-context").Return(tt.deleteErr)
 			}
 			if tt.wantCertMgr {
 				helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)

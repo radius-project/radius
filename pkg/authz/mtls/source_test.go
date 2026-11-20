@@ -246,7 +246,7 @@ func TestServingPairReload(t *testing.T) {
 	before, err := config.GetConfigForClient(nil)
 	require.NoError(t, err)
 
-	// A mismatched key cannot displace the last known good pair.
+	// A mismatched projection invalidates new handshakes until the pair recovers.
 	key, err := os.ReadFile(filepath.Join(dir.root, KeyFile))
 	require.NoError(t, err)
 	dir.update(t, second, nil)
@@ -254,9 +254,8 @@ func TestServingPairReload(t *testing.T) {
 	changed, err := src.Reload()
 	require.Error(t, err)
 	require.False(t, changed)
-	stillFirst, err := config.GetConfigForClient(nil)
-	require.NoError(t, err)
-	require.Equal(t, first.cert.Raw, stillFirst.Certificates[0].Leaf.Raw)
+	_, err = config.GetConfigForClient(nil)
+	require.Error(t, err)
 
 	dir.update(t, second, nil)
 	changed, err = src.Reload()
@@ -285,13 +284,12 @@ func TestSource_Reload(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, changed)
 
-	// Invalid files keep the previous certificate.
+	// Invalid files invalidate the prior generation until a valid projection returns.
 	require.NoError(t, os.WriteFile(filepath.Join(dir.root, "..data", KeyFile), []byte("bad"), 0o600))
 	_, err = src.Reload()
 	require.Error(t, err)
-	cert, err := currentCert(src)
-	require.NoError(t, err)
-	require.Equal(t, first.cert.Raw, cert.Leaf.Raw)
+	_, err = currentCert(src)
+	require.Error(t, err)
 
 	// A rotated certificate and CA are picked up by Start.
 	rotatedCA := newCA(t)
@@ -321,8 +319,8 @@ func TestSource_ReloadDuringUpdate(t *testing.T) {
 	src, err := NewSource(dir.root)
 	require.NoError(t, err)
 
-	// Swap the Secret after the first read of the key, so that read sees the old
-	// certificate and key with the new CA bundle.
+	// Swap the Secret after reading the key. The attempt must stay bound to the
+	// old target, detect the swap and retry the complete new generation.
 	rotatedCA := newCA(t)
 	second := rotatedCA.issue(t, certOptions{uris: spiffeURIs("ucp")})
 	swapped := false
@@ -353,7 +351,7 @@ func TestSource_ReloadKeepsChanging(t *testing.T) {
 	dir := newKubeletDir(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}), ca.pem)
 	src, err := NewSource(dir.root)
 	require.NoError(t, err)
-	before, err := currentCert(src)
+	_, err = currentCert(src)
 	require.NoError(t, err)
 
 	reads := 0
@@ -365,9 +363,8 @@ func TestSource_ReloadKeepsChanging(t *testing.T) {
 
 	_, err = src.Reload()
 	require.ErrorContains(t, err, "kept changing")
-	after, err := currentCert(src)
-	require.NoError(t, err)
-	require.Same(t, before, after)
+	_, err = currentCert(src)
+	require.Error(t, err)
 }
 
 // TestNewSourceWithCA covers the <receiver>-spiffe volume contract: it projects only tls.crt
@@ -458,7 +455,7 @@ func TestNewTrustSource(t *testing.T) {
 		dir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), []byte("not a certificate"), 0o600))
 		_, err := NewTrustSource(dir)
-		require.ErrorContains(t, err, "no certificates found")
+		require.ErrorContains(t, err, "only CA certificates")
 	})
 
 	t.Run("reloads the CA bundle", func(t *testing.T) {

@@ -13,6 +13,14 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 
 {{- define "radius.authz.certificates.issuer" -}}
+{{- $lifecycle := include "radius.lifecycleSnapshot" .root | mustFromJson -}}
+{{- $source := index $lifecycle .plane -}}
+{{- if and $lifecycle (not $source) (not (and (eq .plane "internal") (eq (include "radius.authz.tls.provider" .root) "external"))) -}}
+{{- fail "Requested issuer plane is absent from the CA lifecycle." -}}
+{{- end -}}
+{{- if $source -}}
+{{- $source.issuer | toJson -}}
+{{- else -}}
 {{- $c := .root.Values.global.rbac.certificates | default dict -}}
 {{- if eq (include "radius.authz.certificates.mode" .root) "issuerRef" -}}
 {{- $c.issuerRef | toJson -}}
@@ -20,6 +28,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- $name := "radius-ca-issuer" -}}
 {{- if eq .plane "aggregation" -}}{{- $name = "radius-apiserver-issuer" -}}{{- end -}}
 {{- dict "group" "cert-manager.io" "kind" "Issuer" "name" $name | toJson -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -32,9 +41,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- define "radius.authz.certificates.validate" -}}
 {{- $c := .Values.global.rbac.certificates | default dict -}}
 {{- $mode := include "radius.authz.certificates.mode" . -}}
-{{- if lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" -}}
-{{- fail "certificate lifecycle prerequisite: radius-ca-rotation exists; use the lifecycle command that validates and preserves its pinned public sources before rendering Helm." -}}
-{{- end -}}
+{{- $lifecycle := include "radius.lifecycleSnapshot" . | mustFromJson -}}
 {{- if eq $mode "selfSigned" -}}
 {{- if or $c.caSecret $c.caBundle (($c.issuerRef | default dict).name) -}}
 {{- fail "selfSigned must not specify caSecret, caBundle or issuerRef.name; CA/mode switches require the certificate lifecycle." -}}
@@ -72,6 +79,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 {{- end -}}
 {{- end -}}
+{{- if not $lifecycle -}}
 {{- range $plane := list "internal" "aggregation" -}}
 {{- if or (eq $plane "aggregation") (eq (include "radius.authz.tls.provider" $) "radius") -}}
 {{- $name := "radius-ca-issuer" -}}{{- $signing := "radius-ca" -}}
@@ -86,6 +94,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 {{- end -}}
 {{- end -}}
+{{- end -}}
 
 {{/*
 Return the selected public source, identity, digests and issuer for each plane.
@@ -94,6 +103,12 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 */}}
 {{- define "radius.authz.certificates.publicSource" -}}
 {{- $root := .root -}}
+{{- $lifecycle := include "radius.lifecycleSnapshot" $root | mustFromJson -}}
+{{- if $lifecycle -}}
+{{- $source := index $lifecycle .plane -}}
+{{- if not $source -}}{{- fail "Requested trust plane is absent from the CA lifecycle." -}}{{- end -}}
+{{- $source | toJson -}}
+{{- else -}}
 {{- $mode := include "radius.authz.certificates.mode" $root -}}
 {{- $kind := "ConfigMap" -}}{{- $name := "radius-mtls-ca" -}}{{- $signing := "radius-ca" -}}
 {{- if eq .plane "aggregation" -}}
@@ -104,22 +119,22 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- if and (hasKey $annotations "radius.io/certificate-mode") (ne (index $annotations "radius.io/certificate-mode") $mode) -}}
 {{- fail "certificate lifecycle prerequisite: radius-apiserver-trust belongs to another certificate mode; use the lifecycle command before switching to selfSigned." -}}
 {{- end -}}
-{{- $name = $signing -}}
 {{- end -}}
 {{- end -}}
+{{- if eq $mode "selfSigned" -}}{{- $kind = "Secret" -}}{{- $name = $signing -}}{{- end -}}
 {{- $existing := lookup "v1" $kind $root.Release.Namespace $name -}}
 {{- $observed := $existing -}}
 {{- $bundle := "" -}}
-{{- if and (eq .plane "aggregation") (eq $mode "selfSigned") $existing -}}
+{{- if and (eq $mode "selfSigned") $existing -}}
 {{- $annotations := $existing.metadata.annotations | default dict -}}
 {{- $data := $existing.data | default dict -}}
 {{- if or (ne $existing.type "kubernetes.io/tls")
-  (ne (index $annotations "cert-manager.io/certificate-name") "radius-apiserver-ca")
+  (ne (index $annotations "cert-manager.io/certificate-name") $signing)
   (ne (index $annotations "cert-manager.io/issuer-name") "radius-selfsigned-bootstrap")
   (ne (index $annotations "cert-manager.io/issuer-kind") "Issuer")
   (ne (index $annotations "cert-manager.io/issuer-group") "cert-manager.io")
   (empty (index $data "tls.crt")) (empty (index $data "tls.key")) (empty (index $data "ca.crt")) -}}
-{{- fail "selfSigned aggregation prerequisite: radius-apiserver-ca must be a TLS Secret issued for Certificate radius-apiserver-ca by cert-manager.io/Issuer radius-selfsigned-bootstrap with tls.crt, tls.key and ca.crt; preserve foreign resources and repair ownership before retrying." -}}
+{{- fail (printf "selfSigned %s prerequisite: %s must be a TLS Secret issued for its Certificate by cert-manager.io/Issuer radius-selfsigned-bootstrap with tls.crt, tls.key and ca.crt; preserve foreign resources and repair ownership before retrying." .plane $signing) -}}
 {{- end -}}
 {{- end -}}
 {{- if ne $mode "selfSigned" -}}
@@ -132,7 +147,7 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- $observed = $secret -}}
 {{- $bundle = dig "data" "ca.crt" "" $secret | b64dec -}}
 {{- end -}}
-{{- if and $existing (not (and (eq .plane "aggregation") (eq $mode "selfSigned"))) -}}
+{{- if and $existing (ne $mode "selfSigned") -}}
 {{- $recordedMode := index ($existing.metadata.annotations | default dict) "radius.io/certificate-mode" | default "" -}}
 {{- if and $recordedMode (ne $recordedMode $mode) -}}
 {{- fail "certificate lifecycle prerequisite: the public source belongs to another certificate mode; use the lifecycle command." -}}
@@ -150,6 +165,8 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- $issuer := include "radius.authz.certificates.issuer" . | fromJson -}}
 {{- dict "kind" $kind "name" $name "key" "ca.crt" "bundle" $bundle
   "uid" (dig "metadata" "uid" "" $observed) "resourceVersion" (dig "metadata" "resourceVersion" "" $observed)
+  "bootstrapUID" (index (dig "metadata" "annotations" (dict) $observed) "radius.io/certificate-bootstrap" | default "")
   "contentDigest" (sha256sum $bundle) "issuerDigest" (sha256sum (toJson $issuer))
   "digest" (sha256sum (printf "%s\n%s" $bundle (toJson $issuer))) "issuer" $issuer | toJson -}}
+{{- end -}}
 {{- end -}}

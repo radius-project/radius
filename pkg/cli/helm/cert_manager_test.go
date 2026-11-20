@@ -660,7 +660,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(certificateTestChart(t), nil)
 
 	impl := &Impl{
-		Helm: mockHelmClient,
+		Helm: mockHelmClient, newRotationStore: emptyRotationTestStore,
 		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 			kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "v1.18.0", "")}.clients()
 			return kubeClient, apiextClient, nil
@@ -706,10 +706,6 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							release.Labels = radManagedByLabels()
 						}
 						client := NewMockHelmClient(gomock.NewController(t))
-						if command != "install" {
-							expectRadiusBaseline(t, client, options)
-						}
-						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(certificateTestChart(t), nil)
 						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
 						impl := &Impl{
 							Helm: client,
@@ -718,12 +714,11 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 								return nil, nil, errors.New("unexpected Kubernetes detection")
 							},
 						}
-						var err error
-						if command == "upgrade" {
-							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
-						} else {
-							err = impl.InstallRadius(t.Context(), options, kubeContext)
-						}
+						// Check dependency gating independently of the earlier lifecycle barrier.
+						prepared, parseErr := parseUserValuesFromCLI(&options.Radius)
+						require.NoError(t, parseErr)
+
+						err := impl.ensureCertManager(t.Context(), options, kubeContext, nil, options.RadiusReleaseValues, prepared, command != "install")
 						require.Error(t, err)
 						for _, part := range []string{
 							`"shared-cert-manager"`, `"security"`, "revision 3", string(status),
@@ -1165,6 +1160,7 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 		newCertManagerDynamicClient: uninstallStageClient,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
+	setupUninstallStore(t, impl)
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
 	require.Len(t, logs, 1)
 	require.Contains(t, logs[0], "Keeping cert-manager: could not check whether rad installed it")

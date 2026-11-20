@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -82,6 +83,18 @@ func stageObjectExists(t *testing.T, client dynamic.Interface, resource schema.G
 	return true
 }
 
+func setupUninstallStore(t *testing.T, impl *Impl) {
+	t.Helper()
+	kube, dyn, err := impl.ucpAPIServerTrustClients("")
+	require.NoError(t, err)
+	_, err = kube.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace, UID: "namespace", ResourceVersion: "1"}}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	store := bootstrapStoreFixture(t)
+	kube.(*kubefake.Clientset).PrependReactor("create", "leases", store.kube.(*kubefake.Clientset).ReactionChain[0].React)
+	store.kube, store.dynamic = kube, dyn
+	impl.newRotationStore = func(string, string) (*rotationStore, error) { return store, nil }
+}
+
 func countDeletes(client *dynamicfake.FakeDynamicClient) int {
 	deletes := 0
 	for _, action := range client.Actions() {
@@ -118,6 +131,7 @@ func Test_UninstallRadius_DeletesUnadoptedUCPAPIServerStage(t *testing.T) {
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
 	}
+	setupUninstallStore(t, impl)
 	require.NoError(t, impl.UninstallRadius(t.Context(), options, "test-context"))
 	for _, staged := range ucpAPIServerCAStageObjects {
 		require.False(t, stageObjectExists(t, dynamicClient, staged.resource, staged.name), "uninstall must delete the staged %s %s", staged.kind, staged.name)
@@ -300,6 +314,7 @@ func Test_UninstallRadius_DeletesUCPAPIServerSecrets(t *testing.T) {
 				newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
 				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
 			}
+			setupUninstallStore(t, impl)
 			require.NoError(t, impl.UninstallRadius(t.Context(), options, "test-context"))
 
 			for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName} {
@@ -368,7 +383,7 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
 	options := NewDefaultClusterOptions()
 	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
-	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, true).Return(nil, errors.New("contour unavailable"))
 	gateway := &defaultContourGatewayCalls{}
 	impl := &Impl{
 		Helm:                        mockHelmClient,
@@ -377,13 +392,18 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
 	}
-	require.ErrorContains(t, impl.UninstallRadius(t.Context(), options, "test-context"), ucpAPIServerTLSSecretName)
+	setupUninstallStore(t, impl)
+	uninstallErr := impl.UninstallRadius(t.Context(), options, "test-context")
+	require.ErrorContains(t, uninstallErr, ucpAPIServerTLSSecretName)
+	require.ErrorContains(t, uninstallErr, "contour unavailable")
 	require.Equal(t, 1, gateway.removeCalls)
 
 	leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
 	require.NoError(t, err)
-	require.Equal(t, []string{"Secret radius-system/" + ucpAPIServerTLSSecretName}, leftovers)
+	require.Equal(t, []string{"Secret radius-system/" + ucpAPIServerTLSSecretName + " (UID uid-ucp-apiserver-tls, version 1)"}, leftovers)
 
+	options.ConfirmedLeftovers = leftovers
+	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	failDelete = false
 	require.NoError(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), options, "test-context"))
 	leftovers, err = impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
@@ -392,4 +412,20 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), "other-secret", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.True(t, stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
+}
+
+func Test_RadiusUninstallLeftovers_ProviderGuard(t *testing.T) {
+	c := newStageCluster(t, nil, false)
+	impl := c.impl(NewMockHelmClient(gomock.NewController(t)))
+	options := NewDefaultClusterOptions()
+	options.ConfirmedLeftovers = []string{"stale confirmation"}
+	_, err := c.kube.CoreV1().ConfigMaps(RadiusSystemNamespace).Create(t.Context(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: identityProviderJournal}}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	c.kube.ClearActions()
+	c.dynamic.ClearActions()
+	_, err = impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
+	require.ErrorContains(t, err, identityProviderJournal)
+	require.ErrorContains(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), options, "test-context"), identityProviderJournal)
+	require.ErrorContains(t, impl.UninstallRadius(t.Context(), options, "test-context"), identityProviderJournal)
+	requireOnlyCertificateGuardReads(t, c)
 }

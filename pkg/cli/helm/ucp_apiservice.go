@@ -67,12 +67,20 @@ var (
 // returns them, which that cleanup keeps.
 func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode, declared manifestObjectSet) error {
 	if mode == authz.ModeOff {
-		return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared)
+		return i.withCertificateOffOperation(ctx, kubeContext, radiusNamespace, mode, func(ctx context.Context) error {
+			operation, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
+			if !ok {
+				// No namespace or APIService exists, so there is no trust to clean.
+				return ctx.Err()
+			}
+			if len(declared) == 0 {
+				return errors.New("Off cleanup requires the applied release manifest; retaining certificate resources")
+			}
+			operation.postHelm = true
+			return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared)
+		})
 	}
-	// A BYO chart owns its public injection source. Do not reconcile it to a self-signed signer.
-	if declared[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && !declared[manifestObjectKey("cert-manager.io", "Certificate", ucpAPIServerCASecretName)] {
-		return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace)
-	}
+	// Reconcile the selected public source (including BYO), never an inferred replacement signer.
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 		return err
 	}
@@ -203,7 +211,11 @@ func (i *Impl) stageCertificateTarget(ctx context.Context, options ClusterOption
 		}
 		return checkRenderedBYO(ctx, render)
 	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, deployed, mode, render)
+	previous, err := deployed()
+	if err != nil {
+		return err
+	}
+	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, previous, mode, render)
 }
 
 func byoCertificateMode(values map[string]any) string {
@@ -296,7 +308,40 @@ func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, 
 	if target == nil {
 		return nil
 	}
-	return i.waitForAppliedUCPAPIService(ctx, kubeContext, radiusNamespace, target)
+	if err := i.waitForAppliedUCPAPIService(ctx, kubeContext, radiusNamespace, target); err != nil {
+		return err
+	}
+	return i.cleanupHistoricalOnCertificates(ctx, kubeContext, radiusNamespace, target)
+}
+
+func (i *Impl) cleanupHistoricalOnCertificates(ctx context.Context, kubeContext, radiusNamespace string, target *releasev1.Release) error {
+	mode, err := servedAuthzMode(target)
+	if err != nil || mode == authz.ModeOff {
+		return err // Off reconciliation already inspected the applied revision.
+	}
+	declared, err := manifestObjects(target.Manifest)
+	if err != nil {
+		return err
+	}
+	// Historical authorization-on charts issued ucp-mtls instead of the
+	// separate aggregation leaf. Use their actual release declarations.
+	if !declared.legacyUCPCertificate() {
+		return nil
+	}
+	op, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
+	if !ok || op.store.namespace != radiusNamespace || op.kubeContext != kubeContext {
+		return fmt.Errorf("historical certificate cleanup requires the rollback operation Lease")
+	}
+	if err := op.check(ctx); err != nil {
+		return err
+	}
+	var issued []ucpOffLeftoverSecret
+	for _, entry := range undeclaredLeftovers(ucpOffLeftoverSecrets, declared) {
+		if entry.certificate != "" {
+			issued = append(issued, entry)
+		}
+	}
+	return i.deleteUCPOffLeftovers(ctx, kubeContext, op.store.kube, op.store.dynamic, radiusNamespace, issued)
 }
 
 // stageRolledBackUCPAPIServerCA stages UCP's API server certificate for revision of history before rad rolls Radius
@@ -358,13 +403,43 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 			return err
 		}
 	}
+	previous, err := deployedAuthzMode(history)
+	if err != nil {
+		return err
+	}
+	if previous == authz.ModeOff && mode != authz.ModeOff {
+		return errCertificateObserverUnavailable
+	}
 	if mode != authz.ModeOff {
 		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
 			return err
 		}
 	}
-	deployed := func() (authz.Mode, error) { return deployedAuthzMode(history) }
-	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, deployed, mode, render)
+	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, previous, mode, render)
+}
+
+// Historical On releases need the same exclusion as Off while reclaiming the
+// token chart's Secrets. Modern On rollbacks do not perform that cleanup.
+func (i *Impl) withRollbackCertificateOperation(ctx context.Context, kubeContext, namespace string, target *releasev1.Release, run func(context.Context) error) error {
+	mode, err := servedAuthzMode(target)
+	if err != nil {
+		return err
+	}
+	if mode != authz.ModeOff {
+		objects, err := manifestObjects(target.Manifest)
+		if err != nil {
+			return err
+		}
+		if objects.legacyUCPCertificate() {
+			return i.withCertificateOffOperation(ctx, kubeContext, namespace, authz.ModeOff, func(ctx context.Context) error {
+				if _, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation); !ok {
+					return errors.New("historical rollback requires an existing namespace and operation Lease")
+				}
+				return run(ctx)
+			})
+		}
+	}
+	return i.withCertificateOffOperation(ctx, kubeContext, namespace, mode, run)
 }
 
 // deployedAuthzMode returns the mode in which the newest revision of history serves UCP's API server, which is the
@@ -411,6 +486,10 @@ func manifestAuthzMode(rel *releasev1.Release, mode authz.Mode) (authz.Mode, err
 // manifestObjectSet holds the objects of a manifest by API group, kind and name.
 type manifestObjectSet map[string]bool
 
+func (s manifestObjectSet) legacyUCPCertificate() bool {
+	return s[manifestObjectKey("cert-manager.io", "CertificateTarget/"+ucpAPIServerCertificateName, "ucp-mtls")]
+}
+
 func manifestObjectKey(group, kind, name string) string {
 	return group + "/" + kind + "/" + name
 }
@@ -445,6 +524,7 @@ func manifestObjects(manifest string) (manifestObjectSet, error) {
 			}
 			if name != "" {
 				objects[manifestObjectKey("", "IssuedSecret", name)] = true
+				objects[manifestObjectKey("cert-manager.io", "CertificateTarget/"+object.GetName(), name)] = true
 			}
 		}
 	}
@@ -536,4 +616,25 @@ func condition(object *unstructured.Unstructured, conditionType string) (objectC
 		return objectCondition{status: status, reason: reason, message: message}, true
 	}
 	return objectCondition{}, false
+}
+
+func (i *Impl) checkBeforeCertificateDependencies(ctx context.Context, options ClusterOptions, kubeContext string, history []*releasev1.Release, target *certificateTarget) error {
+	if target.mode == authz.ModeOff {
+		return i.clearAggregationInjection(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName)
+	}
+	if target.Mode != "selfSigned" {
+		return checkSteadyBYOCertificates(latestRevision(history), target.Values)
+	}
+	deployed, err := deployedAuthzMode(history)
+	if err != nil {
+		return err
+	}
+	if deployed == authz.ModeOff {
+		return errCertificateObserverUnavailable
+	}
+	kube, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
+	if err != nil {
+		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
+	}
+	return checkCurrentAggregationSource(ctx, kube, dynamicClient, options.Radius.Namespace)
 }

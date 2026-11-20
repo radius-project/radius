@@ -103,7 +103,7 @@ func TestTokenCertificateModesChart(t *testing.T) {
 						require.NotNil(t, leaf)
 						spec := leaf.Object["spec"].(map[string]any)
 						require.Equal(t, receiver+"-spiffe", spec["secretName"])
-						require.Equal(t, []any{"spiffe://radius.internal/ns/radius-system/sa/"+receiver}, spec["uris"])
+						require.Equal(t, []any{"spiffe://radius.internal/ns/radius-system/sa/" + receiver}, spec["uris"])
 						require.NotContains(t, spec, "dnsNames")
 						require.Equal(t, []any{"digital signature", "server auth"}, spec["usages"])
 						name := "radius-ca-issuer"
@@ -296,7 +296,7 @@ func TestCertificatePublicSourceGuards(t *testing.T) {
 		{name: "unfinished or unknown journal", object: &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "radius-ca-rotation", "namespace": "radius-system"},
 			"data": map[string]any{"state.json": "{}"},
-		}}, err: "radius-ca-rotation exists"},
+		}}, err: "CA lifecycle journal has foreign or incomplete ownership"},
 		{name: "public source carries extra data", object: &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "radius-mtls-ca", "namespace": "radius-system"},
 			"data": map[string]any{"ca.crt": selected, "tls.key": "must not be copied"},

@@ -1,7 +1,5 @@
 {{- if .Values.networkPolicies.enabled }}
-{{- if not .Values.networkPolicies.controlPlaneCIDRs }}
-{{- fail "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies." }}
-{{- end }}
+{{- include "radius.validateNetworkPolicyValues" . }}
 # Optional ingress lockdown for the Radius control-plane namespace.
 #
 # NetworkPolicy is additive / allow-only: once a pod is selected by any policy,
