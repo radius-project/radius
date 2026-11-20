@@ -623,3 +623,25 @@ func Test_Package_UpdateResent(t *testing.T) {
 	requirePkgRejectedBefore(t, h.Update(t.Context(), request), "saved version")
 	require.Equal(t, 1, api.calls["UpdatePackage"])
 }
+
+// Test_Package_NewUpdateWhileImporting checks that a new update can't save its baseline while AWS is still importing
+// an earlier update, so a version that earlier update makes is never taken as the new update's.
+func Test_Package_NewUpdateWhileImporting(t *testing.T) {
+	h, api := newPackageHandler()
+	id := createPackage(t, h, dictionaryTemplate())
+	first := packageUpdate(t, h, id, withProps(dictionaryTemplate(), map[string]any{"PackageSource": source("synonyms-2.txt")}))
+	first.State, _ = h.UpdateState(t.Context(), pkgRegion, id)
+	require.NoError(t, h.Update(t.Context(), first))
+	for range 2 {
+		_, err := h.Read(t.Context(), pkgRegion, id)
+		require.NoError(t, err)
+	}
+
+	_, err := h.UpdateState(t.Context(), pkgRegion, id)
+	requirePkgConflict(t, err, "still importing")
+	require.Equal(t, 1, api.calls["UpdatePackage"])
+
+	api.changes[id].status = types.PackageStatusDeleting
+	_, err = h.UpdateState(t.Context(), pkgRegion, id)
+	requirePkgRejected(t, err)
+}

@@ -383,6 +383,8 @@ func (h *Package) Update(ctx context.Context, request native.UpdateRequest) erro
 	if err != nil {
 		return beforeChange(err)
 	}
+	// UpdateState saves only a package that isn't changing, so a package that moved on since was changed by an earlier
+	// attempt of this update.
 	if request.State != "" {
 		before, err := savedVersion(request.Identifier, request.State)
 		if err != nil {
@@ -394,11 +396,8 @@ func (h *Package) Update(ctx context.Context, request native.UpdateRequest) erro
 			return nil
 		}
 	}
-	switch p.PackageStatus {
-	case types.PackageStatusCopying, types.PackageStatusValidating:
-		return packageBusy(fmt.Sprintf("AWS is still importing the OpenSearch Service package %q (%s), so nothing was changed. Try again once it is AVAILABLE", request.Identifier, p.PackageStatus), nil)
-	case types.PackageStatusDeleting, types.PackageStatusDeleteFailed:
-		return invalid(packageType, "AWS is deleting the package %q (%s), so it can't be updated", request.Identifier, p.PackageStatus)
+	if err := updatable(request.Identifier, p); err != nil {
+		return err
 	}
 	description := in.PackageDescription
 	if description == nil && removesPath(request, "/PackageDescription") {
@@ -411,6 +410,18 @@ func (h *Package) Update(ctx context.Context, request native.UpdateRequest) erro
 		PackageEncryptionOptions: in.PackageEncryptionOptions,
 	}, inRegion(request.Region))
 	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))
+}
+
+// updatable returns a conflict for a package AWS is still importing, and a rejected client failure for one it is
+// deleting, so nothing is sent.
+func updatable(identifier string, p *types.PackageDetails) error {
+	switch p.PackageStatus {
+	case types.PackageStatusCopying, types.PackageStatusValidating:
+		return packageBusy(fmt.Sprintf("AWS is still importing the OpenSearch Service package %q (%s), so nothing was changed. Try again once it is AVAILABLE", identifier, p.PackageStatus), nil)
+	case types.PackageStatusDeleting, types.PackageStatusDeleteFailed:
+		return invalid(packageType, "AWS is deleting the package %q (%s), so it can't be updated", identifier, p.PackageStatus)
+	}
+	return nil
 }
 
 // packageVersion is what UpdateState saves before an update: the package's version, status, and last update time.
@@ -440,11 +451,16 @@ func versionOf(p *types.PackageDetails) packageVersion {
 }
 
 // UpdateState returns the package's version before the update. AWS may report the package AVAILABLE for a while after
-// UpdatePackage returns, before it starts importing the new version, so UpdateProgress waits for another version.
+// UpdatePackage returns, before it starts importing the new version, so UpdateProgress waits for another version. A
+// package AWS is still importing or deleting gets the error Update would return, so the saved version is never one
+// that an earlier change is about to replace.
 func (h *Package) UpdateState(ctx context.Context, region string, identifier string) (string, error) {
 	p, err := h.describe(ctx, region, identifier)
 	if err != nil {
 		return "", beforeChange(err)
+	}
+	if err := updatable(identifier, p); err != nil {
+		return "", err
 	}
 	b, err := json.Marshal(versionOf(p))
 	return string(b), err
