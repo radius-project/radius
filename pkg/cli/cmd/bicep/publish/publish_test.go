@@ -130,6 +130,7 @@ func TestRunner_extractDestination_EnhancedErrors(t *testing.T) {
 			expectedErrContains: []string{
 				"Invalid OCI reference",
 				"br:",
+				"must be all lowercase",
 			},
 		},
 		{
@@ -139,6 +140,16 @@ func TestRunner_extractDestination_EnhancedErrors(t *testing.T) {
 			expectedErrContains: []string{
 				"Invalid OCI reference",
 				"br:",
+			},
+		},
+		{
+			name:    "uppercase in repository with lowercase tag",
+			target:  "ghcr.io/zachcasper/tutorial/webServices:latest",
+			wantErr: true,
+			expectedErrContains: []string{
+				"must be all lowercase",
+				"zachcasper/tutorial/webServices",
+				"local Bicep file name",
 			},
 		},
 		{
