@@ -59,14 +59,14 @@ const (
 )
 
 var (
-	dataShareSales    = dataSharePrefix + "sales"
-	dataShareOrders   = dataSharePrefix + "orders"
+	dataShareSales     = dataSharePrefix + "sales"
+	dataShareOrders    = dataSharePrefix + "orders"
 	dataShareUngranted = dataSharePrefix + "ungranted"
 
 	// dataShareGrants are the consumers each data share is granted to in SQL when a fake starts.
 	dataShareGrants = map[string][]string{
-		dataShareSales:    {dataShareConsumerAccount, dataShareOtherConsumer},
-		dataShareOrders:   {dataShareConsumerAccount},
+		dataShareSales:     {dataShareConsumerAccount, dataShareOtherConsumer},
+		dataShareOrders:    {dataShareConsumerAccount},
 		dataShareUngranted: nil,
 	}
 
