@@ -206,8 +206,8 @@ var identityPolicyAPI = map[string]nativetest.Call{
 		Unclear: verifiedNote + rateNote + "SES stores a policy in its own form, which the page doesn't describe: in " +
 			"live calls it removed whitespace, wrote a list of one value as the value, reordered lists, wrote an account " +
 			"ID in a principal as the account's root ARN, and added Version 2008-10-17 to a policy without one. The fake " +
-			"stores the same form, except for the order of keys and lists, and the handler counts a policy in either form " +
-			"as the same. " +
+			"stores the same form, sorting principals in descending order as a live call returned them, and the handler " +
+			"counts a policy in either form as the same. " +
 			"Live calls also got BadRequestException for an action of another service, and for a statement whose principal " +
 			"lists none, which the fake returns too.",
 	},
@@ -484,7 +484,8 @@ var dedicatedIPAPI = map[string]nativetest.Call{
 				Code: badRequestCode,
 			},
 		},
-		Unclear: staleNote + "The page doesn't say which pool it returns for an address in no pool of the account's; " +
-			"SES's guide says ses-default-dedicated-pool holds them, so the fake returns that name.",
+		Unclear: staleNote + "The page marks PoolName optional and doesn't say when it is left out. SES's guide says " +
+			"ses-default-dedicated-pool holds every address in no other pool; the fake leaves PoolName out for those, " +
+			"and the handler then reads no pool, so a deploy moves the address.",
 	},
 }

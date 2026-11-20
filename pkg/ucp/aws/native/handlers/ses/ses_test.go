@@ -108,7 +108,9 @@ func identityPolicy(name string, policy string) map[string]any {
 }
 
 func Test_Suite_EmailIdentityPolicy(t *testing.T) {
-	properties := identityPolicy("p1", testPolicy(testIdentity))
+	// Two principals, in the order SES returns them.
+	user := "arn:aws:iam::" + account + ":user/sender"
+	properties := identityPolicy("p1", strings.Replace(testPolicy(testIdentity), `"AWS":"arn:aws:iam::`+account+`:root"`, `"AWS":["`+user+`","arn:aws:iam::`+account+`:root"]`, 1))
 	nativetest.Run(t, nativetest.Suite{
 		TypeName:    identityPolicyType,
 		Schema:      readFile(t, "aws-ses-emailidentitypolicy.json"),
@@ -124,11 +126,11 @@ func Test_Suite_EmailIdentityPolicy(t *testing.T) {
 		Identifier:           testIdentity + "|p1",
 		Changed:              identityPolicy("p1", testPolicy(testIdentity, "ses:SendEmail", "ses:SendRawEmail")),
 		CreateOnlyChange:     identityPolicy("p2", testPolicy(testIdentity)),
-		// SES's form of the policy, in a template's form: with whitespace, the account ID, a list of one action,
-		// and keys in another order.
+		// The template's policy in another form, as SES may return it: with whitespace, the account ID for its root
+		// ARN, the principals in another order, a list of one action, and keys in another order.
 		OtherForm: map[string]any{"Policy": `{
   "Statement": [{"Resource": "` + identityARN(testIdentity) + `", "Action": ["ses:SendEmail"], "Effect": "Allow",
-    "Principal": {"AWS": "` + account + `"}}],
+    "Principal": {"AWS": ["` + account + `", "` + user + `"]}}],
   "Version": "2012-10-17"
 }`},
 		Invalid: []map[string]any{

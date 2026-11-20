@@ -234,7 +234,8 @@ func identityARN(identity string) string {
 // isn't JSON, is longer than maxPolicyBytes, has a statement without an Effect of Allow or Deny, a principal, an
 // action, or a resource, has a statement whose resource isn't the identity, or allows an action of another service. SES stores an account ID in a principal as the account's root ARN, a statement's list of one
 // value as the value, without whitespace, and with Version 2008-10-17 when the policy has none. SES also keeps its
-// own key order and reorders lists; the fake orders keys by name and keeps lists as they are.
+// own key order and reorders lists; the fake orders keys by name, sorts a statement's AWS principals in descending
+// order, as a live call returned them, and keeps other lists as they are.
 func storedPolicy(identity string, policy string) (string, error) {
 	if len(policy) > maxPolicyBytes {
 		return "", badRequest("The policy size, %d, is larger than the max policy size, %d.", len(policy), maxPolicyBytes)
@@ -284,6 +285,8 @@ func storedPolicy(identity string, policy string) (string, error) {
 					}
 					arns = append(arns, id)
 				}
+				// In a live call SES returned a list of principals in descending order.
+				slices.SortFunc(arns, func(a, b any) int { return strings.Compare(fmt.Sprint(b), fmt.Sprint(a)) })
 				principal["AWS"] = arns
 			}
 			for key, value := range principal {
@@ -642,13 +645,14 @@ func (f *fakeAPI) GetDedicatedIp(ctx context.Context, in *sesv2.GetDedicatedIpIn
 	if !slices.Contains(leased, *in.Ip) {
 		return nil, notFound("Could not find dedicated IP <%s> under this account.", *in.Ip)
 	}
-	pool := defaultPool
+	// The page marks PoolName optional, so the fake leaves it out for an address in ses-default-dedicated-pool.
+	var pool *string
 	if props, ok := f.read(dedicatedIPType, *in.Ip); ok {
-		pool = fmt.Sprint(props[poolProperty])
+		pool = aws.String(fmt.Sprint(props[poolProperty]))
 	}
 	return &sesv2.GetDedicatedIpOutput{DedicatedIp: &types.DedicatedIp{
 		Ip:               in.Ip,
-		PoolName:         aws.String(pool),
+		PoolName:         pool,
 		WarmupPercentage: aws.Int32(100),
 		WarmupStatus:     types.WarmupStatusDone,
 	}}, nil
