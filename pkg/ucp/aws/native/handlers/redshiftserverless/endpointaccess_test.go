@@ -95,7 +95,7 @@ func Test_EndpointAccess_Update(t *testing.T) {
 	h := NewEndpointAccess(api)
 	createdEndpoint(t, h, ownEndpoint)
 
-	require.NoError(t, update(t, h, endpointFile, "reads", ownEndpoint, with(ownEndpoint, map[string]any{"VpcSecurityGroupIds": []any{"sg-1"}})))
+	require.NoError(t, update(t, h, endpointFile, "reads", ownEndpoint, with(ownEndpoint, map[string]any{"VpcSecurityGroupIds": []any{"sg-3", "sg-1"}})))
 	require.Zero(t, api.calls["UpdateEndpointAccess"], "an unchanged template sends nothing")
 
 	changed := with(ownEndpoint, map[string]any{"VpcSecurityGroupIds": []any{"sg-3", "sg-2"}})

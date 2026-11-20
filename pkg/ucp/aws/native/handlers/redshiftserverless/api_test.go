@@ -511,7 +511,9 @@ var endpointAPI = map[string]nativetest.Call{
 			"only. In that run AWS also answered a name another endpoint has with ValidationException (\"already exists\"), " +
 			"a workgroup it doesn't have with ResourceNotFoundException, and a workgroup that was MODIFYING with " +
 			"ConflictException (\"An operation is running on the serverless workgroup\"), gave an endpoint created without " +
-			"security groups the VPC's default group, and left the workgroup AVAILABLE while the endpoint was CREATING. The " +
+			"security groups the VPC's default group, left the workgroup AVAILABLE while the endpoint was CREATING, returned " +
+			"every subnet and security group sent but in its own order, and returned no address, create time, or VPC " +
+			"endpoint while CREATING; the fake does the same. The " +
 			"page doesn't say which subnets AWS takes; the fake takes any. The guide says the owner of a workgroup in another " +
 			"account must grant the caller's account access, but not which error AWS returns without it; the fake returns " +
 			"AccessDeniedException, which the page lists. The call takes no " +

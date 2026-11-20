@@ -456,11 +456,15 @@ func (f *fakeAPI) ListUsageLimits(ctx context.Context, in *redshiftserverless.Li
 func endpointOf(props map[string]any, status string) types.EndpointAccess {
 	name := awsapi.String(props, "EndpointName")
 	groups := []types.VpcSecurityGroupMembership{}
-	for _, id := range awsapi.Strings(props, "VpcSecurityGroupIds") {
+	ids := awsapi.Strings(props, "VpcSecurityGroupIds")
+	slices.Sort(ids)
+	for _, id := range ids {
 		groups = append(groups, types.VpcSecurityGroupMembership{VpcSecurityGroupId: aws.String(id), Status: aws.String("active")})
 	}
+	// AWS returns the subnets in its own order, not the create's.
 	subnets := awsapi.Strings(props, "SubnetIds")
-	return types.EndpointAccess{
+	slices.Sort(subnets)
+	e := types.EndpointAccess{
 		EndpointName:       aws.String(name),
 		EndpointArn:        aws.String(awsapi.String(props, "EndpointArn")),
 		EndpointStatus:     aws.String(status),
@@ -481,6 +485,11 @@ func endpointOf(props map[string]any, status string) types.EndpointAccess {
 			}},
 		},
 	}
+	if status == "CREATING" {
+		// AWS returns no address, create time, or VPC endpoint until the endpoint is made.
+		e.Address, e.EndpointCreateTime, e.VpcEndpoint = nil, nil, nil
+	}
+	return e
 }
 
 // endpointState returns the endpoint's status, and moves a transitional status on: a create or update finishes, and

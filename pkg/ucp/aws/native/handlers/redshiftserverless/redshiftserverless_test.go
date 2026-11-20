@@ -116,7 +116,7 @@ var endpoint = map[string]any{
 	"EndpointName":        "reads",
 	"WorkgroupName":       sharedWorkgroup,
 	"SubnetIds":           []any{"subnet-1", "subnet-2"},
-	"VpcSecurityGroupIds": []any{"sg-1"},
+	"VpcSecurityGroupIds": []any{"sg-1", "sg-3"},
 	"OwnerAccount":        otherAccount,
 }
 
@@ -138,7 +138,7 @@ func Test_Suite_EndpointAccess(t *testing.T) {
 		Identifier:         "reads",
 		Changed:            with(endpoint, map[string]any{"VpcSecurityGroupIds": []any{"sg-2", "sg-3"}}),
 		CreateOnlyChange:   with(endpoint, map[string]any{"SubnetIds": []any{"subnet-3"}}),
-		OtherForm:          map[string]any{"SubnetIds": []any{"subnet-2", "subnet-1"}},
+		OtherForm:          map[string]any{"SubnetIds": []any{"subnet-2", "subnet-1"}, "VpcSecurityGroupIds": []any{"sg-3", "sg-1"}},
 		Invalid: []map[string]any{
 			with(endpoint, map[string]any{"EndpointName": "Reads"}),
 			with(endpoint, map[string]any{"EndpointName": "my--reads"}),
