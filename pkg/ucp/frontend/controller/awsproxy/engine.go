@@ -94,7 +94,7 @@ type request struct {
 // recordedValues returns the record's last-applied properties when no operation left values unconfirmed, and nil
 // otherwise, or when UCP has no record of the last deploy.
 func recordedValues(rec *datamodel.AWSResource) map[string]any {
-	if rec.Properties.PendingLastApplied != nil || len(rec.Properties.UnresolvedPaths) > 0 {
+	if rec.Properties.PendingLastApplied != nil || records.HasUnresolved(rec) {
 		return nil
 	}
 	return rec.Properties.LastApplied
@@ -629,11 +629,12 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		return nil, err
 	}
 	patch, err := awsoperations.GeneratePatchWithOptions(currentState, desiredState, schema, awsoperations.PatchOptions{
-		Removed:       removed,
-		Equivalent:    equivalentFor(r, rec.Properties.LastApplied != nil, properties),
-		LastApplied:   rec.Properties.LastApplied,
-		Unresolved:    rec.Properties.UnresolvedPaths,
-		FailUncertain: r.native != nil && r.native.Handler.Options().DisruptiveUpdate,
+		Removed:          removed,
+		Equivalent:       equivalentFor(r, rec.Properties.LastApplied != nil, properties),
+		LastApplied:      rec.Properties.LastApplied,
+		Unresolved:       rec.Properties.UnresolvedPaths,
+		LegacyUnresolved: rec.Properties.LegacyUnresolvedPaths,
+		FailUncertain:    r.native != nil && r.native.Handler.Options().DisruptiveUpdate,
 	})
 	var uncertain *awsoperations.UncertainError
 	if errors.As(err, &uncertain) {
@@ -674,7 +675,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		// and later removes is then cleared. Equivalent wasn't used at unresolved paths, so AWS has the template's
 		// values there, and they are resolved.
 		rec.Properties.LastApplied = applied.properties
-		rec.Properties.UnresolvedPaths = nil
+		records.ClearUnresolved(rec)
 		rec.Properties.Fingerprints = applied.fingerprints
 		records.ClearPending(rec)
 		records.ClearUpdateToken(rec)
