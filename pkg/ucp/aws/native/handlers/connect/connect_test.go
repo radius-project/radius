@@ -262,30 +262,93 @@ func Test_PhoneNumberContactFlowAssociation_Delete(t *testing.T) {
 	require.ErrorContains(t, err, "can't be listed")
 }
 
-func Test_PhoneNumberContactFlowAssociation_ConfirmStops(t *testing.T) {
-	t.Run("at a list that fails", func(t *testing.T) {
+// requireUnknown requires err to be a failure whose outcome is unknown, which asks to deploy again and contains text.
+func requireUnknown(t *testing.T, err error, text string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.False(t, failure.ClientError)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.Contains(t, failure.Message, "Deploy again")
+	require.Contains(t, failure.Message, text)
+}
+
+func Test_PhoneNumberContactFlowAssociation_UnconfirmedChange(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("a create that lists keep failing to show is unknown", func(t *testing.T) {
 		h, api := newHandler(awsfake.NewCloudControl())
 		h.wait = func(context.Context, time.Duration) {
-			api.errs["ListFlowAssociations"] = apiError(http.StatusForbidden, "AccessDeniedException", "denied")
+			api.errs["ListFlowAssociations"] = apiError(http.StatusTooManyRequests, "ThrottlingException", "Rate exceeded")
 		}
-		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: association(testPhoneARN, testInstance, testFlow)})
-		require.NoError(t, err, "AWS associated the flow")
-		require.Equal(t, 2, count(api.calls, "ListFlowAssociations"))
+		identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: association(testPhoneARN, testInstance, testFlow)})
+		requireUnknown(t, err, "Rate exceeded")
+		require.Equal(t, testIdentifier, identifier, "UCP keeps the identifier of a create AWS accepted")
+		require.Equal(t, confirmReads, count(api.calls, "ListFlowAssociations"))
 	})
 
-	t.Run("when the context ends", func(t *testing.T) {
+	t.Run("a create no list shows in time is unknown", func(t *testing.T) {
 		h, api := newHandler(awsfake.NewCloudControl())
-		ctx, cancel := context.WithCancel(t.Context())
+		h.wait = func(context.Context, time.Duration) { api.stale[testIdentifier].lists = confirmReads }
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: association(testPhoneARN, testInstance, testFlow)})
+		requireUnknown(t, err, "no read showed it")
+	})
+
+	t.Run("a create whose context ends is unknown", func(t *testing.T) {
+		h, _ := newHandler(awsfake.NewCloudControl())
+		ctx, cancel := context.WithCancel(ctx)
 		h.wait = func(context.Context, time.Duration) { cancel() }
 		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: association(testPhoneARN, testInstance, testFlow)})
+		requireUnknown(t, err, "context canceled")
+	})
+
+	t.Run("an update no list shows in time is unknown", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: association(testPhoneARN, testInstance, testFlow)})
 		require.NoError(t, err)
-		require.Equal(t, 1, count(api.calls, "ListFlowAssociations"))
+		current, err := h.Read(ctx, region, testIdentifier)
+		require.NoError(t, err)
+		h.wait = func(context.Context, time.Duration) { api.stale[testIdentifier].lists = confirmReads }
+		desired := association(testPhoneARN, testInstance, otherFlow)
+		patch, err := jsondiff.Compare(current, desired)
+		require.NoError(t, err)
+		err = h.Update(ctx, native.UpdateRequest{Region: region, Identifier: testIdentifier, Current: current, Desired: desired, Patch: patch})
+		requireUnknown(t, err, "no read showed it")
 	})
 
 	t.Run("sleep returns when the context ends", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(t.Context())
+		ctx, cancel := context.WithCancel(ctx)
 		cancel()
 		sleep(ctx, time.Hour)
+	})
+}
+
+func Test_PhoneNumberContactFlowAssociation_CreateProgress(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("a lost create waits for a list to show the flow", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		require.NoError(t, associate(ctx, api.store, testPhoneARN, testInstance, testFlow))
+		api.stale[testIdentifier] = &stale{after: association(testPhoneARN, testInstance, testFlow), lists: staleLists}
+		progress, err := h.Progress(ctx, region, testIdentifier, native.OperationCreate)
+		require.NoError(t, err)
+		require.True(t, progress.Done)
+		require.Equal(t, staleLists+1, count(api.calls, "ListFlowAssociations"))
+	})
+
+	t.Run("a create AWS never got is not found after the lists", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		_, err := h.Progress(ctx, region, testIdentifier, native.OperationCreate)
+		require.ErrorIs(t, err, native.ErrNotFound)
+		require.Equal(t, confirmReads, count(api.calls, "ListFlowAssociations"))
+	})
+
+	t.Run("a context that ends stops the lists", func(t *testing.T) {
+		h, _ := newHandler(awsfake.NewCloudControl())
+		ctx, cancel := context.WithCancel(ctx)
+		h.wait = func(context.Context, time.Duration) { cancel() }
+		_, err := h.Progress(ctx, region, testIdentifier, native.OperationCreate)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 

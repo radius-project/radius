@@ -121,7 +121,8 @@ var (
 // ListPlatformApplications returned the change at once.
 //
 // AWS checks the credentials with the push notification service on every create and update, and never returns them,
-// so the schema marks them write-only. A create or update waits, for up to confirmReads reads, until a read shows it.
+// so the schema marks them write-only. A create or update waits, for up to confirmReads reads, until a read shows it,
+// and fails with an unknown outcome when none does.
 type PlatformApplication struct {
 	api  API
 	wait pause
@@ -261,16 +262,19 @@ func (h *PlatformApplication) Create(ctx context.Context, request native.CreateR
 	if err != nil {
 		return "", awsapi.Rejected(err)
 	}
-	h.confirm(ctx, request.Region, identifier, sent)
-	return identifier, nil
+	return identifier, h.confirm(ctx, request.Region, identifier, sent)
 }
 
 // Update sets the attributes the update changes. A setting the template no longer sets is cleared, which AWS does for
 // an attribute sent as "", except SuccessFeedbackSampleRate, which AWS can't clear, so removing it is rejected before
 // any call. AWS takes a change to the credentials only with every credential the platform needs, so a change to any of
-// them sends all the template sets, including the secrets whose fingerprints show they are unchanged.
+// them sends all the template sets, including the secrets whose fingerprints show they are unchanged. An attribute the
+// template sets to "" that AWS doesn't have is no change: Read leaves out an empty attribute, so every deploy of such a
+// template has it in its patch.
 func (h *PlatformApplication) Update(ctx context.Context, request native.UpdateRequest) error {
-	changed := awsapi.Changed(request)
+	changed := slices.DeleteFunc(awsapi.Changed(request), func(attribute string) bool {
+		return awsapi.String(request.Desired, attribute) == "" && awsapi.String(request.Current, attribute) == ""
+	})
 	sent := map[string]string{}
 	for _, attribute := range settingAttributes {
 		if !slices.Contains(changed, attribute) {
@@ -300,15 +304,16 @@ func (h *PlatformApplication) Update(ctx context.Context, request native.UpdateR
 	if err != nil {
 		return notFoundOrRejected(err)
 	}
-	h.confirm(ctx, request.Region, request.Identifier, sent)
-	return nil
+	return h.confirm(ctx, request.Region, request.Identifier, sent)
 }
 
-// confirm reads the application until a read shows each attribute in sent that AWS returns, so the next read shows
-// the change. New credentials replace the team and bundle IDs, so then a read must show only those sent. It stops early
-// when a read fails with anything but ErrNotFound, and after confirmReads reads, because the change succeeded either
-// way: a deploy that still reads the earlier attributes then sends the same change again, which changes nothing.
-func (h *PlatformApplication) confirm(ctx context.Context, region string, identifier string, sent map[string]string) {
+// confirm reads the application until a read shows each attribute in sent that AWS returns, for up to confirmReads
+// reads. New credentials replace the team and bundle IDs, so then a read must show only those sent. AWS accepted the
+// change, but until a read shows it, a later deploy could read the earlier attributes and keep a value the template
+// removed, and the worker could take a create that no read shows yet as gone. So when no read shows it, confirm returns
+// a failure whose outcome is unknown, which keeps the template's values as possibly applied, and the next deploy reads
+// the application again.
+func (h *PlatformApplication) confirm(ctx context.Context, region string, identifier string, sent map[string]string) error {
 	want := map[string]string{}
 	for attribute, value := range sent {
 		if slices.Contains(readableAttributes, attribute) {
@@ -320,21 +325,25 @@ func (h *PlatformApplication) confirm(ctx context.Context, region string, identi
 			want[attribute] = sent[attribute]
 		}
 	}
+	var err error
 	for i := range confirmReads {
 		if i > 0 {
 			h.wait(ctx, confirmPause)
 		}
 		if ctx.Err() != nil {
-			return
+			err = ctx.Err()
+			break
 		}
-		got, err := h.Read(ctx, region, identifier)
-		if err == nil && shows(got, want) {
-			return
-		}
-		if err != nil && !errors.Is(err, native.ErrNotFound) {
-			return
+		var got map[string]any
+		if got, err = h.Read(ctx, region, identifier); err == nil && shows(got, want) {
+			return nil
 		}
 	}
+	message := fmt.Sprintf("AWS accepted the change to the Amazon SNS platform application %q, but no read showed it within %s, so UCP can't tell what AWS has. Deploy again.", identifier, confirmReads*confirmPause)
+	if err != nil {
+		message += " The last read failed: " + err.Error()
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
 }
 
 // shows reports whether the properties of a read have the attributes in want. AWS returns a cleared attribute as ""
@@ -391,18 +400,34 @@ func platformAndName(arn string) (string, string, bool) {
 	return parts[1], parts[2], true
 }
 
-// Progress reports a create as done once a read finds the application, and an update as done, because the create and
-// the update already waited until a read showed them. It returns ErrNotFound when AWS has no such application, so UCP
-// sends a lost create again, and a delete finishes.
+// Progress reports a create as done once a read finds the application, and an update as done, because the update
+// already waited until a read showed it. A create whose response UCP lost never waited, so a read that doesn't find
+// the application gets up to confirmReads tries before Progress returns ErrNotFound, which makes UCP send the create
+// again, or a DELETE remove only the record. A delete is done once a read no longer finds the application.
 func (h *PlatformApplication) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
-	if op == native.OperationUpdate {
+	switch op {
+	case native.OperationUpdate:
 		return native.Progress{Done: true}, nil
-	}
-	if _, err := h.Read(ctx, region, identifier); err != nil {
-		return native.Progress{}, err
-	}
-	if op == native.OperationDelete {
+	case native.OperationDelete:
+		if _, err := h.Read(ctx, region, identifier); err != nil {
+			return native.Progress{}, err
+		}
 		return native.Progress{State: "present", Waiting: "deleted"}, nil
+	}
+	var err error
+	for i := range confirmReads {
+		if i > 0 {
+			h.wait(ctx, confirmPause)
+		}
+		if ctx.Err() != nil {
+			return native.Progress{}, ctx.Err()
+		}
+		if _, err = h.Read(ctx, region, identifier); !errors.Is(err, native.ErrNotFound) {
+			break
+		}
+	}
+	if err != nil {
+		return native.Progress{}, err
 	}
 	return native.Progress{Done: true}, nil
 }

@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -295,6 +297,37 @@ func Test_PlatformApplication_Update(t *testing.T) {
 		require.Empty(t, api.calls)
 	})
 
+	t.Run("an empty value AWS doesn't have is no change", func(t *testing.T) {
+		h, api, current := setup(t)
+		desired := withRate(func(p map[string]any) {
+			p["EventEndpointDeleted"] = ""
+			p["SuccessFeedbackRoleArn"] = ""
+		})
+		require.NoError(t, h.Update(ctx, update(t, current, desired, false)))
+		require.Empty(t, api.calls, "Read leaves out empty values, so every deploy has them in its patch")
+	})
+
+	t.Run("an empty team ID AWS doesn't have doesn't resend the credentials", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		gcm := map[string]any{"Platform": "GCM", "Name": testName, "PlatformCredential": "key", "ApplePlatformTeamID": ""}
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: gcm})
+		require.NoError(t, err)
+		current, err := h.Read(ctx, region, "GCM|"+testName)
+		require.NoError(t, err)
+		api.calls = nil
+		request := update(t, current, gcm, false)
+		request.Identifier = "GCM|" + testName
+		require.NoError(t, h.Update(ctx, request))
+		require.Empty(t, api.calls)
+	})
+
+	t.Run("an empty value clears what AWS has", func(t *testing.T) {
+		h, api, current := setup(t)
+		require.NoError(t, h.Update(ctx, update(t, current, withRate(func(p map[string]any) { p["EventEndpointCreated"] = "" }), false)))
+		props, _ := api.store.Read(platformApplicationType, testIdentifier)
+		require.NotContains(t, props, "EventEndpointCreated")
+	})
+
 	t.Run("an update of a missing application is not found", func(t *testing.T) {
 		h, api, current := setup(t)
 		api.store.Remove(platformApplicationType, testIdentifier)
@@ -379,30 +412,97 @@ func count(calls []string, method string) int {
 	return n
 }
 
-func Test_PlatformApplication_ConfirmStops(t *testing.T) {
-	t.Run("at a read that fails", func(t *testing.T) {
+// requireUnknown requires err to be a failure whose outcome is unknown, which asks to deploy again and contains text.
+func requireUnknown(t *testing.T, err error, text string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.False(t, failure.ClientError)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.Contains(t, failure.Message, "Deploy again")
+	require.Contains(t, failure.Message, text)
+}
+
+func Test_PlatformApplication_UnconfirmedChange(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("a create that reads keep failing to show is unknown", func(t *testing.T) {
 		h, api := newHandler(awsfake.NewCloudControl())
 		h.wait = func(context.Context, time.Duration) {
-			api.errs["ListPlatformApplications"] = apiError(http.StatusForbidden, "AuthorizationError", "denied")
+			api.errs["ListPlatformApplications"] = apiError(http.StatusBadRequest, "Throttling", "Rate exceeded")
 		}
-		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: application(nil)})
-		require.NoError(t, err, "AWS created the application")
-		require.Equal(t, 2, count(api.calls, "ListPlatformApplications"))
+		identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(nil)})
+		requireUnknown(t, err, "Rate exceeded")
+		require.Equal(t, testIdentifier, identifier, "UCP keeps the identifier of a create AWS accepted")
+		require.Equal(t, confirmReads, count(api.calls, "ListPlatformApplications"))
 	})
 
-	t.Run("when the context ends", func(t *testing.T) {
+	t.Run("a create no read shows in time is unknown", func(t *testing.T) {
 		h, api := newHandler(awsfake.NewCloudControl())
-		ctx, cancel := context.WithCancel(t.Context())
+		reads := 0
+		h.wait = func(context.Context, time.Duration) {
+			// AWS keeps showing no application for longer than the handler waits.
+			reads++
+			api.stale[testIdentifier].reads = confirmReads
+		}
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(nil)})
+		requireUnknown(t, err, "no read showed it")
+		require.Equal(t, confirmReads-1, reads)
+	})
+
+	t.Run("a create whose context ends is unknown", func(t *testing.T) {
+		h, _ := newHandler(awsfake.NewCloudControl())
+		ctx, cancel := context.WithCancel(ctx)
 		h.wait = func(context.Context, time.Duration) { cancel() }
 		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(nil)})
+		requireUnknown(t, err, "context canceled")
+	})
+
+	t.Run("an update no read shows in time is unknown", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(nil)})
 		require.NoError(t, err)
-		require.Equal(t, 1, count(api.calls, "ListPlatformApplications"))
+		current, err := h.Read(ctx, region, testIdentifier)
+		require.NoError(t, err)
+		h.wait = func(context.Context, time.Duration) { api.stale[testIdentifier].reads = confirmReads }
+		err = h.Update(ctx, update(t, current, application(func(p map[string]any) { p["EventEndpointCreated"] = otherTopic }), false))
+		requireUnknown(t, err, "no read showed it")
 	})
 
 	t.Run("sleep returns when the context ends", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(t.Context())
+		ctx, cancel := context.WithCancel(ctx)
 		cancel()
 		sleep(ctx, time.Hour)
+	})
+}
+
+func Test_PlatformApplication_CreateProgress(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("a lost create waits for a read to show the application", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		_, err := api.CreatePlatformApplication(ctx, &sns.CreatePlatformApplicationInput{Name: aws.String(testName), Platform: aws.String("APNS"), Attributes: attributes(application(nil), credentialAttributes...)})
+		require.NoError(t, err)
+		api.calls = nil
+		progress, err := h.Progress(ctx, region, testIdentifier, native.OperationCreate)
+		require.NoError(t, err)
+		require.True(t, progress.Done)
+		require.Equal(t, staleReads+1, count(api.calls, "ListPlatformApplications"))
+	})
+
+	t.Run("a create AWS never got is not found after the reads", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		_, err := h.Progress(ctx, region, testIdentifier, native.OperationCreate)
+		require.ErrorIs(t, err, native.ErrNotFound)
+		require.Equal(t, confirmReads, count(api.calls, "ListPlatformApplications"))
+	})
+
+	t.Run("a context that ends stops the reads", func(t *testing.T) {
+		h, _ := newHandler(awsfake.NewCloudControl())
+		ctx, cancel := context.WithCancel(ctx)
+		h.wait = func(context.Context, time.Duration) { cancel() }
+		_, err := h.Progress(ctx, region, testIdentifier, native.OperationCreate)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 

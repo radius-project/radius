@@ -96,7 +96,8 @@ var (
 // template may give the flow by ID or by ARN, and both mean the same flow (see equivalent).
 //
 // A create or update associates the flow with AssociatePhoneNumberContactFlow, which a deploy sends again to change
-// the flow, and waits, for up to confirmReads reads, until a read shows it. A delete removes the association, which
+// the flow, and waits, for up to confirmReads reads, until a read shows it, failing with an unknown outcome when none
+// does. A delete removes the association, which
 // leaves the phone number without a flow.
 type PhoneNumberContactFlowAssociation struct {
 	api  API
@@ -207,7 +208,8 @@ func (h *PhoneNumberContactFlowAssociation) Read(ctx context.Context, region str
 	return nil, native.ErrNotFound
 }
 
-// associate sets the phone number's flow to flow, and waits until a read shows it.
+// associate sets the phone number's flow to flow, and waits until a read shows it. It returns AWS's error as it is,
+// and confirm's failure when no read shows the flow.
 func (h *PhoneNumberContactFlowAssociation) associate(ctx context.Context, region string, identifier string, flow string) error {
 	phoneNumber, instance, err := parseIdentifier(identifier)
 	if err != nil {
@@ -221,29 +223,33 @@ func (h *PhoneNumberContactFlowAssociation) associate(ctx context.Context, regio
 	if err != nil {
 		return err
 	}
-	h.confirm(ctx, region, identifier, flow)
-	return nil
+	return h.confirm(ctx, region, identifier, flow)
 }
 
-// confirm reads the association until a read shows flow, so the next read shows the change. It stops early when a read
-// fails with anything but ErrNotFound, and after confirmReads reads, because the change succeeded either way: a deploy
-// that still reads the earlier flow then sends the same change again, which changes nothing.
-func (h *PhoneNumberContactFlowAssociation) confirm(ctx context.Context, region string, identifier string, flow string) {
+// confirm reads the association until a read shows flow, for up to confirmReads reads. AWS accepted the change, but
+// until a read shows it, a later deploy could read the earlier flow, and the worker could take a create that no read
+// shows yet as gone. So when no read shows it, confirm returns a failure whose outcome is unknown, which keeps the
+// template's values as possibly applied, and the next deploy reads the association again.
+func (h *PhoneNumberContactFlowAssociation) confirm(ctx context.Context, region string, identifier string, flow string) error {
+	var err error
 	for i := range confirmReads {
 		if i > 0 {
 			h.wait(ctx, confirmPause)
 		}
 		if ctx.Err() != nil {
-			return
+			err = ctx.Err()
+			break
 		}
-		got, err := h.Read(ctx, region, identifier)
-		if err == nil && equivalent(contactFlowIDProperty, flow, got[contactFlowIDProperty]) {
-			return
-		}
-		if err != nil && !errors.Is(err, native.ErrNotFound) {
-			return
+		var got map[string]any
+		if got, err = h.Read(ctx, region, identifier); err == nil && equivalent(contactFlowIDProperty, flow, got[contactFlowIDProperty]) {
+			return nil
 		}
 	}
+	message := fmt.Sprintf("AWS accepted the flow of the phone number %q, but no read showed it within %s, so UCP can't tell what AWS has. Deploy again.", identifier, confirmReads*confirmPause)
+	if err != nil {
+		message += " The last read failed: " + err.Error()
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
 }
 
 // Create associates the template's flow with the phone number and returns the association's identifier. UCP calls it
@@ -253,10 +259,7 @@ func (h *PhoneNumberContactFlowAssociation) Create(ctx context.Context, request 
 	if err != nil {
 		return "", err
 	}
-	if err := h.associate(ctx, request.Region, identifier, awsapi.String(request.Properties, contactFlowIDProperty)); err != nil {
-		return "", awsapi.Rejected(err)
-	}
-	return identifier, nil
+	return identifier, awsapi.Rejected(h.associate(ctx, request.Region, identifier, awsapi.String(request.Properties, contactFlowIDProperty)))
 }
 
 // Update associates the template's flow with the phone number, in place of the flow it has.
@@ -285,18 +288,34 @@ func (h *PhoneNumberContactFlowAssociation) List(ctx context.Context, region str
 	return nil, fmt.Errorf("the AWS type %s can't be listed", associationType)
 }
 
-// Progress reports a create as done once a read finds the association, and an update as done, because the create and
-// the update already waited until a read showed them. It returns ErrNotFound when the number has no flow, so UCP sends
-// a lost create again, and a delete finishes.
+// Progress reports a create as done once a read finds the association, and an update as done, because the update
+// already waited until a read showed it. A create whose response UCP lost never waited, so a read that doesn't find
+// the association gets up to confirmReads tries before Progress returns ErrNotFound, which makes UCP send the create
+// again, or a DELETE remove only the record. A delete is done once a read no longer finds the association.
 func (h *PhoneNumberContactFlowAssociation) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
-	if op == native.OperationUpdate {
+	switch op {
+	case native.OperationUpdate:
 		return native.Progress{Done: true}, nil
-	}
-	if _, err := h.Read(ctx, region, identifier); err != nil {
-		return native.Progress{}, err
-	}
-	if op == native.OperationDelete {
+	case native.OperationDelete:
+		if _, err := h.Read(ctx, region, identifier); err != nil {
+			return native.Progress{}, err
+		}
 		return native.Progress{State: "associated", Waiting: "disassociated"}, nil
+	}
+	var err error
+	for i := range confirmReads {
+		if i > 0 {
+			h.wait(ctx, confirmPause)
+		}
+		if ctx.Err() != nil {
+			return native.Progress{}, ctx.Err()
+		}
+		if _, err = h.Read(ctx, region, identifier); !errors.Is(err, native.ErrNotFound) {
+			break
+		}
+	}
+	if err != nil {
+		return native.Progress{}, err
 	}
 	return native.Progress{Done: true}, nil
 }
