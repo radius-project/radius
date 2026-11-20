@@ -85,10 +85,7 @@ func (h *Origination) put(ctx context.Context, region string, identifier string,
 // Create sets the Voice Connector's origination settings to the template's and returns the Voice Connector's ID.
 func (h *Origination) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	identifier, _ := request.Properties[voiceConnectorIDProperty].(string)
-	if err := h.put(ctx, request.Region, identifier, request.Properties); err != nil {
-		return "", err
-	}
-	return identifier, nil
+	return created(identifier, h.put(ctx, request.Region, identifier, request.Properties))
 }
 
 // Update sets the Voice Connector's origination settings to the template's. A value the template no longer sets is left

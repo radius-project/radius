@@ -117,10 +117,7 @@ func (h *LoggingConfiguration) Create(ctx context.Context, request native.Create
 		return "", err
 	}
 	identifier, _ := request.Properties[voiceConnectorIDProperty].(string)
-	if err := h.put(ctx, request.Region, identifier, settings); err != nil {
-		return "", sendFailed(err)
-	}
-	return identifier, nil
+	return created(identifier, sendFailed(h.put(ctx, request.Region, identifier, settings)))
 }
 
 // Update sets the Voice Connector's logging to the template's. A log the template no longer sets is turned off.

@@ -115,6 +115,17 @@ func sendFailed(err error) error {
 	return awsapi.Rejected(err)
 }
 
+// created returns what a Create returns after its Put returned err: the identifier, unless AWS rejected the Put and
+// applied none of it. A Put AWS may have applied, such as one no read showed, keeps the identifier with its error, so a
+// caller that cleans up what a create may have made, such as a failed recording, finds it.
+func created(identifier string, err error) (string, error) {
+	var failure *native.Failure
+	if err != nil && errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected {
+		return "", err
+	}
+	return identifier, err
+}
+
 // rejected returns a client failure AWS applied none of, with message.
 func rejected(format string, args ...any) error {
 	return &native.Failure{Message: fmt.Sprintf(format, args...), ClientError: true, Outcome: native.OutcomeRejected}
