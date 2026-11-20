@@ -114,6 +114,13 @@ func (h *NamespaceRegistration) Options() native.Options {
 	return native.Options{List: native.ListNone, Recovery: native.RecoverByIdentifier}
 }
 
+// registrationOnce makes the SDK send a call once. A register or deregister whose response is lost may have taken
+// effect and left the cluster or namespace busy, so the SDK's retry would get InvalidClusterState, which reads as a
+// change AWS rejected.
+func registrationOnce(o *redshift.Options) {
+	o.RetryMaxAttempts = 1
+}
+
 // registration is the namespace and consumer of a registration. Cluster is set for a provisioned cluster, and
 // Namespace and Workgroup for a serverless namespace.
 type registration struct {
@@ -407,7 +414,7 @@ func (h *NamespaceRegistration) Create(ctx context.Context, request native.Creat
 	_, err = h.api.RegisterNamespace(ctx, &redshift.RegisterNamespaceInput{
 		NamespaceIdentifier: r.namespaceIdentifier(),
 		ConsumerIdentifiers: []string{r.Consumer},
-	}, registrationRegion(request.Region))
+	}, registrationRegion(request.Region), registrationOnce)
 	if awsapi.HasCode(err, registrationBusy) {
 		return "", registrationBusyFailure(r, err)
 	}
@@ -463,7 +470,7 @@ func (h *NamespaceRegistration) Delete(ctx context.Context, region string, ident
 	_, err = h.api.DeregisterNamespace(ctx, &redshift.DeregisterNamespaceInput{
 		NamespaceIdentifier: r.namespaceIdentifier(),
 		ConsumerIdentifiers: []string{r.Consumer},
-	}, registrationRegion(region))
+	}, registrationRegion(region), registrationOnce)
 	if awsapi.HasCode(err, registrationBusy) {
 		return registrationBusyFailure(r, err)
 	}

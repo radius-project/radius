@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/service/redshift"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -182,4 +183,13 @@ func Test_PartnerIntegration_Errors(t *testing.T) {
 	require.ErrorContains(t, err, "Throttling")
 	_, err = h.List(t.Context(), partnerTestRegion)
 	require.Error(t, err, "AWS lists integrations only per cluster")
+}
+
+// Test_PartnerIntegration_LostResponse checks the calls the SDK may send again after a lost response: AWS answers a
+// second AddPartner with success, and a second DeletePartner with PartnerNotFound, which finishes the delete.
+func Test_PartnerIntegration_LostResponse(t *testing.T) {
+	cfg, calls := firstResponseLost(t, partnerNotFound)
+	err := NewPartnerIntegration(redshift.NewFromConfig(cfg)).Delete(t.Context(), partnerTestRegion, partnerTestID)
+	require.ErrorIs(t, err, native.ErrNotFound)
+	require.Equal(t, 2, *calls)
 }

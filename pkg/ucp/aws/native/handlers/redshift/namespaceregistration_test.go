@@ -18,7 +18,14 @@ package redshift
 
 import (
 	"context"
+	"errors"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"io"
+	"net"
+	"net/http"
 	"os"
+	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -421,4 +428,50 @@ func Test_NamespaceRegistration_Errors(t *testing.T) {
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: registrationTestRegion, Properties: analyticsProps()})
 	require.ErrorContains(t, err, "Throttling")
 	require.ErrorContains(t, h.Delete(t.Context(), registrationTestRegion, "analytics|analytics-wg|"+registrationConsumer), "Throttling")
+}
+
+// firstResponseLost returns an AWS config whose first call reaches AWS but loses its response with a connection
+// error, as a call AWS applied can, and whose later calls get AWS's answer, an XML error with the code. calls counts
+// the calls sent.
+func firstResponseLost(t *testing.T, code string) (aws.Config, *int) {
+	calls := 0
+	transport := roundTripper(func(req *http.Request) (*http.Response, error) {
+		calls++
+		if calls == 1 {
+			return nil, &net.OpError{Op: "read", Net: "tcp", Err: syscall.ECONNRESET}
+		}
+		body := `<ErrorResponse><Error><Type>Sender</Type><Code>` + code + `</Code><Message>after a retry</Message></Error><RequestId>1</RequestId></ErrorResponse>`
+		return &http.Response{StatusCode: http.StatusBadRequest, Header: http.Header{"Content-Type": {"text/xml"}}, Body: io.NopCloser(strings.NewReader(body)), Request: req}, nil
+	})
+	return aws.Config{
+		Region:      registrationTestRegion,
+		Credentials: credentials.NewStaticCredentialsProvider("AKIATEST", "test", ""),
+		HTTPClient:  &http.Client{Transport: transport},
+	}, &calls
+}
+
+type roundTripper func(*http.Request) (*http.Response, error)
+
+func (f roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+// Test_NamespaceRegistration_LostResponse checks that a register or deregister AWS may have applied, whose response
+// was lost, is never reported as rejected. The SDK would send it again and AWS would answer InvalidClusterState,
+// because the first call left the cluster busy, which would drop the record of a registration AWS made.
+func Test_NamespaceRegistration_LostResponse(t *testing.T) {
+	cfg, calls := firstResponseLost(t, registrationBusy)
+	h := NewNamespaceRegistration(redshift.NewFromConfig(cfg), nil)
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: registrationTestRegion, Properties: provisionedRegistration("warehouse", registrationConsumer)})
+	require.Error(t, err)
+	var failure *native.Failure
+	require.False(t, errors.As(err, &failure), "a lost response is an unknown outcome, not %v", failure)
+	require.Equal(t, 1, *calls, "the SDK doesn't send a registration again")
+
+	cfg, calls = firstResponseLost(t, registrationBusy)
+	h = NewNamespaceRegistration(redshift.NewFromConfig(cfg), nil)
+	err = h.Delete(t.Context(), registrationTestRegion, "warehouse|"+registrationConsumer)
+	require.Error(t, err)
+	require.False(t, errors.As(err, &failure), "a lost response is an unknown outcome, not %v", failure)
+	require.Equal(t, 1, *calls, "the SDK doesn't send a deregistration again")
 }

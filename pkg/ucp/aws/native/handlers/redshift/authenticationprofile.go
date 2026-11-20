@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"maps"
 	"regexp"
 	"slices"
@@ -52,6 +53,12 @@ var (
 	// profileName is the form of a profile name, from the AWS API reference. Names are case sensitive.
 	profileName = regexp.MustCompile(`^[a-zA-Z0-9-]{1,63}$`)
 )
+
+// profileOnce makes the SDK send a call once. A create whose response is lost may have made the profile, and the
+// SDK's retry would get AuthenticationProfileAlreadyExistsFault, which reads as a create AWS rejected.
+func profileOnce(o *redshift.Options) {
+	o.RetryMaxAttempts = 1
+}
 
 // profileNotFound is the code of a profile AWS doesn't have.
 const profileNotFound = "AuthenticationProfileNotFoundFault"
@@ -124,7 +131,10 @@ func profileContent(content string) (map[string]string, bool) {
 	decoder := json.NewDecoder(bytes.NewReader([]byte(content)))
 	decoder.UseNumber()
 	var object map[string]any
-	if err := decoder.Decode(&object); err != nil || object == nil || decoder.More() {
+	if err := decoder.Decode(&object); err != nil || object == nil {
+		return nil, false
+	}
+	if _, err := decoder.Token(); err != io.EOF {
 		return nil, false
 	}
 	out := map[string]string{}
@@ -223,7 +233,7 @@ func (h *AuthenticationProfile) Create(ctx context.Context, request native.Creat
 	_, err = h.api.CreateAuthenticationProfile(ctx, &redshift.CreateAuthenticationProfileInput{
 		AuthenticationProfileName:    aws.String(name),
 		AuthenticationProfileContent: aws.String(content),
-	}, profileRegion(request.Region))
+	}, profileRegion(request.Region), profileOnce)
 	if err != nil {
 		return "", awsapi.Rejected(err)
 	}

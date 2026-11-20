@@ -18,6 +18,8 @@ package redshift
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/aws/aws-sdk-go-v2/service/redshift"
 	"os"
 	"strings"
 	"sync"
@@ -76,6 +78,8 @@ func Test_Suite_AuthenticationProfile(t *testing.T) {
 			profileProps("odbc", `["App_ID"]`),
 			profileProps("odbc", `{"App_ID": {"Name": "x"}}`),
 			profileProps("odbc", `{"App_ID": "x"} {}`),
+			profileProps("odbc", `{"App_ID": "x"}}`),
+			profileProps("odbc", `{"App_ID": "x"}]`),
 			{"AuthenticationProfileName": "odbc", "AuthenticationProfileContent": map[string]any{"App_ID": "x"}},
 			{"AuthenticationProfileName": 5, "AuthenticationProfileContent": `{"App_ID": "x"}`},
 		},
@@ -147,6 +151,9 @@ func Test_profileEquivalent(t *testing.T) {
 		{`{"a": "1"}`, `{"a":"2"}`, false},
 		{`{"a": {"b": 1}}`, `{"a":{"b":1}}`, false},
 		{`not json`, `{"a":"1"}`, false},
+		{`{"a": "1"}}`, `{"a":"1"}`, false},
+		{`{"a": "1"}]`, `{"a":"1"}`, false},
+		{`{"a": "1"} `, `{"a":"1"}`, true},
 		{`{"a": "1"}`, `not json`, false},
 		{5, `{"a":"1"}`, false},
 		{`{"a": "1"}`, 5, false},
@@ -209,4 +216,25 @@ func Test_AuthenticationProfile_List(t *testing.T) {
 		{Identifier: "jdbc", Properties: map[string]any{"AuthenticationProfileName": "jdbc", "AuthenticationProfileContent": `{"a":"2"}`}},
 		{Identifier: "odbc", Properties: map[string]any{"AuthenticationProfileName": "odbc", "AuthenticationProfileContent": `{"a":"1"}`}},
 	}, resources)
+}
+
+// Test_AuthenticationProfile_LostResponse checks that a create AWS may have applied, whose response was lost, is
+// never reported as rejected. The SDK would send it again and AWS would answer AuthenticationProfileAlreadyExistsFault,
+// which would drop the record of a profile AWS made.
+func Test_AuthenticationProfile_LostResponse(t *testing.T) {
+	cfg, calls := firstResponseLost(t, profileExists)
+	_, err := NewAuthenticationProfile(redshift.NewFromConfig(cfg)).Create(t.Context(), native.CreateRequest{Region: profileTestRegion, Properties: profileProps("odbc", `{"a":"1"}`)})
+	require.Error(t, err)
+	var failure *native.Failure
+	require.False(t, errors.As(err, &failure), "a lost response is an unknown outcome, not %v", failure)
+	require.Equal(t, 1, *calls, "the SDK doesn't send a create again")
+}
+
+// Test_AuthenticationProfile_LostDelete checks that a delete the SDK sends again after a lost response, which AWS
+// answers with AuthenticationProfileNotFoundFault, finishes the delete.
+func Test_AuthenticationProfile_LostDelete(t *testing.T) {
+	cfg, calls := firstResponseLost(t, profileNotFound)
+	err := NewAuthenticationProfile(redshift.NewFromConfig(cfg)).Delete(t.Context(), profileTestRegion, "odbc")
+	require.ErrorIs(t, err, native.ErrNotFound)
+	require.Equal(t, 2, *calls)
 }
