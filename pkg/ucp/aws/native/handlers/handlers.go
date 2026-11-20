@@ -29,6 +29,7 @@ import (
 	elbv2sdk "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
 	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
+	grafanasdk "github.com/aws/aws-sdk-go-v2/service/grafana"
 	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
@@ -50,6 +51,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/elbv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/grafana"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
@@ -61,6 +63,7 @@ import (
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
 // is in pkg/aws/schemas.
 func All(cfg aws.Config) []native.Handler {
+	cloudwatchAPI := cloudwatchsdk.NewFromConfig(cfg)
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
@@ -84,11 +87,13 @@ func All(cfg aws.Config) []native.Handler {
 		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
 		medialive.NewChannel(medialivesdk.NewFromConfig(cfg)),
 		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3sdk.NewFromConfig(cfg)),
-		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stsAPI),
+		cloudwatch.NewAnomalyDetector(cloudwatchAPI, stsAPI),
+		cloudwatch.NewManagedInsightRule(cloudwatchAPI, stsAPI),
 		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		grafana.NewWorkspaceServiceAccount(grafanasdk.NewFromConfig(cfg)),
 	}
 }
 

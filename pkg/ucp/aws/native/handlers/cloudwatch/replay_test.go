@@ -146,3 +146,54 @@ func Test_Replay_AnomalyDetectorConfigurationRemoved(t *testing.T) {
 	_, err = h.Progress(t.Context(), awsreplay.Region, identifier, native.OperationDelete)
 	require.ErrorIs(t, err, native.ErrNotFound)
 }
+
+// Test_Replay_ManagedInsightRule makes a managed Contributor Insights rule for a VPC endpoint service, with a tag,
+// disables it and changes its tags, and deletes it, against AWS's responses as its API reference documents them.
+func Test_Replay_ManagedInsightRule(t *testing.T) {
+	s := awsreplay.New(t, "testdata/managed-insight-rule.json")
+	cfg := s.Config(t.Context())
+	properties := map[string]any{
+		"ResourceARN":  s.Input("RADIUS_REC_ENDPOINT_SERVICE_ARN"),
+		"TemplateName": "VpcEndpointService-NewConnectionsByEndpointId-v1",
+		"Tags":         tags("radius-recording", "true"),
+	}
+	update := with(properties, map[string]any{"State": ruleDisabled, "Tags": tags("team", "network")})
+	nativetest.Lifecycle{
+		Handler:     NewManagedInsightRule(cloudwatch.NewFromConfig(cfg), sts.NewFromConfig(cfg)),
+		Session:     s,
+		Properties:  properties,
+		Want:        with(properties, map[string]any{"State": ruleEnabled}),
+		Update:      update,
+		WantUpdated: update,
+		Poll:        5 * time.Second,
+	}.Run(t)
+}
+
+// Test_Replay_ManagedInsightRuleErrors runs AWS's errors through the SDK, which reads CloudWatch's responses as CBOR:
+// a template AWS rejects with 400 InvalidParameterValue, and a 400 error the SDK's model doesn't list, must be rejected,
+// so UCP answers 400, not 500. A rule AWS can't make, which it reports in a 200 response, must fail the create. A rule
+// deleted between its list and its tags reads as not found.
+func Test_Replay_ManagedInsightRuleErrors(t *testing.T) {
+	s := awsreplay.New(t, "testdata/managed-insight-rule-errors.json")
+	cfg := s.Config(t.Context())
+	h := NewManagedInsightRule(cloudwatch.NewFromConfig(cfg), sts.NewFromConfig(cfg))
+	properties := map[string]any{"ResourceARN": s.Input("RADIUS_REC_ENDPOINT_SERVICE_ARN"), "TemplateName": "VpcEndpointService-NewConnectionsByEndpointId-v1"}
+
+	for _, code := range []string{"InvalidParameterValue", "ValidationError"} {
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: properties})
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure, code)
+		require.True(t, failure.ClientError, code)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome, code)
+		require.Contains(t, failure.Message, code)
+	}
+
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: properties})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.Contains(t, failure.Message, "LimitExceededException")
+
+	_, err = h.Read(t.Context(), awsreplay.Region, properties["ResourceARN"].(string)+"|"+properties["TemplateName"].(string))
+	require.ErrorIs(t, err, native.ErrNotFound)
+}

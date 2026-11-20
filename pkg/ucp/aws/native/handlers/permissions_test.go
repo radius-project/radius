@@ -27,7 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/require"
 
-	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -43,6 +43,7 @@ var iamPrefixes = map[string]string{
 	"elasticloadbalancingv2":   "elasticloadbalancing",
 	"emr":                      "elasticmapreduce",
 	"fsx":                      "fsx",
+	"grafana":                  "grafana",
 	"iam":                      "iam",
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
@@ -78,7 +79,7 @@ var operationsOf = map[string][]string{
 // of the package's AWS SDK client interfaces it, or a function or method of the package it calls, refers to, directly
 // or through an SDK paginator.
 func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
-	catalog, err := schemas.Load()
+	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	packages := map[string]handlerSource{}
 	missing := []string{}
@@ -95,7 +96,7 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
 		for method, ops := range operationsOf {
 			for _, call := range src.Calls(typ.Name(), method) {
 				action := src.iam[call] + ":" + call
@@ -122,10 +123,12 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 			"dms:AddTagsToResource", "rds:AddTagsToResource", "fsx:TagResource", "dax:TagResource", "elasticmapreduce:AddTags",
 			// Tags sent in the create call itself: TagSpecifications, or Tags.
 			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
+			// Tags sent with PutManagedInsightRules, which its ManagedRule page says need both.
+			"cloudwatch:PutInsightRule", "cloudwatch:TagResource",
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
-	catalog, err := schemas.Load()
+	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}
 	for _, h := range All(aws.Config{}) {
@@ -143,6 +146,10 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 				}
 			}
 		}
+		if h.Options().Recovery == native.RecoverByResend {
+			// A DELETE that finds a lost create sends the create again (see Test_ResendDeletePermissionsCoverCreate).
+			used["delete"] = slices.Concat(used["delete"], used["create"], implied["create"])
+		}
 		// The services the handler's clients call. Permissions of other services, such as iam:PassRole, are for
 		// what a call does, and aren't checked.
 		services := map[string]bool{}
@@ -154,7 +161,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
 		for op, handler := range schema.Handlers {
 			for _, action := range handler.Permissions {
 				service, _, _ := strings.Cut(action, ":")

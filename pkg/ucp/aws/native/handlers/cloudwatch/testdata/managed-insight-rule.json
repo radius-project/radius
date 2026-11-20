@@ -1,0 +1,192 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_ENDPOINT_SERVICE_ARN": "arn:aws:ec2:us-west-2:123456789012:vpc-endpoint-service/vpce-svc-0a1b2c3d4e5f60718"
+  },
+  "interactions": [
+    {
+      "service": "CloudWatch",
+      "operation": "PutManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWhGYWlsdXJlc4A=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWxNYW5hZ2VkUnVsZXODo2lSdWxlU3RhdGWiaFJ1bGVOYW1leEtWcGNFbmRwb2ludFNlcnZpY2UtTmV3Q29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjEtdnBjZS1zdmMtMGExYjJjM2Q0ZTVmNjA3MThlU3RhdGVnRU5BQkxFRGtSZXNvdXJjZUFSTnhSYXJuOmF3czplYzI6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjp2cGMtZW5kcG9pbnQtc2VydmljZS92cGNlLXN2Yy0wYTFiMmMzZDRlNWY2MDcxOGxUZW1wbGF0ZU5hbWV4MFZwY0VuZHBvaW50U2VydmljZS1OZXdDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MaFsVGVtcGxhdGVOYW1leDVWcGNFbmRwb2ludFNlcnZpY2UtUmVqZWN0ZWRDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MaFsVGVtcGxhdGVOYW1leCdWcGNFbmRwb2ludFNlcnZpY2UtQnl0ZXNCeUVuZHBvaW50SWQtdjE=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWxNYW5hZ2VkUnVsZXODo2xUZW1wbGF0ZU5hbWV4MFZwY0VuZHBvaW50U2VydmljZS1OZXdDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MWlSdWxlU3RhdGWiaFJ1bGVOYW1leEtWcGNFbmRwb2ludFNlcnZpY2UtTmV3Q29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjEtdnBjZS1zdmMtMGExYjJjM2Q0ZTVmNjA3MThlU3RhdGVnRU5BQkxFRGtSZXNvdXJjZUFSTnhSYXJuOmF3czplYzI6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjp2cGMtZW5kcG9pbnQtc2VydmljZS92cGNlLXN2Yy0wYTFiMmMzZDRlNWY2MDcxOKFsVGVtcGxhdGVOYW1leDVWcGNFbmRwb2ludFNlcnZpY2UtUmVqZWN0ZWRDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MaFsVGVtcGxhdGVOYW1leCdWcGNFbmRwb2ludFNlcnZpY2UtQnl0ZXNCeUVuZHBvaW50SWQtdjE=",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e00000000-0000-0000-0000-000000000000\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListTagsForResource",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWRUYWdzgaJlVmFsdWVkdHJ1ZWNLZXlwcmFkaXVzLXJlY29yZGluZw==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWxNYW5hZ2VkUnVsZXODo2xUZW1wbGF0ZU5hbWV4MFZwY0VuZHBvaW50U2VydmljZS1OZXdDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MWlSdWxlU3RhdGWiZVN0YXRlZ0VOQUJMRURoUnVsZU5hbWV4S1ZwY0VuZHBvaW50U2VydmljZS1OZXdDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MS12cGNlLXN2Yy0wYTFiMmMzZDRlNWY2MDcxOGtSZXNvdXJjZUFSTnhSYXJuOmF3czplYzI6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjp2cGMtZW5kcG9pbnQtc2VydmljZS92cGNlLXN2Yy0wYTFiMmMzZDRlNWY2MDcxOKFsVGVtcGxhdGVOYW1leDVWcGNFbmRwb2ludFNlcnZpY2UtUmVqZWN0ZWRDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MaFsVGVtcGxhdGVOYW1leCdWcGNFbmRwb2ludFNlcnZpY2UtQnl0ZXNCeUVuZHBvaW50SWQtdjE=",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e00000000-0000-0000-0000-000000000000\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListTagsForResource",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWRUYWdzgaJjS2V5cHJhZGl1cy1yZWNvcmRpbmdlVmFsdWVkdHJ1ZQ==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DisableInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWhGYWlsdXJlc4A=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "TagResource",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oA==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "UntagResource",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oA==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWxNYW5hZ2VkUnVsZXODomxUZW1wbGF0ZU5hbWV4MFZwY0VuZHBvaW50U2VydmljZS1OZXdDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MWlSdWxlU3RhdGWiZVN0YXRlaERJU0FCTEVEaFJ1bGVOYW1leEtWcGNFbmRwb2ludFNlcnZpY2UtTmV3Q29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjEtdnBjZS1zdmMtMGExYjJjM2Q0ZTVmNjA3MTihbFRlbXBsYXRlTmFtZXg1VnBjRW5kcG9pbnRTZXJ2aWNlLVJlamVjdGVkQ29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjGhbFRlbXBsYXRlTmFtZXgnVnBjRW5kcG9pbnRTZXJ2aWNlLUJ5dGVzQnlFbmRwb2ludElkLXYx",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e00000000-0000-0000-0000-000000000000\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListTagsForResource",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWRUYWdzgaJjS2V5ZHRlYW1lVmFsdWVnbmV0d29yaw==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWxNYW5hZ2VkUnVsZXODomlSdWxlU3RhdGWiZVN0YXRlaERJU0FCTEVEaFJ1bGVOYW1leEtWcGNFbmRwb2ludFNlcnZpY2UtTmV3Q29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjEtdnBjZS1zdmMtMGExYjJjM2Q0ZTVmNjA3MThsVGVtcGxhdGVOYW1leDBWcGNFbmRwb2ludFNlcnZpY2UtTmV3Q29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjGhbFRlbXBsYXRlTmFtZXg1VnBjRW5kcG9pbnRTZXJ2aWNlLVJlamVjdGVkQ29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjGhbFRlbXBsYXRlTmFtZXgnVnBjRW5kcG9pbnRTZXJ2aWNlLUJ5dGVzQnlFbmRwb2ludElkLXYx",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DeleteInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWhGYWlsdXJlc4A=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWxNYW5hZ2VkUnVsZXODoWxUZW1wbGF0ZU5hbWV4MFZwY0VuZHBvaW50U2VydmljZS1OZXdDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MaFsVGVtcGxhdGVOYW1leDVWcGNFbmRwb2ludFNlcnZpY2UtUmVqZWN0ZWRDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MaFsVGVtcGxhdGVOYW1leCdWcGNFbmRwb2ludFNlcnZpY2UtQnl0ZXNCeUVuZHBvaW50SWQtdjE=",
+      "binary": true
+    }
+  ]
+}
