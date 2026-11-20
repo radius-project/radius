@@ -403,6 +403,7 @@ Sidekiq
 SignalR
 Snyk
 SPIFFE
+SPIFFEID
 SplitNamespace
 SqlDatabase
 SqlDatabaseListSecretsResult
@@ -561,6 +562,7 @@ buildctl
 buildkitd
 buildx
 caBundle
+cainjector
 camelCased
 cancelled
 carte

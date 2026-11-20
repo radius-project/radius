@@ -1,0 +1,240 @@
+suite: test SPIFFE server certificate and projected ServiceAccount token volumes
+templates:
+  - ucp/deployment.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - controller/deployment.yaml
+  - ucp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders no SPIFFE or token volumes by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+          any: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-ucp
+          any: true
+        template: controller/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-applications-rp
+          any: true
+        template: ucp/deployment.yaml
+
+  - it: mounts a SPIFFE server certificate volume in each receiver in dryRun mode
+    set:
+      global.rbac.dryRun: true
+    asserts: &receivers
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+            secret:
+              secretName: ucp-spiffe
+              items:
+                - key: tls.crt
+                  path: tls.crt
+                - key: tls.key
+                  path: tls.key
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: spiffe
+            mountPath: /var/run/radius/spiffe
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+            secret:
+              secretName: applications-rp-spiffe
+              items:
+                - key: tls.crt
+                  path: tls.crt
+                - key: tls.key
+                  path: tls.key
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: spiffe
+            mountPath: /var/run/radius/spiffe
+            readOnly: true
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+            secret:
+              secretName: dynamic-rp-spiffe
+              items:
+                - key: tls.crt
+                  path: tls.crt
+                - key: tls.key
+                  path: tls.key
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: spiffe
+            mountPath: /var/run/radius/spiffe
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+          any: true
+        template: controller/deployment.yaml
+
+  - it: does not mount the old mTLS Secrets
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: controller/deployment.yaml
+
+  - it: configures the trust domain
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  trustDomain: "example.org"$'
+        template: ucp/configmaps.yaml
+
+  - it: projects one 10-minute token per receiver audience for each caller
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-applications-rp
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: applications-rp
+                    expirationSeconds: 600
+                    path: token
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-dynamic-rp
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: dynamic-rp
+                    expirationSeconds: 600
+                    path: token
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: token-applications-rp
+            mountPath: /var/run/radius/tokens/applications-rp
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: token-dynamic-rp
+            mountPath: /var/run/radius/tokens/dynamic-rp
+            readOnly: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-ucp
+          any: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: &ucpToken
+            name: token-ucp
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: ucp
+                    expirationSeconds: 600
+                    path: token
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: &ucpTokenMount
+            name: token-ucp
+            mountPath: /var/run/radius/tokens/ucp
+            readOnly: true
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: *ucpToken
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: *ucpTokenMount
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: *ucpToken
+        template: controller/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: *ucpTokenMount
+        template: controller/deployment.yaml
+
+  - it: fails when global.rootCA.volumeName is the SPIFFE server certificate volume name
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: spiffe
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
+        template: ucp/deployment.yaml
+
+  # Helm stops at the first failing template, so the chart-wide render error is reported for ucp.
+  - it: fails when global.rootCA.volumeName is a projected token volume name in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: token-ucp
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
+        template: ucp/deployment.yaml
+
+  - it: allows a reserved global.rootCA.volumeName when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: spiffe
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+          any: true
+        template: ucp/deployment.yaml

@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -256,6 +257,13 @@ type Interface interface {
 	// UninstallCertManager uninstalls cert-manager only when rad installed it and no other workload uses it.
 	UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
+	// RadiusUninstallLeftovers lists the objects that UninstallRadius deletes after Helm uninstalls Radius and that
+	// remain, for example because that cleanup failed. It only reads the cluster.
+	RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]string, error)
+
+	// DeleteRadiusUninstallLeftovers deletes the objects that RadiusUninstallLeftovers lists.
+	DeleteRadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error
 
@@ -290,6 +298,9 @@ type Impl struct {
 	contourCharts               map[contourChartSource]*chart.Chart
 	newCertManagerClients       certManagerClientsFunc
 	newCertManagerDynamicClient func(kubeContext string) (dynamic.Interface, error)
+	// newUCPAPIServerTrustClient returns the client that reads and writes the UCP API server trust Secret. Nil uses
+	// the cluster that the Kubernetes context selects.
+	newUCPAPIServerTrustClient func(kubeContext string) (kubernetes.Interface, error)
 }
 
 var _ Interface = &Impl{}
@@ -354,7 +365,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
 
@@ -385,9 +396,20 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 		}
 	}
-	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall, render); err != nil {
+		return err
+	}
+	applied, appliedRelease, err := helmAction.applyHelmChartRelease(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
+	}
+	// When Helm left an installed release unchanged, the authorization mode of radiusValues did not take effect, so
+	// there is no APIService change to wait for or reconcile.
+	if applied {
+		if err := i.waitForInstalledUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, appliedRelease, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues); err != nil {
+			return err
+		}
 	}
 
 	if clusterOptions.Contour.Disabled {
@@ -404,23 +426,36 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 // UninstallRadius uninstalls Radius and its dependencies (Contour, and cert-manager if rad installed it) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	// Build the clients for the cleanup before Helm uninstalls anything.
+	if _, _, err := i.ucpAPIServerTrustClients(kubeContext); err != nil {
+		return err
+	}
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
 		return err
 	}
-
-	output.LogInfo("Deleting Radius Contour Gateway...")
-	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
-		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
+	// rad stages objects before the Helm upgrade that adopts them, and cert-manager issues Secrets that Helm does not
+	// own; an interrupted upgrade or the uninstall itself can leave them outside the release. A retried uninstall finds
+	// no Radius release and resumes only this cleanup, so a failure here still removes Contour, and keeps cert-manager,
+	// which the cleanup needs, before returning the error.
+	if cleanupErr := i.deleteUCPAPIServerLeftovers(ctx, kubeContext, clusterOptions.Radius.Namespace); cleanupErr != nil {
+		return errors.Join(cleanupErr, i.uninstallContour(ctx, clusterOptions, kubeContext))
 	}
-
-	// Uninstall Contour
-	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext); err != nil {
+	if err := i.uninstallContour(ctx, clusterOptions, kubeContext); err != nil {
 		return err
 	}
 
 	// Uninstall cert-manager only if rad installed it.
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
+}
+
+// uninstallContour deletes the Radius Contour Gateway and uninstalls the Contour release.
+func (i *Impl) uninstallContour(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	output.LogInfo("Deleting Radius Contour Gateway...")
+	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
+	}
+	return i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext)
 }
 
 func (i *Impl) uninstallHelmRelease(componentName, releaseName, namespace, kubeContext string) error {
@@ -536,7 +571,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, storedValues, radiusValues, true); err != nil {
 		return err
 	}
 
@@ -544,9 +579,17 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 	}
 
-	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
+	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, storedValues, radiusValues, true, render); err != nil {
+		return err
+	}
+
+	upgraded, err := i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
+	}
+	if err := i.waitForInstalledUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, upgraded, radiusHelmChart.Values, storedValues, radiusValues); err != nil {
+		return err
 	}
 	output.LogInfo("Radius upgrade complete")
 
@@ -717,12 +760,19 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 		}
 	}
 
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+		return err
+	}
+
 	output.LogInfo("Rolling back Radius from version %s to version %s...", currentChartVersion, targetChartVersion)
 
 	// Perform the rollback
 	err = i.Helm.RunHelmRollback(helmConf, radiusReleaseName, targetRevision, true)
 	if err != nil {
 		return fmt.Errorf("failed to rollback Radius: %w", err)
+	}
+	if err := i.waitForRolledBackUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+		return err
 	}
 
 	output.LogInfo("Radius rollback completed successfully!")
@@ -766,6 +816,10 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 		return fmt.Errorf("revision %d not found in release history", revision)
 	}
 
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+		return err
+	}
+
 	if targetChartVersion != "" {
 		output.LogInfo("Rolling back Radius to revision %d (version %s)...", revision, targetChartVersion)
 	} else {
@@ -776,6 +830,9 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 	err = i.Helm.RunHelmRollback(helmConf, radiusReleaseName, revision, true)
 	if err != nil {
 		return fmt.Errorf("failed to rollback Radius to revision %d: %w", revision, err)
+	}
+	if err := i.waitForRolledBackUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+		return err
 	}
 
 	output.LogInfo("Radius rollback completed successfully!")

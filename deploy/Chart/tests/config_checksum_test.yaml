@@ -7,8 +7,8 @@ release:
   name: radius
   namespace: radius-system
 tests:
-  # The checksum restarts pods when helm upgrade changes the authorization mode,
-  # because services read the mode only at startup.
+  # The checksum restarts pods when helm upgrade changes the authorization settings,
+  # because services read them only at startup.
   - it: hashes the off mode by default
     asserts:
       - equal:
@@ -29,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 04efa603c0a9195b8f56aaa4fcc58a0d49683206b5ab4d65e147c10ccae9bd63
+          value: a8235814f5d8f0ba57e9a9251d3ae650ea7f7fcb8cd2ba0a6717c49a05aa66e2
 
   - it: hashes the enforce mode
     set:
@@ -37,7 +37,35 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: c1f1005e99318bf634290d9d518d9bf9ba14bf9a46eaa78abfbc9f99647ca2d9
+          value: 1168e8ad578671079e58691b022feab5236004c0855be916295a8004c1081e4b
+
+  # Clients fix the receiver's expected SPIFFE ID at startup, so a trust-domain-only
+  # upgrade must roll every caller.
+  - it: changes the dryRun checksum for a trust-domain-only upgrade
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: bf665dd31bba41fd0528b85e2866902b68861925d866cf3fc368c5fa8af32d52
+
+  - it: changes the enforce checksum for a trust-domain-only upgrade
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: e4005fee65cb5f6057040b6a53597bcc2ae8745519998fc6d49df415e91b9c3c
+
+  - it: ignores the trust domain when authorization is off
+    set:
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
 
   - it: annotates the pod template when prometheus and buildkit are disabled
     set:

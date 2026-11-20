@@ -706,6 +706,10 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 						return kubeClient, apiextClient, nil
 					},
+					newCertManagerDynamicClient: readyUCPAPIServiceClient,
+					newUCPAPIServerTrustClient:  issuedUCPAPIServerTrustClient,
+					// rad renders the target chart to tell which certificate it serves UCP's API server with.
+					contourCluster: &fakeContourCluster{},
 				}
 
 				state, err := impl.CheckRadiusInstall("test-context")
@@ -724,8 +728,14 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 
 				upgraded, err := helmClient.RunHelmGet(configuration, "radius")
 				require.NoError(t, err)
-				sum := sha256.Sum256([]byte(tt.want))
-				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+hex.EncodeToString(sum[:]))
+				// The off checksum hashes only the mode; other modes also hash the rest of the authorization settings,
+				// so the dryRun value is the one deploy/Chart/tests/config_checksum_test.yaml expects.
+				wantChecksum := map[string]string{"dryRun": "a8235814f5d8f0ba57e9a9251d3ae650ea7f7fcb8cd2ba0a6717c49a05aa66e2"}
+				if tt.want == "off" {
+					sum := sha256.Sum256([]byte(tt.want))
+					wantChecksum["off"] = hex.EncodeToString(sum[:])
+				}
+				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+wantChecksum[tt.want])
 				if tt.want == "off" {
 					require.Zero(t, detectCalls)
 				} else {
