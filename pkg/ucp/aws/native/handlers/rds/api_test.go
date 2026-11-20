@@ -522,7 +522,13 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 					}))),
 			},
 		},
-		Unclear: "The page says TenantDBName must match an existing tenant database without naming an error; the fake " +
+		Unclear: "The MasterUserSecret page lists creating, active, rotating, and impaired as statuses a secret can have, " +
+			"saying the list includes them, and impaired as usable credentials RDS can't rotate until someone repairs it; " +
+			"the handler waits only for creating and rotating, fails an operation it finished with an impaired secret as " +
+			"applied, and doesn't wait for a status the page doesn't list. The TenantDatabase page lists no statuses; the " +
+			"handler waits for available, and a review against AWS saw creating, modifying, resetting-master-credentials, " +
+			"and deleting. " +
+			"The page says TenantDBName must match an existing tenant database without naming an error; the fake " +
 			"returns no tenant databases, and the handler also treats TenantDatabaseNotFound as not found. It gives no " +
 			"default or limits for MaxRecords; the fake returns 2 tenant databases a page when the call doesn't set it, " +
 			"so the handler's paging runs.",

@@ -548,3 +548,66 @@ func (b busyOnce) CreateTenantDatabase(ctx context.Context, in *rds.CreateTenant
 	}
 	return b.API.CreateTenantDatabase(ctx, in, opts...)
 }
+
+// setSecretStatus sets the status of the secret RDS manages for the tenant database pdb1.
+func setSecretStatus(api *fakeAPI, status string) {
+	t := api.store.Resource(tenantDatabaseType, tenantID)
+	t["MasterUserSecret"].(map[string]any)["SecretStatus"] = status
+	api.store.Put(tenantDatabaseType, tenantID, t)
+}
+
+func Test_TenantDatabase_ProgressSecretStatus(t *testing.T) {
+	managed := with(tenant, map[string]any{"MasterUserPassword": nil, "ManageMasterUserPassword": true})
+	for _, op := range []native.Operation{native.OperationCreate, native.OperationUpdate} {
+		t.Run(string(op), func(t *testing.T) {
+			h, api := newTenant(t, managed)
+			for _, status := range []string{"creating", "rotating", "Rotating"} {
+				setSecretStatus(api, status)
+				progress, err := h.Progress(t.Context(), region, tenantID, op)
+				require.NoError(t, err)
+				require.Equal(t, native.Progress{State: "available", Waiting: "available"}, progress, "a %s secret passes on its own", status)
+			}
+
+			setSecretStatus(api, "impaired")
+			progress, err := h.Progress(t.Context(), region, tenantID, op)
+			require.NoError(t, err)
+			require.True(t, progress.Done, "an impaired secret doesn't pass on its own, so the operation doesn't wait for it")
+			require.NotNil(t, progress.Failure)
+			require.Equal(t, native.OutcomeApplied, progress.Failure.Outcome, "AWS applied the change, so the next deploy doesn't send it again")
+			require.True(t, progress.Failure.ClientError)
+			require.Contains(t, progress.Failure.Message, "impaired")
+			require.Contains(t, progress.Failure.Message, "ManageMasterUserPassword")
+			require.Contains(t, progress.Failure.Message, "arn:aws:secretsmanager:", "the message names the secret")
+
+			setSecretStatus(api, "a-status-rds-adds-later")
+			progress, err = h.Progress(t.Context(), region, tenantID, op)
+			require.NoError(t, err)
+			require.Equal(t, native.Progress{Done: true, State: "available"}, progress, "a status RDS adds later doesn't hold the operation until its timeout")
+
+			setSecretStatus(api, "active")
+			progress, err = h.Progress(t.Context(), region, tenantID, op)
+			require.NoError(t, err)
+			require.Equal(t, native.Progress{Done: true, State: "available"}, progress)
+		})
+	}
+
+	t.Run("an impaired secret waits for a busy instance first", func(t *testing.T) {
+		h, api := newTenant(t, managed)
+		setSecretStatus(api, "impaired")
+		instance := api.store.Resource(instanceType, "app-cdb")
+		instance["Status"] = "backing-up"
+		api.store.Put(instanceType, "app-cdb", instance)
+		progress, err := h.Progress(t.Context(), region, tenantID, native.OperationUpdate)
+		require.NoError(t, err)
+		require.Equal(t, native.Progress{State: "instance backing-up", Waiting: "instance available"}, progress)
+	})
+
+	t.Run("a delete doesn't check the secret", func(t *testing.T) {
+		h, api := newTenant(t, managed)
+		setSecretStatus(api, "impaired")
+		require.NoError(t, h.Delete(t.Context(), region, tenantID))
+		progress, err := h.Progress(t.Context(), region, tenantID, native.OperationDelete)
+		require.NoError(t, err)
+		require.Nil(t, progress.Failure)
+	})
+}

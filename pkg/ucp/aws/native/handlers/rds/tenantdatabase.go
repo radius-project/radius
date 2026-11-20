@@ -440,7 +440,31 @@ func (h *TenantDatabase) Progress(ctx context.Context, region string, identifier
 	if !strings.EqualFold(status, "available") || pending(tenant) {
 		return native.Progress{State: status, Waiting: "available"}, nil
 	}
-	return h.instanceProgress(ctx, region, identifier, nil)
+	progress, err := h.instanceProgress(ctx, region, identifier, nil)
+	if err != nil || !progress.Done {
+		return progress, err
+	}
+	if secret := tenant.MasterUserSecret; secret != nil && strings.EqualFold(aws.ToString(secret.SecretStatus), secretImpaired) {
+		return native.Progress{Done: true, State: "secret " + secretImpaired, Failure: impairedSecret(aws.ToString(tenant.TenantDBName), aws.ToString(secret.SecretArn))}, nil
+	}
+	return progress, nil
+}
+
+// secretImpaired is the status of a secret RDS manages whose credentials work but that RDS can't rotate, such as when
+// it lost access to the secret or its KMS key. It doesn't change until someone repairs it.
+const secretImpaired = "impaired"
+
+// impairedSecret returns the failure of an operation AWS fully applied on a tenant database whose secret is impaired.
+// It is applied, so the record keeps the template's values and the next deploy doesn't send them again, and it is a
+// failure, so the user sees what to repair.
+func impairedSecret(name string, secretArn string) *native.Failure {
+	return &native.Failure{
+		Message: fmt.Sprintf("AWS applied the change, but RDS reports the secret %q of the master user password of the tenant database %q as impaired: "+
+			"the credentials work, but RDS can't rotate them, usually because it can no longer access the secret or its KMS key. "+
+			"Restore RDS's access to them, or set ManageMasterUserPassword to false and deploy, then to true and deploy again.", secretArn, name),
+		ClientError: true,
+		Outcome:     native.OutcomeApplied,
+	}
 }
 
 // instanceProgress returns the progress of an operation whose tenant database is done, which done is returned as:
@@ -491,11 +515,17 @@ func instanceBusy(status string) bool {
 }
 
 // pending reports whether RDS hasn't applied a change to the tenant database yet: a new password or name it lists as
-// pending, or a secret for the password it is still making. Turning on Secrets Manager management lists nothing as
-// pending until RDS starts resetting the credentials, but the secret isn't active until it is done.
+// pending, or a secret for the password it is still making or rotating. Turning on Secrets Manager management lists
+// nothing as pending until RDS starts resetting the credentials, but the secret is creating until it is done. Only
+// those secret statuses pass on their own: an impaired secret stays impaired until someone repairs it (see
+// impairedSecret), and a status RDS adds later isn't waited for, so it can't hold an operation until its timeout.
 func pending(t *types.TenantDatabase) bool {
 	if p := t.PendingModifiedValues; p != nil && (p.MasterUserPassword != nil || p.TenantDBName != nil) {
 		return true
 	}
-	return t.MasterUserSecret != nil && !strings.EqualFold(aws.ToString(t.MasterUserSecret.SecretStatus), "active")
+	return t.MasterUserSecret != nil && slices.Contains(transientSecretStates, strings.ToLower(aws.ToString(t.MasterUserSecret.SecretStatus)))
 }
+
+// transientSecretStates are the statuses of a secret RDS manages that pass on their own, from the MasterUserSecret data
+// type's documentation.
+var transientSecretStates = []string{"creating", "rotating"}
