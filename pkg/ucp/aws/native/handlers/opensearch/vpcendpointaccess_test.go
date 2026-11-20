@@ -61,7 +61,25 @@ func Test_VpcEndpointAccess_Identifier(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tc.want, id)
 	}
+	// The schema's primary identifier is DomainName and Principal, which `existing` sends.
+	for _, tc := range []struct {
+		properties map[string]any
+		want       string
+	}{
+		{map[string]any{"DomainName": "logs", "Principal": otherAccount}, "logs|" + otherAccount},
+		{map[string]any{"DomainName": "logs", "Principal": service}, "logs|" + service},
+		{map[string]any{"DomainName": "logs", "Account": otherAccount, "Principal": otherAccount}, "logs|" + otherAccount},
+	} {
+		id, err := h.Identifier(tc.properties)
+		require.NoError(t, err)
+		require.Equal(t, tc.want, id)
+	}
 	for _, properties := range []map[string]any{
+		{"DomainName": "logs", "Principal": "es.amazonaws.com"},
+		{"DomainName": "logs", "Principal": "arn:aws:iam::" + otherAccount + ":root"},
+		{"DomainName": "logs", "Principal": 7},
+		{"DomainName": "logs", "Account": otherAccount, "Principal": account},
+		{"DomainName": "logs", "Service": service, "Principal": otherAccount},
 		{"DomainName": 5, "Account": otherAccount},
 		{"DomainName": "lo", "Account": otherAccount},
 		{"DomainName": "logs", "Account": otherAccount, "Service": service},

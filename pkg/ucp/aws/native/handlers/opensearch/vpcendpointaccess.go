@@ -97,7 +97,7 @@ func principalOf(principal string) (types.PrincipalType, bool) {
 // parseAccess returns the authorization the properties name. ok is false when they don't name all of it.
 func parseAccess(properties map[string]any) (id accessID, ok bool, err error) {
 	strs := map[string]string{}
-	for _, name := range []string{"DomainName", "Account", "Service"} {
+	for _, name := range []string{"DomainName", "Account", "Service", "Principal"} {
 		value, present := properties[name]
 		if !present || value == nil {
 			continue
@@ -127,6 +127,15 @@ func parseAccess(properties map[string]any) (id accessID, ok bool, err error) {
 		}
 		id.principal, id.kind = service, types.PrincipalTypeAwsService
 	}
+	// Principal, the schema's primary identifier with DomainName, is read-only, but `existing` gives it. It names the
+	// same principal as Account or Service.
+	if principal := strs["Principal"]; principal != "" {
+		kind, known := principalOf(principal)
+		if !known || (id.principal != "" && id.principal != principal) {
+			return accessID{}, false, invalid(vpcEndpointAccessType, "Principal must be the account ID or service principal that Account or Service gives")
+		}
+		id.principal, id.kind = principal, kind
+	}
 	if _, present := properties["ServiceOptions"]; present && id.kind == types.PrincipalTypeAwsAccount {
 		return accessID{}, false, invalid(vpcEndpointAccessType, "ServiceOptions is for a Service, not an Account")
 	}
@@ -143,8 +152,9 @@ func parseAccessID(identifier string) (accessID, error) {
 	return accessID{domain: domain, principal: principal, kind: kind}, nil
 }
 
-// Identifier returns DomainName|Account or DomainName|Service, or "" when the properties don't give both. UCP calls it
-// before any AWS call, so a template that sets both Account and Service, or neither, is rejected here.
+// Identifier returns DomainName|Account or DomainName|Service, or "" when the properties don't give both. Principal,
+// which `existing` gives, stands for Account or Service. UCP calls it before any AWS call, so a template that sets both
+// Account and Service, or a Principal that differs from them, is rejected here.
 func (h *VpcEndpointAccess) Identifier(properties map[string]any) (string, error) {
 	id, ok, err := parseAccess(properties)
 	if err != nil || !ok {
@@ -205,10 +215,14 @@ func (h *VpcEndpointAccess) Read(ctx context.Context, region string, identifier 
 	if id.kind == types.PrincipalTypeAwsAccount {
 		properties["Account"] = id.principal
 	} else {
-		properties["Service"] = id.principal
-		if p.ServiceOptions != nil && len(p.ServiceOptions.SupportedRegions) > 0 {
-			properties["ServiceOptions"] = map[string]any{"SupportedRegions": stringsToAny(p.ServiceOptions.SupportedRegions)}
+		// A service always reads with ServiceOptions, with no Regions when AWS lists none, so a template that sets an
+		// empty list redeploys with no change.
+		regions := []string{}
+		if p.ServiceOptions != nil {
+			regions = p.ServiceOptions.SupportedRegions
 		}
+		properties["Service"] = id.principal
+		properties["ServiceOptions"] = map[string]any{"SupportedRegions": stringsToAny(regions)}
 	}
 	return properties, nil
 }

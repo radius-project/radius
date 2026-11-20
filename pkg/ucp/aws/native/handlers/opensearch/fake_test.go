@@ -651,7 +651,7 @@ func (f *fakeAPI) AuthorizeVpcEndpointAccess(ctx context.Context, in *opensearch
 		properties["Account"] = p
 	} else {
 		properties["Service"] = p
-		if in.ServiceOptions != nil && len(in.ServiceOptions.SupportedRegions) > 0 {
+		if in.ServiceOptions != nil {
 			properties["ServiceOptions"] = map[string]any{"SupportedRegions": anyList(in.ServiceOptions.SupportedRegions)}
 		}
 	}
@@ -672,9 +672,10 @@ func (f *fakeAPI) authorizedPrincipal(id string) *types.AuthorizedPrincipal {
 		out.Principal = aws.String("arn:aws:iam::" + aws.ToString(out.Principal) + ":root")
 	}
 	if o, ok := p["ServiceOptions"].(map[string]any); ok {
-		out.ServiceOptions = &types.ServiceOptions{}
-		for _, r := range o["SupportedRegions"].([]any) {
-			out.ServiceOptions.SupportedRegions = append(out.ServiceOptions.SupportedRegions, r.(string))
+		out.ServiceOptions = &types.ServiceOptions{SupportedRegions: []string{}}
+		regions, _ := o["SupportedRegions"].([]any)
+		for _, r := range regions {
+			out.ServiceOptions.SupportedRegions = append(out.ServiceOptions.SupportedRegions, fmt.Sprint(r))
 		}
 	}
 	return out

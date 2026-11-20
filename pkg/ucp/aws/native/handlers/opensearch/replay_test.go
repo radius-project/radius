@@ -54,7 +54,7 @@ func Test_Replay_VpcEndpoint(t *testing.T) {
 }
 
 // Test_Replay_VpcEndpointErrors runs AWS's errors through the SDK: a create while AWS is changing the domain, which
-// AWS answers with 409 ConflictException, must be a conflict, and an update AWS answers with 400 ValidationException,
+// AWS answers with 409 ConflictException, must be a conflict, and an update that removes the subnets, which AWS answers with 400 ValidationException,
 // an error the SDK's model doesn't list for the call, must be rejected, so UCP answers 400, not 500.
 func Test_Replay_VpcEndpointErrors(t *testing.T) {
 	s := awsreplay.New(t, "testdata/vpcendpointerrors.json")
@@ -74,8 +74,8 @@ func Test_Replay_VpcEndpointErrors(t *testing.T) {
 	err = h.Update(t.Context(), native.UpdateRequest{
 		Region:     awsreplay.Region,
 		Identifier: "aos-0a1b2c3d4e5f6a7b8",
-		Desired:    map[string]any{"VpcOptions": map[string]any{"SubnetIds": []any{}}},
-		Patch:      jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/VpcOptions/SubnetIds", Value: []any{}}},
+		Desired:    map[string]any{"VpcOptions": map[string]any{}},
+		Patch:      jsondiff.Patch{{Type: jsondiff.OperationRemove, Path: "/VpcOptions/SubnetIds"}},
 	})
 	require.ErrorAs(t, err, &failure)
 	require.False(t, failure.Conflict)

@@ -108,6 +108,32 @@ func Test_Suite_VpcEndpointAccess(t *testing.T) {
 	})
 }
 
+// Test_Suite_VpcEndpointAccessService runs the suite for a service principal whose template sets ServiceOptions with
+// no Regions, which must redeploy with no change, and takes the resource for `existing` by the schema's primary
+// identifier, DomainName and Principal.
+func Test_Suite_VpcEndpointAccessService(t *testing.T) {
+	properties := map[string]any{"DomainName": "logs", "Service": service, "ServiceOptions": map[string]any{"SupportedRegions": []any{}}}
+	nativetest.Run(t, nativetest.Suite{
+		TypeName:    vpcEndpointAccessType,
+		Schema:      readFile(t, "aws-opensearchservice-vpcendpointaccess.json"),
+		Metadata:    readFile(t, "aws-opensearchservice-vpcendpointaccess.metadata.json"),
+		HandWritten: true,
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			return NewVpcEndpointAccess(newFakeAPI(store))
+		},
+		Properties:       properties,
+		Identifier:       "logs|" + service,
+		Changed:          properties,
+		CreateOnlyChange: with(properties, map[string]any{"ServiceOptions": map[string]any{"SupportedRegions": list("us-east-1")}}),
+		IdentifierProperties: func(identifier string) map[string]any {
+			id, err := parseAccessID(identifier)
+			require.NoError(t, err)
+			return map[string]any{"DomainName": id.domain, "Principal": id.principal}
+		},
+		API: accessAPI,
+	})
+}
+
 func Test_InRegion(t *testing.T) {
 	opts := opensearch.Options{}
 	inRegion("eu-west-2")(&opts)

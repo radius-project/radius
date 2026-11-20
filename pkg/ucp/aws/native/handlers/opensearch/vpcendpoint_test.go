@@ -517,3 +517,20 @@ func Test_VpcEndpoint_UpdateFailed(t *testing.T) {
 	require.NotContains(t, p.Failure.Message, "Delete the resource first")
 	require.NoError(t, h.Update(t.Context(), updateRequest(t, h, id, endpointTemplate(list("subnet-b"), nil))), "a failed update can be sent again")
 }
+
+// Test_VpcEndpoint_EmptyLists checks that a template with an empty SubnetIds or SecurityGroupIds is rejected before any
+// AWS call. AWS needs a subnet, and an empty security group list reads back as the VPC's default group, so it would
+// update the endpoint on every deploy.
+func Test_VpcEndpoint_EmptyLists(t *testing.T) {
+	h, api := newEndpointHandler()
+	for _, properties := range []map[string]any{
+		endpointTemplate([]any{}, nil),
+		endpointTemplate(list("subnet-a"), []any{}),
+	} {
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties, ClientToken: "a"})
+		requireRejected(t, err)
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure, "rejected by the handler, not by AWS")
+	}
+	require.Zero(t, api.calls["CreateVpcEndpoint"])
+}

@@ -161,6 +161,14 @@ func vpcOptions(properties map[string]any) (options map[string]any, subnets []st
 	if !ok {
 		return nil, nil, nil, invalid(vpcEndpointType, "VpcOptions.SecurityGroupIds must be a list of security group IDs")
 	}
+	// An empty list is never what AWS reports: an endpoint needs a subnet, and one created without security groups
+	// gets the VPC's default group. So it is rejected, rather than sent on every deploy.
+	if subnets != nil && len(subnets) == 0 {
+		return nil, nil, nil, invalid(vpcEndpointType, "VpcOptions.SubnetIds needs at least one subnet")
+	}
+	if groups != nil && len(groups) == 0 {
+		return nil, nil, nil, invalid(vpcEndpointType, "VpcOptions.SecurityGroupIds needs at least one security group. Leave it out to use the VPC's default security group")
+	}
 	return options, subnets, groups, nil
 }
 

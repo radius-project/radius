@@ -9,6 +9,7 @@
         "SubnetIds": {
           "type": "array",
           "description": "The subnets to put the endpoint's network interfaces in. They must be in one VPC.",
+          "minItems": 1,
           "insertionOrder": false,
           "items": {
             "type": "string"
@@ -17,6 +18,7 @@
         "SecurityGroupIds": {
           "type": "array",
           "description": "The security groups of the endpoint's network interfaces. When left out, AWS uses the VPC's default security group.",
+          "minItems": 1,
           "insertionOrder": false,
           "items": {
             "type": "string"
