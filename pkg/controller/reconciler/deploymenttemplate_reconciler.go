@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"slices"
 	"strings"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	inputparameters "github.com/radius-project/radius/pkg/controller/parameters"
 	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -75,6 +77,8 @@ type DeploymentTemplateReconciler struct {
 	ResourceDeploymentsClient sdkclients.ResourceDeploymentsClient
 	DelayInterval             time.Duration
 	DeleteRetryInterval       time.Duration
+	SecretInputs              *SecretInputResolver
+	InputPollInterval         time.Duration
 }
 
 // Reconcile advances one durable lifecycle transition for the template.
@@ -113,7 +117,16 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 	switch owner.Status.Coordinator.Phase {
-	case coordinatorPutDispatching, coordinatorDeleteDispatching:
+	case coordinatorPutDispatching:
+		if owner.Status.AttemptedInputRevision != "" && owner.Status.Coordinator.ResourceID != "" {
+			owner.Status.Operation = &radappiov1alpha3.ResourceOperation{
+				OperationKind: radappiov1alpha3.OperationKindPut, DeploymentID: owner.Status.Coordinator.ResourceID,
+			}
+			owner.Status.Coordinator.Phase = coordinatorPutRunning
+			return r.saveAndRequeue(ctx, owner)
+		}
+		return r.blockCoordinator(ctx, owner, "controller restarted before the dispatched request's outcome was recorded; resolve the outstanding operation before resuming the coordinator")
+	case coordinatorDeleteDispatching:
 		return r.blockCoordinator(ctx, owner, "controller restarted before the dispatched request's outcome was recorded; resolve the outstanding operation before resuming the coordinator")
 	case coordinatorPutRunning:
 		return r.pollPut(ctx, owner)
@@ -246,8 +259,20 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 		return ctrl.Result{}, nil
 	}
-	if !isUpToDate(owner) {
-		return r.dispatchPut(ctx, owner)
+	parameters := convertToARMJSONParameters(owner.Spec.Parameters)
+	inputRevision := ""
+	if len(owner.Spec.ParameterReferences) != 0 {
+		parameters, inputRevision, err = r.SecretInputs.Resolve(ctx, owner)
+		if err != nil {
+			return r.failCoordinator(ctx, owner, err)
+		}
+	} else if owner.Status.AttemptedInputRevision != "" {
+		if err := inputparameters.Validate(owner.Spec.Template, owner.Spec.Parameters, nil); err != nil {
+			return r.failCoordinator(ctx, owner, err)
+		}
+	}
+	if !isUpToDate(owner) || owner.Status.AppliedInputRevision != inputRevision {
+		return r.dispatchPut(ctx, owner, parameters, inputRevision)
 	}
 	for _, output := range owner.Status.Coordinator.Outputs {
 		if output.State == outputCurrent {
@@ -266,11 +291,20 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		owner.Status.Phrase = phrase
 		return r.saveAndRequeue(ctx, owner)
 	}
+	if len(owner.Spec.ParameterReferences) != 0 {
+		return ctrl.Result{RequeueAfter: r.inputPollDelay()}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
 func (r *DeploymentTemplateReconciler) initializeCoordinator(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	owner.Status.Coordinator = &radappiov1alpha3.DeploymentCoordinatorStatus{Phase: coordinatorIdle}
+	if owner.Status.PendingSubmission != "" {
+		owner.Status.Operation = &radappiov1alpha3.ResourceOperation{
+			OperationKind: radappiov1alpha3.OperationKindPut, DeploymentID: owner.Status.PendingSubmission,
+		}
+		owner.Status.PendingSubmission = ""
+	}
 	for _, id := range owner.Status.OutputResources {
 		if findOutput(owner, id) == nil {
 			owner.Status.Coordinator.Outputs = append(owner.Status.Coordinator.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: id, State: outputCurrent})
@@ -302,6 +336,7 @@ func (r *DeploymentTemplateReconciler) initializeCoordinator(ctx context.Context
 		switch owner.Status.Operation.OperationKind {
 		case radappiov1alpha3.OperationKindPut:
 			owner.Status.Coordinator.Phase = coordinatorPutRunning
+			owner.Status.Coordinator.ResourceID = owner.Status.Operation.DeploymentID
 			// A legacy operation did not persist its submitted hash. Force a fresh PUT.
 		case radappiov1alpha3.OperationKindDelete:
 			if len(owner.Status.OutputResources) == 0 {
@@ -317,7 +352,7 @@ func (r *DeploymentTemplateReconciler) initializeCoordinator(ctx context.Context
 	return r.saveAndRequeue(ctx, owner)
 }
 
-func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, parameters map[string]map[string]string, inputRevision string) (ctrl.Result, error) {
 	var template any
 	if err := json.Unmarshal([]byte(owner.Spec.Template), &template); err != nil {
 		return r.failCoordinator(ctx, owner, fmt.Errorf("invalid template: %w", err))
@@ -343,6 +378,7 @@ func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *r
 	state.RetryAfter = nil
 	state.ResourceID = scope + "/providers/Microsoft.Resources/deployments/deploymenttemplate-" + uuid.New().String()
 	state.Message = ""
+	owner.Status.AttemptedInputRevision = inputRevision
 	owner.Status.ObservedGeneration = owner.Generation
 	owner.Status.StatusHash = ""
 	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
@@ -352,7 +388,7 @@ func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *r
 	mutationContext := policy.WithRetryOptions(ctx, policy.RetryOptions{MaxRetries: -1})
 	poller, err := r.ResourceDeploymentsClient.CreateOrUpdate(mutationContext, sdkclients.Deployment{
 		Properties: &sdkclients.DeploymentProperties{
-			Template: template, Parameters: convertToARMJSONParameters(owner.Spec.Parameters),
+			Template: template, Parameters: parameters,
 			ProviderConfig: config, Mode: armdeployments.DeploymentModeIncremental,
 		},
 	}, state.ResourceID, sdkclients.DeploymentsClientAPIVersion)
@@ -361,7 +397,16 @@ func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *r
 			if requestRejected(err) {
 				return r.failCoordinator(ctx, current, err)
 			}
-			return r.blockCoordinator(ctx, current, fmt.Sprintf("PUT outcome is uncertain: %v", err))
+			if inputRevision == "" {
+				return r.blockCoordinator(ctx, current, fmt.Sprintf("PUT outcome is uncertain: %v", err))
+			}
+		}
+		if inputRevision != "" {
+			current.Status.Operation = &radappiov1alpha3.ResourceOperation{
+				OperationKind: radappiov1alpha3.OperationKindPut, DeploymentID: state.ResourceID,
+			}
+			current.Status.Coordinator.Phase = coordinatorPutRunning
+			return r.saveAndRequeue(ctx, current)
 		}
 		if poller == nil {
 			return r.blockCoordinator(ctx, current, "PUT returned no output inventory or operation token")
@@ -387,6 +432,23 @@ func (r *DeploymentTemplateReconciler) pollPut(ctx context.Context, owner *radap
 	if owner.Status.Operation == nil || owner.Status.Operation.OperationKind != radappiov1alpha3.OperationKindPut {
 		return r.blockCoordinator(ctx, owner, "running PUT has no matching operation")
 	}
+	if owner.Status.Operation.DeploymentID != "" {
+		resp, err := r.ResourceDeploymentsClient.Get(ctx, owner.Status.Operation.DeploymentID, sdkclients.DeploymentsClientAPIVersion)
+		if err != nil {
+			return r.operationReadFailed(ctx, owner, safeDeploymentError(owner, err))
+		}
+		if resp.Properties == nil || resp.Properties.ProvisioningState == nil {
+			return r.operationReadFailed(ctx, owner, fmt.Errorf("deployment status is unavailable"))
+		}
+		switch strings.ToLower(string(*resp.Properties.ProvisioningState)) {
+		case "succeeded":
+			return r.completePut(ctx, owner, resp)
+		case "failed", "canceled", "cancelled":
+			return r.failedPutInventoryPending(ctx, owner, fmt.Errorf("deployment did not succeed"))
+		default:
+			return r.again(), nil
+		}
+	}
 	poller, err := r.ResourceDeploymentsClient.ContinueCreateOperation(ctx, owner.Status.Operation.ResumeToken)
 	if err != nil {
 		return r.operationReadFailed(ctx, owner, err)
@@ -407,7 +469,7 @@ func (r *DeploymentTemplateReconciler) pollPut(ctx context.Context, owner *radap
 func (r *DeploymentTemplateReconciler) failedPutInventoryPending(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, err error) (ctrl.Result, error) {
 	// Azure pollers return a zero result on failure, not the deployment's partial inventory.
 	owner.Status.Coordinator.Phase = coordinatorPutInventoryPending
-	owner.Status.Coordinator.Message = err.Error()
+	owner.Status.Coordinator.Message = safeDeploymentError(owner, err).Error()
 	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
 	return r.saveAndRequeue(ctx, owner)
 }
@@ -476,6 +538,7 @@ func (r *DeploymentTemplateReconciler) completePut(ctx context.Context, owner *r
 	// Commit inventory before projecting any children. Tracker disappearance cannot erase it.
 	owner.Status.OutputResources = outputs
 	owner.Status.StatusHash = state.SubmittedHash
+	owner.Status.AppliedInputRevision = owner.Status.AttemptedInputRevision
 	owner.Status.Operation = nil
 	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
 	state.Phase, state.ResourceID, state.Message = coordinatorIdle, "", ""
@@ -781,7 +844,10 @@ func (r *DeploymentTemplateReconciler) saveCoordinator(ctx context.Context, owne
 	if err := r.reader().Get(ctx, client.ObjectKeyFromObject(owner), persisted); err != nil {
 		return err
 	}
-	if !apiequality.Semantic.DeepEqual(expected.Coordinator, persisted.Status.Coordinator) || !apiequality.Semantic.DeepEqual(expected.Operation, persisted.Status.Operation) {
+	if !apiequality.Semantic.DeepEqual(expected.Coordinator, persisted.Status.Coordinator) ||
+		!apiequality.Semantic.DeepEqual(expected.Operation, persisted.Status.Operation) ||
+		expected.AttemptedInputRevision != persisted.Status.AttemptedInputRevision ||
+		expected.AppliedInputRevision != persisted.Status.AppliedInputRevision {
 		return fmt.Errorf("template lifecycle state was not persisted; verify the installed CRD schema before dispatching operations")
 	}
 	return nil
@@ -795,6 +861,7 @@ func (r *DeploymentTemplateReconciler) saveAndRequeue(ctx context.Context, owner
 }
 
 func (r *DeploymentTemplateReconciler) blockCoordinator(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, message string) (ctrl.Result, error) {
+	message = safeDeploymentError(owner, errors.New(message)).Error()
 	owner.Status.Coordinator.Phase = coordinatorBlocked
 	owner.Status.Coordinator.Message = message
 	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
@@ -804,12 +871,19 @@ func (r *DeploymentTemplateReconciler) blockCoordinator(ctx context.Context, own
 }
 
 func (r *DeploymentTemplateReconciler) failCoordinator(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, err error) (ctrl.Result, error) {
+	reason := "ResourceError"
+	if prefix, _, ok := strings.Cut(err.Error(), ":"); ok &&
+		(prefix == "SecretInputUnavailable" || prefix == "SecretInputInvalid" || prefix == "SecretInputConflict") {
+		reason = prefix
+	} else {
+		err = safeDeploymentError(owner, err)
+	}
 	owner.Status.Coordinator.Phase = coordinatorRetryWaiting
 	owner.Status.Coordinator.RetryAfter = coordinatorDeadline(r.deleteRetryDelay())
 	owner.Status.Coordinator.Message = err.Error()
 	owner.Status.Operation = nil
 	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-	r.EventRecorder.Event(owner, corev1.EventTypeWarning, "ResourceError", err.Error())
+	r.EventRecorder.Event(owner, corev1.EventTypeWarning, reason, err.Error())
 	if saveErr := r.saveCoordinator(ctx, owner); saveErr != nil {
 		return ctrl.Result{}, saveErr
 	}
@@ -822,6 +896,7 @@ func coordinatorDeadline(delay time.Duration) *metav1.Time {
 }
 
 func (r *DeploymentTemplateReconciler) operationReadFailed(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, err error) (ctrl.Result, error) {
+	err = safeDeploymentError(owner, err)
 	r.EventRecorder.Event(owner, corev1.EventTypeWarning, "ResourceError", err.Error())
 	// Preserve the token and phase; a polling failure is not a terminal operation failure.
 	return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
@@ -845,6 +920,14 @@ func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
 		return r.DelayInterval
 	}
 	return PollingDelay
+}
+
+func (r *DeploymentTemplateReconciler) inputPollDelay() time.Duration {
+	interval := r.InputPollInterval
+	if interval <= 0 {
+		interval = time.Minute
+	}
+	return interval + time.Duration(rand.Int64N(max(1, int64(interval/5))))
 }
 
 func (r *DeploymentTemplateReconciler) deleteRetryDelay() time.Duration {
