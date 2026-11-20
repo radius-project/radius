@@ -25,7 +25,7 @@
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
       },
-      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/home\",\"HomeDirectoryType\":\"PATH\",\"Role\":\"arn:aws:iam::123456789012:role/radius-rec-transfer\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/home\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
     },
     {
       "service": "Transfer",
@@ -35,12 +35,12 @@
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
       },
-      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/home\",\"HomeDirectoryType\":\"PATH\",\"Role\":\"arn:aws:iam::123456789012:role/radius-rec-transfer\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/home\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
     },
     {
       "service": "Transfer",
       "operation": "UpdateAccess",
-      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"Role\":\"arn:aws:iam::123456789012:role/radius-rec-transfer\",\"ServerId\":\"s-0123456789abcdef0\"}",
       "status": 200,
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
@@ -55,7 +55,7 @@
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
       },
-      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"HomeDirectoryType\":\"PATH\",\"Role\":\"arn:aws:iam::123456789012:role/radius-rec-transfer\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
     },
     {
       "service": "Transfer",
@@ -65,7 +65,7 @@
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
       },
-      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"HomeDirectoryType\":\"PATH\",\"Role\":\"arn:aws:iam::123456789012:role/radius-rec-transfer\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
     },
     {
       "service": "Transfer",

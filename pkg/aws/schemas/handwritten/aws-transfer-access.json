@@ -79,7 +79,7 @@
     },
     "Role": {
       "type": "string",
-      "description": "The ARN of the IAM role that gives the group's users access to the Amazon S3 bucket or Amazon EFS file system.",
+      "description": "The ARN of the IAM role that gives the group's users access to the Amazon S3 bucket or Amazon EFS file system. It is write-only, because DescribeAccess may leave it out.",
       "minLength": 20,
       "maxLength": 2048,
       "pattern": "^arn:.*role/\\S+$"
@@ -120,6 +120,7 @@
   "additionalProperties": false,
   "primaryIdentifier": ["/properties/ServerId", "/properties/ExternalId"],
   "createOnlyProperties": ["/properties/ServerId", "/properties/ExternalId"],
+  "writeOnlyProperties": ["/properties/Role"],
   "handlers": {
     "create": {
       "permissions": [

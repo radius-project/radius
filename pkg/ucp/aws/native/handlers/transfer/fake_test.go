@@ -60,7 +60,8 @@ var (
 
 // fakeAPI is an in-memory AWS Transfer Family API for accesses. It keeps them in an awsfake store, in the type's
 // property format, so the suite's Cloud Control sees the same resources. Servers are in the store too, under
-// serverType. It follows the rules in accessAPI.
+// serverType. It follows the rules in accessAPI. DescribeAccess leaves out Role, and a HomeDirectoryType or mapping
+// Type the store doesn't hold.
 type fakeAPI struct {
 	store *awsfake.CloudControl
 
@@ -247,11 +248,12 @@ func (f *fakeAPI) DescribeAccess(ctx context.Context, in *transfer.DescribeAcces
 	if err != nil {
 		return nil, err
 	}
-	access := &types.DescribedAccess{ExternalId: in.ExternalId, HomeDirectoryType: types.HomeDirectoryTypePath}
+	// Role is left out, as another AWS client reports DescribeAccess does.
+	access := &types.DescribedAccess{ExternalId: in.ExternalId}
 	if v, ok := props["HomeDirectoryType"].(string); ok {
 		access.HomeDirectoryType = types.HomeDirectoryType(v)
 	}
-	for name, field := range map[string]**string{"Role": &access.Role, "HomeDirectory": &access.HomeDirectory, "Policy": &access.Policy} {
+	for name, field := range map[string]**string{"HomeDirectory": &access.HomeDirectory, "Policy": &access.Policy} {
 		if v, ok := props[name].(string); ok {
 			*field = aws.String(v)
 		}

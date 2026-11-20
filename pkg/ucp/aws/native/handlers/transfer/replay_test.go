@@ -27,7 +27,8 @@ import (
 )
 
 // Test_Replay_Access gives a directory group access to a Transfer Family server whose identity provider is AWS
-// Directory Service, changes its home directory, and deletes it, against AWS's responses.
+// Directory Service, changes its home directory, and deletes it, against AWS's responses. DescribeAccess leaves out
+// Role, as another AWS client reports, and the handler doesn't read it.
 func Test_Replay_Access(t *testing.T) {
 	s := awsreplay.New(t, "testdata/access.json")
 	properties := map[string]any{
@@ -40,9 +41,9 @@ func Test_Replay_Access(t *testing.T) {
 		Handler:     NewAccess(transfer.NewFromConfig(s.Config(t.Context()))),
 		Session:     s,
 		Properties:  properties,
-		Want:        with(properties, map[string]any{"HomeDirectoryType": "PATH"}),
+		Want:        with(properties, map[string]any{"Role": nil, "HomeDirectoryType": "PATH"}),
 		Update:      with(properties, map[string]any{"HomeDirectory": "/" + s.Input("RADIUS_REC_TRANSFER_BUCKET") + "/shared"}),
-		WantUpdated: with(properties, map[string]any{"HomeDirectory": "/" + s.Input("RADIUS_REC_TRANSFER_BUCKET") + "/shared", "HomeDirectoryType": "PATH"}),
+		WantUpdated: with(properties, map[string]any{"Role": nil, "HomeDirectory": "/" + s.Input("RADIUS_REC_TRANSFER_BUCKET") + "/shared", "HomeDirectoryType": "PATH"}),
 		Poll:        2 * time.Second,
 	}.Run(t)
 }

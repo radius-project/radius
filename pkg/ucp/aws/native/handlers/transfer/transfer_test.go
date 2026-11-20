@@ -83,14 +83,19 @@ func update(t *testing.T, h *Access, lastApplied map[string]any, desired map[str
 }
 
 // patchOf returns the patch UCP computes from AWS's values, current, to the template, desired, after a deploy of
-// lastApplied.
+// lastApplied, when Role is the one the last deploy sent. UCP keeps no write-only value, and leaves out of the patch
+// one whose fingerprint matches, so neither side has Role. The suite covers a changed Role through UCP itself.
 func patchOf(t *testing.T, current map[string]any, lastApplied map[string]any, desired map[string]any) jsondiff.Patch {
+	if lastApplied != nil {
+		lastApplied = with(lastApplied, map[string]any{"Role": nil})
+	}
+	desired = with(desired, map[string]any{"Role": nil})
 	c, err := json.Marshal(current)
 	require.NoError(t, err)
 	d, err := json.Marshal(desired)
 	require.NoError(t, err)
 	removed := awsoperations.RemovedPaths(lastApplied, desired)
-	patch, err := awsoperations.GeneratePatchWithOptions(c, d, []byte(readFile(t, "aws-transfer-access.json")), awsoperations.PatchOptions{LastApplied: lastApplied, Removed: removed})
+	patch, err := awsoperations.GeneratePatchWithOptions(c, d, []byte(readFile(t, "aws-transfer-access.json")), awsoperations.PatchOptions{LastApplied: lastApplied, Removed: removed, Equivalent: samePolicy})
 	require.NoError(t, err)
 	return patch
 }
@@ -106,6 +111,9 @@ func Test_Suite_Access(t *testing.T) {
 		},
 		Properties:       access,
 		Identifier:       identifier,
+		WriteOnly:        []string{"Role"},
+		ChangedWriteOnly: with(access, map[string]any{"Role": "arn:aws:iam::123456789012:role/transfer-other", "HomeDirectoryType": "LOGICAL", "HomeDirectoryMappings": mappings, "HomeDirectory": nil}),
+		OtherForm:        map[string]any{"Policy": `{ "Statement": [], "Version": "2012-10-17" }`},
 		Changed:          with(access, map[string]any{"HomeDirectoryType": "LOGICAL", "HomeDirectoryMappings": mappings, "HomeDirectory": nil}),
 		Removable:        "Policy",
 		CreateOnlyChange: with(access, map[string]any{"ExternalId": "S-1-1-12-99"}),
@@ -198,10 +206,11 @@ func Test_CreateAndRead(t *testing.T) {
 	properties, err := h.Read(t.Context(), region, identifier)
 	require.NoError(t, err)
 	require.Equal(t, with(access, map[string]any{
+		"Role":                  nil,
 		"HomeDirectoryType":     "LOGICAL",
 		"HomeDirectoryMappings": mappings,
 		"PosixProfile":          map[string]any{"Uid": float64(0), "Gid": float64(4294967295), "SecondaryGids": []any{}},
-	}), properties, "AWS fills in a mapping's Type, and a profile without secondary groups has an empty list")
+	}), properties, "AWS fills in a mapping's Type, a profile without secondary groups has an empty list, and Role isn't read")
 
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: access})
 	require.ErrorAs(t, err, &failure)
@@ -231,7 +240,7 @@ func Test_UpdateRemovals(t *testing.T) {
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: start})
 	require.NoError(t, err)
 
-	for _, name := range []string{"HomeDirectoryMappings", "PosixProfile", "Role"} {
+	for _, name := range []string{"HomeDirectoryMappings", "PosixProfile"} {
 		var failure *native.Failure
 		require.ErrorAs(t, update(t, h, start, with(start, map[string]any{name: nil})), &failure, name)
 		require.Equal(t, native.OutcomeRejected, failure.Outcome)
@@ -243,7 +252,7 @@ func Test_UpdateRemovals(t *testing.T) {
 	require.NoError(t, update(t, h, start, cleared))
 	require.Equal(t, aws.String(""), api.lastUpdate.HomeDirectory)
 	require.Equal(t, aws.String(""), api.lastUpdate.Policy)
-	require.Nil(t, api.lastUpdate.Role, "an unchanged property isn't sent")
+	require.Nil(t, api.lastUpdate.Role, "a Role the fingerprint shows unchanged isn't sent")
 	current, err := h.Read(t.Context(), region, identifier)
 	require.NoError(t, err)
 	require.Equal(t, "", current["HomeDirectory"])
@@ -266,16 +275,18 @@ func Test_UpdateSends(t *testing.T) {
 	require.Zero(t, api.updates, "an update that changes nothing AWS has sends nothing")
 
 	desired := with(access, map[string]any{
-		"Role":         "arn:aws:iam::123456789012:role/other",
+		"Policy":       `{"Version":"2012-10-17","Statement":[{"Effect":"Allow"}]}`,
 		"PosixProfile": map[string]any{"Uid": float64(1000), "Gid": float64(100)},
 	})
 	require.NoError(t, update(t, h, access, desired))
 	require.Equal(t, 1, api.updates, "every change goes in one call")
-	require.Equal(t, desired["Role"], aws.ToString(api.lastUpdate.Role))
+	require.Equal(t, desired["Policy"], aws.ToString(api.lastUpdate.Policy))
+	require.Nil(t, api.lastUpdate.Role)
 	require.Equal(t, []int64{}, api.lastUpdate.PosixProfile.SecondaryGids, "removed secondary groups are sent as an empty list")
 	properties, err := h.Read(t.Context(), region, identifier)
 	require.NoError(t, err)
 	require.Equal(t, with(desired, map[string]any{
+		"Role":              nil,
 		"HomeDirectoryType": "PATH",
 		"PosixProfile":      map[string]any{"Uid": float64(1000), "Gid": float64(100), "SecondaryGids": []any{}},
 	}), properties)
@@ -372,4 +383,60 @@ func Test_UpdatePatchDoesNotApply(t *testing.T) {
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Contains(t, failure.Message, "doesn't apply to the access AWS has")
 	require.Zero(t, api.updates)
+}
+
+// Test_UpdateRole checks that a Role UCP's patch adds, because its fingerprint changed, is sent.
+func Test_UpdateRole(t *testing.T) {
+	h, api := newHandler()
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: access})
+	require.NoError(t, err)
+	current, err := h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	other := "arn:aws:iam::123456789012:role/other"
+	patch := jsondiff.Patch{{Type: jsondiff.OperationAdd, Path: "/Role", Value: other}}
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: identifier, Current: current, Desired: with(access, map[string]any{"Role": other}), Patch: patch}))
+	require.Equal(t, other, aws.ToString(api.lastUpdate.Role))
+	require.Nil(t, api.lastUpdate.HomeDirectory, "only Role is sent")
+	require.Equal(t, other, api.store.Resource(accessType, identifier)["Role"])
+}
+
+// Test_ReadDefaults checks what Read reports for values DescribeAccess leaves out: no Role, PATH, DIRECTORY, and
+// empty strings and lists, so a template that sets AWS's defaults redeploys with no change.
+func Test_ReadDefaults(t *testing.T) {
+	h, api := newHandler()
+	api.store.Put(accessType, identifier, map[string]any{
+		"ServerId": server, "ExternalId": externalID, "Role": role,
+		"HomeDirectoryMappings": []any{map[string]any{"Entry": "/", "Target": "/bucket"}},
+	})
+	properties, err := h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"ServerId": server, "ExternalId": externalID, "HomeDirectory": "", "Policy": "", "HomeDirectoryType": "PATH",
+		"HomeDirectoryMappings": []any{map[string]any{"Entry": "/", "Target": "/bucket", "Type": "DIRECTORY"}},
+	}, properties)
+
+	template := map[string]any{
+		"ServerId": server, "ExternalId": externalID, "Role": role, "HomeDirectoryType": "PATH",
+		"HomeDirectoryMappings": []any{map[string]any{"Entry": "/", "Target": "/bucket", "Type": "DIRECTORY"}},
+	}
+	require.Empty(t, patchOf(t, properties, template, template))
+	require.Empty(t, patchOf(t, properties, nil, template), "a take-over sends nothing either")
+}
+
+func Test_samePolicy(t *testing.T) {
+	policy := `{"Version":"2012-10-17","Statement":[]}`
+	tests := []struct {
+		path, template, aws string
+		want                bool
+	}{
+		{"Policy", policy, `{ "Statement": [], "Version": "2012-10-17" }`, true},
+		{"Policy", policy, `{"Version":"2012-10-17","Statement":[{}]}`, false},
+		{"Policy", policy, "not json", false},
+		{"Policy", "not json", "not json", false},
+		{"HomeDirectory", policy, policy, false},
+	}
+	for _, tt := range tests {
+		require.Equal(t, tt.want, samePolicy(tt.path, tt.template, tt.aws), "%s %s %s", tt.path, tt.template, tt.aws)
+	}
+	require.False(t, samePolicy("Policy", map[string]any{}, policy))
 }

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -55,7 +56,8 @@ var (
 )
 
 // Access serves AWS::Transfer::Access: the access a directory group has to a Transfer Family server. Its identifier
-// is ServerId and ExternalId joined with "|". AWS changes an access in place, so only those two are create-only.
+// is ServerId and ExternalId joined with "|". AWS changes an access in place, so only those two are create-only. Role
+// is write-only, because DescribeAccess may leave it out, so UCP compares it by its fingerprint instead of reading it.
 type Access struct {
 	api API
 }
@@ -72,7 +74,22 @@ func (h *Access) TypeName() string {
 
 // Options returns how UCP uses the handler. AWS lists accesses only by server, so the type can't be listed.
 func (h *Access) Options() native.Options {
-	return native.Options{List: native.ListNone, Recovery: native.RecoverByIdentifier}
+	return native.Options{List: native.ListNone, Recovery: native.RecoverByIdentifier, Equivalent: samePolicy}
+}
+
+// samePolicy treats a Policy AWS returns as the same JSON in another form, such as with other spacing or key order, as
+// the template's.
+func samePolicy(path string, template any, current any) bool {
+	t, okT := template.(string)
+	c, okC := current.(string)
+	if path != "Policy" || !okT || !okC {
+		return false
+	}
+	var tv, cv any
+	if json.Unmarshal([]byte(t), &tv) != nil || json.Unmarshal([]byte(c), &cv) != nil {
+		return false
+	}
+	return reflect.DeepEqual(tv, cv)
 }
 
 // accessID names an access.
@@ -260,29 +277,29 @@ func (h *Access) describe(ctx context.Context, region string, identifier string)
 	return id, out.Access, nil
 }
 
-// Read returns the access's properties. HomeDirectory and Policy are always set, and empty when the access has none,
-// and so are a POSIX profile's SecondaryGids, so a template that sets one empty matches AWS instead of sending an update
-// on every deploy.
+// Read returns the access's properties, without Role, which DescribeAccess may leave out. HomeDirectory and Policy are
+// always set, and empty when the access has none, and so are a POSIX profile's SecondaryGids, so a template that sets
+// one empty matches AWS instead of sending an update on every deploy. A HomeDirectoryType or mapping Type AWS leaves
+// out is its default, PATH or DIRECTORY, for the same reason.
 func (h *Access) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	id, access, err := h.describe(ctx, region, identifier)
 	if err != nil {
 		return nil, err
 	}
 	properties := map[string]any{
-		"ServerId":      id.server,
-		"ExternalId":    id.external,
-		"HomeDirectory": aws.ToString(access.HomeDirectory),
-		"Policy":        aws.ToString(access.Policy),
+		"ServerId":          id.server,
+		"ExternalId":        id.external,
+		"HomeDirectory":     aws.ToString(access.HomeDirectory),
+		"HomeDirectoryType": string(types.HomeDirectoryTypePath),
+		"Policy":            aws.ToString(access.Policy),
 	}
-	for name, value := range map[string]string{"Role": aws.ToString(access.Role), "HomeDirectoryType": string(access.HomeDirectoryType)} {
-		if value != "" {
-			properties[name] = value
-		}
+	if access.HomeDirectoryType != "" {
+		properties["HomeDirectoryType"] = string(access.HomeDirectoryType)
 	}
 	if len(access.HomeDirectoryMappings) > 0 {
 		mappings := []any{}
 		for _, m := range access.HomeDirectoryMappings {
-			mapping := map[string]any{"Entry": aws.ToString(m.Entry), "Target": aws.ToString(m.Target)}
+			mapping := map[string]any{"Entry": aws.ToString(m.Entry), "Target": aws.ToString(m.Target), "Type": string(types.MapTypeDirectory)}
 			if m.Type != "" {
 				mapping["Type"] = string(m.Type)
 			}
@@ -361,7 +378,8 @@ func patched(request native.UpdateRequest) (values, error) {
 
 // Update sends the properties the patch changes in one UpdateAccess call, with the values the patch gives them. A
 // removed HomeDirectory or Policy is sent empty and a removed HomeDirectoryType as PATH, AWS's default, which clears
-// them. AWS has no value that clears HomeDirectoryMappings or PosixProfile, so removing one fails before any change.
+// them. AWS has no value that clears HomeDirectoryMappings or PosixProfile, so removing one fails before any change. UCP
+// sends Role, which is write-only, only when the template's value differs from the last one sent.
 func (h *Access) Update(ctx context.Context, request native.UpdateRequest) error {
 	if _, err := parse(request.Desired); err != nil {
 		return err
@@ -379,9 +397,6 @@ func (h *Access) Update(ctx context.Context, request native.UpdateRequest) error
 	for _, name := range awsapi.Changed(request) {
 		switch name {
 		case "Role":
-			if v.role == nil {
-				return cantRemove(name)
-			}
 			input.Role = v.role
 		case "HomeDirectory":
 			input.HomeDirectory = aws.String(aws.ToString(v.homeDirectory))

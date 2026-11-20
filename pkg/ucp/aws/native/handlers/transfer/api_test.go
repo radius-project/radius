@@ -268,16 +268,18 @@ var accessAPI = map[string]nativetest.Call{
 					in.Policy = aws.String(`{"Version":"2012-10-17"}`)
 					in.PosixProfile = &types.PosixProfile{Uid: aws.Int64(1000), Gid: aws.Int64(100), SecondaryGids: []int64{4, 5}}
 				}), describe(func(a *types.DescribedAccess) error {
-					if aws.ToString(a.Role) != role || aws.ToString(a.Policy) != `{"Version":"2012-10-17"}` || aws.ToString(a.HomeDirectoryMappings[0].Target) != "/bucket/home" {
+					if aws.ToString(a.Policy) != `{"Version":"2012-10-17"}` || aws.ToString(a.HomeDirectoryMappings[0].Target) != "/bucket/home" {
 						return fmt.Errorf("the access is %+v", a)
 					}
 					return expect("the second secondary group ID", a.PosixProfile.SecondaryGids[1], 5)
 				})),
 			},
 		},
-		Unclear: "The page doesn't say whether AWS returns an unset HomeDirectory or Policy as empty or leaves it out, " +
-			"or reformats the policy; the fake leaves it out and returns the policy as the call sent it. The handler " +
-			"reads either as empty." + constraintNote,
+		Unclear: "The page lists Role in the response, but another AWS client's code says DescribeAccess doesn't return " +
+			"it; the fake leaves it out, and the type makes Role write-only, so the handler never reads it. The page " +
+			"doesn't say whether AWS returns an unset HomeDirectory, Policy, HomeDirectoryType, or mapping Type as empty " +
+			"or leaves it out, or reformats the policy; the fake leaves them out and returns the policy as the call sent " +
+			"it. The handler reads them as empty, PATH, and DIRECTORY, and compares Policy as JSON." + constraintNote,
 	},
 	"UpdateAccess": {
 		Doc: apiReference + "API_UpdateAccess.html",
