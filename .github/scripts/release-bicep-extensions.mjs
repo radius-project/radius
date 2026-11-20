@@ -104,7 +104,14 @@ export function releaseBicepConfig(plan, sourceSha, version) {
       "Invalid legacy Bicep target pair"
     );
   } else {
-    plannedBicepExtensions(plan, sourceSha);
+    const [aws, radius] = plannedBicepExtensions(plan, sourceSha);
+    return {
+      experimentalFeaturesEnabled: { ociEnabled: true },
+      extensions: {
+        radius: `br:${radius.reference}`,
+        aws: `br:${aws.reference}`
+      }
+    };
   }
   return {
     extensions: {
