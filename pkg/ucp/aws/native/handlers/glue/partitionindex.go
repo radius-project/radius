@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/aws/aws-sdk-go-v2/service/glue/types"
+	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -202,30 +203,87 @@ func (h *PartitionIndex) ResolveIdentifier(ctx context.Context, region string, i
 	return id.String(), nil
 }
 
-// describe returns the index, or ErrNotFound when the table, or an index with the name on it, doesn't exist. AWS keeps
-// indexes it failed to build in the table's list, where they can't be deleted, and lets a create make one with the same
-// name again, so describe skips them. failed is the first failed index with the name, for the progress of a create.
-func (h *PartitionIndex) describe(ctx context.Context, region string, id indexID) (index *types.PartitionIndexDescriptor, failed *types.PartitionIndexDescriptor, err error) {
+// lookup is what GetPartitionIndexes lists for an index's table.
+type lookup struct {
+	// index is the index with the name that AWS hasn't failed to build, or nil.
+	index *types.PartitionIndexDescriptor
+
+	// failed is the first index with the name that AWS failed to build, for the progress of a create.
+	failed *types.PartitionIndexDescriptor
+
+	// building is the name of another index on the table that AWS is building or deleting, or "".
+	building string
+}
+
+// scan lists the table's indexes, or returns ErrNotFound when the table doesn't exist. AWS keeps indexes it failed to
+// build in the table's list, where they can't be deleted, and lets a create make one with the same name again, so they
+// never count as the index.
+func (h *PartitionIndex) scan(ctx context.Context, region string, id indexID) (lookup, error) {
+	out := lookup{}
 	input := &glue.GetPartitionIndexesInput{CatalogId: aws.String(id.catalog), DatabaseName: aws.String(id.database), TableName: aws.String(id.table)}
 	for {
 		page, err := h.api.GetPartitionIndexes(ctx, input, inRegion(region))
 		if err != nil {
-			return nil, nil, awsapi.NotFound(err, "EntityNotFoundException")
+			return lookup{}, awsapi.NotFound(err, "EntityNotFoundException")
 		}
 		for i := range page.PartitionIndexDescriptorList {
 			d := &page.PartitionIndexDescriptorList[i]
 			switch {
-			case aws.ToString(d.IndexName) != id.name:
-			case d.IndexStatus != types.PartitionIndexStatusFailed:
-				return d, nil, nil
-			case failed == nil:
-				failed = d
+			case d.IndexStatus == types.PartitionIndexStatusFailed:
+				if aws.ToString(d.IndexName) == id.name && out.failed == nil {
+					out.failed = d
+				}
+			case aws.ToString(d.IndexName) == id.name:
+				out.index = d
+			case d.IndexStatus == types.PartitionIndexStatusCreating || d.IndexStatus == types.PartitionIndexStatusDeleting:
+				if out.building == "" {
+					out.building = aws.ToString(d.IndexName)
+				}
 			}
 		}
 		if input.NextToken = page.NextToken; input.NextToken == nil {
-			return nil, failed, native.ErrNotFound
+			return out, nil
 		}
 	}
+}
+
+// describe returns the index, or ErrNotFound when the table, or an index with the name on it, doesn't exist. failed
+// is the first failed index with the name, which describe skips.
+func (h *PartitionIndex) describe(ctx context.Context, region string, id indexID) (*types.PartitionIndexDescriptor, *types.PartitionIndexDescriptor, error) {
+	found, err := h.scan(ctx, region, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	if found.index == nil {
+		return nil, found.failed, native.ErrNotFound
+	}
+	return found.index, found.failed, nil
+}
+
+// tableBusy returns the conflict of a create or delete AWS Glue can't make because another index on the table, other,
+// is being built or deleted. Glue builds one index on a table at a time, so UCP answers 409 and sends nothing more:
+// the caller deploys again once the other index is ACTIVE or gone.
+func tableBusy(id indexID, other string) error {
+	what := "another partition index"
+	if other != "" {
+		what = fmt.Sprintf("the partition index %q", other)
+	}
+	return &native.Failure{
+		Message: fmt.Sprintf("AWS Glue is building or deleting %s on the table %q, and builds one index on a table at a time, so it changed nothing. "+
+			"Deploy again once that index is ACTIVE or deleted, and give partition indexes on one table dependsOn on each other.", what, id.database+"."+id.table),
+		ClientError: true,
+		Conflict:    true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
+// buildsOneAtATime reports whether err is Glue's answer to a create or delete while another index on the table is
+// being built or deleted. Glue uses the same code for its limit of 3 indexes on a table, so the message tells them
+// apart.
+func buildsOneAtATime(err error) bool {
+	var apiErr smithy.APIError
+	return errors.As(err, &apiErr) && apiErr.ErrorCode() == "ResourceNumberLimitExceededException" &&
+		strings.Contains(strings.ToLower(apiErr.ErrorMessage()), "simultaneously")
 }
 
 // Read returns the index's properties. An index AWS failed to build reads as absent, so a deploy creates a new one.
@@ -251,7 +309,9 @@ func (h *PartitionIndex) Read(ctx context.Context, region string, identifier str
 	}, nil
 }
 
-// Create starts creating the index. AWS builds it from the table's partitions in the background.
+// Create starts creating the index. AWS builds it from the table's partitions in the background, one index on a table
+// at a time, so a create while another index on the table is being built or deleted fails with a conflict and sends
+// nothing.
 func (h *PartitionIndex) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	id, keys, ok, err := parse(request.Properties)
 	if err != nil {
@@ -264,12 +324,22 @@ func (h *PartitionIndex) Create(ctx context.Context, request native.CreateReques
 			Outcome:     native.OutcomeRejected,
 		}
 	}
+	found, err := h.scan(ctx, request.Region, id)
+	if err != nil {
+		return "", err
+	}
+	if found.building != "" {
+		return "", tableBusy(id, found.building)
+	}
 	_, err = h.api.CreatePartitionIndex(ctx, &glue.CreatePartitionIndexInput{
 		CatalogId:      aws.String(id.catalog),
 		DatabaseName:   aws.String(id.database),
 		TableName:      aws.String(id.table),
 		PartitionIndex: &types.PartitionIndex{IndexName: aws.String(id.name), Keys: keys},
 	}, inRegion(request.Region))
+	if buildsOneAtATime(err) {
+		return "", tableBusy(id, "")
+	}
 	if awsapi.HasCode(err, "AlreadyExistsException") {
 		// UCP reads AWS by the identifier before it creates an index, so this index may be the one an earlier attempt
 		// of this create made, such as when the SDK retried a call whose response was lost. The outcome is then
@@ -292,7 +362,9 @@ func (h *PartitionIndex) Update(ctx context.Context, request native.UpdateReques
 }
 
 // Delete starts deleting the index. An index AWS is already deleting had a delete reach AWS before, so the delete
-// succeeds. AWS doesn't delete an index it is still creating, and then its error is returned.
+// succeeds. AWS doesn't delete an index it is still creating, and then its error is returned. Two deletes on one table
+// at the same time both succeed against real AWS, so Delete checks nothing first, and answers a conflict only when Glue
+// says another index on the table is being built or deleted.
 func (h *PartitionIndex) Delete(ctx context.Context, region string, identifier string) error {
 	id, err := parseID(identifier)
 	if err != nil {
@@ -311,6 +383,9 @@ func (h *PartitionIndex) Delete(ctx context.Context, region string, identifier s
 		TableName:    aws.String(id.table),
 		IndexName:    aws.String(id.name),
 	}, inRegion(region))
+	if buildsOneAtATime(err) {
+		return tableBusy(id, "")
+	}
 	return awsapi.NotFound(err, "EntityNotFoundException")
 }
 

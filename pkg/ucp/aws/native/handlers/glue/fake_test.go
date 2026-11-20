@@ -18,6 +18,7 @@ package glue
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"slices"
 	"strconv"
@@ -94,7 +95,8 @@ type fakeAPI struct {
 	mu     sync.Mutex
 	status map[string]types.PartitionIndexStatus
 
-	// deletes counts the DeletePartitionIndex calls that reached the fake.
+	// creates and deletes count the CreatePartitionIndex and DeletePartitionIndex calls that reached the fake.
+	creates int
 	deletes int
 
 	// failed are the failed indexes of each table, oldest first. AWS keeps them in the table's list apart from the
@@ -112,6 +114,11 @@ var _ API = (*fakeAPI)(nil)
 
 func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 	return &fakeAPI{store: store, status: map[string]types.PartitionIndexStatus{}, failed: map[string][]types.PartitionIndexDescriptor{}, errs: map[string]error{}}
+}
+
+// faultWith returns a client fault with code and message.
+func faultWith(code string, message string) error {
+	return &smithy.GenericAPIError{Code: code, Message: message, Fault: smithy.FaultClient}
 }
 
 func fault(code string) error {
@@ -234,6 +241,7 @@ func (f *fakeAPI) change(apply func() error) error {
 func (f *fakeAPI) CreatePartitionIndex(ctx context.Context, in *glue.CreatePartitionIndexInput, _ ...func(*glue.Options)) (*glue.CreatePartitionIndexOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.creates++
 	if err := f.errs["CreatePartitionIndex"]; err != nil {
 		return nil, err
 	}
@@ -262,11 +270,14 @@ func (f *fakeAPI) CreatePartitionIndex(ctx context.Context, in *glue.CreateParti
 	if slices.Contains(existing, id) {
 		return nil, fault("AlreadyExistsException")
 	}
-	building := slices.ContainsFunc(existing, func(i string) bool {
+	building := slices.IndexFunc(existing, func(i string) bool {
 		return f.status[i] == types.PartitionIndexStatusCreating || f.status[i] == types.PartitionIndexStatusDeleting
 	})
-	if len(existing) >= maxIndexes || building {
-		return nil, fault("ResourceNumberLimitExceededException")
+	if building >= 0 {
+		return nil, f.oneAtATime(existing[building])
+	}
+	if len(existing) >= maxIndexes {
+		return nil, faultWith("ResourceNumberLimitExceededException", "Maximum number of indexes per table exceeded")
 	}
 	return &glue.CreatePartitionIndexOutput{}, f.change(func() error {
 		parts := strings.Split(prefix, "|")
@@ -355,10 +366,19 @@ func (f *fakeAPI) DeletePartitionIndex(ctx context.Context, in *glue.DeleteParti
 	if f.status[id] == types.PartitionIndexStatusCreating {
 		return nil, fault(invalidInputCode)
 	}
+	if other := slices.IndexFunc(f.indexes(prefix), func(i string) bool { return f.status[i] == types.PartitionIndexStatusCreating }); other >= 0 {
+		return nil, f.oneAtATime(f.indexes(prefix)[other])
+	}
 	return &glue.DeletePartitionIndexOutput{}, f.change(func() error {
 		f.status[id] = types.PartitionIndexStatusDeleting
 		return nil
 	})
+}
+
+// oneAtATime returns Glue's error, in a run against real AWS, for a call while the index id is being built or deleted.
+func (f *fakeAPI) oneAtATime(id string) error {
+	return faultWith("ResourceNumberLimitExceededException", fmt.Sprintf("Index %s is in %s state. Only 1 index can be created or deleted simultaneously per table.",
+		id[strings.LastIndex(id, "|")+1:], f.status[id]))
 }
 
 // deleteDirect deletes the index name on sales.orders, as a delete UCP lost the response of did.

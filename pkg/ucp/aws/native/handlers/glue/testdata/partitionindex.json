@@ -8,6 +8,16 @@
   "interactions": [
     {
       "service": "Glue",
+      "operation": "GetPartitionIndexes",
+      "request": "{\"CatalogId\":\"123456789012\",\"DatabaseName\":\"radius_rec_example\",\"TableName\":\"radius_rec_events\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"PartitionIndexDescriptorList\":[]}"
+    },
+    {
+      "service": "Glue",
       "operation": "CreatePartitionIndex",
       "request": "{\"CatalogId\":\"123456789012\",\"DatabaseName\":\"radius_rec_example\",\"PartitionIndex\":{\"IndexName\":\"radius_rec_by_date\",\"Keys\":[\"year\",\"month\"]},\"TableName\":\"radius_rec_events\"}",
       "status": 200,

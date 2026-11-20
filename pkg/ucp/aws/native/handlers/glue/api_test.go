@@ -384,8 +384,7 @@ var partitionIndexAPI = map[string]nativetest.Call{
 			"can be created or deleted simultaneously per table\"), and the same run could create an index with the name " +
 			"of a FAILED one, which stayed listed. It says a key must be a partition key of a supported type, without naming the error, or whether " +
 			"AWS checks it before the index is CREATING; the fake rejects the call with InvalidInputException, the error " +
-			"the call lists for input that isn't valid. The docs don't say whether a name a FAILED index has can be used " +
-			"again; the fake returns AlreadyExistsException, as for any index the table lists. They don't say whether " +
+			"the call lists for input that isn't valid. They don't say whether " +
 			"key names are compared ignoring case; the fake compares them as they are, and returns them as the call sent " +
 			"them. The page takes one index per call and has no idempotency token, so a create sent again gets " +
 			"AlreadyExistsException. The handler reads the index before it creates one, and reports that error as an " +
@@ -477,6 +476,21 @@ var partitionIndexAPI = map[string]nativetest.Call{
 				Code: "EntityNotFoundException",
 			},
 			{
+				Rule: "a delete while another index on the table is CREATING fails, as a create does",
+				Break: against(onActiveIndex(func(ctx context.Context, f *fakeAPI) error {
+					if err := createIndex(named("b"), keyed("month"))(ctx, f); err != nil {
+						return err
+					}
+					return deleteIndex(nil)(ctx, f)
+				})),
+				Code: "ResourceNumberLimitExceededException",
+			},
+			{
+				Rule: "two indexes on a table can be deleted at the same time",
+				Check: against(createIndex(named("a"), keyed("year")), settle, createIndex(), settle,
+					deleteIndex(func(in *glue.DeletePartitionIndexInput) { in.IndexName = aws.String("a") }), deleteIndex(nil)),
+			},
+			{
 				Rule: "an ACTIVE index goes to DELETING, then leaves the list",
 				Doc:  indexGuide,
 				Check: against(onActiveIndex(func(ctx context.Context, f *fakeAPI) error {
@@ -500,6 +514,9 @@ var partitionIndexAPI = map[string]nativetest.Call{
 			"InvalidInputException. They don't say whether a FAILED index can be deleted; in a run against real AWS, the " +
 			"call got EntityNotFoundException and the index stayed listed, so the fake does the same. They " +
 			"don't say what AWS does for an index that is DELETING; the fake returns EntityNotFoundException, and the " +
-			"handler doesn't call it for one." + constraintNote,
+			"handler doesn't call it for one. They don't say a table deletes one index at a time; in a run against real " +
+			"AWS, two deletes on one table at the same time both succeeded, so the fake allows them. The run didn't " +
+			"delete an index while another was CREATING; the fake rejects that with the error a create gets, the " +
+			"pessimistic side." + constraintNote,
 	},
 }

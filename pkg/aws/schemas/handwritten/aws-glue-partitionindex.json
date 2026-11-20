@@ -1,6 +1,6 @@
 {
   "typeName": "AWS::Glue::PartitionIndex",
-  "description": "A partition index on an AWS Glue Data Catalog table, made with CreatePartitionIndex. AWS has no call that changes an index, so every property is create-only. Glue builds one index on a table at a time.",
+  "description": "A partition index on an AWS Glue Data Catalog table, made with CreatePartitionIndex. AWS has no call that changes an index, so every property is create-only. Glue builds or deletes one index on a table at a time, so a deploy that creates an index while another index on the table is being built or deleted fails with 409 Conflict. Give indexes on one table dependsOn on each other so they are created in turn.",
   "definitions": {
     "PartitionIndex": {
       "type": "object",

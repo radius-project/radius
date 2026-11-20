@@ -17,6 +17,7 @@ limitations under the License.
 package glue
 
 import (
+	"errors"
 	"maps"
 	"os"
 	"testing"
@@ -267,6 +268,84 @@ func Test_Delete(t *testing.T) {
 	require.NoError(t, err)
 	api.errs["DeletePartitionIndex"] = fault("EntityNotFoundException")
 	require.ErrorIs(t, h.Delete(t.Context(), region, account+"|sales|orders|third"), native.ErrNotFound, "an index deleted since the read is not found")
+}
+
+// Test_TableBusy covers a create or delete while another index on the table is being built or deleted. Glue builds one
+// index on a table at a time, so the handler answers a conflict, which UCP answers with 409, and sends nothing.
+func Test_TableBusy(t *testing.T) {
+	conflict := func(t *testing.T, err error, message string) {
+		t.Helper()
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.True(t, failure.Conflict)
+		require.True(t, failure.ClientError)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome, "nothing was made, so UCP drops the record")
+		require.Equal(t, message, failure.Message)
+	}
+	const byMonth = `AWS Glue is building or deleting the partition index "by_month" on the table "sales.orders", and builds one index on a table at a time, so it changed nothing. ` +
+		"Deploy again once that index is ACTIVE or deleted, and give partition indexes on one table dependsOn on each other."
+	const another = `AWS Glue is building or deleting another partition index on the table "sales.orders", and builds one index on a table at a time, so it changed nothing. ` +
+		"Deploy again once that index is ACTIVE or deleted, and give partition indexes on one table dependsOn on each other."
+
+	for _, status := range []string{"CREATING", "DELETING"} {
+		t.Run("create while another index is "+status, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			api.holdCreating = status == "CREATING"
+			h := NewPartitionIndex(api)
+			_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_month", "month")})
+			require.NoError(t, err)
+			if status == "DELETING" {
+				_, err = h.Read(t.Context(), region, account+"|sales|orders|by_month")
+				require.NoError(t, err)
+				require.NoError(t, h.Delete(t.Context(), region, account+"|sales|orders|by_month"))
+			}
+
+			calls := api.creates
+			_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+			conflict(t, err, byMonth)
+			require.Equal(t, calls, api.creates, "no create is sent while the table is busy")
+		})
+	}
+
+	t.Run("create the read didn't see as busy", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		api.errs["CreatePartitionIndex"] = faultWith("ResourceNumberLimitExceededException", "Index by_month is in CREATING state. Only 1 index can be created or deleted simultaneously per table.")
+		_, err := NewPartitionIndex(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+		conflict(t, err, another)
+	})
+
+	t.Run("delete while another index is CREATING", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewPartitionIndex(api)
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+		require.NoError(t, err)
+		_, err = h.Read(t.Context(), region, account+"|sales|orders|by_date")
+		require.NoError(t, err)
+		api.holdCreating = true
+		_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_month", "month")})
+		require.NoError(t, err)
+		conflict(t, h.Delete(t.Context(), region, account+"|sales|orders|by_date"), another)
+		got, err := h.Read(t.Context(), region, account+"|sales|orders|by_date")
+		require.NoError(t, err)
+		require.Equal(t, "ACTIVE", got["IndexStatus"], "the index is kept")
+	})
+
+	t.Run("the limit of 3 indexes isn't a conflict", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		api.errs["CreatePartitionIndex"] = faultWith("ResourceNumberLimitExceededException", "Maximum number of indexes per table exceeded")
+		_, err := NewPartitionIndex(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+		require.ErrorContains(t, err, "Maximum number of indexes")
+		var failure *native.Failure
+		require.False(t, errors.As(err, &failure) && failure.Conflict)
+	})
+
+	t.Run("a read that fails", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		api.errs["GetPartitionIndexes"] = fault("ThrottlingException")
+		_, err := NewPartitionIndex(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+		require.ErrorContains(t, err, "ThrottlingException")
+		require.Zero(t, api.creates)
+	})
 }
 
 func Test_Update(t *testing.T) {
