@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Follow these steps, in order, to ship a Radius RC, final, or patch release. This page lists only what to run. For why the process works this way, one-time setup, and recovery details, see the [release guide](./README.md).
+Steps to ship a Radius RC, final, or patch release. For background, setup, and recovery, see the [release guide](./README.md).
 
 Examples use channel `0.62`. Replace it, and every `<placeholder>`, with your values.
 
@@ -18,7 +18,7 @@ Examples use channel `0.62`. Replace it, and every `<placeholder>`, with your va
 ### 1. Release resource types and recipe packs (only if they changed)
 
 1. In `radius-project/resource-types-contrib`, run [Release Namespace](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-namespace.yaml) from `main` for each changed namespace in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Set `bump`; leave `prerelease_label` empty, `dry_run` and `force` off.
-2. Run [Release Recipe Pack](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-recipe-pack.yaml) from `main` for each changed pack, with the same settings. Always release `kubernetes` if its recipes changed.
+2. Run [Release Recipe Pack](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-recipe-pack.yaml) from `main` for each changed pack, with the same settings.
 3. Merge the generated `chore(resource-types-contrib): updates` PR (branch `bot/update-resource-types`) into `radius` `main`.
 4. For a later RC or patch, label that PR `backport release/X.Y` and rebase-merge its backport.
 
@@ -42,7 +42,7 @@ Examples use channel `0.62`. Replace it, and every `<placeholder>`, with your va
 
 ### 3. Prepare the release
 
-Pick `rc`, `final`, or `patch` (a final needs the last RC's docs/samples upmerges and sample tests done). Do not choose a version; the workflow computes it.
+Pick `rc`, `final`, or `patch`. Before a final, the last RC's docs/samples upmerges and sample tests must be done.
 
 ```bash
 gh workflow run prepare-release.yaml --repo radius-project/radius --ref main \
@@ -69,8 +69,6 @@ Open the run, then **Summary > Release pull request**.
 2. Record the **version** and **source commit** from its summary.
 3. Until v0.63.0 final ships, confirm the Deployment Engine commit includes azure-octo/deployment-engine#705 (`e537d7e4b`).
 4. Under **Review deployments**, approve **Approve release reconciliation**.
-
-Do not create tags or dispatch publishers by hand.
 
 ### 6. Check the build and approve publication
 
@@ -110,11 +108,9 @@ gh workflow run publish-bicep-recipes.yaml --repo radius-project/resource-types-
 
 ## Troubleshooting
 
-Never move tags, delete locks, edit an approved plan, or disable verification.
-
 | Symptom                                    | Fix                                                                                                                                                       |
 |--------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| A stage failed or was interrupted          | Fix the cause, then run the resume command from step 7 using the failed summary's version and source commit. Never use the raw product cutoff or a branch tip. |
+| A stage failed or was interrupted          | Fix the cause, then run the resume command from step 7 using the failed summary's version and source commit. |
 | Controller never started after merge       | [Manual-start recovery](./README.md#controller-never-started-after-merge), then run Approve Release.                                                      |
 | Preparation blocked                        | Merge the missing backport or finish the previous release, then rerun step 3 with the same inputs.                                                        |
 | Plan check fails on the `bicep-types-aws` pin | Redo step 2 with the commit named in the error, then rerun step 3.                                                                                     |
@@ -122,5 +118,5 @@ Never move tags, delete locks, edit an approved plan, or disable verification.
 | Dispatch outcome unknown                   | Inspect the publisher run first; do not redispatch. See [lost dispatch recovery](./README.md#lost-dispatch-response).                                     |
 | Upmerge PR closed or conflicting           | [Upmerge recovery](./README.md#closed-or-conflicting-upmerge-pull-requests).                                                                              |
 | Sample tests failed                        | Merge the fix to `samples` `edge`, then resume. See [retrying sample tests](./README.md#retrying-failed-sample-tests).                                    |
-| Attestation or verification failed         | Transient error: resume. Missing or mismatched attestation: investigate; do not bypass.                                                                   |
+| Attestation or verification failed         | Transient error: resume. Missing or mismatched attestation: investigate.                                                                   |
 | Fix needed in already-tagged build code    | [Break-glass recovery](./README.md#break-glass-recovery).                                                                                                 |

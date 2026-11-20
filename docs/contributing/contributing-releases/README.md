@@ -36,45 +36,36 @@ Check the live repository settings and publisher contracts, not just the merged 
 
 Do not declare production readiness from a green snapshot or an earlier pipeline's tag build. Keep the exact workflow run URLs and verification artifacts with the release record.
 
-## Steps
+## How a release works
+
+For the commands and checklist, use the [Release runbook](./release-runbook.md). This section explains what each stage does and why.
 
 ### Release resource type namespaces and recipe packs
 
-Complete this step before starting Radius release preparation so the approved product commit includes the intended resource types.
+Resource type namespaces and recipe packs are versioned independently of Radius and released from `radius-project/resource-types-contrib`. They must be released, and their generated update merged into Radius, before preparation so the approved product commit contains the intended resource types.
 
-1. In `radius-project/resource-types-contrib`, run the [Release Namespace](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-namespace.yaml) workflow from `main` for each namespace consumed by Radius under `resourceTypes` in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Select the namespace and the appropriate semantic version `bump` (`patch`, `minor`, or `major`). Leave `prerelease_label` empty and `dry_run` and `force` disabled. Namespace versions are independent of the Radius version; even for a Radius RC, publish stable namespace releases because prereleases do not notify Radius.
-2. In the same repository, run [Release Recipe Pack](https://github.com/radius-project/resource-types-contrib/actions/workflows/release-recipe-pack.yaml) from `main` for each pack under `recipePacks` in [`deploy/manifest/defaults.yaml`](../../../deploy/manifest/defaults.yaml). Select the pack and appropriate `bump`; leave `prerelease_label` empty and `dry_run` and `force` disabled. Pack versions are independent of Radius. Unchanged packs are skipped, and a pack release fails if a referenced recipe image cannot be pulled. Release the `kubernetes` pack whenever its recipes change: `rad` creates the default recipe pack from the pinned release, so an unreleased change does not reach Radius.
-3. Wait for each namespace and recipe-pack workflow to succeed. Unchanged namespaces and packs do not need new releases. For each published release, confirm that [Notify Radius](https://github.com/radius-project/resource-types-contrib/actions/workflows/notify-radius.yaml) succeeds and triggers Radius's [Update Resource Types](https://github.com/radius-project/radius/actions/workflows/update-resource-types.yaml) workflow.
-4. Review the generated `chore(resource-types-contrib): updates` PR from `bot/update-resource-types` in `radius-project/radius`. Successive notifications refresh the same open PR. Confirm that `deploy/manifest/defaults.yaml` pins the intended stable namespace and recipe-pack releases and that the copied manifests and generated artifacts are included. If the PR changes the `kubernetes` recipe-pack pin, it should also update the compiled pack (`deploy/manifest/recipe-packs/kubernetes/default.json`) unless the new release left the pack's Bicep unchanged. Wait for required checks and approval, then merge the PR into `main` before preparation. If all namespaces and packs are unchanged and Radius already has the intended pins, no new PR is required.
-5. Record the namespace and recipe-pack releases and merged update PR in the Teams release thread. A first RC inherits this update from `main`. For a subsequent RC or a patch with resource-type or recipe-pack changes, label the update `backport release/X.Y` and rebase-merge its generated backport into `release/X.Y` before preparing the release.
+- Radius consumes only stable namespace and recipe-pack releases, even for a Radius RC, because prereleases do not notify Radius.
+- Unchanged namespaces and packs are skipped. A pack release fails if a referenced recipe image cannot be pulled.
+- The `kubernetes` pack must be released whenever its recipes change: `rad` creates the default recipe pack from the pinned release, so an unreleased change never reaches Radius.
+- Successful releases trigger Notify Radius, which opens or refreshes one `chore(resource-types-contrib): updates` PR from `bot/update-resource-types`. It updates the pins in `deploy/manifest/defaults.yaml` and, when the `kubernetes` pack changes, the compiled `deploy/manifest/recipe-packs/kubernetes/default.json`.
+- A first RC inherits the merged update from `main`. A later RC or patch gets it only through a `backport release/X.Y` backport.
 
-Stop if the update is missing or incomplete. Publishing namespaces and recipe packs alone is not enough: their generated update must be merged into the code that Radius will release.
+Publishing releases alone is not enough: the generated update must be merged into the code Radius will release.
 
 ### Pin Radius in bicep-types-aws
 
-`bicep-types-aws` builds the AWS Bicep extension from the Radius schemas at the commit its `radius` submodule pins. Release plan validation fails unless the `radius` submodule at the planned `bicep-types-aws` commit pins the plan's `source.productCommit`. The release controller runs the same check before approval, so nothing is tagged on a mismatch even if the release PR merged without a passing plan check. In that case the merged plan can't change: follow [break-glass recovery](#break-glass-recovery). A `bicep-types-aws` commit from before the submodule was added passes both checks with a notice. Nothing sets the pin automatically yet, so set it by hand:
+`bicep-types-aws` builds the AWS Bicep extension from the Radius schemas at the commit its `radius` submodule pins. Release plan validation fails unless the submodule at the planned `bicep-types-aws` commit pins the plan's `source.productCommit`. The release controller runs the same check before approval, so nothing is tagged on a mismatch even if the release PR merged without a passing plan check. The merged plan then can't change; use [break-glass recovery](#break-glass-recovery). A `bicep-types-aws` commit from before the submodule existed passes both checks with a notice.
 
-1. Find the product commit. For a later RC, a final, or a patch, it's the head of Radius `release/X.Y` after its backports merge, so you can set the pin before preparation. For a first RC, it's the `main` commit that preparation freezes: run Prepare Release, then read `source.productCommit` from the release PR's plan.
-2. In `radius-project/bicep-types-aws`, create `release/X.Y` from `main` if it doesn't exist (`git push origin origin/main:refs/heads/release/X.Y` after the clone below). Then set the `radius` submodule on `release/X.Y` to the product commit through a pull request, and merge it:
-
-   ```bash
-   git clone https://github.com/radius-project/bicep-types-aws.git
-   cd bicep-types-aws
-   git switch -c pin-radius-X.Y origin/release/X.Y
-   git update-index --cacheinfo "160000,<product-commit>,radius"
-   git commit -s -m "chore: pin Radius to <product-commit>"
-   git push origin pin-radius-X.Y
-   gh pr create --repo radius-project/bicep-types-aws --base release/X.Y --fill
-   ```
-
-3. Rerun Prepare Release with the same inputs. Preparation captures `bicep-types-aws` from `release/X.Y`. For a first RC, if Radius `main` moved since the last run, the new plan freezes a newer commit and the check fails again. Repeat these steps with the new product commit.
+Nothing sets the pin automatically yet, so it is set by hand on `bicep-types-aws` `release/X.Y`. The product commit is the head of Radius `release/X.Y` after backports (known before preparation), or for a first RC the `main` commit preparation freezes (known only after the first Prepare Release run). If Radius `main` moves before a first RC's PR merges, the new plan freezes a newer commit and the pin must be updated again.
 
 ### Approve the plan
 
-1. Run [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) from `main` with `release-type`, `channel`, and optional comma-separated `backport-pr-numbers`.
-2. Review the generated draft PR's version, product commit, frozen sibling commits, selected backports, expected outputs, and schema-v2 plan under `.github/release-plans/`. Curate only Highlights and Upgrading in RC or final notes; patch notes are generated completely. Retain the warning that chart-default images are pinned to the full version: pod restarts no longer pick up later patches, and explicit image overrides remain respected.
-3. If the base advances, rerun Prepare Release with the same inputs. A frozen sibling head that advances does not invalidate the plan; rerun only when the later sibling change belongs in the release. It regenerates the plan and generated prose while preserving the allowed curated sections. If preparation reports a pending backport, merge it and rerun; do not omit the fix to bypass validation.
-4. Mark the release PR ready, obtain review, and **squash-merge** it to `main`. For the first RC, the controller creates `release/X.Y`. For an existing channel, review and **rebase-merge** the generated metadata backport to `release/X.Y`; the initial controller run waits without mutation until that merge.
+Prepare Release computes the version, freezes the product commit and sibling-repository commits, collects the selected backports, and opens a draft release PR containing the schema-v2 plan under `.github/release-plans/`, `versions.yaml`, and the release notes.
+
+- New RCs use `-rc.N` starting at `-rc.1`; the legacy `-rcN` form is never mixed with it, because SemVer orders every dotted candidate before every legacy one and `rad upgrade` would treat the move as a downgrade. A final releases the last validated RC's product code.
+- Only Highlights and Upgrading are curated in RC and final notes; patch notes are fully generated. The warning that chart-default images are pinned to the full version stays: pod restarts no longer pick up later patches, and explicit image overrides are still respected.
+- If the base advances, rerunning with the same inputs regenerates the plan while preserving curated sections. A frozen sibling head that advances does not invalidate the plan. A pending backport must be merged, not omitted, to pass validation.
+- The release PR is squash-merged to `main`. For a first RC the controller creates `release/X.Y`. For an existing channel a generated metadata backport is rebase-merged to `release/X.Y`, and the first controller run waits without mutating until then.
 
 New schema-v2 plans record `changelogPolicy: stable-only`. RC preparation changes only the plan, `versions.yaml`, and its release-note file; root `CHANGELOG.md` changes only for finals and patches. Entries within each category follow merge history, newest first. RC.1 and final notes contain the full new-version changes since the stable baseline. Later RC notes contain only changes applied since the previous RC and link its notes; patch notes contain only changes since the previous stable tag in that channel. Both incremental ranges end at the frozen product SHA, never current `main`.
 
