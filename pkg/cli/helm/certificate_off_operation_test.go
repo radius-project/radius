@@ -144,7 +144,7 @@ func TestUCPMutationGuardErrorsAreNotRetried(t *testing.T) {
 			})
 			switch operation {
 			case "pre-Helm APIService":
-				err = trustUCPAPIServerCAs(ctx, "", store.dynamic, testCACertificates(t, next.pem))
+				err = trustUCPAPIServerCAs(ctx, "", store.dynamic, api.GetUID(), testCACertificates(t, next.pem))
 			case "post-Helm APIService":
 				err = settleUCPOffTrust(ctx, "", store.dynamic, testCACertificates(t, next.pem))
 			case "on APIService":

@@ -715,11 +715,11 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 }
 
 // An external issuer and its cert-manager installation remain operator-managed.
-func (i *Impl) ensureSelectedCertManager(ctx context.Context, mode string, options ClusterOptions, kubeContext string, defaults, stored map[string]any, upgrade bool) error {
+func (i *Impl) ensureSelectedCertManager(ctx context.Context, mode string, options ClusterOptions, kubeContext string, defaults, stored, userValues map[string]any, upgrade bool) error {
 	if mode == "issuerRef" {
 		return i.checkInstalledCertManagerReady(ctx, kubeContext, options.Radius.Namespace)
 	}
-	return i.ensureCertManager(ctx, options, kubeContext, defaults, stored, upgrade)
+	return i.ensureCertManager(ctx, options, kubeContext, defaults, stored, userValues, upgrade)
 }
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.

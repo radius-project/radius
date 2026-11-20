@@ -52,6 +52,8 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
+	// ConfirmedLeftovers limits an absent-release retry to the inventory the operator approved.
+	ConfirmedLeftovers []string
 	Certificates       CertificateOptions
 	RadiusInstalled    bool
 	RadiusReleaseChart *chart.Chart
@@ -267,6 +269,13 @@ type Interface interface {
 	// UninstallCertManager uninstalls cert-manager only when rad installed it and no other workload uses it.
 	UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
+	// RadiusUninstallLeftovers lists the objects that UninstallRadius deletes after Helm uninstalls Radius and that
+	// remain, for example because that cleanup failed. It only reads the cluster.
+	RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]string, error)
+
+	// DeleteRadiusUninstallLeftovers deletes the objects that RadiusUninstallLeftovers lists.
+	DeleteRadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error
 
@@ -439,7 +448,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	installDependencies := func(ctx context.Context) error {
-		if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, stored, clusterOptions.Radius.Reinstall); err != nil {
+		if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, stored, radiusValues, clusterOptions.Radius.Reinstall); err != nil {
 			return err
 		}
 
@@ -458,7 +467,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			} else {
 				output.LogInfo("Installing Contour...")
 			}
-			_, err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
+			err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
 			if err != nil {
 				return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 			}
@@ -507,7 +516,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		// When Helm left an installed release unchanged, the authorization mode of radiusValues did not take effect, so
 		// there is no APIService change to wait for or reconcile.
 		if applied {
-			if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, rel, radiusHelmChart.Values, stored); err != nil {
+			if err := i.waitForInstalledUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, rel, radiusHelmChart.Values, stored, radiusValues); err != nil {
 				return err
 			}
 		}
@@ -530,21 +539,27 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "uninstall", nil); err != nil {
 		return err
 	}
-	if err := i.uninstallRadiusRelease(ctx, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+	removed := false
+	if err := i.uninstallRadiusRelease(ctx, clusterOptions.Radius.Namespace, kubeContext, nil, &removed); err != nil {
+		if removed {
+			return errors.Join(err, i.uninstallContour(ctx, clusterOptions, kubeContext))
+		}
 		return err
 	}
-
-	output.LogInfo("Deleting Radius Contour Gateway...")
-	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
-		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
-	}
-
-	// Uninstall Contour
-	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext); err != nil {
+	if err := i.uninstallContour(ctx, clusterOptions, kubeContext); err != nil {
 		return err
 	}
 
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
+}
+
+// uninstallContour deletes the Radius Contour Gateway and uninstalls the Contour release.
+func (i *Impl) uninstallContour(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	output.LogInfo("Deleting Radius Contour Gateway...")
+	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
+	}
+	return i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext)
 }
 
 func (i *Impl) uninstallHelmRelease(componentName, releaseName, namespace, kubeContext string) error {
@@ -680,7 +695,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	return i.withCertificateOffOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, target.mode, func(ctx context.Context) error {
-		if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, stored, true); err != nil {
+		if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, stored, radiusValues, true); err != nil {
 			return err
 		}
 
@@ -706,7 +721,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		if err != nil {
 			return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 		}
-		if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, rel, radiusHelmChart.Values, stored); err != nil {
+		if err := i.waitForInstalledUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, rel, radiusHelmChart.Values, stored, radiusValues); err != nil {
 			return err
 		}
 		output.LogInfo("Radius upgrade complete")

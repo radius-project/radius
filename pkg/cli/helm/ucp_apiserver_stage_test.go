@@ -23,6 +23,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -183,9 +185,9 @@ func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
 	apiService := c.offAPIService(t)
 	switch variant {
 	case "stale annotation, ucp-ca only":
-		apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: ucpAPIServerCASource(RadiusSystemNamespace)})
+		setAnnotation(apiService, injectCAFromSecretAnnotation, ucpAPIServerCASource(RadiusSystemNamespace))
 	case "stale annotation, leftover CA merged":
-		apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: ucpAPIServerCASource(RadiusSystemNamespace)})
+		setAnnotation(apiService, injectCAFromSecretAnnotation, ucpAPIServerCASource(RadiusSystemNamespace))
 		bundle := append(append([]byte{}, c.ucpCA.pem...), c.apiServerCA.pem...)
 		require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(bundle), "spec", "caBundle"))
 		// cert-manager keeps the Secret after the off release removes its Certificate.
@@ -197,7 +199,7 @@ func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
 // cainjectorCASource makes the APIService look like one cert-manager already maintains from radius-apiserver-ca.
 func (c *stageCluster) cainjectorAPIService() *unstructured.Unstructured {
 	apiService := ucpAPIService(base64.StdEncoding.EncodeToString(c.apiServerCA.pem), "True", "Passed")
-	apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: RadiusSystemNamespace + "/" + ucpAPIServerCASecretName})
+	setAnnotation(apiService, injectCAFromSecretAnnotation, ucpAPIServerCASource(RadiusSystemNamespace))
 	return apiService
 }
 
@@ -993,4 +995,66 @@ func manifestTestChart(t *testing.T, manifest string) *chart.Chart {
 func dryRunAction(action clienttesting.Action) bool {
 	create, ok := action.(interface{ GetCreateOptions() metav1.CreateOptions })
 	return ok && slices.Equal(create.GetCreateOptions().DryRun, []string{metav1.DryRunAll})
+}
+
+// trustUCPAPIServerCAs stops without patching when the APIService it checked was replaced.
+func Test_trustUCPAPIServerCAs_ReplacedAPIService(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	ca := newTestCA(t, "ucp-ca")
+	replacement := ucpAPIService("", "", "")
+	replacement.SetUID("replacement")
+	dynamicClient := ucpAPIServiceDynamicClient(replacement).(*dynamicfake.FakeDynamicClient)
+
+	err := trustUCPAPIServerCAs(t.Context(), "test-context", dynamicClient, "checked", []*x509.Certificate{ca.cert})
+	require.ErrorContains(t, err, "was replaced")
+	for _, action := range dynamicClient.Actions() {
+		require.Equal(t, "get", action.GetVerb())
+	}
+}
+
+func Test_UpgradeRadius_ReadsSetFileOnce(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	file := filepath.Join(t.TempDir(), "trust-domain")
+	require.NoError(t, os.WriteFile(file, []byte("cluster.local"), 0600))
+	u := newStageUpgrade(t, map[string]any{}, "upgrade")
+	c := newStageCluster(t, nil, false)
+	c.addOffAPIService(t, offAPIServiceVariants[0])
+	client := u.mock(t, 1, func() { require.NoError(t, os.Remove(file)) })
+	impl := c.impl(client)
+	state, err := impl.CheckRadiusInstall("test-context")
+	require.NoError(t, err)
+	options := NewDefaultClusterOptions()
+	options.Radius.ChartPath = "chart"
+	options.Contour.Disabled = true
+	options.Radius.SetFileArgs = []string{"global.rbac.spiffe.trustDomain=" + file}
+	options.RadiusInstalled = state.RadiusInstalled
+	options.RadiusReleaseValues = state.RadiusValues
+	options.RadiusReleaseChart = state.RadiusChart
+	require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+}
+
+func Test_UpgradeRadius_RefusesForeignUCPAPIService(t *testing.T) {
+	for name, change := range map[string]func(*unstructured.Unstructured){
+		"release":    func(o *unstructured.Unstructured) { setAnnotation(o, helmReleaseNameAnnotation, "other") },
+		"namespace":  func(o *unstructured.Unstructured) { setAnnotation(o, helmReleaseNamespaceAnnotation, "other") },
+		"managed by": func(o *unstructured.Unstructured) { o.SetLabels(nil) },
+		"service": func(o *unstructured.Unstructured) {
+			require.NoError(t, unstructured.SetNestedField(o.Object, "other", "spec", "service", "namespace"))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			u := newStageUpgrade(t, authzOnValues, "upgrade")
+			c := newStageCluster(t, nil, true)
+			c.onUCP(t)
+			impl := c.impl(u.mock(t, 0, func() {}))
+			api, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+			require.NoError(t, err)
+			change(api)
+			err = c.dynamic.Tracker().Update(apiServicesResource, api, "")
+			require.NoError(t, err)
+			err = u.run(t, impl, []string{"global.rbac.enabled=false"})
+			require.ErrorContains(t, err, "Helm has not changed Radius")
+			c.requireNotStaged(t)
+		})
+	}
 }

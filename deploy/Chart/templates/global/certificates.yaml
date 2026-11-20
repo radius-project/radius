@@ -32,6 +32,7 @@ spec:
     secretName: {{ if $lifecycle }}{{ $lifecycle.internal.signingSecret | quote }}{{ else if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-ca{{ end }}
 {{- end }}
 {{- $trustDomain := include "radius.authz.spiffe.trustDomain" . }}
+{{- include "radius.authz.validateSecretNames" . }}
 {{- range $receiver := include "radius.authz.certificates.receivers" . | fromJsonArray }}
 ---
 # Server certificate for internal calls to {{ $receiver }}. Its only SAN is the SPIFFE ID of the

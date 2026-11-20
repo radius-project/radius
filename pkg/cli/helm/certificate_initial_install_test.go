@@ -444,8 +444,14 @@ func TestInitialCertificateUninstallInterruptedCleanup(t *testing.T) {
 			require.True(t, injected)
 			_, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Get(t.Context(), initialCertificateJournal, metav1.GetOptions{})
 			require.NoError(t, err)
-			initialUninstallFixture(t, b, nil)
-			require.NoError(t, b.impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
+			// Helm already removed Radius. Retry only the inventory that the CLI confirmed.
+			options := NewDefaultClusterOptions()
+			options.ConfirmedLeftovers, err = b.impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
+			require.NoError(t, err)
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(nil, driver.ErrReleaseNotFound)
+			b.impl.Helm = client
+			require.NoError(t, b.impl.DeleteRadiusUninstallLeftovers(t.Context(), options, "test-context"))
 			require.NoError(t, fresh().run(t.Context()))
 		})
 	}
@@ -500,7 +506,9 @@ func TestInitialCertificateControllerFixtureRecovery(t *testing.T) {
 			if point == "namespace intent" {
 				off := copyValues(b.values)
 				require.NoError(t, unstructured.SetNestedField(off, false, "global", "rbac", "enabled"))
-				_, err := b.impl.prepareAggregationBootstrap(t.Context(), b.options, b.selected, nil, off, "", nil, nil)
+				target, plan, err := b.impl.prepareCertificateTarget(t.Context(), b.options, b.selected, off, "")
+				require.NoError(t, err)
+				_, err = b.impl.prepareAggregationBootstrap(t.Context(), b.options, b.selected, nil, off, "", plan, target)
 				require.ErrorContains(t, err, "cannot be bypassed")
 			}
 			before, err := b.store.kube.CoreV1().Secrets(b.store.namespace).List(t.Context(), metav1.ListOptions{})

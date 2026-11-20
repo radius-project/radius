@@ -130,14 +130,15 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 		ucpAPIServiceDiagnostics(kubeContext, radiusNamespace, problem == ucpAPIServiceNoCABundle))
 }
 
-// waitForInstalledUCPAPIService waits for the UCP APIService after rad installs or upgrades Radius to applied, the
-// release Helm returned, in the mode in which applied serves UCP's API server. The values of options merged over
-// storedValues and chartDefaults, the values.yaml of the chart rad applied, select that mode, but the manifest of applied
+// waitForInstalledUCPAPIService waits for the UCP APIService in radiusNamespace after rad installs or upgrades Radius to
+// applied, the release Helm returned, in the mode in which applied serves UCP's API server. userValues, the values that
+// prepareRadiusChart read from the command line and Helm applied, merged over storedValues and chartDefaults, the
+// values.yaml of the chart rad applied, select that mode, but the manifest of applied
 // decides between on and off: a chart that accepts those values without implementing authorization, such as v0.62.0,
 // serves UCP from the Secret ucp-cert of authorization off whatever they say, and a manifest with the cert-manager
 // Certificate ucp-cert serves the certificate of authorization on.
-func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, applied *releasev1.Release, chartDefaults, storedValues map[string]any) error {
-	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
+func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, applied *releasev1.Release, chartDefaults, storedValues, userValues map[string]any) error {
+	mode, err := resolveAuthzMode(chartDefaults, storedValues, userValues)
 	if err != nil {
 		return err
 	}
@@ -152,7 +153,7 @@ func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options Cluste
 			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
 		}
 	}
-	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode, declared)
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared)
 }
 
 // servingAuthzMode returns the mode in which a manifest whose ucp-cert has kind, as ucpServingCertificateKind returns
@@ -169,20 +170,16 @@ func servingAuthzMode(kind string, mode authz.Mode) authz.Mode {
 	return mode
 }
 
-// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with the values of
-// options merged over storedValues. render returns the manifest that Helm applies. upgrade is true when Helm upgrades
+// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with userValues, the
+// values prepareRadiusChart read from the command line, merged over storedValues and chartDefaults. render returns the manifest that Helm applies. upgrade is true when Helm upgrades
 // an installed release, as rad upgrade and rad install --reinstall do; otherwise the install is fresh or leaves the
 // installed release unchanged.
-func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, chartDefaults, storedValues map[string]any, upgrade bool, render renderRadiusManifest) error {
-	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
+func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, chartDefaults, storedValues, userValues map[string]any, upgrade bool, render renderRadiusManifest) error {
+	mode, err := resolveAuthzMode(chartDefaults, storedValues, userValues)
 	if err != nil {
 		return err
 	}
-	current, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return err
-	}
-	values := resolveEffectiveChartValues(chartDefaults, storedValues, current)
+	values := resolveEffectiveChartValues(chartDefaults, storedValues, userValues)
 	return i.stageCertificateTarget(ctx, options, kubeContext, helmConf, values, mode, upgrade, render)
 }
 
@@ -302,16 +299,6 @@ func (i *Impl) certManagerDynamicClient(kubeContext string) (dynamic.Interface, 
 		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 	return client, nil
-}
-
-// installedAuthzMode returns the mode that the values of options, merged over storedValues and chartDefaults, the
-// values.yaml of the Radius chart rad applies, select.
-func installedAuthzMode(options ClusterOptions, chartDefaults, storedValues map[string]any) (authz.Mode, error) {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	return resolveAuthzMode(chartDefaults, storedValues, currentValues)
 }
 
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history, in the

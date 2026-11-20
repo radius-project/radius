@@ -79,7 +79,9 @@ as a 24-hour certificate renewed after 16 hours. cert-manager's cainjector
 copies `ca.crt` of the `radius-apiserver-ca` Secret, the self-signed CA
 certificate, into the APIService `caBundle` and follows each renewal of that CA
 without `rad` running; the API server never trusts the `ca.crt` of UCP's
-certificate Secret. On upgrade or rollback from the Helm-generated `ucp-ca`,
+certificate Secret. `rad` writes the current `caBundle` itself, so it verifies
+only the current trust, not that cainjector can update the APIService when the
+CA renews. On upgrade or rollback from the Helm-generated `ucp-ca`,
 `rad` applies `radius-apiserver-ca` and its Issuers with Helm ownership metadata
 before the Helm call, waits for cert-manager to issue the CA, and trusts both
 CAs through the `radius-apiserver-trust` Secret before Helm reissues UCP's
@@ -99,7 +101,8 @@ stopped before Helm, except objects the applied chart still declares.
 `rad` decides which certificate the release serves from the applied
 manifest, not from its values, so an older chart that ignores the
 authorization values is handled as authorization off. `rad uninstall
-kubernetes` deletes the same Secrets after Helm. Each delete applies only
+kubernetes` deletes the same Secrets after Helm; when that cleanup fails, a
+later `rad uninstall kubernetes` finds no Radius release and resumes it. Each delete applies only
 when `rad` owns the object and it is unchanged since `rad` read it; otherwise
 `rad` leaves it and warns. In the
 `selfSigned` certificate mode, the only mode supported today, this CA is

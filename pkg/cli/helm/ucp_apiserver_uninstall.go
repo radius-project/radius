@@ -53,6 +53,81 @@ func (i *Impl) deleteUCPAPIServerLeftovers(ctx context.Context, kubeContext stri
 	return i.deleteUCPOffLeftovers(ctx, kubeContext, store.kube, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets)
 }
 
+// RadiusUninstallLeftovers lists the objects of UCP's API server that deleteUCPAPIServerLeftovers would delete. Helm
+// uninstalls Radius before rad deletes them, so when that cleanup failed, the release is gone but they remain; a later
+// uninstall finds no Radius and resumes the cleanup with DeleteRadiusUninstallLeftovers. It only reads the cluster.
+func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]string, error) {
+	radiusNamespace := clusterOptions.Radius.Namespace
+	if err := i.guardCertificateRotation(ctx, kubeContext, radiusNamespace, "uninstall", nil); err != nil {
+		return nil, err
+	}
+	store, err := i.rotationStoreForContext(kubeContext, radiusNamespace)
+	if err != nil {
+		return nil, err
+	}
+	journal, state, err := readInitialCertificateJournal(ctx, store)
+	if err == nil {
+		b := &initialCertificateInstaller{store: store, state: state}
+		return issuedUninstallInventory(ctx, store, b.bootstrapOrphans(), []string{bootstrapUninstallEntry(journal)})
+	}
+	if !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if err := store.excludeCertificateOffTransition(ctx); err != nil {
+		return nil, err
+	}
+	dynamicClient := store.dynamic
+	leftovers := []string{}
+	for _, staged := range append(append([]stageInventoryObject{}, ucpAPIServerCAStageObjects...), ucpOffCertificateStageObject) {
+		object, err := dynamicClient.Resource(staged.resource).Namespace(radiusNamespace).Get(ctx, staged.name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read %s %s/%s: %w", staged.kind, radiusNamespace, staged.name, err)
+		}
+		if object.GetUID() != "" && object.GetResourceVersion() != "" && object.GetDeletionTimestamp() == nil && stagedForRelease(object, radiusNamespace, radiusReleaseName) {
+			leftovers = append(leftovers, uninstallInventoryEntry(staged.kind, object))
+		}
+	}
+	return issuedUninstallInventory(ctx, store, ucpOffLeftoverSecrets, leftovers)
+}
+
+func issuedUninstallInventory(ctx context.Context, store *rotationStore, entries []ucpOffLeftoverSecret, leftovers []string) ([]string, error) {
+	found, err := ucpOffLeftovers(ctx, store.kube, store.dynamic, store.namespace, entries)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range found {
+		if f.state == ucpOffSecretLeftover {
+			leftovers = append(leftovers, uninstallInventoryEntry("Secret", f.object))
+		}
+	}
+	return leftovers, nil
+}
+
+func uninstallInventoryEntry(kind string, obj metav1.Object) string {
+	return fmt.Sprintf("%s %s/%s (UID %s, version %s)", kind, obj.GetNamespace(), obj.GetName(), obj.GetUID(), obj.GetResourceVersion())
+}
+
+func bootstrapUninstallEntry(journal metav1.Object) string {
+	return uninstallInventoryEntry("ConfigMap", journal) + " and its pinned bootstrap roots, public sources, namespace intent"
+}
+
+// DeleteRadiusUninstallLeftovers resumes the cleanup that UninstallRadius runs after Helm uninstalls Radius, for a
+// cluster where the Radius release is already gone. Like UninstallRadius, it deletes only what rad or cert-manager
+// wrote for the release.
+func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if len(clusterOptions.ConfirmedLeftovers) == 0 {
+		return fmt.Errorf("uninstall cleanup requires confirmed inventory")
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "uninstall", nil); err != nil {
+		return err
+	}
+	var removed bool
+	return i.uninstallRadiusRelease(ctx, clusterOptions.Radius.Namespace, kubeContext, clusterOptions.ConfirmedLeftovers, &removed)
+}
+
 // deleteUnadoptedUCPAPIServerStage deletes, after Helm uninstalls Radius or applies a release, each object of ucpAPIServerCAStageObjects
 // that rad staged for release releaseName but Helm never adopted, because the command stopped before the Helm upgrade.
 // Helm deletes the objects it adopted itself, so any that remain with the release's Helm ownership metadata were

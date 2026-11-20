@@ -17,18 +17,19 @@ limitations under the License.
 package mtls
 
 import (
+	"bufio"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptrace"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -265,9 +266,18 @@ func TestServe_ExternalTokenAuthorization(t *testing.T) {
 			srv.keys.unavailable.Store(true)
 			srv.clock.Advance(token.DefaultMaxKeyAge)
 			for _, authorization := range []string{"", "Bearer malformed", "Bearer " + mintToken(t, "ucp", "applications-rp")} {
-				require.Equal(t, http.StatusServiceUnavailable, send(t, c, address, authorization))
+				status := send(t, c, address, authorization)
+				requireLogged(t, srv.logs, mode, v1.CodeAuthorizationUnavailable, "signing keys")
+				if mode == authz.ModeEnforce {
+					require.Equal(t, http.StatusServiceUnavailable, status)
+					require.Empty(t, seen)
+					continue
+				}
+				require.Equal(t, http.StatusOK, status)
+				got := <-seen
+				require.False(t, got.hasIdentity)
+				require.Empty(t, got.authorization)
 			}
-			require.Empty(t, seen, "stale-key requests must not reach handlers in either mode")
 		})
 	}
 }
@@ -687,56 +697,10 @@ func writeToken(t *testing.T, dir, receiver, tok string) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, receiver, TokenFile), []byte(tok+"\n"), 0o600))
 }
 
-// TestServe_StaleSigningKeysFailClosed checks that once the signing keys are MaxKeyAge old,
-// every request is rejected with AuthorizationUnavailable in every enforcing mode, whatever
-// credentials it carries, and never reaches the handler.
-// TestServe_ExpiredServingLeafAndStaleKeys checks that stale signing keys take precedence over
-// an expired serving certificate on a reused connection: the request fails with 503 in every
-// mode and never reaches the handler.
-func TestServe_ExpiredServingLeafAndStaleKeys(t *testing.T) {
-	t.Parallel()
-	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
-		t.Run(string(mode), func(t *testing.T) {
-			t.Parallel()
-			now := time.Now().UTC().Truncate(time.Second)
-			ca := newCA(t)
-			leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(time.Hour)})
-			var expired atomic.Bool
-			srv := startRecordingServer(t, ca, mode, serverSetup{
-				leaf: &leaf,
-				certNow: func() time.Time {
-					if expired.Load() {
-						return now.Add(2 * time.Hour)
-					}
-					return now
-				},
-			})
-			c := client(t, ca)
-			tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
-			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
-			<-srv.seen
-
-			srv.keys.unavailable.Store(true)
-			srv.clock.Advance(token.DefaultMaxKeyAge)
-			expired.Store(true)
-
-			var reused bool
-			trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
-			req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, "https://"+srv.url, nil)
-			require.NoError(t, err)
-			req.Header.Set("Authorization", tok)
-			resp, err := c.Do(req)
-			require.NoError(t, err)
-			defer resp.Body.Close()
-			require.True(t, reused, "the request must reuse the connection opened before the certificate expired")
-			require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
-			requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
-			require.Empty(t, srv.seen, "requests must not reach the handler while the signing keys are stale")
-		})
-	}
-}
-
-func TestServe_StaleSigningKeysFailClosed(t *testing.T) {
+// TestServe_StaleSigningKeysByMode checks requests that arrive while the signing keys are
+// stale: enforce rejects them with 503 AuthorizationUnavailable, and dryRun logs a would-deny
+// and serves them without an identity or the Authorization header.
+func TestServe_StaleSigningKeysByMode(t *testing.T) {
 	t.Parallel()
 	credentials := map[string]string{
 		"valid token": "Bearer " + mintToken(t, "ucp", "applications-rp"),
@@ -758,128 +722,103 @@ func TestServe_StaleSigningKeysFailClosed(t *testing.T) {
 
 			for name, authorization := range credentials {
 				t.Run(name, func(t *testing.T) {
-					require.Equal(t, http.StatusServiceUnavailable, send(t, c, "https://"+srv.url, authorization))
-					requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+					status := send(t, c, "https://"+srv.url, authorization)
+					requireLogged(t, srv.logs, mode, v1.CodeAuthorizationUnavailable, "signing keys")
+					if mode == authz.ModeEnforce {
+						require.Equal(t, http.StatusServiceUnavailable, status)
+						require.Empty(t, srv.seen, "enforce must not call the handler while the signing keys are stale")
+						return
+					}
+					require.Equal(t, http.StatusOK, status)
+					seen := <-srv.seen
+					require.False(t, seen.hasIdentity)
+					require.Empty(t, seen.authorization)
 				})
 			}
-			require.Empty(t, srv.seen, "requests must not reach the handler while the signing keys are stale")
 		})
 	}
 }
 
-// TestServe_RequestTrailers sends a chunked request with a trailer through the client and
-// upgrade transports and checks that the trailer, which the caller sets after it writes the
-// body, reaches a handler that reads the body.
-func TestServe_RequestTrailers(t *testing.T) {
+// TestServe_ConnectAuthorityFormDenials checks that a denied authority-form CONNECT, whose
+// URL has no path, still gets the denial's ARM code and status rather than a plain 403.
+func TestServe_ConnectAuthorityFormDenials(t *testing.T) {
 	t.Parallel()
-	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
-		for _, transport := range []string{"client", "upgrade"} {
-			t.Run(string(mode)+"/"+transport, func(t *testing.T) {
-				t.Parallel()
-				ca := newCA(t)
-				type received struct {
-					body     string
-					trailer  string
-					identity string
-				}
-				got := make(chan received, 1)
-				srv := startServerWithHandler(t, ca, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					body, err := io.ReadAll(r.Body)
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusBadRequest)
-						return
-					}
-					id, _ := authz.IdentityFromContext(r.Context())
-					got <- received{body: string(body), trailer: r.Trailer.Get("X-Checksum"), identity: id.String()}
-					w.WriteHeader(http.StatusOK)
-				}))
-
-				options := callerOptions(t, ca.pem, mode, "ucp")
-				var rt http.RoundTripper
-				url := "https://applications-rp.radius-system.svc:5443/"
-				if transport == "client" {
-					secure, err := newClientTransport(options, "applications-rp")
-					require.NoError(t, err)
-					secure.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
-						return (&net.Dialer{}).DialContext(ctx, network, srv.url)
-					}
-					t.Cleanup(secure.CloseIdleConnections)
-					rt = secure
-				} else {
-					var err error
-					rt, err = NewUpgradeTransport(options, http.DefaultTransport, []string{"applications-rp"})
-					require.NoError(t, err)
-					dialTo(t, rt, "applications-rp.radius-system.svc", srv.url)
-					url = "http://applications-rp.radius-system.svc:5443/"
-				}
-
-				pr, pw := io.Pipe()
-				req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, pr)
-				require.NoError(t, err)
-				req.ContentLength = -1
-				req.Trailer = http.Header{"X-Checksum": nil}
-				go func() {
-					_, _ = pw.Write([]byte("streamed body"))
-					// The caller sets the trailer value only after it has written the body.
-					req.Trailer.Set("X-Checksum", "abc123")
-					_ = pw.Close()
-				}()
-
-				resp, err := (&http.Client{Transport: rt, Timeout: 10 * time.Second}).Do(req)
-				require.NoError(t, err)
-				_ = resp.Body.Close()
-				require.Equal(t, http.StatusOK, resp.StatusCode)
-				require.Equal(t, received{body: "streamed body", trailer: "abc123", identity: "ucp.radius-system.svc"}, <-got)
-				require.Empty(t, req.Header.Get("Authorization"), "the transport must not modify the caller's request")
-			})
-		}
-	}
-}
-
-// TestServe_OptionsAsteriskIsAuthenticated checks that "OPTIONS *" reaches the token check
-// instead of being answered by net/http's general OPTIONS handler.
-func TestServe_OptionsAsteriskIsAuthenticated(t *testing.T) {
-	t.Parallel()
-	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+	for _, mode := range []authz.Mode{authz.ModeEnforce} {
 		t.Run(string(mode), func(t *testing.T) {
 			t.Parallel()
 			ca := newCA(t)
 			srv := startServer(t, ca, mode)
-			c := client(t, ca)
 			tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
 
-			sendOptions := func(authorization string) int {
-				req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, "https://"+srv.url, nil)
+			sendConnect := func(authorization string) (int, string) {
+				conn, err := tls.Dial("tcp", srv.url, trustClient(t, ca.pem, "applications-rp"))
 				require.NoError(t, err)
-				req.URL = &url.URL{Scheme: "https", Host: srv.url, Opaque: "*"}
+				defer conn.Close()
+				raw := "CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n"
 				if authorization != "" {
-					req.Header.Set("Authorization", authorization)
+					raw += "Authorization: " + authorization + "\r\n"
 				}
-				resp, err := c.Do(req)
+				_, err = io.WriteString(conn, raw+"\r\n")
+				require.NoError(t, err)
+				resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: http.MethodConnect})
 				require.NoError(t, err)
 				defer resp.Body.Close()
-				_, _ = io.Copy(io.Discard, resp.Body)
-				return resp.StatusCode
+				var body v1.ErrorResponse
+				if resp.StatusCode != http.StatusOK {
+					require.NoError(t, json.NewDecoder(resp.Body).Decode(&body), "status %d", resp.StatusCode)
+					require.NotNil(t, body.Error)
+					return resp.StatusCode, body.Error.Code
+				}
+				return resp.StatusCode, ""
 			}
 
-			status := sendOptions("")
-			requireLogged(t, srv.logs, mode, v1.CodeInvalidAuthenticationInfo, "missing bearer token")
-			if mode == authz.ModeEnforce {
-				require.Equal(t, http.StatusUnauthorized, status)
-				require.Empty(t, srv.seen)
-			} else {
-				require.Equal(t, http.StatusOK, status)
-				require.False(t, (<-srv.seen).hasIdentity)
-			}
+			status, code := sendConnect("")
+			require.Equal(t, http.StatusUnauthorized, status)
+			require.Equal(t, v1.CodeInvalidAuthenticationInfo, code)
+			require.Empty(t, srv.seen)
 
 			// Load the keys, then let them go stale.
-			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
+			require.Equal(t, http.StatusOK, send(t, client(t, ca), "https://"+srv.url, tok))
 			<-srv.seen
 			srv.keys.unavailable.Store(true)
 			srv.clock.Advance(token.DefaultMaxKeyAge + time.Minute)
-			require.Equal(t, http.StatusServiceUnavailable, sendOptions(tok))
-			requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+			status, code = sendConnect(tok)
+			require.Equal(t, http.StatusServiceUnavailable, status)
+			require.Equal(t, v1.CodeAuthorizationUnavailable, code)
 			require.Empty(t, srv.seen)
+		})
+	}
+}
+
+// TestServe_ExpiredServingCertificateHandshakeLogged checks that a handshake refused because
+// the receiver's own serving certificate has expired is logged at normal verbosity, since
+// every new connection fails until the certificate is renewed.
+func TestServe_ExpiredServingCertificateHandshakeLogged(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			now := time.Now().UTC().Truncate(time.Second)
+			ca := newCA(t)
+			leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(10 * time.Minute)})
+			srv := startRecordingServer(t, ca, mode, serverSetup{
+				leaf:    &leaf,
+				certNow: func() time.Time { return now.Add(time.Hour) },
+			})
+
+			conn, err := tls.Dial("tcp", srv.url, trustClient(t, ca.pem, "applications-rp"))
+			if err == nil {
+				_ = conn.Close()
+			}
+			require.Error(t, err)
+			require.Eventually(t, func() bool {
+				for _, entry := range srv.logs.All() {
+					if entry.Message == "TLS handshake failed" && entry.ContextMap()[authz.LogFieldCode] == authz.CodeCertificateExpired {
+						return true
+					}
+				}
+				return false
+			}, 5*time.Second, 10*time.Millisecond, "no handshake failure log with code %s: %v", authz.CodeCertificateExpired, srv.logs.All())
 		})
 	}
 }

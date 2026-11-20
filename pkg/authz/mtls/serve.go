@@ -84,9 +84,9 @@ type Receiver struct {
 // missing or invalid tokens, callers that are not in receiver.AllowedCallers, and requests
 // received while the server's loaded certificate is expired are logged as would-deny, and
 // the request is still served. A request served over plain HTTP or with an expired server
-// certificate never carries the caller's identity, even if its token is valid. While the
-// signing keys are stale, every request is rejected with AuthorizationUnavailable, as in
-// enforce mode.
+// certificate never carries the caller's identity, even if its token is valid. Requests
+// that cannot be checked because the signing keys are stale are logged as would-deny with
+// AuthorizationUnavailable and served without an identity.
 //
 // With the Radius provider in enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
 // A missing or invalid token gets InvalidAuthenticationInfo, a token that cannot be checked
@@ -263,11 +263,11 @@ type server struct {
 // one of the allowed components. It removes the Authorization header before calling next, so
 // the caller's token is never forwarded, for example when UCP proxies a request.
 //
-// The caller's identity is attached only to requests that arrived over TLS while the
-// receiver's own serving certificate is valid. A connection can outlive that certificate,
+// With Radius TLS, the caller's identity is attached only to requests that arrived over
+// TLS while the receiver's own serving certificate is valid. A connection can outlive that certificate,
 // so its validity is checked on every request, not only at the handshake. Stale signing
-// keys take precedence: such requests are rejected with AuthorizationUnavailable in every
-// mode, whatever the state of the serving certificate.
+// keys take precedence: such requests get AuthorizationUnavailable whatever the state of
+// the serving certificate.
 func (s *server) authorizeCaller(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -292,15 +292,8 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		}
 		ctx = logr.NewContext(ctx, logger)
 
-		// Without fresh signing keys no token can be checked, so every request is rejected
-		// until a refresh succeeds, even in dryRun.
-		mode := s.mode
-		if decision.Code == v1.CodeAuthorizationUnavailable {
-			mode = authz.ModeEnforce
-		}
-
-		// Plain HTTP in dryRun is logged once per connection by the listener. A request that
-		// stale keys reject is not checked further, so it always gets the 503.
+		// Plain HTTP in dryRun is logged once per connection by the listener. A request whose
+		// token cannot be checked because the signing keys are stale is not checked further.
 		trusted := s.source == nil || r.TLS != nil
 		if s.source != nil && trusted && decision.Code != v1.CodeAuthorizationUnavailable {
 			if _, err := s.source.load(); err != nil {
@@ -316,13 +309,11 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 			}
 		}
 
-		if err := authz.Apply(ctx, mode, decision); err != nil {
+		if err := authz.Apply(ctx, s.mode, decision); err != nil {
 			writeDenied(ctx, w, r, err)
 			return
 		}
 
-		// A shallow copy shares r.Trailer, which the server fills in only after the handler
-		// reads the body; Clone would copy it before then. Only the header map is replaced.
 		r = r.WithContext(r.Context())
 		r.Header = r.Header.Clone()
 		r.Header.Del("Authorization")
@@ -336,10 +327,24 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 func writeDenied(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 	var denied *authz.DeniedError
 	if errors.As(err, &denied) {
-		if resp, rerr := denied.Response(); rerr == nil {
-			if aerr := resp.Apply(ctx, w, r); aerr == nil {
-				return
+		resp, rerr := denied.Response()
+		if rerr != nil {
+			// The target is blank, for example in an authority-form CONNECT, so send the
+			// denial's code and status with a message that names no target.
+			code := denied.Code
+			if code == "" {
+				code = authz.CodeAuthorizationFailed
 			}
+			resp = &authz.DeniedResponse{
+				StatusCode: authz.StatusForCode(code),
+				Body: v1.ErrorResponse{Error: &v1.ErrorDetails{
+					Code:    code,
+					Message: authz.GenericMessageForCode(code),
+				}},
+			}
+		}
+		if aerr := resp.Apply(ctx, w, r); aerr == nil {
+			return
 		}
 	}
 	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
@@ -467,8 +472,15 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 	if err := tlsConn.HandshakeContext(l.ctx); err != nil {
 		_ = tlsConn.Close()
 		// Clients do not present certificates, so a failed handshake is not an authorization
-		// decision.
-		ucplog.FromContextOrDiscard(l.ctx).V(ucplog.LevelDebug).Info("TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), "error", err.Error())
+		// decision. A failure of the receiver's own certificate, such as expiry, refuses every
+		// new connection until it is fixed, so log it at normal verbosity.
+		logger := ucplog.FromContextOrDiscard(l.ctx)
+		var mErr *Error
+		if errors.As(err, &mErr) {
+			logger.Error(err, "TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), authz.LogFieldCode, mErr.Code)
+		} else {
+			logger.V(ucplog.LevelDebug).Info("TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), "error", err.Error())
+		}
 		return nil, err
 	}
 	_ = c.SetDeadline(time.Time{})

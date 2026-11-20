@@ -126,6 +126,10 @@ func (s *Source) clientSnapshot(spiffeID string, verified func([]*x509.Certifica
 	if err != nil {
 		return nil, nil, err
 	}
+	if m.pool == nil {
+		// x509 would fall back to the system roots.
+		return nil, nil, errors.New("no CA bundle: the source holds only a certificate")
+	}
 
 	return verifiedByConnectionCheck(func(cs tls.ConnectionState) error {
 		if err := s.checkMaterial(m); err != nil {

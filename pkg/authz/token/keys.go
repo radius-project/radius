@@ -30,6 +30,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 
 	"k8s.io/client-go/rest"
@@ -124,6 +125,11 @@ func (s *OIDCKeySource) Fetch(ctx context.Context) (KeySet, error) {
 	if err := s.getJSON(ctx, jwksURL, jwkSetMediaType+", application/json", &set); err != nil {
 		return KeySet{}, fmt.Errorf("failed to read signing keys: %w", err)
 	}
+	// A set without a keys member is malformed, not a withdrawal of every key, so the
+	// caller keeps its cached keys. {"keys":[]} withdraws them.
+	if set.Keys == nil {
+		return KeySet{}, errors.New("failed to read signing keys: key set has no keys member")
+	}
 	keys, err := set.publicKeys()
 	if err != nil {
 		return KeySet{}, err
@@ -185,19 +191,22 @@ type jsonWebKeySet struct {
 }
 
 type jsonWebKey struct {
-	Kty string `json:"kty"`
-	Kid string `json:"kid"`
-	Use string `json:"use"`
-	N   string `json:"n"`
-	E   string `json:"e"`
-	Crv string `json:"crv"`
-	X   string `json:"x"`
-	Y   string `json:"y"`
+	Kty    string   `json:"kty"`
+	Kid    string   `json:"kid"`
+	Use    string   `json:"use"`
+	Alg    string   `json:"alg"`
+	KeyOps []string `json:"key_ops"`
+	N      string   `json:"n"`
+	E      string   `json:"e"`
+	Crv    string   `json:"crv"`
+	X      string   `json:"x"`
+	Y      string   `json:"y"`
 }
 
 // publicKeys returns the signing keys in the set by key ID. Keys without an ID, keys
-// for another use, and key types or sizes that Radius does not accept are skipped, so an
-// unsupported key may share an ID with a usable one (RFC 7517 section 4.5). The result may
+// for another use, keys whose alg or key_ops rule out verifying Radius tokens, and key
+// types or sizes that Radius does not accept are skipped, so an unusable key may share an
+// ID with a usable one (RFC 7517 section 4.5). The result may
 // be empty. A set with two usable keys that share an ID is an error.
 func (s jsonWebKeySet) publicKeys() (map[string]crypto.PublicKey, error) {
 	keys := map[string]crypto.PublicKey{}
@@ -205,8 +214,11 @@ func (s jsonWebKeySet) publicKeys() (map[string]crypto.PublicKey, error) {
 		if k.Kid == "" || (k.Use != "" && k.Use != "sig") {
 			continue
 		}
+		if k.KeyOps != nil && !slices.Contains(k.KeyOps, "verify") {
+			continue
+		}
 		key, err := k.publicKey()
-		if err != nil {
+		if err != nil || !k.allowsAlg(key) {
 			continue
 		}
 		if _, ok := keys[k.Kid]; ok {
@@ -217,14 +229,31 @@ func (s jsonWebKeySet) publicKeys() (map[string]crypto.PublicKey, error) {
 	return keys, nil
 }
 
+// allowsAlg reports whether the key's alg, if it has one, is the algorithm Verify uses
+// with key: RS256 for RSA, ES256 for P-256, and ES384 for P-384 (RFC 7517 section 4.4).
+func (k jsonWebKey) allowsAlg(key crypto.PublicKey) bool {
+	if k.Alg == "" {
+		return true
+	}
+	switch pub := key.(type) {
+	case *rsa.PublicKey:
+		return k.Alg == "RS256"
+	case *ecdsa.PublicKey:
+		curve, ok := curveForMethod[k.Alg]
+		return ok && pub.Curve == curve
+	default:
+		return false
+	}
+}
+
 // acceptedKey reports whether Radius accepts key for verifying tokens: an RSA key of at
 // least minRSABits, or an ECDSA P-256 or P-384 key.
 func acceptedKey(key crypto.PublicKey) bool {
 	switch k := key.(type) {
 	case *rsa.PublicKey:
-		return k.N != nil && k.N.BitLen() >= minRSABits
+		return k != nil && k.N != nil && k.N.BitLen() >= minRSABits
 	case *ecdsa.PublicKey:
-		return k.Curve == elliptic.P256() || k.Curve == elliptic.P384()
+		return k != nil && (k.Curve == elliptic.P256() || k.Curve == elliptic.P384())
 	default:
 		return false
 	}
