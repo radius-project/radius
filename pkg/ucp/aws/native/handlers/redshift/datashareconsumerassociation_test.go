@@ -292,3 +292,23 @@ func Test_DataShareConsumerAssociation_DeleteFails(t *testing.T) {
 	require.ErrorContains(t, h.Delete(t.Context(), dataShareRegionName, id), "ThrottlingException")
 	require.Zero(t, f.calls["DisassociateDataShareConsumer"], "a delete that can't read the data share sends nothing")
 }
+
+// dataShareRacingDisassociate removes the association before the delete's call, as another deploy would.
+type dataShareRacingDisassociate struct {
+	*dataShareFake
+}
+
+func (r dataShareRacingDisassociate) DisassociateDataShareConsumer(ctx context.Context, in *redshift.DisassociateDataShareConsumerInput, opts ...func(*redshift.Options)) (*redshift.DisassociateDataShareConsumerOutput, error) {
+	if _, err := r.dataShareFake.DisassociateDataShareConsumer(ctx, in, opts...); err != nil {
+		return nil, err
+	}
+	_, _ = r.dataShareFake.DescribeDataSharesForConsumer(ctx, &redshift.DescribeDataSharesForConsumerInput{})
+	return r.dataShareFake.DisassociateDataShareConsumer(ctx, in, opts...)
+}
+
+func Test_DataShareConsumerAssociation_DeleteRace(t *testing.T) {
+	_, f := newDataShareConsumer()
+	h := NewDataShareConsumerAssociation(dataShareRacingDisassociate{f})
+	id := dataShareAssociated(t, h, dataShareConsumerAssociation)
+	require.ErrorIs(t, h.Delete(t.Context(), dataShareRegionName, id), native.ErrNotFound, "an association another deploy removed first is gone")
+}

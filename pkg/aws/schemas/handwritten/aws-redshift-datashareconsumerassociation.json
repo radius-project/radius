@@ -13,7 +13,7 @@
     },
     "ConsumerArn": {
       "type": "string",
-      "description": "The ARN of the consumer namespace to associate the data share with, or of an AWS Glue Data Catalog.",
+      "description": "The ARN of the consumer account's Redshift namespace, of a provisioned cluster or Redshift Serverless, to associate the data share with.",
       "maxLength": 2048
     },
     "ConsumerRegion": {

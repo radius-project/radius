@@ -251,14 +251,19 @@ func (h *DataShareAuthorization) Update(ctx context.Context, request native.Upda
 }
 
 // Delete removes the authorization. AWS then also removes the consumer's associations with the data share. It first
-// reads the data share, so it never removes the authorization of one Redshift made for itself.
+// reads the data share, so it never removes the authorization of one Redshift made for itself, and sends nothing for
+// an authorization that is already gone.
 func (h *DataShareAuthorization) Delete(ctx context.Context, region string, identifier string) error {
 	arn, consumer, err := h.split(identifier)
 	if err != nil {
 		return err
 	}
-	if _, _, err := h.find(ctx, region, identifier); err != nil {
+	_, a, err := h.find(ctx, region, identifier)
+	if err != nil {
 		return err
+	}
+	if a == nil || !slices.Contains(dataShareAuthorizedStatuses, a.Status) {
+		return native.ErrNotFound
 	}
 	_, err = h.api.DeauthorizeDataShare(ctx, &redshift.DeauthorizeDataShareInput{
 		DataShareArn:       aws.String(arn),

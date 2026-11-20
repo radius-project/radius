@@ -146,11 +146,17 @@ func (h *DataShareConsumerAssociation) parse(properties map[string]any) (string,
 	if err := dataShareCheckBools(dataShareConsumerType, properties, "AssociateEntireAccount", "AllowWrites"); err != nil {
 		return "", dataShareConsumer{}, err
 	}
-	for name, pattern := range map[string]*regexp.Regexp{"ConsumerArn": dataShareNamespaceArn, "ConsumerRegion": dataShareRegion} {
-		if value, ok := properties[name]; ok && value != nil {
-			if s, ok := value.(string); !ok || !pattern.MatchString(s) {
-				want := map[string]string{"ConsumerArn": "the ARN of a Redshift namespace", "ConsumerRegion": "a Region, such as us-west-2"}[name]
-				return "", dataShareConsumer{}, dataShareInvalid(dataShareConsumerType, name, want)
+	for _, check := range []struct {
+		name    string
+		pattern *regexp.Regexp
+		want    string
+	}{
+		{"ConsumerArn", dataShareNamespaceArn, "the ARN of a Redshift namespace"},
+		{"ConsumerRegion", dataShareRegion, "a Region, such as us-west-2"},
+	} {
+		if value, ok := properties[check.name]; ok && value != nil {
+			if s, ok := value.(string); !ok || !check.pattern.MatchString(s) {
+				return "", dataShareConsumer{}, dataShareInvalid(dataShareConsumerType, check.name, check.want)
 			}
 		}
 	}
@@ -369,14 +375,18 @@ func (h *DataShareConsumerAssociation) Update(ctx context.Context, request nativ
 }
 
 // Delete removes the association. It first reads the data share, so it never removes an association with one
-// Redshift made for itself.
+// Redshift made for itself, and sends nothing for an association that is already gone.
 func (h *DataShareConsumerAssociation) Delete(ctx context.Context, region string, identifier string) error {
 	arn, c, err := h.split(identifier)
 	if err != nil {
 		return err
 	}
-	if _, err := h.find(ctx, region, arn, identifier); err != nil {
+	_, _, a, err := h.association(ctx, region, identifier)
+	if err != nil {
 		return err
+	}
+	if a == nil || a.Status != types.DataShareStatusActive {
+		return native.ErrNotFound
 	}
 	input := &redshift.DisassociateDataShareConsumerInput{DataShareArn: aws.String(arn)}
 	switch {
