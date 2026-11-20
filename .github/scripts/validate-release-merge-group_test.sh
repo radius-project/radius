@@ -56,7 +56,8 @@ setup_repo() {
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
     printf 'base\n' >"${REPO}/base.txt"
-    git -C "${REPO}" add base.txt
+    printf '# Changelog\n' > "${REPO}/CHANGELOG.md"
+    git -C "${REPO}" add base.txt CHANGELOG.md
     if [[ "${trusted_validator}" == true ]]; then
         mkdir -p "${REPO}/.github/scripts"
         cp "${SCRIPT}" "${REPO}/.github/scripts/validate-release-merge-group.sh"
@@ -69,7 +70,7 @@ setup_repo() {
     mkdir -p "${REPO}/docs/release-notes" \
         "${REPO}/.github/release-plans"
     printf 'supported: []\n' >"${REPO}/versions.yaml"
-    printf '# Changelog\n' >"${REPO}/CHANGELOG.md"
+    printf '\nLegacy release entry\n' >> "${REPO}/CHANGELOG.md"
     printf '# Release notes\n' \
         >"${REPO}/docs/release-notes/v0.61.0-rc.1.md"
     printf 'schemaVersion: 2\n' \
@@ -161,6 +162,40 @@ test_selects_release_pr_on_advanced_base() {
     fi
     if ! run_validator "${group_sha}" >/dev/null; then
         fail_test "expected selector to identify the release PR on a newer base"
+        return
+    fi
+    ((++PASS))
+}
+
+test_frozen_group_with_extra_changes() {
+    local tamper="${1:-false}"
+
+    git -C "${REPO}" show "${BASE_SHA}:CHANGELOG.md" > "${REPO}/CHANGELOG.md"
+    cat >>"${REPO}/.github/release-plans/v0.61.0-rc.1.yaml" <<'EOF'
+changelogPolicy: stable-only
+version: v0.61.0-rc.1
+channel: "0.61"
+releaseType: rc
+source:
+  productRef: refs/heads/main
+EOF
+    git -C "${REPO}" commit -q -am "chore(release): freeze first RC"
+    RELEASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    jq --arg sha "${RELEASE_SHA}" '.[0].head_sha = $sha |
+        .[0].files -= ["CHANGELOG.md"]' \
+        "${REPO}/candidates.json" >"${REPO}/candidates-next.json"
+    mv "${REPO}/candidates-next.json" "${REPO}/candidates.json"
+    create_squash_group true true
+    if [[ "${tamper}" == true ]]; then
+        printf 'unapproved metadata\n' >>"${REPO}/CHANGELOG.md"
+        git -C "${REPO}" commit -q -am "chore: queued metadata conflict"
+        GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+        if run_validator "${GROUP_SHA}" >/dev/null 2>&1; then
+            fail_test "frozen queue must still reject conflicting release metadata"
+            return
+        fi
+    elif ! run_validator "${GROUP_SHA}" >/dev/null; then
+        fail_test "frozen queue must permit unrelated product predecessors"
         return
     fi
     ((++PASS))
@@ -339,6 +374,10 @@ main() {
     test_rejects_group_with_extra_changes
     setup_repo
     test_selects_release_pr_on_advanced_base
+    setup_repo
+    test_frozen_group_with_extra_changes
+    setup_repo
+    test_frozen_group_with_extra_changes true
     for file in CHANGELOG.md other.txt docs/release-notes/README.md \
         docs/release-notes/template.md docs/release-notes/template_patch.md; do
         setup_repo true
@@ -353,8 +392,8 @@ main() {
     test_workflow_bootstrap other.txt false true
     for with_changelog in false true; do
         for file in versions.yaml docs/release-notes/v0.61.0.md \
-            docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
-            .github/release-plans/v0.61.0-rc.1.yaml; do
+        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
+        .github/release-plans/v0.61.0-rc.1.yaml; do
             setup_repo true
             test_accepts_group_without_release_pr "${file}" true "${with_changelog}"
             test_workflow_bootstrap "${file}" true "${with_changelog}"

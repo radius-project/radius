@@ -163,7 +163,8 @@ test-release-plan: install-git-cliff ## Tests release plan schema, policy, sourc
 	@bash ./.github/scripts/validate-release-merge-group_test.sh
 
 .PHONY: test-release-controller
-test-release-controller: ## Tests release controller input binding and stage ordering
+test-release-controller: install-git-cliff test-monitor-remote-workflow ## Tests release controller input binding and stage ordering
+	@PATH="$(or $(GIT_CLIFF_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" node --test ./.github/scripts/reconcile-frozen-release-source_test.mjs
 	@node --test ./.github/scripts/dispatch-release-controller_test.mjs
 	@node --test ./.github/scripts/reconcile-release-controller-lock_test.mjs
 	@node --test ./.github/scripts/resolve-release-controller_test.mjs

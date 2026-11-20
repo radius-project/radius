@@ -281,6 +281,10 @@ create_existing_channel_release() {
     write_plan "${plan}" "${version}" "${release_type}" 0.61 \
         refs/remotes/origin/release/0.61 "${product_commit}" \
         "generated release backport commit on release/0.61" release/0.61
+    yq -i '.changelogPolicy = "stable-only"' "${plan}"
+    if [[ "${release_type}" == rc ]]; then
+        git -C "${REPO}" show HEAD:CHANGELOG.md > "${REPO}/CHANGELOG.md"
+    fi
     git -C "${REPO}" add .
     git -C "${REPO}" commit --quiet \
         -m "chore(release): prepare ${version}"
@@ -448,7 +452,7 @@ test_rejects_divergent_release_branch() {
 test_existing_channel_release_type() {
     local version="$1"
     local release_type="$2"
-    local source backport plan output
+    local source backport plan output product advanced wrong_parent
     local expected_source_tag="0.61"
 
     cleanup
@@ -472,6 +476,21 @@ test_existing_channel_release_type() {
         fail_test "${release_type} did not resolve its existing-channel plan"
         return
     fi
+    pass_test
+
+    product="$(git -C "${REPO}" rev-parse "${backport}^")"
+    advanced="$(git -C "${REPO}" commit-tree "${product}^{tree}" \
+        -p "${product}" -m "fix: advance before metadata backport")"
+    wrong_parent="$(git -C "${REPO}" commit-tree "${backport}^{tree}" \
+        -p "${advanced}" -m "chore(release): prepare ${version}" \
+        -m "(cherry picked from commit ${source})")"
+    git -C "${REPO}" push --quiet --force origin \
+        "${wrong_parent}:refs/heads/release/0.61"
+    git -C "${REPO}" fetch --quiet origin \
+        '+refs/heads/release/0.61:refs/remotes/origin/release/0.61'
+    run_validator "${plan}" "${version}" "${source}" "${wrong_parent}" \
+        release-backport "${TEST_ROOT}/advanced-base-output"
+    assert_failure_contains "advanced beyond approved commit" || return
     pass_test
 }
 
@@ -506,14 +525,19 @@ test_stable_only_rc_contract() {
     write_initial_files
     base="$(git -C "${REPO}" rev-parse HEAD)"
     write_release_files v0.61.0-rc.1 0.61
-    if [[ "${variant}" != changed-changelog ]]; then
+    if [[ "${variant}" != *changed-changelog ]]; then
         git -C "${REPO}" show HEAD:CHANGELOG.md > "${REPO}/CHANGELOG.md"
     fi
     plan="${REPO}/.github/release-plans/v0.61.0-rc.1.yaml"
     write_plan "${plan}" v0.61.0-rc.1 rc 0.61 HEAD "${base}" \
         "release PR squash commit on main"
-    if [[ "${variant}" != legacy ]]; then
+    if [[ "${variant}" != *legacy ]]; then
         yq -i '.changelogPolicy = "stable-only"' "${plan}"
+    fi
+    if [[ "${variant}" == frozen-* ]]; then
+        yq -i '.source.productRef = "refs/heads/main" |
+            .source.releaseCommitResolution =
+                "frozen product commit plus approved release metadata"' "${plan}"
     fi
     if [[ "${variant}" == unknown ]]; then
         yq -i '.changelogPolicy = "unknown"' "${plan}"
@@ -526,6 +550,7 @@ test_stable_only_rc_contract() {
     case "${variant}" in
         valid) assert_success || return ;;
         unknown) assert_failure_contains "unsupported changelog policy" || return ;;
+        frozen-legacy) assert_failure_contains "require the stable-only changelog policy" || return ;;
         *) assert_failure_contains "changes files outside the plan contract" || return ;;
     esac
     pass_test
@@ -564,6 +589,8 @@ main() {
     test_stable_only_rc_contract changed-changelog
     test_stable_only_rc_contract legacy
     test_stable_only_rc_contract unknown
+    test_stable_only_rc_contract frozen-legacy
+    test_stable_only_rc_contract frozen-changed-changelog
 
     if ((FAIL > 0)); then
         echo "Controller plan tests failed: ${PASS} passed, ${FAIL} failed"

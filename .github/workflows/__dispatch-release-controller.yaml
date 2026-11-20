@@ -30,7 +30,7 @@ on:
         required: true
         type: string
       source-commit:
-        description: Exact commit that the Radius tag must reference
+        description: Release commit, or first-RC metadata PR commit before resolution
         required: true
         type: string
 

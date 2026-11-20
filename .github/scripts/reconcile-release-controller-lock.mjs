@@ -334,4 +334,4 @@ export default async function reconcileReleaseControllerLock({
   core.setOutput("digest", lock.deploymentEngine.digest);
 }
 
-export { canonicalLock };
+export { canonicalLock, errorStatus, getRef };
