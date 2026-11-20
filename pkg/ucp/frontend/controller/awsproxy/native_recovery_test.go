@@ -222,6 +222,30 @@ func Test_Native_FindLostCreate_Put(t *testing.T) {
 		})
 	}
 
+	t.Run("search: Find fails and releasing the reservation fails", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.assigned.Opts.Recovery = native.RecoverBySearch
+		h.loseCreate(h.assigned, assignedPath, assigned)
+		h.assigned.Errors["Find"] = nativefake.ServerError("Throttling", "slow down")
+		db := h.db
+		h.failSavesAfter(1, errors.New("database is down"))
+		require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, assigned).status)
+		require.Equal(t, v1.ProvisioningStateProvisioning, h.record(assignedPath).ProvisioningState(), "the reservation stays")
+		h.db = db
+		delete(h.assigned.Errors, "Find")
+		h.assigned.Calls()
+
+		require.Equal(t, http.StatusConflict, h.put(assignedPath, assigned).status, "the reservation holds until it is stale")
+		require.Equal(t, http.StatusConflict, h.delete(assignedPath, testOwner).status)
+		require.Empty(t, h.assigned.Calls())
+
+		defer func() { records.Now = time.Now }()
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		h.deploy(assignedPath, assigned)
+		require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
+		require.Equal(t, []string{"id-1"}, h.cc.List(assignedType))
+	})
+
 	t.Run("search: Find finds the resource", func(t *testing.T) {
 		h := newNativeHarness(t)
 		h.assigned.Opts.Recovery = native.RecoverBySearch
