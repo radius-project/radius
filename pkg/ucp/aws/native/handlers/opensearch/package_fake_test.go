@@ -181,8 +181,8 @@ type pkgFake struct {
 	failAssociate, failDissociate bool
 
 	// echoOptional makes the fake return the optional fields a template sets that no example shows AWS returning:
-	// PackageDescription, PackageEncryptionOptions, PackageVendingOptions, PrerequisitePackageIDList, and
-	// AssociationConfiguration. By default it leaves them out.
+	// PackageEncryptionOptions, PackageVendingOptions, PrerequisitePackageIDList, and AssociationConfiguration. By
+	// default it leaves them out.
 	echoOptional bool
 
 	// calls counts the calls that reached the fake, by method.
@@ -290,7 +290,9 @@ func (f *pkgFake) details(id string, p map[string]any) *types.PackageDetails {
 		EngineVersion: str(p, "EngineVersion"),
 		PackageOwner:  str(p, "PackageOwner"),
 		PackageStatus: f.statusOf(id),
-		LastUpdatedAt: aws.Time(f.updated[id]),
+		// Another widely used AWS client reads PackageDescription, so AWS returns it.
+		PackageDescription: str(p, "PackageDescription"),
+		LastUpdatedAt:      aws.Time(f.updated[id]),
 	}
 	if v := f.versions[id]; v > 0 {
 		d.AvailablePackageVersion = aws.String(fmt.Sprintf("v%d", v))
@@ -299,7 +301,6 @@ func (f *pkgFake) details(id string, p map[string]any) *types.PackageDetails {
 		// The API reference marks these optional, and no example shows them, so the fake leaves them out.
 		return f.withErrors(id, d)
 	}
-	d.PackageDescription = str(p, "PackageDescription")
 	if o, ok := p["PackageEncryptionOptions"].(map[string]any); ok {
 		enabled, _ := o["EncryptionEnabled"].(bool)
 		d.PackageEncryptionOptions = &types.PackageEncryptionOptions{EncryptionEnabled: aws.Bool(enabled), KmsKeyIdentifier: str(o, "KmsKeyIdentifier")}
@@ -753,6 +754,7 @@ func (f *pkgFake) assocDetails(key string) types.DomainPackageDetails {
 		DomainPackageStatus: f.assocStatus(key),
 	}
 	if list, ok := p["PrerequisitePackageIDList"].([]any); ok && f.echoOptional {
+		d.PrerequisitePackageIDList = []string{}
 		for _, v := range list {
 			d.PrerequisitePackageIDList = append(d.PrerequisitePackageIDList, fmt.Sprint(v))
 		}

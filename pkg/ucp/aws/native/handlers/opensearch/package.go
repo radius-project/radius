@@ -286,11 +286,11 @@ func (h *Package) describe(ctx context.Context, region string, identifier string
 	return nil, native.ErrNotFound
 }
 
-// packageProperties returns the package's properties. PackageSource, PackageConfiguration, PackageDescription,
-// PackageEncryptionOptions, and PackageVendingOptions are write-only, because AWS doesn't return them as sent, or the
-// API reference doesn't promise it returns them, so UCP compares them by fingerprint.
+// packageProperties returns the package's properties. PackageSource, PackageConfiguration, PackageEncryptionOptions,
+// and PackageVendingOptions are write-only, because AWS doesn't return them as sent, or the API reference doesn't
+// promise it returns them, so UCP compares them by fingerprint.
 func packageProperties(p *types.PackageDetails) (map[string]any, error) {
-	return awsapi.EncodeObject(map[string]any{
+	properties, err := awsapi.EncodeObject(map[string]any{
 		"PackageID":                p.PackageID,
 		"PackageName":              p.PackageName,
 		"PackageType":              string(p.PackageType),
@@ -302,6 +302,13 @@ func packageProperties(p *types.PackageDetails) (map[string]any, error) {
 		"PackageStatus":            string(p.PackageStatus),
 		"AvailablePackageVersion":  p.AvailablePackageVersion,
 	})
+	if err != nil {
+		return nil, err
+	}
+	// A template can set an empty description, and AWS may return it empty or not at all, so the description is
+	// always read, as "" when there is none. Otherwise every deploy of such a template would import the file again.
+	properties["PackageDescription"] = aws.ToString(p.PackageDescription)
+	return properties, nil
 }
 
 // Read returns the package's properties.
@@ -332,9 +339,8 @@ func (h *Package) Create(ctx context.Context, request native.CreateRequest) (str
 // Find returns the package a lost create made: the one the current account owns with the template's name, type, and
 // engine version, when the template sets one. AWS keeps names unique, except that the docs have a plugin keep its
 // name across engine versions. DescribePackages also returns AWS's own packages and packages other accounts share, so
-// Find leaves out every package whose PackageOwner isn't the account. A package whose other create-only values differ
-// from the template's is another package, so Find fails rather than take it as the template's. request.Properties
-// have no write-only values, so Find reads none.
+// Find leaves out every package whose PackageOwner isn't the account. request.Properties have no write-only values,
+// so Find can't compare PackageVendingOptions or PackageConfiguration.
 func (h *Package) Find(ctx context.Context, request native.CreateRequest) (string, error) {
 	name := awsapi.String(request.Properties, "PackageName")
 	if !packageNamePattern.MatchString(name) {
@@ -375,10 +381,6 @@ func (h *Package) Find(ctx context.Context, request native.CreateRequest) (strin
 	case 0:
 		return "", nil
 	case 1:
-		// UCP keeps an identifier Find returns with an error, so a package that isn't the template's is never returned.
-		if err := sameVending(request.Properties, &matches[0]); err != nil {
-			return "", err
-		}
 		return aws.ToString(matches[0].PackageID), nil
 	}
 	ids := []string{}
@@ -386,29 +388,6 @@ func (h *Package) Find(ctx context.Context, request native.CreateRequest) (strin
 		ids = append(ids, aws.ToString(p.PackageID))
 	}
 	return "", awsapi.Ambiguous("OpenSearch Service packages", ids)
-}
-
-// sameVending returns a rejected client failure when the package's vending option, which is create-only, differs
-// from the template's, so a lost create never takes another package as the template's.
-func sameVending(properties map[string]any, p *types.PackageDetails) error {
-	if p.PackageVendingOptions == nil || p.PackageVendingOptions.VendingEnabled == nil {
-		// AWS may not return the option, so a package without it can't be told apart.
-		return nil
-	}
-	want := false
-	if o, ok := properties["PackageVendingOptions"].(map[string]any); ok {
-		want, _ = o["VendingEnabled"].(bool)
-	}
-	got := aws.ToBool(p.PackageVendingOptions.VendingEnabled)
-	if want == got {
-		return nil
-	}
-	return &native.Failure{
-		Message: fmt.Sprintf("%s: AWS has a package named %q (%s) whose VendingEnabled is %t, not the template's %t. Set PackageVendingOptions to match, or use another PackageName",
-			packageType, aws.ToString(p.PackageName), aws.ToString(p.PackageID), got, want),
-		ClientError: true,
-		Outcome:     native.OutcomeRejected,
-	}
 }
 
 // packageBusy returns the conflict of a change AWS can't make now because it is importing or deleting the package,
@@ -427,16 +406,13 @@ func removesPath(request native.UpdateRequest, path string) bool {
 
 // Update imports PackageSource again with the template's description and encryption options, which makes a new
 // package version. UpdatePackage requires PackageSource, so every update sends it. A removed description is sent as
-// an empty one. AWS doesn't say how to remove encryption options, so an update that removes them is rejected. The
+// an empty one. Encryption options are write-only, so UCP doesn't see a template remove them, and AWS keeps them. The
 // update sends the commit message UpdateState chose for it, so an update sent again finds in the package's version
 // history whether an earlier attempt reached AWS, and sends nothing then.
 func (h *Package) Update(ctx context.Context, request native.UpdateRequest) error {
 	in, err := sendable(request.Desired)
 	if err != nil {
 		return err
-	}
-	if removesPath(request, "/PackageEncryptionOptions") {
-		return invalid(packageType, "AWS doesn't say how to remove a package's encryption options. Set PackageEncryptionOptions with EncryptionEnabled false instead")
 	}
 	var before packageVersion
 	if request.State != "" {

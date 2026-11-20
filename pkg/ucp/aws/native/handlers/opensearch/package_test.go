@@ -82,7 +82,7 @@ func Test_Suite_Package(t *testing.T) {
 			return NewPackage(api, api)
 		},
 		IdentifierProperty: "PackageID",
-		WriteOnly:          []string{"PackageSource", "PackageConfiguration", "PackageDescription", "PackageEncryptionOptions", "PackageVendingOptions"},
+		WriteOnly:          []string{"PackageSource", "PackageConfiguration", "PackageEncryptionOptions", "PackageVendingOptions"},
 		Properties:         properties,
 		Changed:            withProps(properties, map[string]any{"PackageDescription": "Synonyms, version 2"}),
 		ChangedWriteOnly:   withProps(properties, map[string]any{"PackageSource": source("synonyms-2.txt")}),
@@ -264,9 +264,9 @@ func Test_Package_FirstLook(t *testing.T) {
 	properties, err := h.Read(t.Context(), pkgRegion, id)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{
-		"PackageID": id, "PackageName": "dictionary", "PackageType": "TXT-DICTIONARY",
+		"PackageID": id, "PackageName": "dictionary", "PackageType": "TXT-DICTIONARY", "PackageDescription": "Synonyms",
 		"PackageOwner": pkgAccount, "PackageStatus": "AVAILABLE", "AvailablePackageVersion": "v1",
-	}, properties, "AWS doesn't return PackageSource, and may not return PackageDescription")
+	}, properties, "PackageSource is write-only, so Read leaves it out")
 }
 
 // Test_Package_ImportFails checks that a package AWS can't copy or validate fails the create with AWS's details, and
@@ -365,8 +365,7 @@ func (u *updateInputs) UpdatePackage(ctx context.Context, in *opensearch.UpdateP
 	return u.pkgFake.UpdatePackage(ctx, in, opts...)
 }
 
-// Test_Package_UpdateEncryption checks that an update changes the encryption options, and that one that removes them
-// is rejected before any AWS call, because AWS doesn't say how.
+// Test_Package_UpdateEncryption checks that an update changes the encryption options.
 func Test_Package_UpdateEncryption(t *testing.T) {
 	h, api := newPackageHandler()
 	api.echoOptional = true
@@ -377,12 +376,6 @@ func Test_Package_UpdateEncryption(t *testing.T) {
 	properties, err := h.Read(t.Context(), pkgRegion, id)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{"EncryptionEnabled": true, "KmsKeyIdentifier": "alias/b"}, properties["PackageEncryptionOptions"])
-
-	calls := api.calls["DescribePackages"]
-	err = h.Update(t.Context(), packageUpdate(t, h, id, dictionaryTemplate()))
-	requirePkgRejectedBefore(t, err, "EncryptionEnabled false")
-	require.Equal(t, calls+1, api.calls["DescribePackages"], "only the read that built the request reached AWS")
-	require.Equal(t, 1, api.calls["UpdatePackage"])
 }
 
 // Test_Package_Busy checks that an update or delete while AWS is still importing the package is a conflict that sends
@@ -444,9 +437,6 @@ func Test_Package_Find(t *testing.T) {
 	found, err = find(map[string]any{"PackageName": "analysis-icu", "PackageType": "ZIP-PLUGIN", "EngineVersion": "OpenSearch_2.15"})
 	require.NoError(t, err)
 	require.Empty(t, found, "a lost create never takes a package another owner has")
-
-	_, err = find(withProps(withoutSource(dictionaryTemplate()), map[string]any{"PackageVendingOptions": map[string]any{"VendingEnabled": true}}))
-	requirePkgRejectedBefore(t, err, "VendingEnabled")
 
 	plugin := map[string]any{"PackageName": "plugin", "PackageType": "ZIP-PLUGIN", "PackageSource": source("plugin.zip")}
 	first := createPackage(t, h, withProps(plugin, map[string]any{"EngineVersion": "OpenSearch_2.15"}))

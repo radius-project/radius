@@ -235,7 +235,7 @@ func keyStoreAccess(c *types.PackageAssociationConfiguration) (bool, string) {
 // may not return either, so only values AWS returns are compared.
 func sameAssociation(id associationID, want *opensearch.AssociatePackageInput, got *types.DomainPackageDetails) error {
 	same := true
-	if len(got.PrerequisitePackageIDList) > 0 {
+	if got.PrerequisitePackageIDList != nil {
 		same = slices.Equal(slices.Sorted(slices.Values(want.PrerequisitePackageIDList)), slices.Sorted(slices.Values(got.PrerequisitePackageIDList)))
 	}
 	if got.AssociationConfiguration != nil && got.AssociationConfiguration.KeyStoreAccessOption != nil {

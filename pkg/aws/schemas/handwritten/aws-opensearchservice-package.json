@@ -51,7 +51,7 @@
     },
     "PackageEncryptionOptions": {
       "type": "object",
-      "description": "How AWS encrypts the package. AWS may not return these options, or may return the key in another form, so they are write-only. AWS doesn't say how to remove them, so a deploy that removes them fails with 400 Bad Request: set EncryptionEnabled to false instead.",
+      "description": "How AWS encrypts the package. AWS may not return these options, or may return the key in another form, so they are write-only, and a deploy that removes them leaves the package's encryption as it is: AWS doesn't say how to remove them, so set EncryptionEnabled to false instead.",
       "properties": {
         "EncryptionEnabled": {
           "type": "boolean",
@@ -108,7 +108,7 @@
     },
     "PackageDescription": {
       "type": "string",
-      "description": "The description of the package. AWS may not return it, so it is write-only.",
+      "description": "The description of the package.",
       "maxLength": 1024
     },
     "PackageConfiguration": {
@@ -166,7 +166,6 @@
   "writeOnlyProperties": [
     "/properties/PackageSource",
     "/properties/PackageConfiguration",
-    "/properties/PackageDescription",
     "/properties/PackageEncryptionOptions",
     "/properties/PackageVendingOptions"
   ],

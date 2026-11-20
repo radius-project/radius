@@ -32,6 +32,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
 // pkgHTTP is an HTTP client that answers each request with the next of its answers: a connection error, or a
@@ -94,17 +95,16 @@ func Test_Package_NoSDKRetry(t *testing.T) {
 	require.Equal(t, 2, c.calls, "the SDK sent the association again")
 }
 
-// Test_Package_FindMismatchKeepsNoID checks that Find returns no identifier with its error when the package it finds
-// has another VendingEnabled, because UCP keeps an identifier Find returns with an error, and a later DELETE would
-// delete that package.
+// Test_Package_FindMismatchKeepsNoID checks that Find, and an association create that finds an association with
+// other values, return no identifier with their error, because UCP keeps an identifier returned with an error, and a
+// later DELETE would delete what it names. An empty prerequisite list AWS returns is a value, not a missing one.
 func Test_Package_FindMismatchKeepsNoID(t *testing.T) {
-	h, api := newPackageHandler()
-	api.echoOptional = true
-	createPackage(t, h, withProps(dictionaryTemplate(), map[string]any{"PackageVendingOptions": map[string]any{"VendingEnabled": false}}))
-	id, err := h.Find(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{
-		"PackageName": "dictionary", "PackageType": "TXT-DICTIONARY", "PackageVendingOptions": map[string]any{"VendingEnabled": true},
-	}})
-	requirePkgRejectedBefore(t, err, "VendingEnabled")
+	h, _ := newPackageHandler()
+	pluginPackage := map[string]any{"PackageName": "plugin", "PackageType": "ZIP-PLUGIN", "PackageSource": source("plugin.zip")}
+	createPackage(t, h, withProps(pluginPackage, map[string]any{"EngineVersion": "OpenSearch_2.15"}))
+	createPackage(t, h, withProps(pluginPackage, map[string]any{"EngineVersion": "OpenSearch_2.17"}))
+	id, err := h.Find(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{"PackageName": "plugin", "PackageType": "ZIP-PLUGIN"}})
+	require.ErrorContains(t, err, "match the interrupted create")
 	require.Empty(t, id)
 
 	a, aapi := newAssociationHandler()
@@ -112,8 +112,14 @@ func Test_Package_FindMismatchKeepsNoID(t *testing.T) {
 	createAssociation(t, a, pluginTemplate)
 	createAssociation(t, a, licenseTemplate)
 	id, err = a.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{"DomainName": "logs", "PackageID": license}})
-	requirePkgRejectedBefore(t, err, "PrerequisitePackageIDList")
+	requirePkgRejectedBefore(t, err, "other PrerequisitePackageIDList")
 	require.Empty(t, id)
+
+	createAssociation(t, a, map[string]any{"DomainName": "logs", "PackageID": "F111111111", "PrerequisitePackageIDList": []any{}})
+	_, err = a.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{
+		"DomainName": "logs", "PackageID": "F111111111", "PrerequisitePackageIDList": []any{plugin},
+	}})
+	requirePkgRejectedBefore(t, err, "other PrerequisitePackageIDList")
 }
 
 // Test_Package_UpdateAfterOutsideUpdate checks that an update whose package someone else updated after UCP saved its
@@ -225,4 +231,25 @@ func Test_Package_UpdateHistoryTimes(t *testing.T) {
 			require.Contains(t, p.Failure.Message, "newest")
 		})
 	}
+}
+
+// Test_Suite_PackageEmptyDescription runs the suite with an empty description, which AWS returns empty or not at all,
+// so its redeploy cases check that an unchanged template changes nothing.
+func Test_Suite_PackageEmptyDescription(t *testing.T) {
+	properties := withProps(dictionaryTemplate(), map[string]any{"PackageDescription": ""})
+	nativetest.Run(t, nativetest.Suite{
+		TypeName:    packageType,
+		Schema:      readSchemaFile(t, "aws-opensearchservice-package.json"),
+		Metadata:    readSchemaFile(t, "aws-opensearchservice-package.metadata.json"),
+		HandWritten: true,
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			api := newPkgFake(store)
+			return NewPackage(api, api)
+		},
+		IdentifierProperty: "PackageID",
+		WriteOnly:          []string{"PackageSource", "PackageConfiguration", "PackageEncryptionOptions", "PackageVendingOptions"},
+		Properties:         properties,
+		Changed:            withProps(properties, map[string]any{"PackageDescription": "Synonyms"}),
+		API:                packageAPI,
+	})
 }
