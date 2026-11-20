@@ -54,7 +54,7 @@ func TestCertificateSelectedPhaseRendering(t *testing.T) {
 	}}}
 	settings, err := resolveAuthzMode(selected.Values, nil, values)
 	require.NoError(t, err)
-	target, err := certificateProfilePlan(selected, values, w.store.namespace, settings)
+	target, err := certificateProfilePlan(selected, resolveEffectiveChartValues(selected.Values, nil, values), w.store.namespace, settings)
 	require.NoError(t, err)
 	w.state.Execution.ChartSHA256, err = bootstrapDigest(selected)
 	require.NoError(t, err)

@@ -199,7 +199,7 @@ func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
 // cainjectorCASource makes the APIService look like one cert-manager already maintains from radius-apiserver-ca.
 func (c *stageCluster) cainjectorAPIService() *unstructured.Unstructured {
 	apiService := ucpAPIService(base64.StdEncoding.EncodeToString(c.apiServerCA.pem), "True", "Passed")
-	setAnnotation(apiService, injectCAFromSecretAnnotation, ucpAPIServerCASource(RadiusSystemNamespace))
+	setAnnotation(apiService, injectCAFromSecretAnnotation, RadiusSystemNamespace+"/"+ucpAPIServerCASecretName)
 	return apiService
 }
 
