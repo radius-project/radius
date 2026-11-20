@@ -181,38 +181,69 @@ func Test_Native_FindLostCreate_Put(t *testing.T) {
 		require.Empty(t, h.record(assignedPath).Properties.AWSIdentifier)
 	})
 
-	t.Run("resend: UCP stops after the resend, before it saves the identifier", func(t *testing.T) {
-		for _, method := range []string{http.MethodPut, http.MethodDelete} {
-			t.Run(method, func(t *testing.T) {
-				h := newNativeHarness(t)
-				h.loseCreate(h.assigned, assignedPath, assigned)
-				db := h.db
-				h.failSavesAfter(1, errors.New("database is down"))
-				require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, assigned).status)
-				require.Equal(t, []string{"Create"}, methods(h.assigned.Calls()))
-				rec := h.record(assignedPath)
-				require.Equal(t, v1.ProvisioningStateProvisioning, rec.ProvisioningState(), "the reservation stays")
-				require.Empty(t, rec.Properties.AWSIdentifier)
-				h.db = db
+	for _, recovery := range []struct {
+		name string
+		mode native.Recovery
+		call string
+	}{{"resend", native.RecoverByResend, "Create"}, {"search", native.RecoverBySearch, "Find"}} {
+		t.Run(recovery.name+": UCP stops after it finds the create, before it saves the identifier", func(t *testing.T) {
+			for _, method := range []string{http.MethodPut, http.MethodDelete} {
+				t.Run(method, func(t *testing.T) {
+					h := newNativeHarness(t)
+					h.assigned.Opts.Recovery = recovery.mode
+					h.loseCreate(h.assigned, assignedPath, assigned)
+					db := h.db
+					h.failSavesAfter(1, errors.New("database is down"))
+					require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, assigned).status)
+					require.Equal(t, []string{recovery.call}, methods(h.assigned.Calls()))
+					rec := h.record(assignedPath)
+					require.Equal(t, v1.ProvisioningStateProvisioning, rec.ProvisioningState(), "the reservation stays")
+					require.Empty(t, rec.Properties.AWSIdentifier)
+					h.db = db
 
-				require.Equal(t, http.StatusConflict, h.delete(assignedPath, testOwner).status, "the reservation holds until it is stale")
-				require.Equal(t, http.StatusConflict, h.put(assignedPath, assigned).status)
-				require.Empty(t, h.assigned.Calls())
+					require.Equal(t, http.StatusConflict, h.delete(assignedPath, testOwner).status, "the reservation holds until it is stale")
+					require.Equal(t, http.StatusConflict, h.put(assignedPath, assigned).status)
+					require.Empty(t, h.assigned.Calls())
 
-				defer func() { records.Now = time.Now }()
-				records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
-				if method == http.MethodPut {
-					h.deploy(assignedPath, assigned)
-					require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
-					require.Equal(t, []string{"id-1"}, h.cc.List(assignedType), "the resend returns the first resource")
-					return
-				}
-				require.Equal(t, http.StatusAccepted, h.delete(assignedPath, testOwner).status)
-				h.finish()
-				require.Nil(t, h.record(assignedPath))
-				require.Empty(t, h.cc.List(assignedType))
-			})
-		}
+					defer func() { records.Now = time.Now }()
+					records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+					if method == http.MethodPut {
+						h.deploy(assignedPath, assigned)
+						require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
+						require.Equal(t, []string{"id-1"}, h.cc.List(assignedType), "the next request finds the first resource")
+						return
+					}
+					require.Equal(t, http.StatusAccepted, h.delete(assignedPath, testOwner).status)
+					h.finish()
+					require.Nil(t, h.record(assignedPath))
+					require.Empty(t, h.cc.List(assignedType))
+				})
+			}
+		})
+	}
+
+	t.Run("search: Find fails and releasing the reservation fails", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.assigned.Opts.Recovery = native.RecoverBySearch
+		h.loseCreate(h.assigned, assignedPath, assigned)
+		h.assigned.Errors["Find"] = nativefake.ServerError("Throttling", "slow down")
+		db := h.db
+		h.failSavesAfter(1, errors.New("database is down"))
+		require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, assigned).status)
+		require.Equal(t, v1.ProvisioningStateProvisioning, h.record(assignedPath).ProvisioningState(), "the reservation stays")
+		h.db = db
+		delete(h.assigned.Errors, "Find")
+		h.assigned.Calls()
+
+		require.Equal(t, http.StatusConflict, h.put(assignedPath, assigned).status, "the reservation holds until it is stale")
+		require.Equal(t, http.StatusConflict, h.delete(assignedPath, testOwner).status)
+		require.Empty(t, h.assigned.Calls())
+
+		defer func() { records.Now = time.Now }()
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		h.deploy(assignedPath, assigned)
+		require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
+		require.Equal(t, []string{"id-1"}, h.cc.List(assignedType))
 	})
 
 	t.Run("search: Find finds the resource", func(t *testing.T) {
@@ -581,6 +612,20 @@ func (h *nativeHarness) pauseRead(path string) (chan struct{}, chan struct{}) {
 	return paused, resume
 }
 
+// findCreates is a handler whose Find sends the create when AWS has no resource with the client token, like an API
+// that returns the existing resource for a create with the same values, such as KMS CreateGrant with a grant name.
+type findCreates struct {
+	*nativefake.Handler
+}
+
+func (h findCreates) Find(ctx context.Context, request native.CreateRequest) (string, error) {
+	identifier, err := h.Handler.Find(ctx, request)
+	if err != nil || identifier != "" {
+		return identifier, err
+	}
+	return h.Handler.Create(ctx, request)
+}
+
 // writes returns the methods of the calls that can change AWS.
 func writes(calls []nativefake.Call) []string {
 	out := []string{}
@@ -608,6 +653,13 @@ func Test_Native_FindLostCreate_PutAndDelete(t *testing.T) {
 		{"resend", assignedPath, assignedType, map[string]any{"Size": 1}, func(h *nativeHarness) *nativefake.Handler { return h.assigned }},
 		{"search", assignedPath, assignedType, map[string]any{"Size": 1}, func(h *nativeHarness) *nativefake.Handler {
 			h.assigned.Opts.Recovery = native.RecoverBySearch
+			return h.assigned
+		}},
+		{"search that creates", assignedPath, assignedType, map[string]any{"Size": 1}, func(h *nativeHarness) *nativefake.Handler {
+			h.assigned.Opts.Recovery = native.RecoverBySearch
+			registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, findCreates{h.assigned})
+			require.NoError(h.t, err)
+			h.native = registry
 			return h.assigned
 		}},
 	}
@@ -994,8 +1046,8 @@ func (f *interleavedFind) Find(ctx context.Context, request native.CreateRequest
 }
 
 // Test_Native_ConcurrentSearchRecovery checks that two PUTs that recover the same lost create of a type that finds it
-// by search (native.RecoverBySearch) create one resource: each searches before it reserves the record, and the
-// reservation checks the record's ETag, so the request that reserves second gets 409 before it calls Create.
+// by search (native.RecoverBySearch) create one resource: the first reserves the record before it searches, so the
+// second, which runs during that search, gets 409 before it calls Find or Create.
 func Test_Native_ConcurrentSearchRecovery(t *testing.T) {
 	h := newNativeHarness(t)
 	h.assigned.Opts.Recovery = native.RecoverBySearch
@@ -1016,15 +1068,19 @@ func Test_Native_ConcurrentSearchRecovery(t *testing.T) {
 	handler.during = func() { second = h.put(assignedPath, properties) }
 	first := h.put(assignedPath, properties)
 
-	require.Equal(t, http.StatusCreated, second.status, second.raw)
-	require.Equal(t, http.StatusConflict, first.status, first.raw)
-	creates := 0
+	require.Equal(t, http.StatusConflict, second.status, second.raw)
+	require.Equal(t, http.StatusCreated, first.status, first.raw)
+	creates, finds := 0, 0
 	for _, call := range h.assigned.Calls() {
-		if call.Method == "Create" {
+		switch call.Method {
+		case "Create":
 			creates++
+		case "Find":
+			finds++
 		}
 	}
 	require.Equal(t, 1, creates, "only the request that reserved the record called Create")
+	require.Equal(t, 1, finds, "the second request never searched")
 	require.Equal(t, 1, h.cc.Count(assignedType))
 }
 
