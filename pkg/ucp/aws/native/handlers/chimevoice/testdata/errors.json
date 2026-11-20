@@ -1,0 +1,94 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CHIME_MISSING_VOICE_CONNECTOR_ID": "abcdefghijklmnopqrstuv",
+    "RADIUS_REC_CHIME_NO_TERMINATION_VOICE_CONNECTOR_ID": "dwpslhrwzxb0nq50534gpy",
+    "RADIUS_REC_CHIME_VOICE_CONNECTOR_ID": "cmrbtlxxiwfwnx3lpcbjcc"
+  },
+  "interactions": [
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTerminationCredentials",
+      "request": "{\"Credentials\":[{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-1\"}]}",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find VoiceConnector for abcdefghijklmnopqrstuv\",\"RequestId\":\"2954f12e-5a9f-4878-b4a1-1cd8fbca3b10\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "ListVoiceConnectorTerminationCredentials",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find VoiceConnector for abcdefghijklmnopqrstuv\",\"RequestId\":\"09a14b0e-e13c-405a-9f0b-e1c7938acb34\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "DeleteVoiceConnectorTerminationCredentials",
+      "request": "{\"Usernames\":[\"radius-rec-1\"]}",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find Voice Connector: 'abcdefghijklmnopqrstuv'\",\"RequestId\":\"7719bf41-4418-42b5-9d06-a6315809d87f\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTerminationCredentials",
+      "request": "{\"Credentials\":[{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-1\"}]}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException:"
+      },
+      "body": "{\"message\":\"1 validation error detected: Value 'BAD_ID' at 'voiceConnectorId' failed to satisfy constraint: Member must satisfy regular expression pattern: ([a-z0-9]{21,22}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "ListVoiceConnectorTerminationCredentials",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException:"
+      },
+      "body": "{\"message\":\"1 validation error detected: Value 'BAD_ID' at 'voiceConnectorId' failed to satisfy constraint: Member must satisfy regular expression pattern: ([a-z0-9]{21,22}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTerminationCredentials",
+      "request": "{\"Credentials\":[{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-1\"}]}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "BadRequestException:"
+      },
+      "body": "{\"Code\":\"BadRequest\",\"Message\":\"Could not put termination credentials for non-existing termination. Request voice connector id is 'dwpslhrwzxb0nq50534gpy'\",\"RequestId\":\"484959c2-6732-4490-ac07-e233cdedf8d7\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTerminationCredentials",
+      "request": "{\"Credentials\":[{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-0\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-1\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-2\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-3\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-4\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-5\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-6\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-7\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-8\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-9\"},{\"Password\":\"xxxxxxxxxxxxxxxxxxxxxxxxxx\",\"Username\":\"radius-rec-10\"}]}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "BadRequestException:"
+      },
+      "body": "{\"Code\":\"BadRequest\",\"Message\":\"Exceeded allowable TerminationCredential limits: 10; Current total numbers of TerminationCredential are: 0; Numbers of new TerminationCredential to add are: 11;\",\"RequestId\":\"4ac33393-d289-4822-91fd-c4a40c26cdfe\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "ListVoiceConnectorTerminationCredentials",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Usernames\":[]}"
+    }
+  ]
+}
