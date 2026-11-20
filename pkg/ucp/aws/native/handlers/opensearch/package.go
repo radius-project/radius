@@ -481,7 +481,8 @@ func commitMessage(commit string) string {
 }
 
 // committed returns the version of the package that the update with commit made, from the package's version history,
-// or nil when AWS lists none, and whether it is the newest version AWS lists.
+// or nil when AWS lists none, and whether the history shows it is the newest. CreatedAt is optional, so a version
+// without it, or another at the same time, doesn't show that.
 func (h *Package) committed(ctx context.Context, region string, identifier string, commit string) (*types.PackageVersionHistory, bool, error) {
 	versions := []types.PackageVersionHistory{}
 	input := &opensearch.GetPackageVersionHistoryInput{PackageID: aws.String(identifier)}
@@ -502,9 +503,12 @@ func (h *Package) committed(ctx context.Context, region string, identifier strin
 		return nil, false, nil
 	}
 	mine := &versions[i]
-	newest := !slices.ContainsFunc(versions, func(v types.PackageVersionHistory) bool {
-		return aws.ToTime(v.CreatedAt).After(aws.ToTime(mine.CreatedAt))
-	})
+	newest := mine.CreatedAt != nil
+	for j, v := range versions {
+		if newest && j != i && (v.CreatedAt == nil || !v.CreatedAt.Before(*mine.CreatedAt)) {
+			newest = false
+		}
+	}
 	return mine, newest, nil
 }
 
@@ -585,7 +589,8 @@ func (h *Package) UpdateProgress(ctx context.Context, region string, identifier 
 		}
 		if !newest {
 			return native.Progress{Done: true, State: now.Status, Failure: &native.Failure{Message: fmt.Sprintf(
-				"another update replaced the version of the OpenSearch Service package %q that Radius imported. Deploy again to import the template's file", identifier)}}, nil
+				"AWS's version history doesn't show the version of the OpenSearch Service package %q that Radius imported as the newest, so another update "+
+					"may have replaced it. Deploy again to import the template's file", identifier)}}, nil
 		}
 		return native.Progress{Done: true, State: now.Status}, nil
 	case types.PackageStatusCopyFailed, types.PackageStatusValidationFailed:

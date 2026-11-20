@@ -18,9 +18,11 @@ package opensearch
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -252,4 +254,39 @@ func Test_Package_HistoryFails(t *testing.T) {
 	_, err = h.UpdateProgress(t.Context(), pkgRegion, id, state)
 	require.ErrorContains(t, err, "history down")
 	require.Equal(t, 1, api.calls["UpdatePackage"])
+}
+
+// pkgHistoryTimes is a package API whose version history leaves out or repeats CreatedAt, which the docs make optional.
+type pkgHistoryTimes struct {
+	*pkgFake
+	edit func(list []types.PackageVersionHistory)
+}
+
+func (p pkgHistoryTimes) GetPackageVersionHistory(ctx context.Context, in *opensearch.GetPackageVersionHistoryInput, opts ...func(*opensearch.Options)) (*opensearch.GetPackageVersionHistoryOutput, error) {
+	out, err := p.pkgFake.GetPackageVersionHistory(ctx, in, opts...)
+	if err == nil {
+		out.PackageVersionHistoryList = slices.Clone(out.PackageVersionHistoryList)
+		p.edit(out.PackageVersionHistoryList)
+	}
+	return out, err
+}
+
+// Test_Package_UpdateHistoryTimes checks that an update isn't done when the version history can't show its version is
+// the newest: another version without CreatedAt, or with the same one.
+func Test_Package_UpdateHistoryTimes(t *testing.T) {
+	for name, edit := range map[string]func(list []types.PackageVersionHistory){
+		"other version without CreatedAt": func(list []types.PackageVersionHistory) { list[0].CreatedAt = nil },
+		"other version at the same time":  func(list []types.PackageVersionHistory) { list[0].CreatedAt = list[len(list)-1].CreatedAt },
+		"own version without CreatedAt":   func(list []types.PackageVersionHistory) { list[len(list)-1].CreatedAt = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			api := newPkgFake(awsfake.NewCloudControl())
+			h := NewPackage(pkgHistoryTimes{pkgFake: api, edit: edit}, api)
+			id := createPackage(t, h, dictionaryTemplate())
+			api.versions[id], api.history[id] = 1, api.history[id][:1]
+			p := updatePackage(t, h, packageUpdate(t, h, id, withProps(dictionaryTemplate(), map[string]any{"PackageSource": source("synonyms-2.txt")})))
+			require.NotNil(t, p.Failure)
+			require.Contains(t, p.Failure.Message, "newest")
+		})
+	}
 }
