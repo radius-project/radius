@@ -322,3 +322,24 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		require.Zero(t, deletes(h))
 	})
 }
+
+// Test_Lifecycle_ReadTypes checks that a replay fails when Read returns a value whose type doesn't match the schema of
+// a hand-written type, as it does for a native one.
+func Test_Lifecycle_ReadTypes(t *testing.T) {
+	const typeName = "AWS::SES::IdentityNotificationTopic"
+	t.Setenv(awsreplay.RecordEnv, "")
+	file := filepath.Join(t.TempDir(), "cassette.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"source": "recorded", "interactions": []}`), 0o600))
+	store := awsfake.NewCloudControl()
+	store.Identifiers[typeName] = "Identity"
+	h := nativefake.New(typeName, store)
+	l := Lifecycle{Handler: h, Session: awsreplay.New(t, file), Poll: time.Millisecond}
+
+	store.Put(typeName, "a@example.com", map[string]any{"Identity": "a@example.com", "HeadersInNotificationsEnabled": true})
+	l.read(t, t.Context(), "a@example.com")
+
+	store.Put(typeName, "a@example.com", map[string]any{"Identity": "a@example.com", "HeadersInNotificationsEnabled": "yes"})
+	f := newFakeTB(t)
+	f.run(func() { l.read(f, f.Context(), "a@example.com") })
+	require.True(t, f.failed, "HeadersInNotificationsEnabled is a boolean in the hand-written schema")
+}

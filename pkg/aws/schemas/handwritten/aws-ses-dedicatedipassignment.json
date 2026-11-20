@@ -1,0 +1,34 @@
+{
+  "typeName": "AWS::SES::DedicatedIpAssignment",
+  "description": "The dedicated IP pool an Amazon SES dedicated IP address (standard) sends from. Set it with the SES v2 API's PutDedicatedIpInPool. The address must already be leased to the account, and the pool must exist, such as an AWS::SES::DedicatedIpPool. SES has no call that takes an address out of a pool, so deleting the resource leaves the address in its pool and removes only the Radius record.",
+  "additionalProperties": false,
+  "properties": {
+    "Ip": {
+      "type": "string",
+      "description": "The dedicated IPv4 address, such as 198.51.100.7.",
+      "pattern": "^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$"
+    },
+    "DestinationPoolName": {
+      "type": "string",
+      "description": "The name of the dedicated IP pool to send from.",
+      "minLength": 1
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["Ip", "DestinationPoolName"],
+  "createOnlyProperties": ["/properties/Ip"],
+  "primaryIdentifier": ["/properties/Ip"],
+  "handlers": {
+    "create": {
+      "permissions": ["ses:PutDedicatedIpInPool", "ses:GetDedicatedIp"]
+    },
+    "read": {
+      "permissions": ["ses:GetDedicatedIp"]
+    },
+    "update": {
+      "permissions": ["ses:PutDedicatedIpInPool", "ses:GetDedicatedIp"]
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_SES_DEDICATED_IP": "198.51.100.7"
+  },
+  "interactions": [
+    {
+      "service": "SESv2",
+      "operation": "PutDedicatedIpInPool",
+      "request": "{\"DestinationPoolName\":\"radius-rec-pool-a\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetDedicatedIp",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"DedicatedIp\":{\"Ip\":\"198.51.100.7\",\"PoolName\":\"ses-default-dedicated-pool\",\"WarmupPercentage\":100,\"WarmupStatus\":\"DONE\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetDedicatedIp",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"DedicatedIp\":{\"Ip\":\"198.51.100.7\",\"PoolName\":\"radius-rec-pool-a\",\"WarmupPercentage\":100,\"WarmupStatus\":\"DONE\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetDedicatedIp",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"DedicatedIp\":{\"Ip\":\"198.51.100.7\",\"PoolName\":\"radius-rec-pool-a\",\"WarmupPercentage\":100,\"WarmupStatus\":\"DONE\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "PutDedicatedIpInPool",
+      "request": "{\"DestinationPoolName\":\"radius-rec-pool-b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetDedicatedIp",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"DedicatedIp\":{\"Ip\":\"198.51.100.7\",\"PoolName\":\"radius-rec-pool-b\",\"WarmupPercentage\":100,\"WarmupStatus\":\"DONE\"}}"
+    },
+    {
+      "service": "SESv2",
+      "operation": "GetDedicatedIp",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"DedicatedIp\":{\"Ip\":\"198.51.100.7\",\"PoolName\":\"radius-rec-pool-b\",\"WarmupPercentage\":100,\"WarmupStatus\":\"DONE\"}}"
+    }
+  ]
+}
