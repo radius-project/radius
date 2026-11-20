@@ -17,12 +17,61 @@ import (
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/stretchr/testify/require"
+	"k8s.io/utils/clock"
 )
 
 type runtimeDatabase struct {
 	database.Client
 	mu  sync.RWMutex
 	get func(context.Context, string) error
+}
+
+type evaluationClock struct {
+	clock.WithTicker
+	since func(time.Time) time.Duration
+}
+
+func (c evaluationClock) Since(t time.Time) time.Duration { return c.since(t) }
+
+func TestPolicyRuntimeEvaluateAvailabilityChanges(t *testing.T) {
+	for _, scenario := range []string{"cancelled", "expired"} {
+		t.Run(scenario, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			snapshot := testPolicySnapshot(t, 1)
+			runtime := &PolicyRuntime{ctx: ctx}
+			asOf := time.Now()
+			calls := 0
+			clk := evaluationClock{WithTicker: clock.RealClock{}, since: func(captured time.Time) time.Duration {
+				require.Equal(t, asOf, captured, "must recheck the evaluated snapshot, not a refreshed timestamp")
+				require.True(t, runtime.mu.TryLock(), "evaluation must not hold the lifetime lock")
+				runtime.mu.Unlock()
+				require.True(t, runtime.cache.mu.TryLock(), "evaluation must not hold the refresh lock")
+				// A concurrent refresh cannot renew the captured decision.
+				runtime.cache.asOf = asOf.Add(time.Second)
+				runtime.cache.mu.Unlock()
+				calls++
+				if calls == 2 {
+					if scenario == "cancelled" {
+						cancel()
+					} else {
+						return PolicyMaxAge
+					}
+				}
+				return 0
+			}}
+			cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+				return snapshot, nil
+			}), clk)
+			require.NoError(t, err)
+			cache.value, cache.asOf = snapshot, asOf
+			runtime.cache = cache
+			decisions, err := runtime.Evaluate(testIdentity(), []Check{{"Radius.Core/applications/write", appA}})
+			require.Equal(t, 2, calls)
+			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+			require.Nil(t, decisions)
+		})
+	}
 }
 
 func TestPolicyRuntimeInvalidAndUnconfigured(t *testing.T) {

@@ -85,7 +85,16 @@ func newRequestHeaderAuthenticator(options *RequestHeaderOptions, loadCA func() 
 		if endIndex < 0 {
 			return nil, fmt.Errorf("request-header CA bundle contains an unterminated CERTIFICATE PEM block")
 		}
-		encoded := remaining[:endIndex+len(end)]
+		// The closing delimiter must end its line; otherwise slicing at the
+		// delimiter would hide a following block or data on the same line.
+		closing := remaining[endIndex+len(end):]
+		if lineEnd := bytes.IndexByte(closing, '\n'); lineEnd >= 0 {
+			closing = closing[:lineEnd+1]
+		}
+		if len(bytes.TrimRight(closing, " \t\r\n")) != 0 {
+			return nil, fmt.Errorf("request-header CA bundle contains data after a CERTIFICATE PEM block on the same line")
+		}
+		encoded := remaining[:endIndex+len(end)+len(closing)]
 		// Decode only the first block; pem.Decode otherwise skips malformed
 		// blocks and may return a later valid certificate.
 		if bytes.Contains(encoded[len(begin):], []byte("-----BEGIN ")) {

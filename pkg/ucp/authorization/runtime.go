@@ -141,7 +141,13 @@ func (r *PolicyRuntime) Evaluate(identity Identity, checks []Check) ([]Decision,
 	if lifetime == nil || lifetime.Err() != nil || value == nil || r.cache.clock.Since(asOf) >= PolicyMaxAge {
 		return nil, ErrAuthorizationUnavailable
 	}
-	return value.Evaluate(identity, checks)
+	decisions, err := value.Evaluate(identity, checks)
+	// Evaluation uses an immutable snapshot without holding refresh locks. Check
+	// that same snapshot's age and lifetime again before publishing any result.
+	if r.cache.clock.Since(asOf) >= PolicyMaxAge || lifetime.Err() != nil {
+		return nil, ErrAuthorizationUnavailable
+	}
+	return decisions, err
 }
 
 func (r *PolicyRuntime) operationContext(ctx context.Context) (context.Context, context.CancelFunc, error) {
