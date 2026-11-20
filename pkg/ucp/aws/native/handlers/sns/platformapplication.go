@@ -31,6 +31,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -260,7 +261,7 @@ func (h *PlatformApplication) Create(ctx context.Context, request native.CreateR
 		Attributes: sent,
 	}, inRegion(request.Region))
 	if err != nil {
-		return "", awsapi.Rejected(err)
+		return "", withoutSecrets(err, sent)
 	}
 	return identifier, h.confirm(ctx, request.Region, identifier, sent)
 }
@@ -302,9 +303,62 @@ func (h *PlatformApplication) Update(ctx context.Context, request native.UpdateR
 		Attributes:             sent,
 	}, inRegion(request.Region))
 	if err != nil {
-		return notFoundOrRejected(err)
+		return withoutSecrets(err, sent)
 	}
 	return h.confirm(ctx, request.Region, request.Identifier, sent)
+}
+
+// withoutSecrets returns err, from a call that sent attributes, with none of the secrets it sent in its message,
+// because AWS's message can repeat a value it was sent, and UCP shows and logs the message. A not found error stays
+// ErrNotFound, and a failure AWS answered with a 4xx status, or as a client fault, applied none of the call.
+func withoutSecrets(err error, sent map[string]string) error {
+	message := redact(err.Error(), sent["PlatformCredential"], sent["PlatformPrincipal"])
+	if awsapi.HasCode(err, notFoundCode) {
+		return fmt.Errorf("%w: %s", native.ErrNotFound, message)
+	}
+	failure := &native.Failure{Message: message, ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeUnknown}
+	var answered *native.Failure
+	if errors.As(awsapi.Rejected(err), &answered) {
+		failure.ClientError = answered.ClientError
+	}
+	if failure.ClientError {
+		failure.Outcome = native.OutcomeRejected
+	}
+	return failure
+}
+
+// redact returns message with "***" in place of each part that is one of secrets. It finds every part in the original
+// message before it replaces any, so a secret that contains or overlaps another is hidden whole.
+func redact(message string, secrets ...string) string {
+	hidden := make([]bool, len(message))
+	for _, secret := range secrets {
+		if secret == "" {
+			continue
+		}
+		for start := 0; start < len(message); start++ {
+			at := strings.Index(message[start:], secret)
+			if at < 0 {
+				break
+			}
+			start += at
+			for i := start; i < start+len(secret); i++ {
+				hidden[i] = true
+			}
+		}
+	}
+	var out strings.Builder
+	for i := 0; i < len(message); {
+		if !hidden[i] {
+			out.WriteByte(message[i])
+			i++
+			continue
+		}
+		out.WriteString("***")
+		for i < len(message) && hidden[i] {
+			i++
+		}
+	}
+	return out.String()
 }
 
 // confirm reads the application until a read shows each attribute in sent that AWS returns, for up to confirmReads

@@ -28,6 +28,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -120,7 +122,7 @@ func update(t *testing.T, current map[string]any, desired map[string]any, secret
 	}
 	to := desired
 	if !secretsChanged {
-		to = withoutSecrets(desired)
+		to = withoutWriteOnly(desired)
 	}
 	patch, err := jsondiff.Compare(from, to)
 	require.NoError(t, err)
@@ -137,8 +139,8 @@ func requireRejected(t *testing.T, err error, text string) {
 	require.Contains(t, failure.Message, text)
 }
 
-// withoutSecrets returns properties without the write-only values, as UCP gives an update's Current.
-func withoutSecrets(properties map[string]any) map[string]any {
+// withoutWriteOnly returns properties without the write-only values, as UCP gives an update's Current.
+func withoutWriteOnly(properties map[string]any) map[string]any {
 	out := maps.Clone(properties)
 	for _, secret := range secretAttributes {
 		delete(out, secret)
@@ -514,4 +516,88 @@ func Test_PlatformApplication_InvalidIdentifier(t *testing.T) {
 	requireRejected(t, err, "Platform and Name")
 	requireRejected(t, h.Delete(t.Context(), region, testName), "Platform and Name")
 	require.Empty(t, api.calls)
+}
+
+func Test_PlatformApplication_ErrorsHideSecrets(t *testing.T) {
+	ctx := t.Context()
+	// The principal is inside the credential, and the credential's end overlaps the start of a second principal.
+	secrets := func(p map[string]any) {
+		p["PlatformPrincipal"] = "KEY-ID"
+		p["PlatformCredential"] = "prefix-KEY-ID-SigningSecret42"
+	}
+	echoed := "Invalid parameter: values 'prefix-KEY-ID-SigningSecret42' and 'KEY-ID' were rejected"
+	requireHidden := func(t *testing.T, message string) {
+		t.Helper()
+		require.Contains(t, message, "values '***' and '***' were rejected")
+		for _, part := range []string{"prefix", "KEY-ID", "SigningSecret42"} {
+			require.NotContains(t, message, part)
+		}
+	}
+
+	t.Run("a create AWS rejects", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		api.errs["CreatePlatformApplication"] = invalid("%s", echoed)
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(secrets)})
+		requireRejected(t, err, "were rejected")
+		requireHidden(t, err.Error())
+	})
+
+	t.Run("a create that fails on AWS's side", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		api.errs["CreatePlatformApplication"] = &smithy.OperationError{ServiceID: "SNS", OperationName: "CreatePlatformApplication", Err: &smithyhttp.ResponseError{
+			Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusInternalServerError}},
+			Err:      &smithy.GenericAPIError{Code: "InternalError", Message: echoed, Fault: smithy.FaultServer},
+		}}
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(secrets)})
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+		require.False(t, failure.ClientError)
+		requireHidden(t, err.Error())
+	})
+
+	t.Run("an update AWS rejects", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(nil)})
+		require.NoError(t, err)
+		current, err := h.Read(ctx, region, testIdentifier)
+		require.NoError(t, err)
+		api.errs["SetPlatformApplicationAttributes"] = invalid("%s", echoed)
+		err = h.Update(ctx, update(t, current, application(secrets), true))
+		requireRejected(t, err, "were rejected")
+		requireHidden(t, err.Error())
+	})
+
+	t.Run("an update of an application deleted meanwhile", func(t *testing.T) {
+		h, api := newHandler(awsfake.NewCloudControl())
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: application(nil)})
+		require.NoError(t, err)
+		current, err := h.Read(ctx, region, testIdentifier)
+		require.NoError(t, err)
+		api.errs["SetPlatformApplicationAttributes"] = apiError(http.StatusNotFound, notFoundCode, echoed)
+		err = h.Update(ctx, update(t, current, application(secrets), true))
+		require.ErrorIs(t, err, native.ErrNotFound)
+		requireHidden(t, err.Error())
+	})
+}
+
+func Test_Redact(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		message string
+		secrets []string
+		want    string
+	}{
+		{"a secret inside another, shorter first", "got prefix-rest", []string{"prefix", "prefix-rest"}, "got ***"},
+		{"a secret inside another, longer first", "got prefix-rest", []string{"prefix-rest", "prefix"}, "got ***"},
+		{"secrets that overlap", "got abcdef", []string{"abcd", "cdef"}, "got ***"},
+		{"a secret repeated", "aa1 and aa1", []string{"aa1"}, "*** and ***"},
+		{"a secret that overlaps itself", "xaaax", []string{"aa"}, "x***x"},
+		{"secrets side by side", "onetwo!", []string{"one", "two"}, "***!"},
+		{"no secret, or an empty one", "nothing here", []string{""}, "nothing here"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, redact(tc.message, tc.secrets...))
+		})
+	}
 }
