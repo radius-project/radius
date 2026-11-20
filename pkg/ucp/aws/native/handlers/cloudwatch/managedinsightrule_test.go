@@ -503,3 +503,49 @@ func Test_ManagedInsightRule_FullTags(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, replaced, got["Tags"])
 }
+
+// Test_ManagedInsightRule_ResourceDeleted checks a delete after the rule's resource was deleted, when AWS rejects the
+// list of its managed rules. Nothing AWS documents ties a rule to its resource, so while the Region has a managed rule
+// that may be this one, the delete fails with 400 naming it and changes nothing. Once the Region has no managed rule,
+// this one doesn't exist, and the delete reports it gone, so UCP removes the record.
+func Test_ManagedInsightRule_ResourceDeleted(t *testing.T) {
+	h, api := newRuleHandler()
+	id := createRule(t, h, ruleTemplate(newConnections))
+	api.gone[endpointService] = true
+	api.others["custom-rule"] = false
+
+	err := h.Delete(t.Context(), region, id)
+	requireRuleFailure(t, err, native.OutcomeRejected, ruleNameOf(newConnections))
+	require.NotErrorIs(t, err, native.ErrNotFound, "the rule may still exist")
+	require.NotContains(t, err.Error(), "custom-rule", "a rule that isn't managed can't be this one")
+	require.Len(t, api.store.List(managedInsightRuleType), 1)
+
+	// The user deletes the rule in CloudWatch, but another resource's managed rule is still there.
+	_, err = api.DeleteInsightRules(t.Context(), &cloudwatch.DeleteInsightRulesInput{RuleNames: []string{ruleNameOf(newConnections)}})
+	require.NoError(t, err)
+	api.others["other-resource-rule"] = true
+	requireRuleFailure(t, h.Delete(t.Context(), region, id), native.OutcomeRejected, "other-resource-rule")
+
+	delete(api.others, "other-resource-rule")
+	require.ErrorIs(t, h.Delete(t.Context(), region, id), native.ErrNotFound)
+
+	// A list that fails another way, or a failed DescribeInsightRules, is returned, never taken as not found.
+	calls := api.calls["DescribeInsightRules"]
+	api.errs["ListManagedInsightRules"] = errors.New("list down")
+	requireRuleFailure(t, h.Delete(t.Context(), region, id), native.OutcomeRejected, "list down")
+	require.Equal(t, calls, api.calls["DescribeInsightRules"])
+	delete(api.errs, "ListManagedInsightRules")
+	api.errs["DescribeInsightRules"] = errors.New("describe down")
+	err = h.Delete(t.Context(), region, id)
+	require.ErrorContains(t, err, "describe down")
+	require.NotErrorIs(t, err, native.ErrNotFound)
+}
+
+// Test_ManagedInsightRule_IsManaged checks that a rule counts as managed by ManagedRule or by the schema AWS documents
+// for managed rules.
+func Test_ManagedInsightRule_IsManaged(t *testing.T) {
+	require.True(t, isManaged(types.InsightRule{ManagedRule: aws.Bool(true)}))
+	require.True(t, isManaged(types.InsightRule{Schema: aws.String(managedSchema)}))
+	require.False(t, isManaged(types.InsightRule{Schema: aws.String(customSchema), ManagedRule: aws.Bool(false)}))
+	require.False(t, isManaged(types.InsightRule{Schema: aws.String("not json")}))
+}

@@ -172,7 +172,8 @@ func Test_Replay_ManagedInsightRule(t *testing.T) {
 // Test_Replay_ManagedInsightRuleErrors runs AWS's errors through the SDK, which reads CloudWatch's responses as CBOR:
 // a template AWS rejects with 400 InvalidParameterValue, and a 400 error the SDK's model doesn't list, must be rejected,
 // so UCP answers 400, not 500. A rule AWS can't make, which it reports in a 200 response, must fail the create. A rule
-// deleted between its list and its tags reads as not found.
+// deleted between its list and its tags reads as not found. A delete whose list AWS rejects, as after the resource was
+// deleted, is done when the Region has no managed rule.
 func Test_Replay_ManagedInsightRuleErrors(t *testing.T) {
 	s := awsreplay.New(t, "testdata/managed-insight-rule-errors.json")
 	cfg := s.Config(t.Context())
@@ -194,6 +195,9 @@ func Test_Replay_ManagedInsightRuleErrors(t *testing.T) {
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
 	require.Contains(t, failure.Message, "LimitExceededException")
 
-	_, err = h.Read(t.Context(), awsreplay.Region, properties["ResourceARN"].(string)+"|"+properties["TemplateName"].(string))
+	identifier := properties["ResourceARN"].(string) + "|" + properties["TemplateName"].(string)
+	_, err = h.Read(t.Context(), awsreplay.Region, identifier)
 	require.ErrorIs(t, err, native.ErrNotFound)
+
+	require.ErrorIs(t, h.Delete(t.Context(), awsreplay.Region, identifier), native.ErrNotFound)
 }

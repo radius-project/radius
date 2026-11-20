@@ -102,6 +102,7 @@
         "cloudwatch:ListManagedInsightRules",
         "cloudwatch:ListTagsForResource",
         "cloudwatch:DeleteInsightRules",
+        "cloudwatch:DescribeInsightRules",
         "sts:GetCallerIdentity"
       ]
     }

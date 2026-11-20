@@ -332,8 +332,8 @@ var ruleAPI = map[string]nativetest.Call{
 				Check: ruleCalls(putRule(newConnections), settleRules, ruleNamesCall("DeleteInsightRules", ruleNameOf(newConnections)), settleRules, ruleState(newConnections, "")),
 			},
 		},
-		Unclear: "What AWS returns for a resource that doesn't exist or has no managed rules: the fake fails with " +
-			"InvalidParameterValue. In what case State is: the fake can return it in lowercase, and the handler reads it in " +
+		Unclear: "What AWS returns for a resource that doesn't exist or has no managed rules, or one deleted after its rule " +
+			"was made: the fake fails with InvalidParameterValue, and keeps the rule. In what case State is: the fake can return it in lowercase, and the handler reads it in " +
 			"uppercase. How soon the list shows a created or deleted rule: the fake shows a deleted rule for two more reads, and a " +
 			"created one at once, or after two reads in Test_ManagedInsightRule_ListLag. The page size.",
 	},
@@ -449,6 +449,59 @@ var ruleAPI = map[string]nativetest.Call{
 					ruleTags(newConnections, map[string]string{"a": "1"})),
 			},
 		},
+	},
+	"DescribeInsightRules": {
+		Doc: apiReference + "API_DescribeInsightRules.html",
+		Rules: []nativetest.Rule{
+			{
+				Rule: "a next token the call didn't return fails with InvalidNextToken",
+				Break: ruleCalls(func(ctx context.Context, f *fakeRuleAPI) error {
+					_, err := f.DescribeInsightRules(ctx, &cloudwatch.DescribeInsightRulesInput{NextToken: aws.String("x")})
+					return err
+				}),
+				Code: invalidNextToken,
+			},
+			{
+				Rule: "MaxResults is 1 to 500",
+				Break: ruleCalls(func(ctx context.Context, f *fakeRuleAPI) error {
+					_, err := f.DescribeInsightRules(ctx, &cloudwatch.DescribeInsightRulesInput{MaxResults: aws.Int32(501)})
+					return err
+				}),
+				Code: validationError,
+			},
+			{
+				Rule: "the list has every rule in the Region, across pages, and a managed rule has the schema ServiceLogRule",
+				Doc:  apiReference + "API_InsightRule.html",
+				Check: ruleCalls(putRule(newConnections), putRule(rejectedConnections), func(ctx context.Context, f *fakeRuleAPI) error {
+					f.others["custom"] = false
+					managed, all := 0, 0
+					in := &cloudwatch.DescribeInsightRulesInput{}
+					for {
+						page, err := f.DescribeInsightRules(ctx, in)
+						if err != nil {
+							return err
+						}
+						for _, r := range page.InsightRules {
+							all++
+							if aws.ToString(r.Schema) == managedSchema {
+								managed++
+							}
+						}
+						if in.NextToken = page.NextToken; in.NextToken == nil {
+							break
+						}
+					}
+					if all != 3 || managed != 2 {
+						return fmt.Errorf("the list has %d rules, %d managed, not 3 and 2", all, managed)
+					}
+					return nil
+				}),
+			},
+		},
+		Unclear: "Whether ManagedRule is set for a rule PutManagedInsightRules makes, since the page calls it a built-in rule: " +
+			"the handler also takes the ServiceLogRule schema as managed. Whether a managed rule's name or Definition names its " +
+			"resource: the docs don't say, so the handler never matches a rule by them. The error for MaxResults out of range: " +
+			"the fake returns ValidationError from Common Errors.",
 	},
 	"GetCallerIdentity": {
 		Doc: "https://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html",

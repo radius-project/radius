@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"regexp"
 	"slices"
 	"strconv"
@@ -56,6 +57,7 @@ const (
 	invalidValue     = "InvalidParameterValue"
 	missingParameter = "MissingParameter"
 	invalidNextToken = "InvalidNextToken"
+	validationError  = "ValidationError"
 	ruleNotFound     = "ResourceNotFoundException"
 )
 
@@ -103,7 +105,8 @@ type ghost struct {
 //     AWS (see Test_ManagedInsightRule_ListLag).
 //   - PutManagedInsightRules reports a rule it can't make, for a resource or template it doesn't have, or past the
 //     quota, as a failure in a 200 response, and so do the calls that take rule names for a name it doesn't have.
-//   - ListManagedInsightRules rejects a resource it has no templates for with InvalidParameterValue.
+//   - ListManagedInsightRules rejects a resource it has no templates for, or one in gone, as deleted, with
+//     InvalidParameterValue. Deleting a resource leaves its managed rules in place.
 type fakeRuleAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
@@ -118,6 +121,11 @@ type fakeRuleAPI struct {
 
 	// lowercase makes ListManagedInsightRules return a rule's state in lowercase.
 	lowercase bool
+
+	// gone holds the resources that were deleted. others holds rules the store doesn't, by name: true for a managed
+	// rule of another resource, and false for a rule made with PutInsightRule.
+	gone   map[string]bool
+	others map[string]bool
 
 	// calls counts the calls that reached the fake, by method.
 	calls map[string]int
@@ -141,6 +149,8 @@ func newFakeRuleAPI(store *awsfake.CloudControl) *fakeRuleAPI {
 		calls:    map[string]int{},
 		errs:     map[string]error{},
 		failures: map[string]types.PartialFailure{},
+		gone:     map[string]bool{},
+		others:   map[string]bool{},
 	}
 }
 
@@ -380,7 +390,7 @@ func (f *fakeRuleAPI) ListManagedInsightRules(ctx context.Context, in *cloudwatc
 			templates = append(templates, id.template)
 		}
 	}
-	if len(templates) == 0 {
+	if len(templates) == 0 || f.gone[resource] {
 		return nil, ruleFault(invalidValue, "the resource %s has no managed rules", resource)
 	}
 	start := 0
@@ -451,6 +461,51 @@ func (f *fakeRuleAPI) settle(resource string) {
 			}
 		}
 	}
+}
+
+// The schemas DescribeInsightRules gives a rule a caller made and a managed rule.
+const (
+	customSchema  = `{"Name": "CloudWatchLogRule", "Version": 1}`
+	managedSchema = `{"Name": "ServiceLogRule", "Version": 1}`
+)
+
+func (f *fakeRuleAPI) DescribeInsightRules(ctx context.Context, in *cloudwatch.DescribeInsightRulesInput, _ ...func(*cloudwatch.Options)) (*cloudwatch.DescribeInsightRulesOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.begin("DescribeInsightRules"); err != nil {
+		return nil, err
+	}
+	if in.MaxResults != nil && (*in.MaxResults < 1 || *in.MaxResults > 500) {
+		return nil, ruleFault(validationError, "MaxResults must be 1 to 500")
+	}
+	rules := []types.InsightRule{}
+	for _, identifier := range f.store.List(managedInsightRuleType) {
+		p := f.rule(identifier)
+		rules = append(rules, types.InsightRule{
+			Name: aws.String(p["RuleName"].(string)), State: aws.String(p["State"].(string)), Schema: aws.String(managedSchema),
+			Definition: aws.String("{}"), ManagedRule: aws.Bool(true),
+		})
+	}
+	for _, name := range slices.Sorted(maps.Keys(f.others)) {
+		rule := types.InsightRule{Name: aws.String(name), State: aws.String(ruleEnabled), Schema: aws.String(customSchema), Definition: aws.String("{}")}
+		if f.others[name] {
+			rule.Schema, rule.ManagedRule = aws.String(managedSchema), aws.Bool(true)
+		}
+		rules = append(rules, rule)
+	}
+	start := 0
+	if in.NextToken != nil {
+		var err error
+		if start, err = strconv.Atoi(aws.ToString(in.NextToken)); err != nil || start < 0 || start >= len(rules) {
+			return nil, ruleFault(invalidNextToken, "the next token is invalid")
+		}
+	}
+	end := min(start+rulePageSize, len(rules))
+	out := &cloudwatch.DescribeInsightRulesOutput{InsightRules: rules[start:end]}
+	if end < len(rules) {
+		out.NextToken = aws.String(strconv.Itoa(end))
+	}
+	return out, nil
 }
 
 // setState sets the state of the named rules, and reports the names it doesn't have as failures.

@@ -18,6 +18,7 @@ package cloudwatch
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -77,6 +78,7 @@ type InsightRuleAPI interface {
 	TagResource(ctx context.Context, params *cloudwatch.TagResourceInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.TagResourceOutput, error)
 	UntagResource(ctx context.Context, params *cloudwatch.UntagResourceInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.UntagResourceOutput, error)
 	ListTagsForResource(ctx context.Context, params *cloudwatch.ListTagsForResourceInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.ListTagsForResourceOutput, error)
+	DescribeInsightRules(ctx context.Context, params *cloudwatch.DescribeInsightRulesInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.DescribeInsightRulesOutput, error)
 }
 
 var (
@@ -476,7 +478,8 @@ func beforeRuleChange(err error) error {
 	return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
 }
 
-// Delete deletes the rule. It returns ErrNotFound when AWS lists no rule for the template.
+// Delete deletes the rule. It returns ErrNotFound when AWS lists no rule for the template. When AWS rejects the list,
+// such as after the resource was deleted, see unlisted.
 func (h *ManagedInsightRule) Delete(ctx context.Context, region string, identifier string) error {
 	id, err := parseRuleID(identifier)
 	if err != nil {
@@ -484,13 +487,68 @@ func (h *ManagedInsightRule) Delete(ctx context.Context, region string, identifi
 	}
 	state, err := h.find(ctx, region, id)
 	if err != nil {
-		return beforeRuleChange(err)
+		return beforeRuleChange(h.unlisted(ctx, region, id, err))
 	}
 	out, err := h.api.DeleteInsightRules(ctx, &cloudwatch.DeleteInsightRulesInput{RuleNames: []string{aws.ToString(state.RuleName)}}, inRegion(region))
 	if err != nil {
 		return awsapi.Rejected(err)
 	}
 	return ruleFailures("delete", id, out.Failures)
+}
+
+// unlisted returns what a delete does when ListManagedInsightRules failed with err. For a rejection, such as for a
+// resource that was deleted, nothing AWS documents ties a rule to its resource or template, so the handler can't find
+// the rule. DescribeInsightRules lists every rule in the Region: when none is a managed rule, this one doesn't exist,
+// and unlisted returns ErrNotFound, so UCP removes the record. Otherwise it returns a client failure that names the
+// managed rules and says what to do. Any other error stays as it is.
+func (h *ManagedInsightRule) unlisted(ctx context.Context, region string, id ruleID, err error) error {
+	if errors.Is(err, native.ErrNotFound) || !isRejection(err) {
+		return err
+	}
+	managed := []string{}
+	input := &cloudwatch.DescribeInsightRulesInput{}
+	for {
+		page, describeErr := h.api.DescribeInsightRules(ctx, input, inRegion(region))
+		if describeErr != nil {
+			return fmt.Errorf("AWS can't list the managed Contributor Insights rules of %q (%w), and failed to list the Region's rules: %w", id.resourceARN, err, describeErr)
+		}
+		for _, r := range page.InsightRules {
+			if isManaged(r) {
+				managed = append(managed, aws.ToString(r.Name))
+			}
+		}
+		if input.NextToken = page.NextToken; aws.ToString(input.NextToken) == "" {
+			break
+		}
+	}
+	if len(managed) == 0 {
+		return native.ErrNotFound
+	}
+	return &native.Failure{
+		Message: fmt.Sprintf("AWS can't list the managed Contributor Insights rules of %q, which may have been deleted, so Radius can't tell which rule of the template %q is this one: %v. "+
+			"The Region has these managed rules: %s. Delete this resource's rule in CloudWatch with DeleteInsightRules, or create the resource again, then delete again. "+
+			"Radius removes the record once AWS lists the resource's rules again, or the Region has no managed rule left",
+			id.resourceARN, id.template, err, strings.Join(managed, ", ")),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
+// isRejection reports whether err is AWS's rejection of a call as the caller's fault, such as InvalidParameterValue.
+func isRejection(err error) bool {
+	var failure *native.Failure
+	if errors.As(awsapi.Rejected(err), &failure) {
+		return failure.ClientError
+	}
+	return ucp_aws.IsClientFault(err)
+}
+
+// isManaged reports whether DescribeInsightRules describes r as a managed rule: ManagedRule is true, or its schema is
+// the one AWS documents for managed rules.
+func isManaged(r types.InsightRule) bool {
+	var schema struct{ Name string }
+	_ = json.Unmarshal([]byte(aws.ToString(r.Schema)), &schema)
+	return aws.ToBool(r.ManagedRule) || schema.Name == "ServiceLogRule"
 }
 
 // List returns nothing, because AWS lists managed rules only by resource.
