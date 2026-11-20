@@ -518,6 +518,7 @@ func Test_handleError(t *testing.T) {
 		},
 		{name: "a client failure", err: &native.Failure{Message: "invalid engine", ClientError: true}, status: http.StatusBadRequest, message: "invalid engine"},
 		{name: "a server failure", err: &native.Failure{Message: "AWS failed"}, status: http.StatusInternalServerError, message: "AWS failed"},
+		{name: "a conflict", err: &native.Failure{Message: "the instance is busy", ClientError: true, Conflict: true}, status: http.StatusConflict, message: "the instance is busy"},
 		{name: "an AWS error", err: nativefake.ClientError("ValidationException", "bad value"), status: http.StatusBadRequest, message: "bad value"},
 	}
 	for _, tt := range tests {

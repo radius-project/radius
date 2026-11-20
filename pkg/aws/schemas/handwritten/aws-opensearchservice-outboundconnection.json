@@ -1,0 +1,169 @@
+{
+  "typeName": "AWS::OpenSearchService::OutboundConnection",
+  "description": "A cross-cluster connection from a source OpenSearch Service domain in this account and Region to a destination domain, made with CreateOutboundConnection. AWS has no call that changes a connection, so every property is create-only. The create is done once AWS has validated the connection: a connection to a domain of another owner then waits for that owner to accept it, which Radius doesn't wait for. ConnectionStatus shows where it is. The alias must be unique on the source domain, because queries name the destination domain by it, as alias:index.",
+  "definitions": {
+    "AWSDomainInformation": {
+      "type": "object",
+      "description": "An OpenSearch Service domain.",
+      "properties": {
+        "DomainName": {
+          "type": "string",
+          "description": "The name of the domain.",
+          "minLength": 3,
+          "maxLength": 28,
+          "pattern": "^[a-z][a-z0-9\\-]+$"
+        },
+        "OwnerId": {
+          "type": "string",
+          "description": "The ID of the AWS account that owns the domain.",
+          "minLength": 12,
+          "maxLength": 12,
+          "pattern": "^[0-9]+$"
+        },
+        "Region": {
+          "type": "string",
+          "description": "The Region of the domain.",
+          "minLength": 5,
+          "maxLength": 30,
+          "pattern": "^[a-z][a-z0-9\\-]+$"
+        }
+      },
+      "required": ["DomainName"],
+      "additionalProperties": false
+    },
+    "DomainInformationContainer": {
+      "type": "object",
+      "description": "Where a domain is.",
+      "properties": {
+        "AWSDomainInformation": {
+          "$ref": "#/definitions/AWSDomainInformation"
+        }
+      },
+      "required": ["AWSDomainInformation"],
+      "additionalProperties": false
+    },
+    "CrossClusterSearchConnectionProperties": {
+      "type": "object",
+      "description": "The cross-cluster search settings of the connection.",
+      "properties": {
+        "SkipUnavailable": {
+          "type": "string",
+          "description": "Whether a cross-cluster query returns partial results when the destination domain is unavailable.",
+          "enum": ["ENABLED", "DISABLED"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ConnectionProperties": {
+      "type": "object",
+      "description": "The settings of the connection.",
+      "properties": {
+        "CrossClusterSearch": {
+          "$ref": "#/definitions/CrossClusterSearchConnectionProperties"
+        },
+        "Endpoint": {
+          "type": "string",
+          "description": "The endpoint of the destination domain, for the VPC_ENDPOINT connection mode.",
+          "pattern": "^[A-Za-z0-9\\-\\.]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "OutboundConnectionStatus": {
+      "type": "object",
+      "description": "The status of the connection.",
+      "properties": {
+        "StatusCode": {
+          "type": "string",
+          "description": "The status of the connection.",
+          "enum": [
+            "VALIDATING",
+            "VALIDATION_FAILED",
+            "PENDING_ACCEPTANCE",
+            "APPROVED",
+            "PROVISIONING",
+            "ACTIVE",
+            "REJECTING",
+            "REJECTED",
+            "DELETING",
+            "DELETED"
+          ]
+        },
+        "Message": {
+          "type": "string",
+          "description": "More about the status."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "ConnectionAlias": {
+      "type": "string",
+      "description": "The name of the connection, which queries on the source domain use as the prefix of the destination domain's indexes.",
+      "minLength": 2,
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z][a-zA-Z0-9\\-\\_]+$"
+    },
+    "LocalDomainInfo": {
+      "$ref": "#/definitions/DomainInformationContainer",
+      "description": "The source domain, in this account and Region."
+    },
+    "RemoteDomainInfo": {
+      "$ref": "#/definitions/DomainInformationContainer",
+      "description": "The destination domain."
+    },
+    "ConnectionMode": {
+      "type": "string",
+      "description": "How the source domain reaches the destination domain.",
+      "enum": ["DIRECT", "VPC_ENDPOINT"]
+    },
+    "ConnectionProperties": {
+      "$ref": "#/definitions/ConnectionProperties"
+    },
+    "ConnectionId": {
+      "type": "string",
+      "description": "The ID AWS assigns to the connection."
+    },
+    "ConnectionStatus": {
+      "$ref": "#/definitions/OutboundConnectionStatus"
+    }
+  },
+  "required": ["ConnectionAlias", "LocalDomainInfo", "RemoteDomainInfo"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/ConnectionId"],
+  "createOnlyProperties": [
+    "/properties/ConnectionAlias",
+    "/properties/LocalDomainInfo",
+    "/properties/RemoteDomainInfo",
+    "/properties/ConnectionMode",
+    "/properties/ConnectionProperties"
+  ],
+  "readOnlyProperties": [
+    "/properties/ConnectionId",
+    "/properties/ConnectionStatus"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "es:CreateOutboundConnection",
+        "es:DescribeOutboundConnections"
+      ]
+    },
+    "read": {
+      "permissions": ["es:DescribeOutboundConnections"]
+    },
+    "update": {
+      "permissions": ["es:DescribeOutboundConnections"]
+    },
+    "delete": {
+      "permissions": [
+        "es:DeleteOutboundConnection",
+        "es:DescribeOutboundConnections"
+      ]
+    },
+    "list": {
+      "permissions": ["es:DescribeOutboundConnections"]
+    }
+  }
+}

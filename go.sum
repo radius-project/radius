@@ -158,6 +158,8 @@ github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0 h1:3eggSHnymdEyXlI7Fv
 github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0/go.mod h1:Bf6uHN804FAJ+yUro0QW65wEVJ68eKBIsSzY1SD5oDw=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5 h1:ZoW0j6XRzzzcWEGsPRxZCuiEj0j281S1ACN1cxJ8Obo=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5/go.mod h1:DuktIBGJAIcDVjkXjUYY4jKjLUy3IISIteyikrHqqLI=
+github.com/aws/aws-sdk-go-v2/service/opensearch v1.88.1 h1:g6jQ9/LLFLhSGk4Jpqh6v3ro+eGV2U8BVNXgnM9XWn4=
+github.com/aws/aws-sdk-go-v2/service/opensearch v1.88.1/go.mod h1:EBlS/acsVGGqliM9wbhFhcQv0mMeN+elcxlIpA1GK4I=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10 h1:WBJb2VxRzzKnuN94YWqZPiu5a5zc3IleFqgZnmVCyvU=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10/go.mod h1:8NhAIBVYkVHq0hIbbzujdoou0VkKwMdG+De9e5oX6qI=
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1 h1:0TqCogYKHXNpt4NCb3XS1Oeu2QQw1TI1f64uv0FU2o8=
