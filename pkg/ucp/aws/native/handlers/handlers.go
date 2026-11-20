@@ -18,6 +18,8 @@ limitations under the License.
 package handlers
 
 import (
+	"slices"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
 	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -41,6 +43,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
@@ -61,8 +64,10 @@ import (
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
-// is in pkg/aws/schemas.
+// is in pkg/aws/schemas. The clients keep the SDK's attempts of a failed call on its error (awsapi.RecordAttempts), so a
+// handler can tell a call AWS rejected from a retry an earlier attempt of which may have reached AWS.
 func All(cfg aws.Config) []native.Handler {
+	cfg.APIOptions = append(slices.Clone(cfg.APIOptions), awsapi.RecordAttempts)
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)

@@ -27,7 +27,10 @@ import (
 	"testing"
 	"time"
 
+	awsretry "github.com/aws/aws-sdk-go-v2/aws/retry"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -37,6 +40,7 @@ import (
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -63,6 +67,8 @@ func Test_Native_StartCallOutcomes(t *testing.T) {
 		{"the handler reports a partial update", failure(native.OutcomePartial), http.StatusBadRequest, true},
 		{"the handler reports an unknown outcome", failure(native.OutcomeUnknown), http.StatusBadRequest, true},
 		{"the handler reports an applied update", failure(native.OutcomeApplied), http.StatusBadRequest, true},
+		{"AWS throttles every attempt", awsapi.Rejected(answer(http.StatusBadRequest, "Throttling")), http.StatusInternalServerError, false},
+		{"AWS rejects a retry after a lost response", awsapi.Rejected(&awsretry.MaxAttemptsError{Attempt: 2, Err: answer(http.StatusConflict, "ConflictException")}), http.StatusInternalServerError, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -109,7 +115,24 @@ func Test_Native_StartCallOutcomes(t *testing.T) {
 	})
 }
 
+// answer returns AWS's answer to a call with status and code, as the SDK reports it.
+func answer(status int, code string) error {
+	return &smithy.OperationError{ServiceID: "Fake", OperationName: "Call", Err: &smithyhttp.ResponseError{
+		Response: &smithyhttp.Response{Response: &http.Response{StatusCode: status}},
+		Err:      &smithy.GenericAPIError{Code: code, Message: code},
+	}}
+}
+
 func Test_Native_CreateOutcomes(t *testing.T) {
+	t.Run("a throttled first create removes the record and isn't the request's fault", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.Errors["Create"] = awsapi.Rejected(answer(http.StatusBadRequest, "Throttling"))
+		resp := h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "AWS throttled the call")
+		require.Nil(t, h.record(nativePath))
+	})
+
 	t.Run("a rejected first create removes the record", func(t *testing.T) {
 		h := newNativeHarness(t)
 		h.fake.Errors["Create"] = &native.Failure{Message: "invalid engine", ClientError: true, Outcome: native.OutcomeRejected}

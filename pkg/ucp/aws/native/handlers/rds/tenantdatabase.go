@@ -62,13 +62,14 @@ func NewTenantDatabase(api API) *TenantDatabase {
 // whenInstanceFree makes call, a create, update, or delete of a tenant database of instance, when the instance is
 // free. RDS changes one tenant database of an instance at a time, and backs the instance up after each change, so it
 // rejects such a call with InvalidDBInstanceState until then. A busy instance, or that error while the instance reads
-// as available, fails with a conflict, which UCP answers with 409, and sends nothing more: the caller deploys again
-// once the instance is free, and a template chains tenant databases of one instance with dependsOn. An instance that
-// won't be available without someone acting, such as a stopped one, gets call's error.
+// as available and the SDK didn't retry the call, fails with a conflict, which UCP answers with 409, and sends nothing
+// more: the caller deploys again once the instance is free, and a template chains tenant databases of one instance with
+// dependsOn. An instance that won't be available without someone acting, such as a stopped one, gets call's error. A
+// failed read of the instance sends nothing, so AWS applied none of the change.
 func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, instance string, call func() error) error {
 	out, err := h.api.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String(instance)}, inRegion(region))
 	if err != nil {
-		return awsapi.NotFound(err, "DBInstanceNotFound")
+		return unsent(awsapi.NotFound(err, "DBInstanceNotFound"))
 	}
 	status := ""
 	if len(out.DBInstances) > 0 {
@@ -78,10 +79,22 @@ func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, in
 		return instanceConflict(instance, "is "+status)
 	}
 	err = call()
-	if awsapi.HasCode(err, "InvalidDBInstanceState") && slices.Contains(availableInstanceStates, strings.ToLower(status)) {
+	// After a retry, the change that made the instance busy may be an earlier attempt of this call.
+	if awsapi.HasCode(err, "InvalidDBInstanceState") && slices.Contains(availableInstanceStates, strings.ToLower(status)) && !awsapi.Retried(err) {
 		return instanceConflict(instance, "or the tenant database is busy")
 	}
 	return err
+}
+
+// unsent returns err, from the read of the instance before call, as a failure AWS applied none of, because call was
+// never sent. It is a client failure when awsapi.Rejected makes it one, and ErrNotFound stays as it is.
+func unsent(err error) error {
+	if errors.Is(err, native.ErrNotFound) {
+		return err
+	}
+	var failure *native.Failure
+	client := errors.As(awsapi.Rejected(err), &failure) && failure.ClientError
+	return &native.Failure{Message: err.Error(), ClientError: client, Outcome: native.OutcomeRejected}
 }
 
 // instanceConflict returns the conflict of a change to a tenant database of instance, which state describes.

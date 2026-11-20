@@ -23,7 +23,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/smithy-go"
+	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
@@ -205,9 +207,15 @@ func Test_Calls(t *testing.T) {
 	require.True(t, failure.ClientError)
 	require.Equal(t, []int{0, 1}, made)
 
-	err = Calls(call(0, nil), call(1, &smithy.GenericAPIError{Code: "InternalFailure", Fault: smithy.FaultServer}))
-	require.ErrorAs(t, err, &failure)
-	require.False(t, failure.ClientError)
+	for _, err := range []error{
+		&smithy.GenericAPIError{Code: "InternalFailure", Fault: smithy.FaultServer},
+		&smithy.GenericAPIError{Code: "ThrottlingException", Fault: smithy.FaultClient},
+		attempts(response(http.StatusServiceUnavailable, nil), response(http.StatusBadRequest, rejected)),
+	} {
+		require.ErrorAs(t, Calls(call(0, nil), call(1, err)), &failure)
+		require.False(t, failure.ClientError, "%v", err)
+		require.Equal(t, native.OutcomePartial, failure.Outcome)
+	}
 
 	own := &native.Failure{Message: "rejected", Outcome: native.OutcomeRejected}
 	require.Same(t, own, Calls(call(0, nil), call(1, own)), "a handler's own failure is kept")
@@ -262,27 +270,99 @@ func Test_SharedHelpers(t *testing.T) {
 	require.False(t, equivalent("Name", 1, "1"))
 }
 
-func Test_Rejected(t *testing.T) {
-	response := func(status int, err error) error {
-		return &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: status}}, Err: err}
-	}
-	invalid := &smithy.GenericAPIError{Code: "InvalidParameterValue", Message: "bad"}
+// response returns err as AWS's answer with status, as the SDK reports it.
+func response(status int, err error) error {
+	return &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: status}}, Err: err}
+}
 
-	err := Rejected(response(http.StatusBadRequest, invalid))
-	var failure *native.Failure
-	require.ErrorAs(t, err, &failure)
-	require.True(t, failure.ClientError)
-	require.Equal(t, native.OutcomeRejected, failure.Outcome)
-	require.Contains(t, failure.Message, "InvalidParameterValue")
+// attempts returns the error of a call the SDK made once for each of errs, the last of which it returned, with the
+// attempts RecordAttempts keeps.
+func attempts(errs ...error) error {
+	return &smithy.OperationError{ServiceID: "RDS", OperationName: "CreateTenantDatabase", Err: &attemptsError{err: errs[len(errs)-1], attempts: errs}}
+}
+
+func Test_Rejected(t *testing.T) {
+	invalid := response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "InvalidParameterValue", Message: "bad"})
+	exists := response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "TenantDatabaseAlreadyExists", Fault: smithy.FaultClient})
+	throttling := response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "Throttling", Message: "Rate exceeded"})
+	unavailable := response(http.StatusServiceUnavailable, &smithy.GenericAPIError{Code: "ServiceUnavailable"})
+	lost := errors.New("read tcp: connection reset by peer")
+
+	rejected := []error{
+		invalid,
+		attempts(invalid),
+		attempts(throttling, invalid),
+		attempts(response(http.StatusTooManyRequests, &smithy.GenericAPIError{Code: "TooManyRequestsException"}), exists),
+		response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "LimitExceededException", Message: "quota"}),
+	}
+	for _, err := range rejected {
+		var failure *native.Failure
+		require.ErrorAs(t, Rejected(err), &failure, "%v", err)
+		require.True(t, failure.ClientError, "%v", err)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome, "%v", err)
+		require.Equal(t, err.Error(), failure.Message)
+	}
+
+	throttles := map[string]error{
+		"throttled":                  throttling,
+		"throttled on every attempt": attempts(throttling, throttling, &retry.MaxAttemptsError{Attempt: 3, Err: throttling}),
+		"429":                        response(http.StatusTooManyRequests, &smithy.GenericAPIError{Code: "SlowDown"}),
+		"modeled as a client fault":  response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "ThrottlingException", Fault: smithy.FaultClient}),
+	}
+	for name, err := range throttles {
+		var failure *native.Failure
+		require.ErrorAs(t, Rejected(err), &failure, name)
+		require.False(t, failure.ClientError, "%s: throttling isn't the request's fault", name)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome, "%s: AWS answered every attempt, so none applied", name)
+		require.Contains(t, failure.Message, "AWS throttled the call", name)
+		require.Contains(t, failure.Message, err.Error(), name)
+	}
+
+	unknown := map[string]error{
+		"throttled after a 5xx":      attempts(unavailable, throttling),
+		"after a 5xx":                attempts(unavailable, exists),
+		"after a lost response":      attempts(lost, exists),
+		"after a throttle and a 5xx": attempts(throttling, unavailable, exists),
+		"used up the SDK's attempts": &retry.MaxAttemptsError{Attempt: 2, Err: invalid},
+	}
+	for name, err := range unknown {
+		var failure *native.Failure
+		require.ErrorAs(t, Rejected(err), &failure, name)
+		require.False(t, failure.ClientError, name)
+		require.False(t, failure.Conflict, name)
+		require.Equal(t, native.OutcomeUnknown, failure.Outcome, name)
+		require.Contains(t, failure.Message, err.Error(), name)
+	}
 
 	for _, kept := range []error{
 		nil,
-		response(http.StatusServiceUnavailable, invalid),
+		unavailable,
+		attempts(invalid, unavailable),
 		response(http.StatusFound, invalid),
-		invalid,
-		NotFound(response(http.StatusNotFound, &smithy.GenericAPIError{Code: "DBInstanceNotFound"}), "DBInstanceNotFound"),
+		&smithy.GenericAPIError{Code: "InvalidParameterValue"},
+		NotFound(attempts(unavailable, response(http.StatusNotFound, &smithy.GenericAPIError{Code: "DBInstanceNotFound"})), "DBInstanceNotFound"),
 		&native.Failure{Message: "partly applied", Outcome: native.OutcomePartial},
 	} {
 		require.Equal(t, kept, Rejected(kept), "%v", kept)
 	}
+}
+
+func Test_Retried(t *testing.T) {
+	invalid := response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "InvalidDBInstanceState"})
+	unavailable := response(http.StatusServiceUnavailable, &smithy.GenericAPIError{Code: "ServiceUnavailable"})
+
+	require.True(t, Retried(attempts(unavailable, invalid)))
+	require.True(t, Retried(attempts(nil, invalid)), "an attempt without an error says nothing about what AWS did")
+	require.True(t, Retried(&retry.MaxAttemptsError{Attempt: 3, Err: invalid}), "without the attempts, using them up shows a retry")
+	require.False(t, Retried(attempts(invalid)))
+	require.False(t, Retried(attempts(invalid, invalid)), "AWS answered every attempt with a 4xx, so none applied")
+	require.False(t, Retried(&smithy.OperationError{Err: &attemptsError{err: invalid}}))
+	require.False(t, Retried(invalid))
+	require.False(t, Retried(nil))
+}
+
+func Test_RecordAttempts(t *testing.T) {
+	stack := middleware.NewStack("call", smithyhttp.NewStackRequest)
+	require.NoError(t, RecordAttempts(stack))
+	require.Empty(t, stack.Finalize.List(), "a client that never retries has no attempts to keep")
 }
