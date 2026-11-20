@@ -1,0 +1,197 @@
+{
+  "typeName": "AWS::Lambda::Microvm",
+  "description": "An AWS Lambda MicroVM, run from a MicroVM image with the Lambda MicroVMs RunMicrovm call. AWS has no call that changes a MicroVM, so every property is create-only. AWS terminates a MicroVM at its maximum duration, or after it stays suspended for its idle policy's suspended duration, and the next deploy then runs a new one.",
+  "definitions": {
+    "IdlePolicy": {
+      "type": "object",
+      "description": "When the MicroVM suspends, resumes, and terminates for lack of traffic.",
+      "properties": {
+        "AutoResumeEnabled": {
+          "type": "boolean",
+          "description": "Whether a suspended MicroVM resumes when it receives a request."
+        },
+        "MaxIdleDurationSeconds": {
+          "type": "integer",
+          "description": "How long, in seconds, the MicroVM can be idle before AWS suspends it.",
+          "minimum": 60
+        },
+        "SuspendedDurationSeconds": {
+          "type": "integer",
+          "description": "How long, in seconds, the MicroVM can stay suspended before AWS terminates it.",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "AutoResumeEnabled",
+        "MaxIdleDurationSeconds",
+        "SuspendedDurationSeconds"
+      ],
+      "additionalProperties": false
+    },
+    "CloudWatchLogging": {
+      "type": "object",
+      "description": "Where in CloudWatch Logs the MicroVM sends its logs.",
+      "properties": {
+        "LogGroup": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[a-zA-Z0-9_\\-/.#]+$"
+        },
+        "LogStream": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^:*]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Logging": {
+      "type": "object",
+      "description": "The MicroVM's logging: CloudWatch, or Disabled to turn logging off. Set exactly one.",
+      "properties": {
+        "CloudWatch": {
+          "$ref": "#/definitions/CloudWatchLogging"
+        },
+        "Disabled": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "MicrovmId": {
+      "type": "string",
+      "description": "The ID of the MicroVM, which AWS assigns."
+    },
+    "ImageIdentifier": {
+      "type": "string",
+      "description": "The name or ARN of the MicroVM image to run. AWS reports it as the image's ARN.",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "ImageVersion": {
+      "type": "string",
+      "description": "The version of the image to run. AWS picks one when the template leaves it out.",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[^\\s]+$"
+    },
+    "ExecutionRoleArn": {
+      "type": "string",
+      "description": "The ARN of the IAM role the MicroVM assumes while it runs.",
+      "minLength": 20,
+      "maxLength": 2048,
+      "pattern": "^arn:aws[a-z\\-]*:iam::[0-9]{12}:role/?[a-zA-Z_0-9+=,.@\\-_/]+$"
+    },
+    "IdlePolicy": {
+      "$ref": "#/definitions/IdlePolicy"
+    },
+    "IngressNetworkConnectors": {
+      "type": "array",
+      "description": "The ARNs of the network connectors that let traffic reach the MicroVM.",
+      "maxItems": 10,
+      "insertionOrder": false,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "EgressNetworkConnectors": {
+      "type": "array",
+      "description": "The ARNs of the network connectors the MicroVM can reach out through.",
+      "maxItems": 10,
+      "insertionOrder": false,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2048
+      }
+    },
+    "Logging": {
+      "$ref": "#/definitions/Logging"
+    },
+    "MaximumDurationInSeconds": {
+      "type": "integer",
+      "description": "How long, in seconds, the MicroVM can exist before AWS terminates it.",
+      "minimum": 1,
+      "maximum": 28800
+    },
+    "RunHookPayload": {
+      "type": "string",
+      "description": "Data for this MicroVM that AWS sends as the body of the image's /run hook, such as a session ID or a secret reference.",
+      "maxLength": 4096
+    },
+    "ImageArn": {
+      "type": "string",
+      "description": "The ARN of the image the MicroVM runs."
+    },
+    "Endpoint": {
+      "type": "string",
+      "description": "The HTTPS endpoint of the MicroVM."
+    },
+    "State": {
+      "type": "string",
+      "description": "The MicroVM's state.",
+      "enum": [
+        "PENDING",
+        "RUNNING",
+        "SUSPENDING",
+        "SUSPENDED",
+        "TERMINATING",
+        "TERMINATED"
+      ]
+    },
+    "StateReason": {
+      "type": "string",
+      "description": "Why the MicroVM is in its state."
+    }
+  },
+  "required": ["ImageIdentifier"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/MicrovmId"],
+  "createOnlyProperties": [
+    "/properties/ImageIdentifier",
+    "/properties/ImageVersion",
+    "/properties/ExecutionRoleArn",
+    "/properties/IdlePolicy",
+    "/properties/IngressNetworkConnectors",
+    "/properties/EgressNetworkConnectors",
+    "/properties/Logging",
+    "/properties/MaximumDurationInSeconds",
+    "/properties/RunHookPayload"
+  ],
+  "readOnlyProperties": [
+    "/properties/MicrovmId",
+    "/properties/ImageArn",
+    "/properties/Endpoint",
+    "/properties/State",
+    "/properties/StateReason"
+  ],
+  "writeOnlyProperties": ["/properties/Logging", "/properties/RunHookPayload"],
+  "propertyTransform": {
+    "/properties/ImageIdentifier": "$join([\"arn:.+?:lambda:.+?:.+?:microvm-image:\", ImageIdentifier])"
+  },
+  "handlers": {
+    "create": {
+      "permissions": ["lambda:RunMicrovm", "lambda:GetMicrovm", "iam:PassRole"]
+    },
+    "read": {
+      "permissions": ["lambda:GetMicrovm"]
+    },
+    "update": {
+      "permissions": ["lambda:GetMicrovm"]
+    },
+    "delete": {
+      "permissions": ["lambda:TerminateMicrovm", "lambda:GetMicrovm"]
+    },
+    "list": {
+      "permissions": ["lambda:ListMicrovms"]
+    }
+  }
+}
