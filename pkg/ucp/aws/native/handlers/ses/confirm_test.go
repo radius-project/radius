@@ -18,6 +18,7 @@ package ses
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -113,4 +114,45 @@ func Test_EmailIdentityPolicy_CreateAlreadyExists(t *testing.T) {
 	identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: identityPolicy("p1", testPolicy(testIdentity))})
 	requireUnknown(t, err, testIdentity+"|p1")
 	require.Equal(t, testIdentity+"|p1", identifier)
+}
+
+// Test_ThrottledRead checks that a read that fails for a reason other than a missing resource, such as throttling,
+// returns an error that is not a *native.Failure, from Read and from each Progress that reads. The worker would take a
+// failure as the end of an operation AWS may have applied.
+func Test_ThrottledRead(t *testing.T) {
+	ctx := t.Context()
+	v2Throttled := v2Error(http.StatusTooManyRequests, "TooManyRequestsException", "Too many requests")
+	v1Throttled := unmodeled("Throttling", "Rate exceeded")
+	policyAPI, topicAPI, ipAPI := newFakeAPI(awsfake.NewCloudControl()), newFakeAPI(awsfake.NewCloudControl()), newFakeAPI(awsfake.NewCloudControl())
+	policyAPI.errs["GetEmailIdentityPolicies"] = v2Throttled
+	ipAPI.errs["GetDedicatedIp"] = v2Throttled
+	topicAPI.errs["GetIdentityNotificationAttributes"] = v1Throttled
+	cases := []struct {
+		handler    native.Handler
+		identifier string
+		throttled  error
+	}{
+		{NewEmailIdentityPolicy(policyAPI), testIdentity + "|p1", v2Throttled},
+		{NewIdentityNotificationTopic(topicAPI), testIdentity + "|Bounce", v1Throttled},
+		{NewDedicatedIPAssignment(ipAPI), testIP, v2Throttled},
+	}
+	for _, c := range cases {
+		t.Run(c.handler.TypeName(), func(t *testing.T) {
+			requireNotFailure := func(t *testing.T, err error) {
+				t.Helper()
+				require.ErrorIs(t, err, c.throttled)
+				var failure *native.Failure
+				require.False(t, errors.As(err, &failure), "a throttled read is not a failure: %v", err)
+			}
+			_, err := c.handler.Read(ctx, region, c.identifier)
+			requireNotFailure(t, err)
+			if c.handler.TypeName() == dedicatedIPType {
+				return // Its Progress doesn't read.
+			}
+			for _, op := range []native.Operation{native.OperationCreate, native.OperationDelete} {
+				_, err := c.handler.Progress(ctx, region, c.identifier, op)
+				requireNotFailure(t, err)
+			}
+		})
+	}
 }

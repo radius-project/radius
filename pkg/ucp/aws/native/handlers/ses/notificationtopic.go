@@ -116,11 +116,12 @@ func topicAndHeaders(attributes types.IdentityNotificationAttributes, kind types
 	return aws.ToString(attributes.DeliveryTopic), attributes.HeadersInDeliveryNotificationsEnabled
 }
 
-// attributes returns the notification attributes of identity, or ErrNotFound when SES has no such identity.
+// attributes returns the notification attributes of identity, or ErrNotFound when SES has no such identity. Any other
+// error is returned as it is, as readError says.
 func (h *IdentityNotificationTopic) attributes(ctx context.Context, region string, identity string) (types.IdentityNotificationAttributes, error) {
 	out, err := h.api.GetIdentityNotificationAttributes(ctx, &ses.GetIdentityNotificationAttributesInput{Identities: []string{identity}}, inRegionV1(region))
 	if err != nil {
-		return types.IdentityNotificationAttributes{}, awsapi.Rejected(err)
+		return types.IdentityNotificationAttributes{}, err
 	}
 	attributes, ok := out.NotificationAttributes[identity]
 	if !ok {

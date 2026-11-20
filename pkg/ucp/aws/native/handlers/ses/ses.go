@@ -89,6 +89,13 @@ func sleep(ctx context.Context, d time.Duration) {
 // reader reads the resource with the identifier, as a handler's Read does.
 type reader func(ctx context.Context, region string, identifier string) (map[string]any, error)
 
+// readError returns the error of a read: ErrNotFound for something the SES v2 API doesn't have, and otherwise err as it
+// is. A read never reports a rejected request, because Progress reads too, and the worker would take a rejected read,
+// such as a throttled one, as the end of an operation AWS may have applied.
+func readError(err error) error {
+	return awsapi.NotFound(err, notFoundCode)
+}
+
 // notFoundOrRejected returns err as ErrNotFound for something the SES v2 API doesn't have, and otherwise as
 // awsapi.Rejected does.
 func notFoundOrRejected(err error) error {

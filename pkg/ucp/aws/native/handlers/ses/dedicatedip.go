@@ -78,7 +78,7 @@ func (h *DedicatedIPAssignment) Identifier(properties map[string]any) (string, e
 func (h *DedicatedIPAssignment) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	out, err := h.api.GetDedicatedIp(ctx, &sesv2.GetDedicatedIpInput{Ip: aws.String(identifier)}, inRegionV2(region))
 	if err != nil {
-		return nil, notFoundOrRejected(err)
+		return nil, readError(err)
 	}
 	properties := map[string]any{"Ip": identifier}
 	if out.DedicatedIp != nil && aws.ToString(out.DedicatedIp.PoolName) != "" {

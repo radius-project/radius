@@ -102,7 +102,7 @@ func (h *EmailIdentityPolicy) Read(ctx context.Context, region string, identifie
 	}
 	out, err := h.api.GetEmailIdentityPolicies(ctx, &sesv2.GetEmailIdentityPoliciesInput{EmailIdentity: aws.String(identity)}, inRegionV2(region))
 	if err != nil {
-		return nil, notFoundOrRejected(err)
+		return nil, readError(err)
 	}
 	policy, ok := out.Policies[name]
 	if !ok {
