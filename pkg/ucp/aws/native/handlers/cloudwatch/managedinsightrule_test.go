@@ -62,21 +62,28 @@ func newRuleHandler() (*ManagedInsightRule, *fakeRuleAPI) {
 }
 
 func Test_Suite_ManagedInsightRule(t *testing.T) {
-	ruleSuite(t, with(ruleTemplate(newConnections), map[string]any{"Tags": tags("env", "dev", "team", "network")}))
+	ruleSuite(t, with(ruleTemplate(newConnections), map[string]any{"Tags": tags("env", "dev", "team", "network")}), false)
+}
+
+// Test_Suite_ManagedInsightRule_LowercaseState runs the suite for a template that sets State, while AWS returns the
+// state in lowercase, which its docs don't rule out, so an unchanged redeploy only reads AWS.
+func Test_Suite_ManagedInsightRule_LowercaseState(t *testing.T) {
+	ruleSuite(t, with(ruleTemplate(newConnections), map[string]any{"State": ruleEnabled}), true)
 }
 
 // Test_Suite_ManagedInsightRule_EmptyTags runs the suite for a template that sets Tags to an empty list, so an
 // unchanged redeploy only reads AWS.
 func Test_Suite_ManagedInsightRule_EmptyTags(t *testing.T) {
-	ruleSuite(t, with(ruleTemplate(newConnections), map[string]any{"Tags": []any{}}))
+	ruleSuite(t, with(ruleTemplate(newConnections), map[string]any{"Tags": []any{}}), false)
 }
 
 // Test_Suite_ManagedInsightRule_NoTags runs the suite for a template that leaves Tags out.
 func Test_Suite_ManagedInsightRule_NoTags(t *testing.T) {
-	ruleSuite(t, ruleTemplate(newConnections))
+	ruleSuite(t, ruleTemplate(newConnections), false)
 }
 
-func ruleSuite(t *testing.T, properties map[string]any) {
+// ruleSuite runs the suite for properties. lowercase makes the fake return a rule's state in lowercase.
+func ruleSuite(t *testing.T, properties map[string]any, lowercase bool) {
 	// MultiCall disables the rule and sets one tag, and removes the template's tags when it has any.
 	// Removing an empty tag list changes nothing in AWS, so only a template with tags has a property to remove.
 	removable, calls := "", 2
@@ -99,6 +106,7 @@ func ruleSuite(t *testing.T, properties map[string]any) {
 		HandWritten: true,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
 			api := newFakeRuleAPI(store)
+			api.lowercase = lowercase
 			return NewManagedInsightRule(api, api)
 		},
 		Properties:       properties,

@@ -88,8 +88,10 @@ func (h *WorkspaceServiceAccount) TypeName() string {
 // Options returns how UCP uses the handler. AWS lists service accounts only by workspace, so the type can't be listed.
 func (h *WorkspaceServiceAccount) Options() native.Options {
 	return native.Options{
-		List:          native.ListNone,
-		Recovery:      native.RecoverBySearch,
+		List:     native.ListNone,
+		Recovery: native.RecoverBySearch,
+		// Grafana keeps a role as Viewer, and AWS's API reference doesn't say it always returns it in uppercase.
+		Equivalent:    awsapi.CaseInsensitive("GrafanaRole"),
 		CreateTimeout: accountTimeout,
 		DeleteTimeout: accountTimeout,
 	}
@@ -317,7 +319,7 @@ func (h *WorkspaceServiceAccount) Find(ctx context.Context, request native.Creat
 		}
 		return "", awsapi.Ambiguous("Grafana workspace service accounts named "+a.name, ids)
 	}
-	if found[0].GrafanaRole != a.role {
+	if !strings.EqualFold(string(found[0].GrafanaRole), string(a.role)) {
 		return "", &native.Failure{
 			Message: fmt.Sprintf("The Grafana workspace %q has a service account named %q with the role %s, not the template's %s, so Radius didn't make it. "+
 				"Use another name, or delete that service account", a.workspace, a.name, found[0].GrafanaRole, a.role),

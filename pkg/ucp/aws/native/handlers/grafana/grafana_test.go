@@ -70,6 +70,8 @@ func Test_Suite_WorkspaceServiceAccount(t *testing.T) {
 		// Every property is create-only, so a deploy of the same template is the only update.
 		Changed:          properties,
 		CreateOnlyChange: with(properties, map[string]any{"GrafanaRole": "EDITOR"}),
+		// Grafana keeps a role as Viewer, and the API reference doesn't say AWS always returns it in uppercase.
+		OtherForm: map[string]any{"GrafanaRole": "Viewer"},
 		Invalid: []map[string]any{
 			with(properties, map[string]any{"WorkspaceId": "g-XYZ"}),
 			with(properties, map[string]any{"GrafanaRole": "NONE"}),
@@ -231,8 +233,16 @@ func Test_WorkspaceServiceAccount_Find(t *testing.T) {
 		require.Empty(t, found)
 	}
 
+	// A role AWS returns in another case is the same role.
+	stored := api.store.Resource(serviceAccountType, id)
+	stored["GrafanaRole"] = "Viewer"
+	api.store.Put(serviceAccountType, id, stored)
+	found, err = find(serviceAccount("ci"))
+	require.NoError(t, err)
+	require.Equal(t, id, found)
+
 	_, err = find(with(serviceAccount("ci"), map[string]any{"GrafanaRole": "ADMIN"}))
-	requireFailure(t, err, false, "with the role VIEWER, not the template's ADMIN")
+	requireFailure(t, err, false, "with the role Viewer, not the template's ADMIN")
 
 	// AWS keeps names unique, but if it ever lists two, Find takes neither.
 	api.store.Put(serviceAccountType, workspace+"|99", map[string]any{"WorkspaceId": workspace, "Id": "99", "Name": "ci", "GrafanaRole": "VIEWER"})
