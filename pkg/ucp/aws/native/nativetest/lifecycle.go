@@ -245,8 +245,10 @@ func (l Lifecycle) read(t testing.TB, ctx context.Context, identifier string) ma
 	require.NoError(t, err)
 	catalog, err := schemas.Load()
 	require.NoError(t, err)
-	if schema, ok := catalog.Native[l.Handler.TypeName()]; ok {
-		requireSchemaTypes(t, schema, properties, "Read")
+	for _, schemas := range []map[string]string{catalog.Native, catalog.HandWritten} {
+		if schema, ok := schemas[l.Handler.TypeName()]; ok {
+			requireSchemaTypes(t, schema, properties, "Read")
+		}
 	}
 	return properties
 }

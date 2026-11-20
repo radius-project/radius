@@ -1,0 +1,76 @@
+{
+  "typeName": "AWS::RedshiftServerless::CustomDomainAssociation",
+  "description": "The custom domain name of an Amazon Redshift Serverless workgroup, made with Redshift Serverless's CreateCustomDomainAssociation. Clients connect to the workgroup by the domain, with an ACM certificate for it. A workgroup has at most one custom domain.",
+  "properties": {
+    "WorkgroupName": {
+      "type": "string",
+      "description": "The workgroup the domain names.",
+      "minLength": 3,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "CustomDomainName": {
+      "type": "string",
+      "description": "The domain name, in lowercase. A CNAME record for it must point to the workgroup's endpoint.",
+      "minLength": 1,
+      "maxLength": 253,
+      "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$"
+    },
+    "CustomDomainCertificateArn": {
+      "type": "string",
+      "description": "The ARN of an ACM certificate that Amazon issued for the domain.",
+      "minLength": 20,
+      "maxLength": 2048
+    },
+    "CustomDomainCertificateExpiryTime": {
+      "type": "string",
+      "description": "When the certificate expires."
+    }
+  },
+  "required": [
+    "WorkgroupName",
+    "CustomDomainName",
+    "CustomDomainCertificateArn"
+  ],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/WorkgroupName",
+    "/properties/CustomDomainName"
+  ],
+  "createOnlyProperties": [
+    "/properties/WorkgroupName",
+    "/properties/CustomDomainName"
+  ],
+  "readOnlyProperties": ["/properties/CustomDomainCertificateExpiryTime"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "redshift-serverless:CreateCustomDomainAssociation",
+        "redshift-serverless:GetCustomDomainAssociation",
+        "redshift-serverless:GetWorkgroup",
+        "acm:DescribeCertificate"
+      ]
+    },
+    "read": {
+      "permissions": ["redshift-serverless:GetCustomDomainAssociation"]
+    },
+    "update": {
+      "permissions": [
+        "redshift-serverless:UpdateCustomDomainAssociation",
+        "redshift-serverless:GetCustomDomainAssociation",
+        "redshift-serverless:GetWorkgroup",
+        "acm:DescribeCertificate"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift-serverless:DeleteCustomDomainAssociation",
+        "redshift-serverless:GetCustomDomainAssociation",
+        "redshift-serverless:GetWorkgroup"
+      ]
+    },
+    "list": {
+      "permissions": ["redshift-serverless:ListCustomDomainAssociations"]
+    }
+  }
+}
