@@ -30,7 +30,7 @@ import (
 //   - A property with a "propertyTransform" matches when AWS's value matches the transformed template value. See
 //     transform for the supported expressions.
 //
-// Paths are relative to the properties object, use "/" between segments, and "*" for the items of an array.
+// Paths are relative to the properties object, like the keys of FlattenProperties, with "*" for the items of an array.
 type schemaRules struct {
 	unordered  map[string]bool
 	transforms map[string]*transform
@@ -127,7 +127,7 @@ func (r *schemaRules) equivalentAt(path string, desired any, current any, desire
 	if r == nil || (len(r.unordered) == 0 && len(r.transforms) == 0) {
 		return false
 	}
-	segments := strings.Split(path, "/")
+	segments := PathSegments(path)
 	parent, _ := valueAt(desiredRoot, segments[:len(segments)-1])
 	parentMap, _ := parent.(map[string]any)
 	return r.equivalent(segments, desired, current, parentMap, desiredRoot)
@@ -137,7 +137,7 @@ func (r *schemaRules) equivalent(segments []string, desired any, current any, pa
 	if reflect.DeepEqual(desired, current) {
 		return true
 	}
-	path := strings.Join(segments, "/")
+	path := JoinPath(segments)
 	switch d := desired.(type) {
 	case []any:
 		c, ok := current.([]any)
@@ -227,11 +227,7 @@ func (f listFields) onlyWriteOnly(path []string, v any) bool {
 // rules. It doesn't match when AWS lacks an item or a field the template sets: then the template's value is sent.
 // desiredRoot is the template's whole properties object, which property transforms read.
 func (r *schemaRules) fillAt(path string, desired []any, current any, desiredRoot map[string]any, fields listFields) (any, bool) {
-	segments := strings.Split(path, "/")
-	// A map key that holds a "/" splits into more segments than it is, so the path doesn't lead back to the list.
-	if _, ok := valueAt(desiredRoot, segments); !ok {
-		return nil, false
-	}
+	segments := PathSegments(path)
 	parent, _ := valueAt(desiredRoot, segments[:len(segments)-1])
 	parentMap, _ := parent.(map[string]any)
 	return r.fill(segments, desired, current, parentMap, desiredRoot, fields)
@@ -249,7 +245,7 @@ func (r *schemaRules) fill(segments []string, desired any, current any, parent m
 		}
 		items := append(slices.Clone(segments), "*")
 		out := make([]any, len(c))
-		if !r.unordered[strings.Join(segments, "/")] {
+		if !r.unordered[JoinPath(segments)] {
 			for i := range d {
 				if out[i], ok = r.fill(items, d[i], c[i], nil, root, fields); !ok {
 					return nil, false
