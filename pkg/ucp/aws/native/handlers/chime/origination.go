@@ -34,9 +34,9 @@ const (
 
 var _ native.Handler = (*Origination)(nil)
 
-// Origination serves AWS::Chime::VoiceConnectorOrigination, a Voice Connector's origination settings,
-// which route inbound calls to your SIP hosts. A Voice Connector has none until a Put sets them, and a delete deletes
-// them. AWS rejects the delete while the Voice Connector has an emergency calling configuration.
+// Origination serves AWS::Chime::VoiceConnectorOrigination, a Voice Connector's origination settings, which route
+// inbound calls to your SIP hosts. A Voice Connector has none until a Put sets them, and a delete deletes them. AWS
+// rejects the delete while the Voice Connector has an emergency calling configuration.
 type Origination struct {
 	api  API
 	wait pause
@@ -64,7 +64,7 @@ func (h *Origination) Read(ctx context.Context, region string, identifier string
 	if err != nil {
 		return nil, notFoundOrRejected(err)
 	}
-	return properties(identifier, originationProperty, out.Origination)
+	return properties(identifier, originationProperty, out.Origination), nil
 }
 
 // put sets the Voice Connector's origination settings to those properties set, and waits until a read shows them.
@@ -80,11 +80,7 @@ func (h *Origination) put(ctx context.Context, region string, identifier string,
 	if err != nil {
 		return awsapi.Rejected(err)
 	}
-	want, err := properties(identifier, originationProperty, out.Origination)
-	if err != nil {
-		return err
-	}
-	confirm(ctx, h.wait, h.Read, region, identifier, want)
+	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, originationProperty, out.Origination))
 	return nil
 }
 

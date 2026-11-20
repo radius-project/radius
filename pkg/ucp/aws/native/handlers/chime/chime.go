@@ -116,26 +116,19 @@ func settingsOf(properties map[string]any, name string, out any) error {
 }
 
 // properties returns the properties of a Read: the Voice Connector's ID, and settings, an AWS SDK struct, under name.
-func properties(identifier string, name string, settings any) (map[string]any, error) {
-	encoded, err := awsapi.EncodeObject(settings)
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{voiceConnectorIDProperty: identifier, name: encoded}, nil
+// EncodeObject fails only for a value JSON can't encode, and an SDK struct always encodes.
+func properties(identifier string, name string, settings any) map[string]any {
+	encoded, _ := awsapi.EncodeObject(settings)
+	return map[string]any{voiceConnectorIDProperty: identifier, name: encoded}
 }
 
 // patched returns the properties an update sends: the settings AWS has, with the update's patch applied. A Put
 // replaces all of the settings, so values AWS filled in that the template never set, such as a CpsLimit of 1, are sent
 // as AWS has them, and a value the template no longer sets is left out, which clears it.
 func patched(request native.UpdateRequest) (map[string]any, error) {
-	current, err := json.Marshal(request.Current)
-	if err != nil {
-		return nil, err
-	}
-	ops, err := json.Marshal(request.Patch)
-	if err != nil {
-		return nil, err
-	}
+	// Both are JSON values already, so they always encode.
+	current, _ := json.Marshal(request.Current)
+	ops, _ := json.Marshal(request.Patch)
 	patch, err := jsonpatch.DecodePatch(ops)
 	if err == nil {
 		current, err = patch.Apply(current)
@@ -144,9 +137,7 @@ func patched(request native.UpdateRequest) (map[string]any, error) {
 		return nil, &native.Failure{Message: "UCP's update doesn't apply to the settings AWS has: " + err.Error() + ". Deploy again.", Outcome: native.OutcomeRejected}
 	}
 	out := map[string]any{}
-	if err := json.Unmarshal(current, &out); err != nil {
-		return nil, err
-	}
+	_ = json.Unmarshal(current, &out)
 	return out, nil
 }
 

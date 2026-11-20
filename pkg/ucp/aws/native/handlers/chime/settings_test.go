@@ -299,3 +299,70 @@ func Test_Fake_ObservedBehavior(t *testing.T) {
 	_, err = o.Read(ctx, region, "not-an-id")
 	require.ErrorContains(t, err, validationCode)
 }
+
+func Test_Settings_Errors(t *testing.T) {
+	ctx := t.Context()
+	throttled := apiError(429, "ThrottledClientException", "slow down")
+
+	t.Run("a failed Voice Connector check fails the logging read", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := withoutWait(NewLoggingConfiguration(api))
+		api.errs["GetVoiceConnector"] = throttled
+		_, err := h.Read(ctx, region, testVC)
+		require.ErrorContains(t, err, "ThrottledClientException")
+		require.NotErrorIs(t, err, native.ErrNotFound)
+		_, err = h.Progress(ctx, region, testVC, native.OperationDelete)
+		require.ErrorContains(t, err, "ThrottledClientException")
+
+		delete(api.errs, "GetVoiceConnector")
+		api.errs["GetVoiceConnectorLoggingConfiguration"] = throttled
+		_, err = h.Read(ctx, region, testVC)
+		require.ErrorContains(t, err, "ThrottledClientException")
+		_, err = h.List(ctx, region)
+		require.ErrorContains(t, err, "can't be listed")
+	})
+
+	t.Run("a value of the wrong type is rejected before any call", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := withoutWait(NewStreamingConfiguration(api))
+		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: streaming(testVC, map[string]any{"DataRetentionInHours": "a day", "Disabled": false})})
+		requireRejected(t, err, "StreamingConfiguration")
+		require.Empty(t, api.calls)
+	})
+
+	for _, h := range []native.Handler{
+		withoutWait(NewLoggingConfiguration(newFakeAPI(awsfake.NewCloudControl()))),
+		withoutWait(NewStreamingConfiguration(newFakeAPI(awsfake.NewCloudControl()))),
+		withoutWait(NewOrigination(newFakeAPI(awsfake.NewCloudControl()))),
+		withoutWait(NewTermination(newFakeAPI(awsfake.NewCloudControl()))),
+	} {
+		t.Run(h.TypeName()+": an update without settings, or one AWS rejects", func(t *testing.T) {
+			err := h.Update(ctx, native.UpdateRequest{Region: region, Identifier: testVC, Desired: map[string]any{"VoiceConnectorId": testVC}})
+			var failure *native.Failure
+			require.ErrorAs(t, err, &failure)
+			require.True(t, failure.ClientError)
+
+			request := update(t, map[string]any{"VoiceConnectorId": testVC}, nil)
+			request.Desired = map[string]any{"VoiceConnectorId": testVC, "LoggingConfiguration": map[string]any{}, "StreamingConfiguration": map[string]any{}, "Origination": map[string]any{}, "Termination": map[string]any{}}
+			request.Patch = jsondiff.Patch{{Type: jsondiff.OperationRemove, Path: "/Missing"}}
+			require.ErrorAs(t, h.Update(ctx, request), &failure)
+			require.Equal(t, native.OutcomeRejected, failure.Outcome)
+		})
+	}
+
+	t.Run("a Put AWS rejects", func(t *testing.T) {
+		_, err := withoutWait(NewOrigination(newFakeAPI(awsfake.NewCloudControl()))).Create(ctx, native.CreateRequest{Region: region, Properties: map[string]any{"VoiceConnectorId": testVC, "Origination": map[string]any{"Disabled": true}}})
+		requireRejected(t, err, badRequestCode)
+		_, err = withoutWait(NewStreamingConfiguration(newFakeAPI(awsfake.NewCloudControl()))).Create(ctx, native.CreateRequest{Region: region, Properties: streaming(testVC, map[string]any{"DataRetentionInHours": -1, "Disabled": false})})
+		requireRejected(t, err, validationCode)
+	})
+
+	t.Run("a logging update whose patch removes the settings", func(t *testing.T) {
+		h := withoutWait(NewLoggingConfiguration(newFakeAPI(awsfake.NewCloudControl())))
+		current := logging(testVC, true, false)
+		request := update(t, current, nil)
+		request.Desired = current
+		request.Patch = jsondiff.Patch{{Type: jsondiff.OperationRemove, Path: "/LoggingConfiguration"}}
+		requireRejected(t, h.Update(ctx, request), "set LoggingConfiguration")
+	})
+}

@@ -45,7 +45,6 @@
         "logs:CreateLogGroup",
         "logs:CreateLogDelivery",
         "logs:PutResourcePolicy",
-        "logs:DescribeResourcePolicies",
         "logs:GetLogDelivery",
         "logs:DeleteLogDelivery"
       ]
@@ -66,7 +65,6 @@
         "logs:CreateLogGroup",
         "logs:CreateLogDelivery",
         "logs:PutResourcePolicy",
-        "logs:DescribeResourcePolicies",
         "logs:GetLogDelivery",
         "logs:DeleteLogDelivery"
       ]
@@ -81,7 +79,6 @@
         "logs:CreateLogGroup",
         "logs:CreateLogDelivery",
         "logs:PutResourcePolicy",
-        "logs:DescribeResourcePolicies",
         "logs:GetLogDelivery",
         "logs:DeleteLogDelivery"
       ]

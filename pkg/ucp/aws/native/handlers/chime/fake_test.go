@@ -200,8 +200,7 @@ func decode(props map[string]any, name string, out any) {
 
 // encode returns the properties of settings, an AWS SDK struct, for the Voice Connector with id, under name.
 func encode(id string, name string, settings any) map[string]any {
-	props, _ := properties(id, name, settings)
-	return props
+	return properties(id, name, settings)
 }
 
 func (f *fakeAPI) GetVoiceConnector(ctx context.Context, in *chimesdkvoice.GetVoiceConnectorInput, _ ...func(*chimesdkvoice.Options)) (*chimesdkvoice.GetVoiceConnectorOutput, error) {

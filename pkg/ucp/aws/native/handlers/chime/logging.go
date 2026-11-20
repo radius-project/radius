@@ -78,7 +78,7 @@ func (h *LoggingConfiguration) Read(ctx context.Context, region string, identifi
 	if err != nil {
 		return nil, notFoundOrRejected(err)
 	}
-	return properties(identifier, loggingProperty, loggingOf(out.LoggingConfiguration))
+	return properties(identifier, loggingProperty, loggingOf(out.LoggingConfiguration)), nil
 }
 
 // loggingOf returns settings with both logs set, off where AWS leaves one out, so a template that leaves one out
@@ -107,11 +107,7 @@ func (h *LoggingConfiguration) put(ctx context.Context, region string, identifie
 	if err != nil {
 		return err
 	}
-	want, err := properties(identifier, loggingProperty, loggingOf(out.LoggingConfiguration))
-	if err != nil {
-		return err
-	}
-	confirm(ctx, h.wait, h.Read, region, identifier, want)
+	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, loggingProperty, loggingOf(out.LoggingConfiguration)))
 	return nil
 }
 
@@ -170,11 +166,7 @@ func (h *LoggingConfiguration) Progress(ctx context.Context, region string, iden
 	if err != nil {
 		return native.Progress{}, err
 	}
-	off, err := properties(identifier, loggingProperty, loggingOf(nil))
-	if err != nil {
-		return native.Progress{}, err
-	}
-	if reflect.DeepEqual(current, off) {
+	if reflect.DeepEqual(current, properties(identifier, loggingProperty, loggingOf(nil))) {
 		return native.Progress{Done: true}, nil
 	}
 	return native.Progress{State: "on", Waiting: "off"}, nil

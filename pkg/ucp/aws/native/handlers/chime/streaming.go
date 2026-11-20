@@ -63,7 +63,7 @@ func (h *StreamingConfiguration) Read(ctx context.Context, region string, identi
 	if err != nil {
 		return nil, notFoundOrRejected(err)
 	}
-	return properties(identifier, streamingProperty, out.StreamingConfiguration)
+	return properties(identifier, streamingProperty, out.StreamingConfiguration), nil
 }
 
 // put sets the Voice Connector's streaming settings to those properties set, and waits until a read shows them.
@@ -79,11 +79,7 @@ func (h *StreamingConfiguration) put(ctx context.Context, region string, identif
 	if err != nil {
 		return awsapi.Rejected(err)
 	}
-	want, err := properties(identifier, streamingProperty, out.StreamingConfiguration)
-	if err != nil {
-		return err
-	}
-	confirm(ctx, h.wait, h.Read, region, identifier, want)
+	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, streamingProperty, out.StreamingConfiguration))
 	return nil
 }
 

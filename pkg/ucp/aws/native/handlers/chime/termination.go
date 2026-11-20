@@ -34,9 +34,10 @@ const (
 
 var _ native.Handler = (*Termination)(nil)
 
-// Termination serves AWS::Chime::VoiceConnectorTermination, a Voice Connector's termination settings,
-// which let your SIP hosts make outbound calls. A Voice Connector has none until a Put sets them, and a delete deletes
-// them. AWS rejects the delete while the Voice Connector has an emergency calling configuration.
+// Termination serves AWS::Chime::VoiceConnectorTermination, a Voice Connector's termination settings, which let your
+// SIP hosts make outbound calls. A Voice Connector has none until a Put sets them, and a delete deletes them. AWS
+// rejects the delete while the Voice Connector has an emergency calling configuration. Its SIP credentials are a
+// separate resource, which a delete leaves as they are.
 type Termination struct {
 	api  API
 	wait pause
@@ -64,7 +65,7 @@ func (h *Termination) Read(ctx context.Context, region string, identifier string
 	if err != nil {
 		return nil, notFoundOrRejected(err)
 	}
-	return properties(identifier, terminationProperty, out.Termination)
+	return properties(identifier, terminationProperty, out.Termination), nil
 }
 
 // put sets the Voice Connector's termination settings to those properties set, and waits until a read shows them.
@@ -80,11 +81,7 @@ func (h *Termination) put(ctx context.Context, region string, identifier string,
 	if err != nil {
 		return awsapi.Rejected(err)
 	}
-	want, err := properties(identifier, terminationProperty, out.Termination)
-	if err != nil {
-		return err
-	}
-	confirm(ctx, h.wait, h.Read, region, identifier, want)
+	confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, terminationProperty, out.Termination))
 	return nil
 }
 

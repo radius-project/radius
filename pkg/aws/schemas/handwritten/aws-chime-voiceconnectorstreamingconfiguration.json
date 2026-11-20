@@ -83,7 +83,8 @@
       "permissions": [
         "chime:PutVoiceConnectorStreamingConfiguration",
         "chime:GetVoiceConnectorStreamingConfiguration",
-        "sns:CreateTopic"
+        "sns:CreateTopic",
+        "sqs:CreateQueue"
       ]
     },
     "read": {
@@ -93,7 +94,8 @@
       "permissions": [
         "chime:PutVoiceConnectorStreamingConfiguration",
         "chime:GetVoiceConnectorStreamingConfiguration",
-        "sns:CreateTopic"
+        "sns:CreateTopic",
+        "sqs:CreateQueue"
       ]
     },
     "delete": {
