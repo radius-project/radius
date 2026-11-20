@@ -83,6 +83,10 @@ const (
 // returns an error and leaves both CAs trusted. It then points the APIService at Secret radius-apiserver-ca and
 // deletes only the transient trust Secret, which removes the earlier CA. An A8
 // Helm-owned public copy is retained unchanged as a historical continuity pin.
+//
+// It verifies only the current trust: rad writes the caBundle itself, so a cainjector that cannot update the
+// APIService passes. Such an injector leaves the earlier radius-apiserver-ca certificate in the caBundle after
+// cert-manager renews it, which keeps working, because the renewal keeps the key, until that certificate expires.
 func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -171,7 +175,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		return err
 	}
 	if overlap && len(trusted) > 1 {
-		output.LogInfo("Removed %d earlier CA certificate(s) from APIService %s, which now trusts %s/%s through cert-manager",
+		output.LogInfo("Removed %d earlier CA certificate(s) from APIService %s, which now trusts only %s/%s",
 			len(trusted)-1, ucpAPIServiceName, radiusNamespace, ucpAPIServerCASecretName)
 	}
 	return nil
@@ -242,7 +246,7 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 		if parseErr != nil {
 			return false, fmt.Errorf("invalid APIService trust bundle: %w", parseErr)
 		}
-		live, err := ucpAPIServiceCAs(apiService)
+		live, err := apiServiceCACertificates(apiService)
 		if err != nil {
 			return false, err
 		}

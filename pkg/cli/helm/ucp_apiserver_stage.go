@@ -106,6 +106,9 @@ func renderOnce(render renderRadiusManifest) renderRadiusManifest {
 // caBundle. The chart then renders the APIService from the trust Secret, and reconcileUCPAPIServerTrust removes the
 // earlier CAs after Helm once UCP serves the new certificate.
 //
+// The APIService is cluster-scoped, so before it writes anything rad requires that the Radius release owns it and that
+// it routes to UCP in radiusNamespace (see releaseUCPAPIService).
+//
 // It does nothing when the APIService does not exist, as on a fresh install, or the APIService caBundle already holds
 // only the key of radius-apiserver-ca. When manifest has no radius-apiserver-ca Certificate, as in charts before it, it
 // only records the CAs of the live caBundle in the trust Secret. If cert-manager does not issue the CA in time, it
@@ -151,12 +154,9 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		}
 	}
 
-	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
+	if err != nil || apiService == nil {
+		return err
 	}
 
 	if err := validateUCPAPIServerAPIAnchors(current, apiService); err != nil {
@@ -176,7 +176,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if kind == "Secret" {
 		return stageOff()
 	}
-	live, err := ucpAPIServiceCAs(apiService)
+	live, err := apiServiceCACertificates(apiService)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	// An inject-ca-from-secret annotation left on radius-apiserver-ca, by an earlier switch to authorization off, makes
 	// a cainjector that replaces the caBundle drop the current CA of UCP as soon as cert-manager issues
 	// radius-apiserver-ca. Point the annotation at the trust Secret before the issuers exist.
-	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, ucpAPIServerTrustSource(radiusNamespace), trusted, "the current CA of UCP"); err != nil {
+	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), trusted, "the current CA of UCP"); err != nil {
 		return err
 	}
 
@@ -246,7 +246,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {
 		return err
 	}
-	return trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, ucpAPIServerTrustSource(radiusNamespace), trusted, "both the current CA of UCP and "+ucpAPIServerCASecretName)
+	return trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), trusted, "both the current CA of UCP and "+ucpAPIServerCASecretName)
 }
 
 // stageUCPOffCertificate moves UCP to the certificate that Helm applies when authorization turns off, before Helm
@@ -260,6 +260,8 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 // to adopt it, adds its CA to the caBundle, and mounts it in the ucp Deployment, then waits until every UCP pod serves
 // it. Helm then keeps that Secret, because the chart it renders, for an upgrade or a rollback, reuses a live ucp-cert
 // and its ucp-ca, so the caBundle Helm applies trusts what UCP serves.
+//
+// Like stageUCPAPIServerCA, it refuses an APIService that the Radius release does not own before it writes anything.
 //
 // It does nothing when the ucp Deployment or the APIService does not exist, the Deployment mounts no named certificate
 // volume, or manifest has no ucp-cert Secret. If UCP does not serve the certificate in time, it returns an error before
@@ -284,8 +286,12 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if mounted == "" {
 		return nil
 	}
-	live, found, err := readUCPAPIServiceCABundle(ctx, dynamicClient)
-	if err != nil || !found {
+	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
+	if err != nil || apiService == nil {
+		return err
+	}
+	live, err := apiServiceCACertificates(apiService)
+	if err != nil || len(live) == 0 {
 		return err
 	}
 
@@ -325,9 +331,11 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 			kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTrustSecretName))
 	}
 	overlap := unionCertificates(live, target)
-	injected, err := ucpAPIServiceInjected(ctx, dynamicClient)
-	if err != nil {
-		return err
+	injected := false
+	for _, annotation := range ucpInjectAnnotations {
+		if _, ok := apiService.GetAnnotations()[annotation]; ok {
+			injected = true
+		}
 	}
 
 	output.LogInfo("Moving UCP to the certificate in Secret %s before authorization turns off...", ucpOffCertificateSecretName)
@@ -337,7 +345,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, overlap); err != nil {
 			return err
 		}
-		if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, ucpAPIServerTrustSource(radiusNamespace), overlap,
+		if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), overlap,
 			"both the current CA of UCP and the CA in Secret "+ucpOffCertificateSecretName); err != nil {
 			return err
 		}
@@ -374,21 +382,8 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	return nil
 }
 
-// readUCPAPIServiceCABundle returns the CA certificates in the caBundle of the UCP APIService. found is false when the
-// APIService does not exist or its caBundle holds no CA certificate.
-func readUCPAPIServiceCABundle(ctx context.Context, dynamicClient dynamic.Interface) ([]*x509.Certificate, bool, error) {
-	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
-	}
-	cas, err := ucpAPIServiceCAs(apiService)
-	return cas, len(cas) > 0, err
-}
-
-func ucpAPIServiceCAs(apiService *unstructured.Unstructured) ([]*x509.Certificate, error) {
+// apiServiceCACertificates returns the CA certificates in the caBundle of apiService.
+func apiServiceCACertificates(apiService *unstructured.Unstructured) ([]*x509.Certificate, error) {
 	encoded, _, err := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 	if err != nil {
 		return nil, fmt.Errorf("invalid APIService caBundle: %w", err)
@@ -404,26 +399,48 @@ func ucpAPIServiceCAs(apiService *unstructured.Unstructured) ([]*x509.Certificat
 	return cas, nil
 }
 
-// ucpAPIServiceInjected reports whether the UCP APIService has any of the cert-manager inject annotations.
-func ucpAPIServiceInjected(ctx context.Context, dynamicClient dynamic.Interface) (bool, error) {
+// releaseUCPAPIService returns the UCP APIService when the Radius release releaseName in radiusNamespace owns it and it
+// routes to a Service in radiusNamespace, or nil when it does not exist. The APIService is cluster-scoped, so another
+// Radius release, in another namespace, may own it; rad refuses to change it before Helm in that case rather than
+// redirect the trust of another installation.
+func releaseUCPAPIService(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace, releaseName string) (*unstructured.Unstructured, error) {
 	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
 	if err != nil {
-		return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+		return nil, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 	}
-	for _, annotation := range ucpInjectAnnotations {
-		if _, ok := apiService.GetAnnotations()[annotation]; ok {
-			return true, nil
-		}
+	if problem := foreignUCPAPIServiceProblem(apiService, radiusNamespace, releaseName); problem != "" {
+		return nil, fmt.Errorf("APIService %s %s, so rad will not change it. Helm has not changed Radius. "+
+			"Check which installation owns it with %s",
+			ucpAPIServiceName, problem, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
 	}
-	return false, nil
+	return apiService, nil
+}
+
+// foreignUCPAPIServiceProblem describes why apiService does not belong to the Radius release releaseName in
+// radiusNamespace, or returns "" when it does.
+func foreignUCPAPIServiceProblem(apiService *unstructured.Unstructured, radiusNamespace, releaseName string) string {
+	if !helmOwned(apiService, radiusNamespace, releaseName) {
+		annotations := apiService.GetAnnotations()
+		return fmt.Sprintf("is not part of Helm release %s/%s (it names release %q in namespace %q)",
+			radiusNamespace, releaseName, annotations[helmReleaseNameAnnotation], annotations[helmReleaseNamespaceAnnotation])
+	}
+	if namespace, _, _ := unstructured.NestedString(apiService.Object, "spec", "service", "namespace"); namespace != radiusNamespace {
+		return fmt.Sprintf("routes to a Service in namespace %q rather than %q", namespace, radiusNamespace)
+	}
+	return ""
 }
 
 // trustUCPAPIServerCAs points the inject-ca-from-secret annotation of the UCP APIService at source and sets its
 // caBundle to cas in one patch, then waits until both have held for ucpAPIServerCASettleChecks polls in a row, patching
-// again if cainjector writes back a caBundle it read earlier. trusts describes cas in the timeout error.
-func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, source string, cas []*x509.Certificate, trusts string) error {
+// again if cainjector writes back a caBundle it read earlier. trusts describes cas in the timeout error. uid is the UID
+// of the APIService that releaseUCPAPIService checked: rad stops if the APIService is replaced, and the patch carries
+// the UID so the API server rejects it for a replacement created in between.
+func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, uid types.UID, source string, cas []*x509.Certificate, trusts string) error {
 	patch, err := json.Marshal(map[string]any{
-		"metadata": map[string]any{"annotations": map[string]any{injectCAFromSecretAnnotation: source}},
+		"metadata": map[string]any{"uid": uid, "annotations": map[string]any{injectCAFromSecretAnnotation: source}},
 		"spec":     map[string]any{"caBundle": base64.StdEncoding.EncodeToString(encodeCertificates(cas))},
 	})
 	if err != nil {
@@ -435,7 +452,11 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 		if err != nil {
 			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 		}
-		live, err := ucpAPIServiceCAs(apiService)
+		if apiService.GetUID() != uid {
+			return false, fmt.Errorf("APIService %s was replaced while rad updated its caBundle. Helm has not changed the Radius release; check it with %s, then run the command again",
+				ucpAPIServiceName, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
+		}
+		live, err := apiServiceCACertificates(apiService)
 		if err != nil {
 			return false, err
 		}

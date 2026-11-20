@@ -339,3 +339,57 @@ func Test_deleteUnadoptedUCPAPIServerStage_KeepsDeclaredObjects(t *testing.T) {
 		require.Equal(t, staged.name == radiusBootstrapIssuerName, stageObjectExists(t, dynamicClient, staged.resource, staged.name), "%s %s", staged.kind, staged.name)
 	}
 }
+
+// Helm removes the Radius release before rad deletes these objects, so a failed delete leaves them with no release. The
+// failed uninstall still removes Contour, which a retry would skip. A retried uninstall lists the objects and resumes the
+// cleanup; it never lists objects that other owners wrote.
+func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
+	issued := func(name, certificate string) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: RadiusSystemNamespace, UID: types.UID("uid-" + name), ResourceVersion: "1",
+			Annotations: map[string]string{certificateNameAnnotation: certificate}}}
+	}
+	trust := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "uid-trust", ResourceVersion: "1",
+			Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+		Data: map[string][]byte{caCertificateKey: []byte("ca")},
+	}
+	kubeClient := kubefake.NewSimpleClientset(issued(ucpAPIServerCASecretName, ucpAPIServerCASecretName), issued(ucpAPIServerTLSSecretName, ucpAPIServerCertificateName),
+		issued("other-secret", "other"), trust)
+	failDelete := true
+	kubeClient.PrependReactor("delete", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		if failDelete && action.(k8stesting.DeleteAction).GetName() == ucpAPIServerTLSSecretName {
+			return true, nil, apierrors.NewServiceUnavailable("unavailable")
+		}
+		return false, nil, nil
+	})
+	staged := stagedUCPAPIServerObject("Issuer", radiusAPIServerIssuerName, radiusReleaseName, nil)
+	foreign := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, "", nil)
+	dynamicClient := fakeCertManagerDynamicClient(nil, staged, foreign)
+	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+	options := NewDefaultClusterOptions()
+	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+	gateway := &defaultContourGatewayCalls{}
+	impl := &Impl{
+		Helm:                        mockHelmClient,
+		logger:                      func(string, ...any) {},
+		removeDefaultContourGateway: gateway.remove,
+		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
+		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
+	}
+	require.ErrorContains(t, impl.UninstallRadius(t.Context(), options, "test-context"), ucpAPIServerTLSSecretName)
+	require.Equal(t, 1, gateway.removeCalls)
+
+	leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
+	require.NoError(t, err)
+	require.Equal(t, []string{"Secret radius-system/" + ucpAPIServerTLSSecretName}, leftovers)
+
+	failDelete = false
+	require.NoError(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), options, "test-context"))
+	leftovers, err = impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
+	require.NoError(t, err)
+	require.Empty(t, leftovers)
+	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), "other-secret", metav1.GetOptions{})
+	require.NoError(t, err)
+	require.True(t, stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
+}

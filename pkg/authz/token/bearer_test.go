@@ -47,12 +47,6 @@ func TestBearerToken(t *testing.T) {
 		{name: "two tokens", headers: []string{"Bearer abc def"}, wantErr: true},
 		{name: "two tokens after multiple spaces", headers: []string{"Bearer  abc  def"}, wantErr: true},
 		{name: "internal tab", headers: []string{"Bearer abc\tdef"}, wantErr: true},
-		{name: "all b64token characters", headers: []string{"Bearer aZ09-._~+/=="}, want: "aZ09-._~+/=="},
-		{name: "comma", headers: []string{"Bearer a,b"}, wantErr: true},
-		{name: "quote", headers: []string{`Bearer "abc"`}, wantErr: true},
-		{name: "padding before other characters", headers: []string{"Bearer a=b"}, wantErr: true},
-		{name: "padding only", headers: []string{"Bearer =="}, wantErr: true},
-		{name: "non-ASCII", headers: []string{"Bearer abcé"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

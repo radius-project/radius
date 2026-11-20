@@ -32,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
 )
 
@@ -151,10 +150,10 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 
 	t.Run("populate an uninjected APIService", func(t *testing.T) {
 		c := newOffAfterOnCluster(t)
-		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, ucpAPIService("", "True", "Passed"), ""))
-		live, found, err := readUCPAPIServiceCABundle(t.Context(), c.dynamic)
+		apiService := ucpAPIService("", "True", "Passed")
+		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, apiService, ""))
+		live, err := apiServiceCACertificates(apiService)
 		require.NoError(t, err)
-		require.False(t, found)
 		require.Empty(t, live)
 		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace, nil))
 		c.requireOffTrust(t)
@@ -200,7 +199,6 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 					"apiVersion": "cert-manager.io/v1",
 					"kind":       "Certificate",
 					"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
-					"spec":       map[string]any{"secretName": ucpAPIServerCASecretName},
 				}}))
 				secret.UID = types.UID(name + "-2")
 			case ucpAPIServerTLSSecretName:
@@ -397,7 +395,6 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			"apiVersion": "cert-manager.io/v1",
 			"kind":       "Certificate",
 			"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
-			"spec":       map[string]any{"secretName": ucpAPIServerCASecretName},
 		}}
 		require.NoError(t, c.dynamic.Tracker().Add(certificate))
 
@@ -498,40 +495,6 @@ func Test_ReconcileUCPOffAPIServerTrust_DeletesInterruptedStage(t *testing.T) {
 			c.dynamic.ClearActions()
 			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 			require.Empty(t, c.clusterWrites())
-		})
-	}
-}
-
-// A Secret is in use only while its Certificate writes it. The parent chart declares Certificate ucp-cert with the
-// Secret ucp-mtls, so after a rollback to it ucp-apiserver-tls is a leftover, not the Secret of ucp-cert.
-func Test_ucpOffLeftover_CertificateSecretName(t *testing.T) {
-	leftover := ucpOffLeftoverSecret{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}
-	certificate := func(secretName string) *unstructured.Unstructured {
-		object := &unstructured.Unstructured{}
-		object.SetAPIVersion("cert-manager.io/v1")
-		object.SetKind("Certificate")
-		object.SetName(ucpAPIServerCertificateName)
-		object.SetNamespace(RadiusSystemNamespace)
-		require.NoError(t, unstructured.SetNestedField(object.Object, secretName, "spec", "secretName"))
-		return object
-	}
-	tests := []struct {
-		name       string
-		secretName string
-		want       ucpOffSecretState
-	}{
-		{name: "Certificate writes the Secret", secretName: ucpAPIServerTLSSecretName, want: ucpOffSecretKeep},
-		{name: "Certificate writes another Secret", secretName: "ucp-mtls", want: ucpOffSecretLeftover},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			kubeClient := kubefake.NewSimpleClientset(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
-				Name: ucpAPIServerTLSSecretName, Namespace: RadiusSystemNamespace,
-				Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCertificateName},
-			}})
-			found, err := ucpOffLeftover(t.Context(), kubeClient, fakeCertManagerDynamicClient(nil, certificate(tt.secretName)), RadiusSystemNamespace, leftover)
-			require.NoError(t, err)
-			require.Equal(t, tt.want, found.state)
 		})
 	}
 }

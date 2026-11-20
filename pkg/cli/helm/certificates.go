@@ -692,11 +692,11 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 }
 
 // An external issuer and its cert-manager installation remain operator-managed.
-func (i *Impl) ensureSelectedCertManager(ctx context.Context, mode string, options ClusterOptions, kubeContext string, defaults, stored map[string]any, upgrade bool) error {
+func (i *Impl) ensureSelectedCertManager(ctx context.Context, mode string, options ClusterOptions, kubeContext string, defaults, stored, userValues map[string]any, upgrade bool) error {
 	if mode == "issuerRef" {
 		return i.checkInstalledCertManagerReady(ctx, kubeContext, options.Radius.Namespace)
 	}
-	return i.ensureCertManager(ctx, options, kubeContext, defaults, stored, upgrade)
+	return i.ensureCertManager(ctx, options, kubeContext, defaults, stored, userValues, upgrade)
 }
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.
@@ -709,8 +709,11 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	render := i.renderRadiusUpgrade(kubeContext, configuration, chart, current, options.Radius.ReleaseName, options.Radius.Namespace, !options.ResetValues)
-	return target.checkActionRender(ctx, renderOnce(render))
+	render := renderOnce(i.renderRadiusUpgrade(kubeContext, configuration, chart, current, options.Radius.ReleaseName, options.Radius.Namespace, !options.ResetValues))
+	if _, _, err := render(ctx); err != nil {
+		return err
+	}
+	return target.checkActionRender(ctx, render)
 }
 
 func (t *certificateTarget) checkActionRender(ctx context.Context, render renderRadiusManifest) error {

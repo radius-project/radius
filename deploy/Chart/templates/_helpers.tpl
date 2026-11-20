@@ -278,6 +278,53 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- end -}}
 
 {{/*
+Pod volume names the authorization helpers add, as a JSON list. Values that name pod volumes must
+not reuse them, or Kubernetes rejects the Deployment for duplicate volume names.
+*/}}
+{{- define "radius.authz.reservedVolumeNames" -}}
+{{- $names := list "spiffe" "radius-ca" -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $names = append $names (printf "token-%s" .) -}}
+{{- end -}}
+{{- $names | toJson -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active global.rootCA.volumeName is a reserved authorization volume name.
+Renders nothing. Called by the authorization volume helpers, which render only when the
+authorization mode is not off.
+*/}}
+{{- define "radius.authz.validateVolumeNames" -}}
+{{- $reserved := include "radius.authz.reservedVolumeNames" . | fromJsonArray -}}
+{{- if and .Values.global.rootCA.cert (has .Values.global.rootCA.volumeName $reserved) -}}
+{{- fail (printf "global.rootCA.volumeName must not be %q: Radius authorization reserves the pod volume names %s" .Values.global.rootCA.volumeName (join ", " $reserved)) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active shared Secret (global.rootCA.secretName or
+global.targetCluster.secretName) is a receiver's <receiver>-spiffe Secret. cert-manager writes the
+receiver's private key to that Secret, and the shared Secrets are mounted whole into several pods.
+Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
+*/}}
+{{- define "radius.authz.validateSecretNames" -}}
+{{- $shared := list -}}
+{{- if .Values.global.rootCA.cert -}}
+{{- $shared = append $shared (list "global.rootCA.secretName" .Values.global.rootCA.secretName) -}}
+{{- end -}}
+{{- if .Values.global.targetCluster.enabled -}}
+{{- $shared = append $shared (list "global.targetCluster.secretName" .Values.global.targetCluster.secretName) -}}
+{{- end -}}
+{{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- range $shared -}}
+{{- if eq (index . 1) (printf "%s-spiffe" $receiver) -}}
+{{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Renders the authorization settings shared by every component's config: where the SPIFFE server
 certificate, the Radius CA bundle, and the projected ServiceAccount tokens are mounted, the trust
 domain, and the release namespace.
@@ -348,6 +395,7 @@ Secret is not mounted. The Secret is required, so pods wait until cert-manager h
 */}}
 {{- define "radius.authz.caBundle.volume" -}}
 {{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
+{{- include "radius.authz.validateVolumeNames" . }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") | fromJson }}
 - name: radius-ca
   {{- if eq $source.kind "ConfigMap" }}
@@ -375,13 +423,7 @@ SPIFFE trust domain of the Radius server certificates.
 */}}
 {{- define "radius.authz.spiffe.trustDomain" -}}
 {{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
-{{- $trustDomain := "radius.internal" -}}
-{{- if hasKey $spiffe "trustDomain" -}}
-{{- $trustDomain = $spiffe.trustDomain -}}
-{{- if not (kindIs "string" $trustDomain) -}}
-{{- fail (printf "global.rbac.spiffe.trustDomain must be a string, got %s" (kindOf $trustDomain)) -}}
-{{- end -}}
-{{- end -}}
+{{- $trustDomain := $spiffe.trustDomain | default "radius.internal" | toString -}}
 {{- if or (gt (len $trustDomain) 255) (not (regexMatch "^[a-z0-9._-]+$" $trustDomain)) -}}
 {{- fail (printf "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got %q" $trustDomain) -}}
 {{- end -}}
@@ -419,6 +461,7 @@ Call with (dict "root" $ "component" "<receiver>").
 */}}
 {{- define "radius.authz.spiffe.volume" -}}
 {{- if and (ne (include "radius.authz.mode" .root) "off") (eq (include "radius.authz.tls.provider" .root) "radius") }}
+{{- include "radius.authz.validateVolumeNames" .root }}
 - name: spiffe
   secret:
     secretName: {{ .component }}-spiffe
@@ -460,6 +503,7 @@ Call with (dict "root" $ "receivers" (list "<receiver>" ...)).
 */}}
 {{- define "radius.authz.tokens.volumes" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- include "radius.authz.validateVolumeNames" .root }}
 {{- range .receivers }}
 - name: token-{{ . }}
   projected:

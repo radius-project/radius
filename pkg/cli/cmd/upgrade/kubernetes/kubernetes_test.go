@@ -163,7 +163,7 @@ func TestPreflightOnlyReturnsCertificatePrerequisiteError(t *testing.T) {
 	mock := helm.NewMockInterface(gomock.NewController(t))
 	runner.Helm = mock
 	mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil)
-	missing := errors.New("cluster does not serve ValidatingAdmissionPolicy")
+	missing := errors.New("selected signing Secret is missing")
 	mock.EXPECT().CheckRadiusCertificates(gomock.Any(), gomock.Any(), "").Return(missing)
 	require.ErrorIs(t, runner.Run(t.Context()), missing)
 }

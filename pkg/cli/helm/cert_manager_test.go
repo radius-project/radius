@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -555,7 +554,7 @@ func Test_ensureCertManager(t *testing.T) {
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.defaults, tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.defaults, tt.stored, cliUserValues(t, options), tt.upgrade)
 			switch {
 			case tt.wantErr != "":
 				require.ErrorContains(t, err, tt.wantErr)
@@ -638,7 +637,7 @@ func Test_ensureCertManager_RBACWarning(t *testing.T) {
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
 			options.Radius.SetFileArgs = tt.setFileArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, tt.stored, cliUserValues(t, options), tt.upgrade)
 			if !tt.wantWarning {
 				require.NoError(t, err)
 				require.Empty(t, logs)
@@ -780,7 +779,7 @@ func Test_ensureCertManager_ReleaseLookupErrorDoesNotRepair(t *testing.T) {
 			impl := &Impl{Helm: client}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), upgrade)
 			require.ErrorIs(t, err, failure)
 			require.ErrorContains(t, err, "failed to run helm get")
 			require.NotContains(t, err.Error(), "rollback")
@@ -810,7 +809,7 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				}}
 				options := NewDefaultClusterOptions()
 				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, upgrade)
+				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), upgrade)
 				if healthy {
 					require.NoError(t, err)
 				} else {
@@ -844,7 +843,7 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, false)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), false)
 			require.ErrorIs(t, err, failure)
 		})
 	}
@@ -896,20 +895,18 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []string
-		command []string
 		sidecar []string
 		// mirrored renames the cainjector container and mirrors its image, so only its command identifies it.
 		mirrored bool
 		// unidentified renames the cainjector container and mirrors its image without a command that identifies it.
 		unidentified bool
-		// config is the CAInjectorConfiguration file that the cert-manager chart's cainjector.config value mounts from
-		// a ConfigMap and passes with --config; configMissing leaves that ConfigMap out.
-		config        string
-		configMissing bool
-		wantErr       string
-		wantWarning   bool
-		// wantConfigWarning is part of the warning rad prints when it cannot read the configuration file.
-		wantConfigWarning string
+		// env is the environment of the cainjector container, which Kubernetes expands in $(NAME) references of its
+		// args.
+		env         []corev1.EnvVar
+		wantErr     string
+		wantWarning bool
+		// wantNamespaceWarning is set when rad cannot resolve the namespace flag and warns instead of checking it.
+		wantNamespaceWarning bool
 	}{
 		{name: "chart defaults", args: []string{"--v=2", "--leader-election-namespace=kube-system"}},
 		{name: "injection explicitly enabled", args: []string{"--enable-apiservices-injectable=true", "--enable-certificates-data-source"}},
@@ -930,21 +927,26 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 		{name: "unidentified restricted injector beside a sidecar", unidentified: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantWarning: true},
 		// A Deployment with one container runs cainjector in it.
 		{name: "unidentified lone restricted injector", unidentified: true, args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
-		// The container runs the flags of its command after the executable, as well as its args.
-		{name: "limited to another namespace by its command", command: []string{"/cainjector", "--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
-		{name: "APIService injection disabled by its command", command: []string{"cainjector", "--enable-apiservices-injectable=false"}, args: []string{"--v=2"}, wantErr: "sets --enable-apiservices-injectable=false"},
-		{name: "namespace flag in its command with the value in its args", command: []string{"cainjector", "--namespace"}, args: []string{"security"}, wantErr: `is limited to namespace "security" by --namespace`},
-		{name: "limited to the Radius namespace by its command", command: []string{"cainjector", "--namespace=" + RadiusSystemNamespace}},
 		{name: "renamed mirrored restricted injector beside a sidecar", mirrored: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantErr: `is limited to namespace "security" by --namespace`},
-		// The configuration file that --config names configures cainjector too, and a flag overrides it.
-		{name: "configuration file with defaults", config: "apiVersion: cainjector.config.cert-manager.io/v1alpha1\nkind: CAInjectorConfiguration\n"},
-		{name: "configuration file disables APIService injection", config: "enableInjectableConfig:\n  apiServices: false\n", wantErr: "sets enableInjectableConfig.apiServices: false in its configuration file /var/cert-manager/config/config.yaml"},
-		{name: "configuration file limited to another namespace", config: "namespace: security\n", wantErr: `is limited to namespace "security" by namespace in its configuration file /var/cert-manager/config/config.yaml`},
-		{name: "configuration file limited to the Radius namespace", config: "namespace: " + RadiusSystemNamespace + "\n"},
-		{name: "flag enables APIService injection over the configuration file", args: []string{"--enable-apiservices-injectable=true"}, config: "enableInjectableConfig:\n  apiServices: false\n"},
-		{name: "flag widens the namespace of the configuration file", args: []string{"--namespace="}, config: "namespace: security\n"},
-		{name: "configuration file named by its command", command: []string{"cainjector", "--config=/var/cert-manager/config/config.yaml"}, config: "enableInjectableConfig:\n  apiServices: false\n", wantErr: "sets enableInjectableConfig.apiServices: false"},
-		{name: "unreadable configuration file", config: "namespace: security\n", configMissing: true, wantConfigWarning: `failed to read ConfigMap security/cert-manager-cainjector`},
+		// Kubernetes expands $(NAME) references to the container's environment in its args.
+		{name: "namespace from the environment is the Radius namespace", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: RadiusSystemNamespace}}},
+		{name: "namespace from the environment is another namespace", args: []string{"--namespace", "$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: "security"}}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "namespace from the pod namespace", args: []string{"--namespace=$(POD_NAMESPACE)"},
+			env:     []corev1.EnvVar{{Name: "POD_NAMESPACE", ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"}}}},
+			wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "namespace from an environment variable that refers to another", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "BASE", Value: "secur"}, {Name: "WATCH_NAMESPACE", Value: "$(BASE)ity"}}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "escaped reference is literal", args: []string{"--namespace=$$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: RadiusSystemNamespace}}, wantErr: `is limited to namespace "$(WATCH_NAMESPACE)" by --namespace`},
+		{name: "ignored namespaces from the environment", args: []string{"--ignore-namespaces=$(IGNORED)"},
+			env: []corev1.EnvVar{{Name: "IGNORED", Value: "kube-system," + RadiusSystemNamespace}}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
+		// A value that only the kubelet can resolve leaves the namespace unknown, so rad warns rather than refusing.
+		{name: "namespace from a Secret", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env:                  []corev1.EnvVar{{Name: "WATCH_NAMESPACE", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{Key: "namespace"}}}},
+			wantNamespaceWarning: true},
+		{name: "namespace from an undefined variable", args: []string{"--namespace=$(WATCH_NAMESPACE)"}, wantNamespaceWarning: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -954,7 +956,7 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 			deployment, err := deployments.Get(t.Context(), "cert-manager-cainjector", metav1.GetOptions{})
 			require.NoError(t, err)
 			deployment.Spec.Template.Spec.Containers[0].Args = tt.args
-			deployment.Spec.Template.Spec.Containers[0].Command = tt.command
+			deployment.Spec.Template.Spec.Containers[0].Env = tt.env
 			if tt.mirrored {
 				injector := &deployment.Spec.Template.Spec.Containers[0]
 				injector.Name = "injector"
@@ -966,23 +968,6 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 				injector.Name = "injector"
 				injector.Image = "registry.example.com/platform/injector:v1"
 				injector.Command = []string{"/usr/local/bin/injector"}
-			}
-			if tt.config != "" {
-				injector := &deployment.Spec.Template.Spec.Containers[0]
-				if !slices.ContainsFunc(injector.Command, func(arg string) bool { return strings.HasPrefix(arg, "--config=") }) {
-					injector.Args = append(slices.Clone(injector.Args), "--config=/var/cert-manager/config/config.yaml")
-				}
-				injector.VolumeMounts = []corev1.VolumeMount{{Name: "config", MountPath: "/var/cert-manager/config"}}
-				deployment.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: "config", VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "cert-manager-cainjector"}},
-				}}}
-				if !tt.configMissing {
-					_, err := k.CoreV1().ConfigMaps("security").Create(t.Context(), &corev1.ConfigMap{
-						ObjectMeta: metav1.ObjectMeta{Name: "cert-manager-cainjector", Namespace: "security"},
-						Data:       map[string]string{"config.yaml": tt.config},
-					}, metav1.CreateOptions{})
-					require.NoError(t, err)
-				}
 			}
 			if tt.sidecar != nil {
 				// A sidecar listed first, like the injected proxies of some service meshes.
@@ -998,10 +983,9 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 			if tt.wantWarning {
 				require.Equal(t, []string{`Warning: rad could not tell which container of cert-manager cainjector Deployment security/cert-manager-cainjector ("proxy", "injector") runs cainjector, ` +
 					`so it did not check that cainjector can inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService`}, warnings)
-			} else if tt.wantConfigWarning != "" {
-				require.Len(t, warnings, 1)
-				require.Contains(t, warnings[0], `Warning: rad could not read the configuration file /var/cert-manager/config/config.yaml of cert-manager cainjector container "cert-manager-cainjector"`)
-				require.Contains(t, warnings[0], tt.wantConfigWarning)
+			} else if tt.wantNamespaceWarning {
+				require.Equal(t, []string{`Warning: rad could not resolve the --namespace value "$(WATCH_NAMESPACE)" of cert-manager cainjector container "cert-manager-cainjector", ` +
+					`so it did not check that cainjector watches namespace "radius-system"`}, warnings)
 			} else {
 				require.Empty(t, warnings)
 			}
@@ -1042,7 +1026,7 @@ func Test_ensureCertManager_UnreadyWebhookIsNotReused(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, version == "v1.22.1")
+			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), version == "v1.22.1")
 			require.ErrorContains(t, err, "cert-manager webhook Deployment")
 			require.ErrorContains(t, err, "is not ready")
 		})
@@ -1195,4 +1179,12 @@ func Test_foreignCertManagerResources_MissingTypeDoesNotHideOtherTypes(t *testin
 	foreign, err := foreignCertManagerResources(t.Context(), client, RadiusSystemNamespace)
 	require.NoError(t, err)
 	require.Equal(t, []string{"app/Issuer/issuer"}, foreign)
+}
+
+// cliUserValues returns the values that prepareRadiusChart reads from the command line options.
+func cliUserValues(t *testing.T, options ClusterOptions) map[string]any {
+	t.Helper()
+	values, err := parseUserValuesFromCLI(&options.Radius)
+	require.NoError(t, err)
+	return values
 }
