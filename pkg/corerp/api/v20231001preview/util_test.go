@@ -21,6 +21,8 @@ import (
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	"github.com/stretchr/testify/require"
 )
@@ -123,4 +125,19 @@ func TestFromSystemDataModel(t *testing.T) {
 		}
 		require.Equal(t, tt.LastModifiedAt, string(c))
 	}
+}
+
+func Test_toOutputResourcesDataModel_ProviderResourceID(t *testing.T) {
+	awsID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+	azureID := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account"
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(awsID), RadiusManaged: new(true), ProviderResourceID: "arn:aws:s3:::my-bucket"},
+		{ID: resources.MustParse(azureID)},
+	}
+
+	actual := toOutputResourcesDataModel(outputResources)
+	require.Len(t, actual, 2)
+	require.Equal(t, awsID, *actual[0].ID)
+	require.Equal(t, "arn:aws:s3:::my-bucket", *actual[0].ProviderResourceID)
+	require.Nil(t, actual[1].ProviderResourceID)
 }

@@ -327,6 +327,7 @@ func Test_Run(t *testing.T) {
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockManagementClientNoResources(ctrl)},
 			Workspace:               workspace,
 			Output:                  outputSink,
 			InputPrompter:           promptMock,
@@ -586,5 +587,205 @@ func Test_Run(t *testing.T) {
 		lastLog, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
 		require.True(t, ok)
 		require.Equal(t, msgApplicationDeleted, lastLog.Format)
+	})
+
+	// A Terraform recipe output and a Bicep recipe output in another resource group refer to the
+	// same S3 bucket under different output resource IDs. The warning names the other resource, is
+	// shown before the prompt, and does not stop the delete.
+	for _, confirm := range []bool{false, true} {
+		t.Run(fmt.Sprintf("Success: warns about shared output resources and still deletes (yes=%v)", confirm), func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+			require.NoError(t, err)
+
+			const bucketARN = "arn:aws:s3:::shared-bucket"
+			resourceType := "Radius.Storage/buckets"
+			resourceID := workspace.Scope + "/providers/Radius.Storage/buckets/data"
+			otherResourceID := "/planes/radius/local/resourceGroups/other-group/providers/Radius.Storage/buckets/data"
+			resource := generated.GenericResource{
+				ID:   &resourceID,
+				Type: &resourceType,
+				Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket", "providerResourceId": bucketARN, "radiusManaged": true},
+				}}},
+			}
+			otherResource := generated.GenericResource{
+				ID: &otherResourceID,
+				Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket", "providerResourceId": bucketARN, "radiusManaged": true},
+				}}},
+			}
+
+			mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+			mockMgmt.EXPECT().
+				ListResourcesInApplication(gomock.Any(), workspace.Scope+"/providers/Radius.Core/applications/test-app").
+				Return([]generated.GenericResource{resource}, nil).
+				Times(1)
+			mockMgmt.EXPECT().
+				ListResourcesInPlane(gomock.Any()).
+				Return([]generated.GenericResource{resource, otherResource}, nil).
+				Times(1)
+			mockMgmt.EXPECT().
+				DeleteResource(gomock.Any(), resourceType, resourceID, false).
+				Return(true, nil).
+				Times(1)
+
+			outputSink := &output.MockOutput{}
+			var logsAtPromptTime []any
+			promptMock := prompt.NewMockInterface(ctrl)
+			if !confirm {
+				promptMock.EXPECT().
+					GetListInput(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(choices []string, promptMsg string) (string, error) {
+						logsAtPromptTime = append([]any{}, outputSink.Writes...)
+						return prompt.ConfirmYes, nil
+					}).
+					Times(1)
+			}
+
+			runner := &Runner{
+				RadiusCoreClientFactory: factory,
+				ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+				Workspace:               workspace,
+				Output:                  outputSink,
+				InputPrompter:           promptMock,
+				ApplicationName:         "test-app",
+				Confirm:                 confirm,
+			}
+
+			err = runner.Run(t.Context())
+			require.NoError(t, err)
+
+			warning := []any{
+				output.LogOutput{Format: "WARNING: Deleting %s also deletes output resources that other Radius resources use:", Params: []any{"Radius.Storage/buckets/data"}},
+				output.LogOutput{Format: "  - %s, also used by %s", Params: []any{bucketARN, otherResourceID}},
+			}
+			require.Equal(t, warning, outputSink.Writes[:2])
+			if !confirm {
+				require.Equal(t, warning, logsAtPromptTime)
+			}
+
+			lastLog, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
+			require.True(t, ok)
+			require.Equal(t, msgApplicationDeleted, lastLog.Format)
+		})
+	}
+
+	t.Run("Success: resources deleted together are not reported, and a failed check still deletes", func(t *testing.T) {
+		const bucketARN = "arn:aws:s3:::shared-bucket"
+		resourceType := "Radius.Storage/buckets"
+		resourceIDs := []string{workspace.Scope + "/providers/Radius.Storage/buckets/a", workspace.Scope + "/providers/Radius.Storage/buckets/b"}
+		resources := []generated.GenericResource{}
+		for i, id := range resourceIDs {
+			outputResourceID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/shared-bucket"
+			if i == 1 {
+				outputResourceID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/shared-bucket"
+			}
+			resources = append(resources, generated.GenericResource{
+				ID:   new(id),
+				Type: &resourceType,
+				Properties: map[string]any{"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": outputResourceID, "providerResourceId": bucketARN, "radiusManaged": true},
+				}}},
+			})
+		}
+
+		tests := []struct {
+			name           string
+			listErr        error
+			expectedWrites []any
+		}{
+			{
+				// Both resources of the app share the bucket, and nothing outside the app does.
+				name: "shared only within the app",
+			},
+			{
+				name:    "listing fails",
+				listErr: fmt.Errorf("list failed"),
+				expectedWrites: []any{
+					output.LogOutput{Format: "WARNING: Could not check whether other Radius resources use the output resources of %s: %v", Params: []any{"application 'test-app'", fmt.Errorf("list failed")}},
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				defer ctrl.Finish()
+
+				factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+				require.NoError(t, err)
+
+				mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+				mockMgmt.EXPECT().
+					ListResourcesInApplication(gomock.Any(), workspace.Scope+"/providers/Radius.Core/applications/test-app").
+					Return(resources, nil).
+					Times(1)
+				if tt.listErr != nil {
+					mockMgmt.EXPECT().ListResourcesInPlane(gomock.Any()).Return(nil, tt.listErr).Times(1)
+				} else {
+					mockMgmt.EXPECT().ListResourcesInPlane(gomock.Any()).Return(resources, nil).Times(1)
+				}
+				for _, id := range resourceIDs {
+					mockMgmt.EXPECT().
+						DeleteResource(gomock.Any(), resourceType, id, false).
+						Return(true, nil).
+						Times(1)
+				}
+
+				outputSink := &output.MockOutput{}
+				runner := &Runner{
+					RadiusCoreClientFactory: factory,
+					ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+					Workspace:               workspace,
+					Output:                  outputSink,
+					ApplicationName:         "test-app",
+					Confirm:                 true,
+				}
+
+				err = runner.Run(t.Context())
+				require.NoError(t, err)
+
+				require.Equal(t, append([]any{}, tt.expectedWrites...), outputSink.Writes[:len(tt.expectedWrites)])
+				next, ok := outputSink.Writes[len(tt.expectedWrites)].(output.LogOutput)
+				require.True(t, ok)
+				require.Equal(t, msgDeletingResources, next.Format)
+
+				lastLog, ok := outputSink.Writes[len(outputSink.Writes)-1].(output.LogOutput)
+				require.True(t, ok)
+				require.Equal(t, msgApplicationDeleted, lastLog.Format)
+			})
+		}
+	})
+
+	t.Run("Failure: a prompt error stops the delete", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		promptErr := fmt.Errorf("prompt failed")
+		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock.EXPECT().
+			GetListInput(gomock.Any(), gomock.Any()).
+			Return("", promptErr).
+			Times(1)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		// No DeleteResource expectation: the mock fails the test if anything is deleted.
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockManagementClientNoResources(ctrl)},
+			Workspace:               workspace,
+			Output:                  &output.MockOutput{},
+			InputPrompter:           promptMock,
+			ApplicationName:         "test-app",
+			Confirm:                 false,
+		}
+
+		err = runner.Run(t.Context())
+		require.ErrorIs(t, err, promptErr)
 	})
 }

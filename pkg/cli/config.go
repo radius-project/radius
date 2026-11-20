@@ -33,7 +33,6 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 
-	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 )
 
@@ -268,7 +267,7 @@ func LoadConfig(configFilePath string) (*viper.Viper, error) {
 	defer func() {
 		err = fileLock.Unlock()
 		if err != nil {
-			output.LogInfo("failed to release lock on the config file : %s", configFile)
+			fmt.Fprintf(os.Stderr, "failed to release lock on the config file : %s\n", configFile)
 		}
 	}()
 
@@ -368,7 +367,7 @@ func SaveConfigOnLock(ctx context.Context, config *viper.Viper, updateConfig fun
 	defer func() {
 		err = fileLock.Unlock()
 		if err != nil {
-			output.LogInfo("failed to release lock on the config file : %s", configFilePath)
+			fmt.Fprintf(os.Stderr, "failed to release lock on the config file : %s\n", configFilePath)
 		}
 	}()
 	err = updateConfig(config)

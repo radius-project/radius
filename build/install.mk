@@ -16,9 +16,17 @@
 
 ##@ Install
 
-RAD_LOCATION := /usr/local/bin/rad
+# Select the installer's host default, independently of the build target GOOS.
+ifeq ($(OS),Windows_NT)
+RAD_LOCATION ?= $(subst \,/,$(LOCALAPPDATA))/radius/rad.exe
+else ifeq ($(shell id -u),0)
+RAD_LOCATION ?= /usr/local/bin/rad
+else
+RAD_LOCATION ?= $(HOME)/.local/bin/rad
+endif
 
 .PHONY: install
 install: build-binaries ## Installs a local build for development
 	@echo "$(ARROW) Installing rad"
-	cp $(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/rad$(BINARY_EXT) $(RAD_LOCATION)
+	mkdir -p "$$(dirname "$(RAD_LOCATION)")"
+	cp "$(OUT_DIR)/$(GOOS)_$(GOARCH)/$(BUILDTYPE_DIR)/rad$(BINARY_EXT)" "$(RAD_LOCATION)"

@@ -1,0 +1,170 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_GLUE_DATABASE": "radius_rec_nk9620",
+    "RADIUS_REC_GLUE_TABLE": "t1",
+    "RADIUS_REC_LAKE_PRINCIPAL_ARN": "arn:aws:iam::123456789012:role/radius-rec-nk9620-principal"
+  },
+  "interactions": [
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"TableWildcard\":{}}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"ALL_TABLES\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "GrantPermissions",
+      "request": "{\"Permissions\":[\"DESCRIBE\"],\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"DESCRIBE\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":{\"CatalogId\":\"123456789012\",\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\",\"TableWildcard\":null},\"TableWithColumns\":null,\"UserDefinedFunction\":null}},{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"DESCRIBE\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":{\"CatalogId\":\"123456789012\",\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\",\"TableWildcard\":null},\"TableWithColumns\":null,\"UserDefinedFunction\":null}},{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"TableWildcard\":{}}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"ALL_TABLES\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "GrantPermissions",
+      "request": "{\"Permissions\":[\"ALTER\"],\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"ALTER\",\"DESCRIBE\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":{\"CatalogId\":\"123456789012\",\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\",\"TableWildcard\":null},\"TableWithColumns\":null,\"UserDefinedFunction\":null}},{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"ALTER\",\"DESCRIBE\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":{\"CatalogId\":\"123456789012\",\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\",\"TableWildcard\":null},\"TableWithColumns\":null,\"UserDefinedFunction\":null}},{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "RevokePermissions",
+      "request": "{\"Permissions\":[\"ALTER\",\"DESCRIBE\"],\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"TableWildcard\":{}}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"ALL_TABLES\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "GrantPermissions",
+      "request": "{\"Permissions\":[\"SELECT\"],\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"TableWithColumns\":{\"ColumnNames\":[\"c1\"],\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"},\"UserDefinedFunction\":null}}]}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "RevokePermissions",
+      "request": "{\"Permissions\":[\"SELECT\"],\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"TableWithColumns\":{\"ColumnNames\":[\"c1\"],\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"t1\"}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "LakeFormation",
+      "operation": "ListPermissions",
+      "request": "{\"Principal\":{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"Table\":{\"DatabaseName\":\"radius_rec_nk9620\",\"TableWildcard\":{}}}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"NextToken\":null,\"PrincipalResourcePermissions\":[{\"AdditionalDetails\":null,\"Condition\":null,\"LastUpdated\":null,\"LastUpdatedBy\":null,\"Permissions\":[\"SELECT\"],\"PermissionsWithGrantOption\":[],\"Principal\":{\"AttributeCondition\":null,\"DataLakePrincipalIdentifier\":\"arn:aws:iam::123456789012:role/radius-rec-nk9620-principal\"},\"Resource\":{\"AnyResource\":null,\"Catalog\":null,\"DataCellsFilter\":null,\"DataLocation\":null,\"Database\":null,\"LFTag\":null,\"LFTagExpression\":null,\"LFTagPolicy\":null,\"RLSPolicy\":null,\"Table\":null,\"TableWithColumns\":{\"CatalogId\":\"123456789012\",\"ColumnNames\":null,\"ColumnWildcard\":{\"ExcludedColumnNames\":null},\"DatabaseName\":\"radius_rec_nk9620\",\"Name\":\"ALL_TABLES\"},\"UserDefinedFunction\":null}}]}"
+    }
+  ]
+}

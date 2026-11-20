@@ -58,6 +58,11 @@ func Test_display(t *testing.T) {
 		azureRedisType := "Applications.Datastores/redis"
 		azureRedisPortalURL := "https://portal.azure.com/#@test-tenant/resource" + azureRedisID
 
+		awsDatabaseID := "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.RDS/DBInstance/sql-db-instance"
+		awsDatabaseName := "sql-db-instance"
+		awsDatabaseType := "AWS.RDS/DBInstance"
+		awsDatabasePortalURL := "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:"
+
 		provisioningStateSuccess := "Succeeded"
 		dirInbound := corerpv20250801.DirectionInbound
 		dirOutbound := corerpv20250801.DirectionOutbound
@@ -94,7 +99,14 @@ func Test_display(t *testing.T) {
 				Name:              &sqlDbName,
 				Type:              &sqlDbType,
 				ProvisioningState: &provisioningStateSuccess,
-				OutputResources:   []*corerpv20250801.ApplicationGraphOutputResource{},
+				OutputResources: []*corerpv20250801.ApplicationGraphOutputResource{
+					{
+						ID:        &awsDatabaseID,
+						Name:      &awsDatabaseName,
+						Type:      &awsDatabaseType,
+						PortalURL: &awsDatabasePortalURL,
+					},
+				},
 			},
 			{
 				ID:                &sqlAppCntrID,
@@ -156,7 +168,8 @@ Resources:
 
 Name: sql-db (Applications.Datastores/sqlDatabases)
 Connections: (none)
-Resources: (none)
+Resources:
+  ` + "\x1b]8;;" + `https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:` + "\asql-db-instance\x1b]8;;\a" + ` (AWS.RDS/DBInstance)
 
 `
 

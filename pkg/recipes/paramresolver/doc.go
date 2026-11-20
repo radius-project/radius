@@ -56,7 +56,7 @@ For example, to map a developer-facing size enum onto a module SKU and a typed s
 The supported paths are context.resource.{name,id,type}, context.application.{name,id},
 context.environment.{name,id}, context.runtime.kubernetes.{namespace,environmentNamespace},
 context.azure.resourceGroup.{name,id}, context.azure.subscription.{subscriptionId,id},
-context.azure.resourceNameHash, context.aws.{region,account},
+context.azure.resourceNameHash, context.aws.{region,account,resourceNameHash},
 context.resource.properties.<path>, and
 context.resource.connections.<name>.{id,name,type,properties.<path>}, where <path> is a property
 name optionally followed by nested object keys, such as properties.config.tier. A top-level property

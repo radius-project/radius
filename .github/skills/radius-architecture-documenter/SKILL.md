@@ -16,6 +16,7 @@ Expert skill for analyzing codebases, documenting application architectures, and
 | **Fix** an existing doc that drifted from code                       | [radius-update-doc](../radius-update-doc/SKILL.md)                               |
 | **Find** missing or stale docs, or assess a code change's doc impact | [radius-contributing-docs-updater](../radius-contributing-docs-updater/SKILL.md) |
 | **Diagram** a subsystem / write an architecture doc                  | **this skill**                                                                   |
+| **Propose** a technical design for review (design note)              | [radius-author-design-note](../radius-author-design-note/SKILL.md)               |
 
 ## When to Use
 

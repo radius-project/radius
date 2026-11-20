@@ -144,11 +144,11 @@ test("bounds the token request even when the server does not respond", async () 
 });
 
 test("recovers from a real HTTP request timeout before Azure login", async (t) => {
-  let calls = 0;
   const server = createServer((request, response) => {
-    calls++;
     assert.equal(request.headers.authorization, "Bearer request-secret");
-    if (calls > 1) {
+    // Never answer the first attempt, so the client hits a real timeout.
+    const { searchParams } = new URL(request.url, "http://127.0.0.1");
+    if (searchParams.get("attempt") !== "1") {
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ value: token }));
     }
@@ -159,18 +159,26 @@ test("recovers from a real HTTP request timeout before Azure login", async (t) =
     server.closeAllConnections();
     server.close();
   });
+  let attempts = 0;
   const result = await getIDToken(env, {
-    request: (url, secret) =>
-      requestIDToken(url, secret, {
-        timeoutMs: 100,
+    request: (url, secret) => {
+      const attempt = ++attempts;
+      return requestIDToken(url, secret, {
+        // Only the unanswered attempt uses a short timeout. A slow runner can
+        // take more than 100 ms to deliver the answer to the retry.
+        timeoutMs: attempt === 1 ? 100 : 10000,
         fetch: (_url, options) =>
-          fetch(`http://127.0.0.1:${server.address().port}`, options)
-      }),
+          fetch(
+            `http://127.0.0.1:${server.address().port}/?attempt=${attempt}`,
+            options
+          )
+      });
+    },
     delay: async () => {},
     warn: () => {}
   });
   assert.equal(result, token);
-  assert.equal(calls, 2);
+  assert.equal(attempts, 2);
 });
 
 for (const status of [400, 401, 403, 404]) {
@@ -364,7 +372,7 @@ test("both jobs use the workflow script when the PR checkout lacks it", (t) => {
     false
   );
 
-  for (const jobName of ["build", "tests"]) {
+  for (const jobName of ["upload-test-types", "tests"]) {
     const job = workflow.match(
       new RegExp(
         `^  ${jobName}:\\n[\\s\\S]*?(?=^  [a-z][\\w-]*:|$(?![\\s\\S]))`,
@@ -377,7 +385,12 @@ test("both jobs use the workflow script when the PR checkout lacks it", (t) => {
     )?.[0];
     assert.ok(checkout, `${jobName} must check out the workflow script`);
     assert.match(checkout, /repository: \$\{\{ github\.repository \}\}/);
-    assert.match(checkout, /ref: \$\{\{ github\.sha \}\}/);
+    assert.match(
+      checkout,
+      jobName === "upload-test-types" ?
+        /ref: \$\{\{ needs\.setup\.outputs\.TRUSTED_SHA \}\}/
+      : /ref: \$\{\{ github\.sha \}\}/
+    );
     assert.match(
       checkout,
       /sparse-checkout: \.github\/scripts\/azure-oidc-login\.mjs/
@@ -395,8 +408,14 @@ test("both jobs use the workflow script when the PR checkout lacks it", (t) => {
     );
     const loginStep = job.indexOf('run: node "${AZURE_LOGIN_SCRIPT}"');
     assert.ok(loginStep > job.indexOf(checkout));
-    assert.match(job, /repository: \$\{\{ env\.CHECKOUT_REPO \}\}/);
-    assert.match(job, /ref: \$\{\{ env\.CHECKOUT_REF \}\}/);
+    if (jobName === "tests") {
+      assert.match(job, /repository: \$\{\{ env\.CHECKOUT_REPO \}\}/);
+      assert.match(job, /ref: \$\{\{ env\.CHECKOUT_REF \}\}/);
+    } else {
+      assert.match(job, /repository: radius-project\/radius/);
+      assert.match(job, /ref: \$\{\{ needs\.setup\.outputs\.TRUSTED_SHA \}\}/);
+      assert.doesNotMatch(job, /allow-unsafe-pr-checkout/);
+    }
 
     const script = join(root, ...scriptPath.split("/"));
     mkdirSync(dirname(script), { recursive: true });

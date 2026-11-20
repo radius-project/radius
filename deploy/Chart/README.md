@@ -15,6 +15,31 @@ To install the chart with the release name `radius`:
 helm upgrade --wait --install radius deploy/Chart -n radius-system
 ```
 
+### Upgrading with component authorization settings
+
+The v0.62.0 chart described `global.rbac.enabled` and `global.rbac.dryRun` as reserved settings with no runtime effect. In this chart, setting either one to `true` creates cert-manager Issuers and Certificates, so an upgrade that retains either setting now requires cert-manager v1.20.0 or later. With both settings `false` (the default), the chart does not create these resources and does not require cert-manager.
+
+`rad install kubernetes` and `rad upgrade kubernetes` manage this prerequisite when a non-off mode is selected, including when upgrade reuses saved values. A plain `helm install` or `helm upgrade` does not install cert-manager: install a supported cert-manager, including its CRDs, and wait for its controller and webhook to be ready before applying the Radius chart with either setting enabled. Otherwise the upgrade fails because the cert-manager resource types are missing. See [cert-manager installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#cert-manager) for supported versions and ownership rules.
+
+### Upgrading the controller rollout strategy
+
+The controller now uses `Recreate` to prevent old and new dispatchers from running concurrently during an upgrade. Existing installations, including v0.62.0, used the API-defaulted `RollingUpdate` strategy. Helm 4 server-side apply cannot remove those defaulted fields merely by applying `rollingUpdate: null`, so an unprepared upgrade fails with `rollingUpdate: Forbidden: may not be specified when strategy type is Recreate`.
+
+The current `rad upgrade kubernetes` and `rad install kubernetes --reinstall` migrate the controller strategy automatically when the target chart requests `Recreate`. The migration preserves the Deployment, replica count, and pod template; `--preflight-only` does not perform it. A failed migration stops the upgrade, and retrying an already-migrated installation is safe.
+
+For plain Helm or older CLIs, select the intended cluster and release namespace, verify that `deployment/controller` belongs to the Radius release, and patch the strategy before upgrading to this chart:
+
+```sh
+CONTEXT=your-cluster
+NAMESPACE=radius-system
+kubectl --context "$CONTEXT" -n "$NAMESPACE" get deployment controller \
+  -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}{"\n"}{.metadata.annotations.meta\.helm\.sh/release-namespace}{"\n"}'
+kubectl --context "$CONTEXT" -n "$NAMESPACE" patch deployment controller \
+  --type=merge -p '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'
+```
+
+The ownership output must match your release name and namespace. This atomic patch does not change the pod template or restart the controller by itself. Then run the normal upgrade against the same cluster and namespace; `Recreate` stops the old controller before starting its replacement. Do not delete the Deployment, use force replacement, or revert to `RollingUpdate`. If a previous attempt left a failed Helm revision, apply the patch and retry the upgrade. This is a strategy migration, not a supported downgrade procedure for coordinator-managed workloads.
+
 ## Configuration Options
 
 ### In-Cluster Container Image Builds
@@ -66,7 +91,7 @@ You can specify a custom tag for all Radius images using the `global.imageTag` p
 
 Main-branch Radius images use the mutable `edge` tag. The `latest` tag points to the most recent stable release. Use `edge` when you need builds from `main`.
 
-The Deployment Engine and dashboard are published from separate repositories. Edge charts continue to use their existing `latest` tags until those publishers adopt the `edge` convention.
+The Deployment Engine and dashboard follow the same convention: edge charts use `edge`, and the Radius release finalizer promotes their `latest` aliases to the newest stable release. The Deployment Engine explicitly uses `imagePullPolicy: Always` for resolved `:edge` images so pod restarts do not reuse a stale main build; release-tag and digest-pinned pull behavior is unchanged.
 
 #### Using a Custom Registry
 

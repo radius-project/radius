@@ -99,6 +99,8 @@ if errors.Is(err, &WidgetDoesNotExistError{}) {
 
 We run [golint-ci](https://github.com/golangci/golangci-lint) as part of the pull-request process for static analysis. We don't have many customizations and mostly rely on the defaults.
 
+The pull-request process also runs `make lint-go-windows`, which vets Go code and tests with `GOOS=windows` so Windows-only compile errors fail CI. See the [tests guide](../contributing-code-tests/README.md#unit-tests) for details.
+
 ### CodeQL security analysis
 
 We run [CodeQL](https://codeql.github.com/) as part of the pull-request process for security analysis. If the CodeQL analysis finds a security issue it will be reported as part of the PR checks. CodeQL is not currently required to pass for a PR to be merged, as it may be triggered by other alerts within the repo.

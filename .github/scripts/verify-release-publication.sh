@@ -68,6 +68,11 @@ bash "${ROOT}/.github/scripts/verify-deployment-engine-image.sh" \
     --source-commit "$(jq -er '.deploymentEngine.sourceCommit' "${DIRECTORY}/controller-lock.json")" \
     --expected-digest "$(jq -er '.deploymentEngine.digest' "${DIRECTORY}/controller-lock.json")" \
     --output "${DIRECTORY}/deployment-engine.json"
+chart_digest="$(jq -er '.helm.descriptor.digest' "${DIRECTORY}/observed.json")"
+bash "${ROOT}/.github/scripts/release-attestations.sh" verify \
+    --version "${VERSION}" --source-sha "${SOURCE_SHA}" \
+    --targets "${DIRECTORY}/targets.json" --assets-dir "${DIRECTORY}/assets" \
+    --chart-digest "${chart_digest}"
 node "${ROOT}/.github/scripts/verify-release-manifest.mjs" "${DIRECTORY}" "${MODE}"
 
 if [[ "${MODE}" == "verify" ]]; then

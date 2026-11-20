@@ -1,7 +1,6 @@
 suite: test authorization config checksum annotations
 templates:
   - ucp/deployment.yaml
-  - rp/deployment.yaml
   - dynamic-rp/deployment.yaml
   - controller/deployment.yaml
 release:

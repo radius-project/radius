@@ -29,10 +29,10 @@ import (
 	"uuid"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/aws/arnproperties"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"golang.org/x/exp/slices"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
@@ -249,24 +249,61 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	var deployedResources []string
 	if tfState.Values != nil && tfState.Values.RootModule != nil {
 		var err error
-		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule, configuration)
+		deployedResources, err = d.getDeployedOutputResources(ctx, tfState.Values.RootModule, configuration, recipeResponse)
 		if err != nil {
 			return &recipes.RecipeOutput{}, err
 		}
 	}
 
-	uniqueResourceIDs := []string{}
+	// Resources the recipe returns in result.resources take precedence over deployed resources with the same ID,
+	// compared case-insensitively. Move the provider resource ID to the ID that is kept only when both IDs name the
+	// same resource: AWS resource names are case-sensitive, so "orders" and "Orders" are different topics.
+	resultResourceIDs := map[string]string{}
 	for _, val := range recipeResponse.Resources {
-		uniqueResourceIDs = append(uniqueResourceIDs, strings.ToLower(val))
+		resultResourceIDs[strings.ToLower(val)] = val
 	}
 
 	for _, val := range deployedResources {
-		if !slices.Contains(uniqueResourceIDs, strings.ToLower(val)) {
+		kept, ok := resultResourceIDs[strings.ToLower(val)]
+		if !ok {
 			recipeResponse.Resources = append(recipeResponse.Resources, val)
+			continue
 		}
+		providerResourceID := recipeResponse.ProviderResourceID(val)
+		if kept == val || providerResourceID == "" {
+			continue
+		}
+		if recipeResponse.ProviderResourceID(kept) == "" && sameResourceName(kept, val) {
+			recipeResponse.SetProviderResourceID(kept, providerResourceID)
+		}
+		delete(recipeResponse.ProviderResourceIDs, val)
 	}
 
 	return recipeResponse, nil
+}
+
+// sameResourceName reports whether two resource IDs that are equal ignoring case also have the same resource names,
+// compared case-sensitively. Scopes and resource types are compared ignoring case.
+func sameResourceName(x string, y string) bool {
+	xID, err := resources.ParseResource(x)
+	if err != nil {
+		return false
+	}
+	yID, err := resources.ParseResource(y)
+	if err != nil {
+		return false
+	}
+
+	xTypes, yTypes := xID.TypeSegments(), yID.TypeSegments()
+	if len(xTypes) != len(yTypes) {
+		return false
+	}
+	for i := range xTypes {
+		if xTypes[i].Name != yTypes[i].Name {
+			return false
+		}
+	}
+	return true
 }
 
 // createExecutionDirectory creates a unique directory for each execution of terraform.
@@ -391,7 +428,8 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
-func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration) ([]string, error) {
+// It records the ARN of each AWS resource as its provider resource ID on output.
+func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration, output *recipes.RecipeOutput) ([]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	recipeResources := []string{}
 	if module == nil {
@@ -475,6 +513,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 						return []string{}, err
 					}
 					recipeResources = append(recipeResources, awsResourceID)
+					output.SetProviderResourceID(awsResourceID, arnproperties.ProviderResourceID(arn))
 				}
 			}
 		default:
@@ -483,7 +522,7 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	}
 
 	for _, childModule := range module.ChildModules {
-		modResources, err := d.getDeployedOutputResources(ctx, childModule, configuration)
+		modResources, err := d.getDeployedOutputResources(ctx, childModule, configuration, output)
 		if err != nil {
 			return []string{}, err
 		}

@@ -17,6 +17,7 @@ limitations under the License.
 package radinit
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -34,6 +35,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -43,6 +45,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -66,6 +69,109 @@ import (
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
+}
+
+func Test_Validate_OutputIgnored(t *testing.T) {
+	testcases := []struct {
+		name string
+		args []string
+	}{
+		{name: "omitted"},
+		{name: "json", args: []string{"--output", "json"}},
+		{name: "equals", args: []string{"--output=json"}},
+		{name: "short", args: []string{"-o", "json"}},
+		{name: "table", args: []string{"--output", "table"}},
+		{name: "plain-text", args: []string{"--output", "plain-text"}},
+		{name: "empty", args: []string{"--output="}},
+		{name: "mixed-case", args: []string{"--output", " JSON "}},
+		{name: "unknown", args: []string{"--output", "xml"}},
+		{name: "repeated", args: []string{"--output", "json", "-o", "table"}},
+	}
+
+	for _, tc := range testcases {
+		for _, full := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/full=%t", tc.name, full), func(t *testing.T) {
+				ctrl := gomock.NewController(t)
+				kube := kubernetes.NewMockInterface(ctrl)
+				helmClient := helm.NewMockInterface(ctrl)
+				prompter := prompt.NewMockInterface(ctrl)
+				var stdout, stderr bytes.Buffer
+				expectedWarning := ""
+				if len(tc.args) > 0 {
+					expectedWarning = "Warning: rad init ignores --output/-o and always uses an interactive human-readable display; no JSON result will be produced. Remove the option to suppress this warning.\n"
+				}
+
+				rounds := 1
+				if full {
+					rounds = 2
+				}
+				for round := 0; round < rounds; round++ {
+					kube.EXPECT().GetKubeContext().DoAndReturn(func() (*api.Config, error) {
+						require.Equal(t, expectedWarning, stderr.String(), "warning must precede initialization")
+						return getTestKubeConfig(), nil
+					})
+					initHelmMockRadiusNotInstalled(helmClient)
+					if full {
+						initKubeContextWithKind(prompter)
+						initEnvNamePrompt(prompter, "default")
+						initNamespacePrompt(prompter, "default")
+						initAddCloudProviderPromptNo(prompter)
+						if round == 0 {
+							setConfirmOption(prompter, resultCanceled)
+						} else {
+							setConfirmOption(prompter, resultConfirmed)
+						}
+					}
+				}
+
+				cmd, runner := NewCommand(&framework.Impl{
+					ConfigHolder:        &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)},
+					KubernetesInterface: kube,
+					HelmInterface:       helmClient,
+					Prompter:            prompter,
+				})
+				cmd.SetOut(&stdout)
+				cmd.SetErr(&stderr)
+				cmd.SetContext(t.Context())
+				args := append([]string{}, tc.args...)
+				if full {
+					args = append(args, "--full")
+				}
+				require.NoError(t, cmd.ParseFlags(args))
+				require.NoError(t, runner.Validate(cmd, nil))
+				require.NotNil(t, runner.(*Runner).Options)
+				require.NotNil(t, runner.(*Runner).Workspace)
+				require.Equal(t, full, runner.(*Runner).Full)
+				require.Equal(t, expectedWarning, stderr.String())
+				require.Empty(t, stdout.String())
+			})
+		}
+	}
+}
+
+func Test_OutputCompatibility_Help(t *testing.T) {
+	for _, alias := range []string{"init", "initialize"} {
+		for _, flagArgs := range [][]string{nil, {"--output", "json"}} {
+			t.Run(alias+"/"+strings.Join(flagArgs, " "), func(t *testing.T) {
+				cmd, _ := NewCommand(&framework.Impl{})
+				root := &cobra.Command{Use: "rad"}
+				root.PersistentFlags().StringP("output", "o", output.DefaultFormat, "output format (json, table)")
+				root.AddCommand(cmd)
+				var stdout, stderr bytes.Buffer
+				root.SetOut(&stdout)
+				root.SetErr(&stderr)
+				root.SetArgs(append(append([]string{alias}, flagArgs...), "--help"))
+
+				require.NoError(t, root.ExecuteContext(t.Context()))
+				require.Contains(t, stdout.String(), "--full")
+				require.NotContains(t, stdout.String(), "--output")
+				require.NotContains(t, stdout.String(), "-o,")
+				require.Empty(t, stderr.String())
+				require.True(t, cmd.Flags().Lookup("output").Hidden)
+				require.False(t, root.PersistentFlags().Lookup("output").Hidden)
+			})
+		}
+	}
 }
 
 func Test_Validate(t *testing.T) {
@@ -1603,4 +1709,17 @@ func getMockAWSRegions() []ec2_types.Region {
 
 func getMockAWSRegionsString() []string {
 	return []string{"test-region", "test-region-2"}
+}
+
+// Test_installError verifies that rad init shows a friendly install error as is, because it already says what to do,
+// including for rad init users.
+func Test_installError(t *testing.T) {
+	t.Parallel()
+
+	friendly := clierrors.Message("Radius stopped before changing the cluster. If you used rad init, run rad install kubernetes with this flag first, and then run rad init again.")
+	require.Same(t, friendly, installError(friendly))
+
+	err := installError(errors.New("failed to apply Radius Helm chart"))
+	require.True(t, clierrors.IsFriendlyError(err))
+	require.EqualError(t, err, "Failed to install Radius. Cause: failed to apply Radius Helm chart.")
 }

@@ -429,6 +429,10 @@ type OutputResource struct {
 	// relationship. LocalIDs do not have any particular format or meaning beyond being compared to determine dependency relationships.
 	LocalID *string
 
+	// The provider-native ID of the underlying resource, such as the ARN of an AWS resource. Set only when Radius can determine
+	// it. Output resources with different UCP resource IDs can refer to the same provider resource.
+	ProviderResourceID *string
+
 	// Determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool
 }

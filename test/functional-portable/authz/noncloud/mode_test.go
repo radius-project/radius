@@ -175,6 +175,16 @@ func rbacValues(rbac map[string]any) map[string]any {
 func expectedInstalledMode(t *testing.T) authz.Mode {
 	t.Helper()
 
+	helmMode := expectedMode(installedValues(t))
+	want, err := expectedTestMode(helmMode, os.Getenv(expectedModeEnv))
+	require.NoError(t, err)
+	return want
+}
+
+// installedValues returns all values of the installed Radius Helm release.
+func installedValues(t *testing.T) map[string]any {
+	t.Helper()
+
 	contextName, err := kubernetes.GetContextFromConfigFileIfExists("", "")
 	require.NoError(t, err)
 
@@ -192,11 +202,7 @@ func expectedInstalledMode(t *testing.T) authz.Mode {
 	get.AllValues = true
 	values, err := get.Run(radiusReleaseName)
 	require.NoError(t, err, "failed to read Helm values for release %q", radiusReleaseName)
-
-	helmMode := expectedMode(values)
-	want, err := expectedTestMode(helmMode, os.Getenv(expectedModeEnv))
-	require.NoError(t, err)
-	return want
+	return values
 }
 
 // expectedMode mirrors the chart's radius.authz.mode helper.

@@ -43,10 +43,10 @@ import (
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 // TestMain supplies a compiler subprocess, while the tests exercise the real CLI,
@@ -195,9 +195,8 @@ users:
 - name: test
   user: {}
 `, target.URL)), 0600))
-			previousKubeconfig := clientcmd.RecommendedHomeFile
-			clientcmd.RecommendedHomeFile = kubeconfig
-			t.Cleanup(func() { clientcmd.RecommendedHomeFile = previousKubeconfig })
+			k8sutil.IsolateKubeconfig(t)
+			t.Setenv("KUBECONFIG", kubeconfig)
 			compiler, err := os.Executable()
 			require.NoError(t, err)
 			t.Setenv("BICEP", compiler)

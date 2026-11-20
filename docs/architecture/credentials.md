@@ -461,11 +461,11 @@ config, err := kubernetes.NewCLIClientConfig(c.Context)
 return sdk.NewKubernetesConnectionFromConfig(config)
 ```
 
-`NewKubernetesConnectionFromConfig` ([pkg/sdk/connection_kubernetes.go](../../pkg/sdk/connection_kubernetes.go)) takes the kubeconfig REST config and overlays the UCP API path (`/apis/api.ucp.dev/v1alpha3`). Every Radius API call from the CLI is then a plain Kubernetes API call, transported with the kubeconfig's existing credentials and TLS settings.
+`NewCLIClientConfig` selects the kubeconfig the same way as `kubectl` and Helm. It merges the files listed in `KUBECONFIG`, or it reads `~/.kube/config` when `KUBECONFIG` is not set. Inside a pod, it uses the pod's service account when the kubeconfig selects no cluster server, for example when no kubeconfig exists or it has no current context. Helm does the same. `NewKubernetesConnectionFromConfig` ([pkg/sdk/connection_kubernetes.go](../../pkg/sdk/connection_kubernetes.go)) takes the kubeconfig REST config and overlays the UCP API path (`/apis/api.ucp.dev/v1alpha3`). Every Radius API call from the CLI is then a plain Kubernetes API call, transported with the kubeconfig's existing credentials and TLS settings.
 
 ```mermaid
 graph LR
-    User --> Kubeconfig["~/.kube/config<br/>(token / cert / exec plugin / OIDC / cloud auth)"]
+    User --> Kubeconfig["kubeconfig (KUBECONFIG or ~/.kube/config)<br/>(token / cert / exec plugin / OIDC / cloud auth)"]
     Kubeconfig --> CLI["rad CLI"]
     CLI -->|"https://kube-apiserver/apis/api.ucp.dev/v1alpha3/..."| K8sAPI[Kubernetes API server]
     K8sAPI -->|aggregation layer| UCPSvc["Service: ucp.radius-system:443"]
@@ -536,6 +536,11 @@ The metadata view will show the kind, clientID/tenantID/accessKeyID, and the bac
 - **In the database:** The metadata copy is stripped of secret values before
   it is written. There is no plaintext secret in the database.
 - **`radius-encryption-key` secret:** *Not* used for UCP credentials. It is a per-install symmetric key consumed by [`pkg/crypto/encryption`](../../pkg/crypto/encryption) for sensitive-field encryption and decryption, with a separate key-rotation CronJob ([encryption-rotation-cronjob.yaml](../../deploy/Chart/templates/encryption-rotation-cronjob.yaml)).
+- **`radius-aws-fingerprint-key` secret:** *Not* used for UCP credentials. It is a per-install HMAC key for fingerprints of write-only AWS property values, such as passwords, so UCP can tell whether a value changed without storing it ([aws-fingerprint-key.yaml](../../deploy/Chart/templates/ucp/aws-fingerprint-key.yaml), [fingerprintkey.go](../../pkg/ucp/aws/fingerprintkey.go)). The chart generates it once, keeps it across upgrades, and mounts it read-only into UCP at `/var/secrets/aws-fingerprint/key`. It is never written to the database and is not rotated. The mount is optional, so UCP still starts when the Secret is missing or unreadable. It logs an error naming the Secret at startup, before any deploy needs the key, and only AWS PUTs that need a fingerprint fail.
+  - **Helm release history holds the key.** Helm stores each revision's rendered manifest, including this Secret's data, in its release Secrets (`sh.helm.release.v1.radius.*`). Anyone who can read Helm release history, or backups of it, can recover the key. Protect both like the key itself.
+  - **The Secret is immutable.** The key cannot be edited in place. To replace it, delete the Secret and run `rad upgrade kubernetes`, which generates a new key. To recover a key, delete the Secret and create it from the backup with `immutable: true`. A standalone `helm rollback` to a revision with an earlier key fails instead of restoring that key, because it replays the stored manifest; `rad rollback kubernetes` renders against the live Secret and keeps the current key.
+  - **Replacing or recovering the key needs a UCP restart.** UCP reads the key once at startup, so after the Secret is created, replaced, or restored, restart UCP: `kubectl rollout restart deployment/ucp -n radius-system`.
+  - **`rad shutdown` does not save the key.** Its archive holds only the PostgreSQL databases and Terraform state Secrets, so a control plane restored with `rad startup` gets a new key. Fingerprints made with the old key can no longer be checked.
 
 ### "Why does WorkloadIdentity / IRSA still need a Secret?"
 

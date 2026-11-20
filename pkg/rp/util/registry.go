@@ -24,7 +24,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"syscall"
 
@@ -34,31 +33,22 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/retry"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 // ReadFromRegistry reads data from an OCI compliant registry and stores it in a map. It returns an error if the path is invalid,
-// if the client to the registry fails to be created, if the manifest fails to be fetched, if the bytes fail to be fetched, or if
-// the data fails to be unmarshalled.
+// if the manifest fails to be fetched, if the bytes fail to be fetched, or if the data fails to be unmarshalled.
 func ReadFromRegistry(ctx context.Context, definition recipes.EnvironmentDefinition, data *map[string]any, client remote.Client) error {
-	registryRepo, ref, err := parsePath(definition.TemplatePath)
+	ref, err := parseTemplatePath(definition.TemplatePath)
 	if err != nil {
 		return v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid path %s", err.Error()))
 	}
 
-	repo, err := remote.NewRepository(registryRepo)
-	if err != nil {
-		return fmt.Errorf("failed to create client to registry %s", err.Error())
-	}
+	repo := &remote.Repository{Reference: ref, Client: client, PlainHTTP: definition.PlainHTTP}
 
-	repo.Client = client
-
-	if definition.PlainHTTP {
-		repo.PlainHTTP = true
-	}
-
-	bytes, err := fetchRecipeWithRetry(ctx, repo, ref)
+	bytes, err := fetchRecipeWithRetry(ctx, repo, ref.ReferenceOrDefault())
 	if err != nil {
 		return recipes.NewRecipeError(recipes.RecipeLanguageFailure, fmt.Sprintf("failed to fetch repository from the path %q: %s", definition.TemplatePath, err.Error()), recipes_util.RecipeSetupError, nil)
 	}
@@ -190,38 +180,52 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
-// parsePath parses a recipe template path into a repository and the tag or digest
-// to resolve the recipe by. Recipe template paths may include an http(s):// scheme
-// even though OCI references do not, so a leading scheme is stripped first. A digest
-// wins over a tag, so repository:tag@sha256:... stays pinned to the digest. A path
-// with neither resolves the "latest" tag.
-func parsePath(path string) (repository string, ref string, err error) {
-	path = strings.TrimPrefix(path, "https://")
+// parseTemplatePath parses a recipe template path into a fully qualified reference.
+// Recipe template paths may include an http(s):// scheme even though OCI references do
+// not, so a leading lowercase "https://" or "http://" is ignored. PlainHTTP, not the
+// scheme, selects the transport. distribution/reference applies Docker normalization,
+// so Docker Hub short names and index.docker.io become docker.io. ORAS then splits the
+// normalized name. For repository:tag@digest the digest wins, and a path with neither
+// resolves the "latest" tag through ReferenceOrDefault. It returns the parser error if
+// the path without its scheme is not a valid reference.
+func parseTemplatePath(templatePath string) (registry.Reference, error) {
+	path := strings.TrimPrefix(templatePath, "https://")
 	path = strings.TrimPrefix(path, "http://")
 
 	named, err := reference.ParseNormalizedNamed(path)
 	if err != nil {
-		return "", "", err
+		return registry.Reference{}, err
 	}
 
-	if digested, ok := named.(reference.Digested); ok {
-		return named.Name(), digested.Digest().String(), nil
-	}
-	if tagged, ok := named.(reference.Tagged); ok {
-		return named.Name(), tagged.Tag(), nil
-	}
-	return named.Name(), "latest", nil
+	return registry.ParseReference(named.String())
 }
 
-// GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
-// It matches the secretstore resource ID associated with the template path in recipe configuration to the secretstore resource id in the secrets data.
-func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]recipes.SecretData) (recipes.SecretData, error) {
-	parsedURL, err := url.Parse("https://" + templatePath)
+// RegistryName returns the registry name of a recipe template path, which is the key used
+// to look up registry credentials. It is the name, not the network host: for Docker Hub it
+// returns "docker.io", and ORAS sends the requests to registry-1.docker.io and maps
+// docker.io credentials to that host. The only error is a path that does not parse.
+func RegistryName(templatePath string) (string, error) {
+	ref, err := parseTemplatePath(templatePath)
 	if err != nil {
-		return recipes.SecretData{}, err
+		return "", err
 	}
 
-	authConfig := definition.RecipeConfig.Bicep.Authentication[parsedURL.Host]
+	return ref.Registry, nil
+}
+
+// GetRegistrySecrets returns the secret data for the registry of a recipe template path.
+// It looks up the registry name in the Bicep registry authentication of the recipe
+// configuration, then returns the secret data for the secret ID that the entry points to.
+// It returns empty secret data if no entry matches or the template path does not parse.
+// ReadFromRegistry rejects a path that does not parse with BadRequest before it sends a
+// request, so empty secret data for that path does not hide the error.
+func GetRegistrySecrets(definition recipes.Configuration, templatePath string, secrets map[string]recipes.SecretData) recipes.SecretData {
+	registryName, err := RegistryName(templatePath)
+	if err != nil {
+		return recipes.SecretData{}
+	}
+
+	authConfig := definition.RecipeConfig.Bicep.Authentication[registryName]
 	secretData := secrets[authConfig.Secret]
 
 	// When the environment's bicepSettings specify an explicit authentication method, it is the
@@ -233,7 +237,7 @@ func GetRegistrySecrets(definition recipes.Configuration, templatePath string, s
 		secretData.Type = t
 	}
 
-	return secretData, nil
+	return secretData
 }
 
 // secretTypeForAuthMethod maps a bicepSettings authenticationMethod to the SecretData.Type expected

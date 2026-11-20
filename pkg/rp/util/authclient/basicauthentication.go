@@ -19,6 +19,7 @@ package authclient
 import (
 	"context"
 
+	"github.com/radius-project/radius/pkg/rp/util"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/retry"
@@ -40,7 +41,7 @@ func NewBasicAuthentication(username string, password string) AuthClient {
 // using basic authentication. It returns an auth.Client configured with the
 // provided username and password for the registry.
 func (b *basicAuthentication) GetAuthClient(ctx context.Context, templatePath string) (remote.Client, error) {
-	registry, err := getRegistryHostname(templatePath)
+	registry, err := util.RegistryName(templatePath)
 	if err != nil {
 		return nil, err
 	}

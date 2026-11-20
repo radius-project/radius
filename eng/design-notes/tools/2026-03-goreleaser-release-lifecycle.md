@@ -483,7 +483,7 @@ The controller therefore creates the tag itself, inside the release approval it 
 
 #### Supply-chain and provenance readiness
 
-A standard release tool makes artifact and container signing, SBOM generation, provenance attestations, and richer OCI labels and metadata incremental configuration instead of architectural work. None of these are required on day one; the Security section lists the post-baseline evaluation items.
+A standard release tool makes artifact and container signing, SBOM generation, provenance attestations, and richer OCI labels and metadata incremental configuration instead of architectural work. None of these were required on day one. SBOMs and build provenance are now in place: GoReleaser and Syft generate the CLI and image SBOMs, and a dedicated `attest-release` job uses `actions/attest` to sign one SLSA build provenance attestation for the CLI assets, Radius-built image indexes, and Helm chart. The publication gate verifies that provenance against the release workflow, tag, source commit, and GitHub-hosted runner. Artifacts built by other repositories are not attested by Radius. The Security section lists the remaining evaluation items.
 
 #### Makefile reduction
 
@@ -614,11 +614,9 @@ This design improves security posture indirectly by reducing custom release code
 
 The workflow should continue to use least-privilege GitHub permissions. Release creation and package publication require elevated scopes, but downstream coordination should prefer GitHub App tokens or narrowly scoped automation identities.
 
-GoReleaser adoption also creates a better foundation for future supply-chain controls. After the baseline migration, Radius should evaluate:
+GoReleaser adoption also creates a better foundation for supply-chain controls. SBOM generation and signed build provenance are implemented. After the baseline migration, Radius should still evaluate:
 
-- artifact and container signing,
-- SBOM generation,
-- provenance attestations,
+- separate artifact and container signatures, if consumers need them beyond build provenance,
 - stronger release metadata standards,
 - removal or reduction of long-lived personal access tokens where possible.
 
@@ -708,7 +706,7 @@ The work should be delivered in phases.
 - Replace the manual release checklist with approval, monitoring, resume, and break-glass procedures.
 - Adopt and enforce the selected changelog input policy, retaining all selected commits in their applicable groups, including Others for documentation and maintenance.
 - Add automatic version proposals only after the team validates the `0.x`, release-branch, RC, revert, and override behavior.
-- Evaluate signing, SBOM, and attestation additions.
+- Evaluate separate artifact signing beyond the implemented SBOMs and build provenance.
 - Revisit any remaining non-Go publication steps for future simplification.
 
 ## Open Questions

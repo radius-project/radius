@@ -112,9 +112,21 @@ jobs:
         run: go test ./internal/tooling ./cmd/tool-updater
 
       - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version-file: .python-version
+
+      - name: Setup Node.js for workflow tests
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Install workflow test YAML parser
+        run: make install-yq
+
+      - name: Test Bicep publishing
+        run: node --test .github/scripts/bicep-types.test.mjs
 
       # Helm is required because `make test` depends on the `test-helm` target,
       # which installs the helm-unittest plugin and runs the chart unit tests.
@@ -125,6 +137,18 @@ jobs:
       - name: Run cluster diagnostics tests
         # Ubuntu provides jq and GNU timeout; keep these optional for make test.
         run: make test-cluster-diagnostics
+
+      - name: Test native cloud helper TLS capture
+        run: make test-cloud-test-helpers-native
+
+      - name: Test publishing credential isolation
+        run: make test-publishing-isolation
+
+      - name: Install native Bicep capture tools
+        run: make install-bicep install-oras install-yq
+
+      - name: Test native Bicep capture and preparation
+        run: make test-bicep-types-native
 
       - name: Run make test (unit tests)
         env:
@@ -140,6 +164,12 @@ jobs:
           GOTEST_OPTS: -race -coverprofile ./dist/unit_test/cli_coverage.out
         run: |
           make test-validate-cli
+
+      - name: Run Dapr test helper unit tests
+        env:
+          GOTESTSUM_OPTS: --junitfile ./dist/unit_test/dapr_results.xml
+          GOTEST_OPTS: -race
+        run: make test-dapr-helpers
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

@@ -10,6 +10,10 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
+  # No leader election: stop the old dispatcher before starting its replacement.
+  strategy:
+    type: Recreate
+    rollingUpdate: null
   selector:
     matchLabels:
       app.kubernetes.io/name: controller
@@ -94,6 +98,7 @@ spec:
           subPath: bicepconfig.json
         - name: config-volume
           mountPath: /etc/config
+        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -112,6 +117,7 @@ spec:
         - name: config-volume
           configMap:
             name: controller-config
+        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "controller") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

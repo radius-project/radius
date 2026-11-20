@@ -45,12 +45,18 @@ type Step struct {
 
 type OutputWriter struct {
 	Writer io.Writer
+	// LogWriter receives status messages. When nil, Writer is used.
+	LogWriter io.Writer
 }
 
-// LogInfo takes in a format string and a variable number of arguments and prints the formatted string to the Writer.
+// LogInfo prints a status message without using the formatted-data stream when LogWriter is set.
 func (o *OutputWriter) LogInfo(format string, v ...any) {
-	fmt.Fprintf(o.Writer, format, v...)
-	fmt.Fprintln(o.Writer)
+	writer := o.LogWriter
+	if writer == nil {
+		writer = o.Writer
+	}
+	fmt.Fprintf(writer, format, v...)
+	fmt.Fprintln(writer)
 }
 
 // WriteFormatted takes in a format string, an object of any type, and a FormatterOptions object, and calls
