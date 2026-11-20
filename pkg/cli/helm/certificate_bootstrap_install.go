@@ -38,9 +38,8 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 	if readErr != nil {
 		return nil, readErr
 	}
-	effective, settings, err := selectedCertificateValues(options, selected, values)
-	if err != nil {
-		return nil, err
+	if target == nil {
+		return nil, errors.New("bootstrap requires a validated certificate target")
 	}
 	journal, initial, initialErr := readInitialCertificateJournal(ctx, store)
 	if initialErr != nil && !apierrors.IsNotFound(initialErr) {
@@ -60,7 +59,7 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 			namespaceIntent = &intent
 		}
 	}
-	if settings == authz.ModeOff {
+	if target.mode == authz.ModeOff {
 		if found || namespaceIntent != nil || initialErr == nil && initial.Phase != "complete" {
 			return nil, errors.New("unfinished bootstrap cannot be bypassed by disabling authorization; resume the identical install")
 		}
@@ -81,14 +80,14 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 		}
 		return nil, nil
 	}
-	if target == nil || selected.Metadata == nil || selected.Metadata.Annotations["radius.io/initial-certificate-protocol"] != "1" {
+	if selected.Metadata == nil || selected.Metadata.Annotations["radius.io/initial-certificate-protocol"] != "1" {
 		return nil, errors.New("fresh installation requires the selected chart's initial certificate protocol and validated target")
 	}
 	chartHash, err := bootstrapDigest(selected)
 	if err != nil {
 		return nil, err
 	}
-	intentHash, err := initialCertificateValuesDigest(effective)
+	intentHash, err := initialCertificateValuesDigest(target.Values)
 	if err != nil {
 		return nil, err
 	}

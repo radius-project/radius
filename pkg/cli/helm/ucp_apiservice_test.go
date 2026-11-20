@@ -43,8 +43,19 @@ func ucpAPIService(caBundle string, available string, reason string) *unstructur
 	object := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "apiregistration.k8s.io/v1",
 		"kind":       "APIService",
-		"metadata":   map[string]any{"name": ucpAPIServiceName},
-		"spec":       map[string]any{"group": "api.ucp.dev", "version": "v1alpha3"},
+		"metadata": map[string]any{
+			"name":   ucpAPIServiceName,
+			"labels": map[string]any{helmManagedByLabel: helmManagedByValue},
+			"annotations": map[string]any{
+				helmReleaseNameAnnotation:      "radius",
+				helmReleaseNamespaceAnnotation: RadiusSystemNamespace,
+			},
+		},
+		"spec": map[string]any{
+			"group":   "api.ucp.dev",
+			"version": "v1alpha3",
+			"service": map[string]any{"name": "ucp", "namespace": RadiusSystemNamespace},
+		},
 	}}
 	if caBundle != "" {
 		object.Object["spec"].(map[string]any)["caBundle"] = caBundle
@@ -55,6 +66,16 @@ func ucpAPIService(caBundle string, available string, reason string) *unstructur
 		}}
 	}
 	return object
+}
+
+// setAnnotation sets annotation key of object to value, keeping its other annotations.
+func setAnnotation(object *unstructured.Unstructured, key, value string) {
+	annotations := object.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[key] = value
+	object.SetAnnotations(annotations)
 }
 
 func ucpAPIServiceDynamicClient(objects ...runtime.Object) dynamic.Interface {
@@ -186,8 +207,7 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 			return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
 		},
 	}
-	options := NewDefaultClusterOptions()
-	options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+	enabled := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
 	served := func(kind string) *releasev1.Release {
 		apiVersion := "v1"
 		if kind == "Certificate" {
@@ -197,15 +217,15 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 	}
 
 	setupUninstallStore(t, impl)
-	require.NoError(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Secret"), nil, nil))
-	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), nil, nil), `secrets "radius-apiserver-ca" not found`)
+	require.NoError(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Secret"), nil, nil, enabled))
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, enabled), `secrets "radius-apiserver-ca" not found`)
 
 	// A chart that enables authorization by default serves UCP from the Certificate ucp-cert while the user values say
 	// nothing, so rad waits for radius-apiserver-ca rather than reporting success without it.
-	options.Radius.SetArgs = nil
+
 	defaults := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
-	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), defaults, nil), `secrets "radius-apiserver-ca" not found`)
-	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), nil, nil), `secrets "radius-apiserver-ca" not found`)
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), defaults, nil, nil), `secrets "radius-apiserver-ca" not found`)
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, nil), `secrets "radius-apiserver-ca" not found`)
 }
 
 // With a chart that enables authorization by default, rad stages radius-apiserver-ca from the rendered chart before
@@ -221,9 +241,9 @@ func Test_stageInstalledUCPAPIServerCA_ChartDefaults(t *testing.T) {
 	render := func(context.Context) (string, bool, error) { return "", false, errRendered }
 	options := NewDefaultClusterOptions()
 
-	require.NoError(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, nil, nil, false, render))
+	require.NoError(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, nil, nil, nil, false, render))
 	defaults := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
-	require.ErrorIs(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, defaults, nil, false, render), errCertificateObserverUnavailable)
+	require.ErrorIs(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, defaults, nil, nil, false, render), errCertificateObserverUnavailable)
 }
 
 func Test_deployedAuthzMode(t *testing.T) {

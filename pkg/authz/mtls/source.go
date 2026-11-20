@@ -111,11 +111,16 @@ func NewTrustSource(dir string) (*Source, error) {
 	return newSource(dir, dir, trustOnly)
 }
 
+// NewCertificateSource loads only the serving certificate and its private key.
+func NewCertificateSource(dir string) (*Source, error) {
+	return newSource(dir, "", servingPairOnly)
+}
+
 // NewServingConfig loads only tls.crt and tls.key and reloads them until ctx is
 // canceled. Peer trust (including request-header client CAs) belongs to base.
 // The returned source binds request guards to the same handshake generations.
 func NewServingConfig(ctx context.Context, dir string, base *tls.Config) (*tls.Config, *Source, error) {
-	s, err := newSource(dir, "", servingPairOnly)
+	s, err := NewCertificateSource(dir)
 	if err != nil {
 		return nil, nil, err
 	}

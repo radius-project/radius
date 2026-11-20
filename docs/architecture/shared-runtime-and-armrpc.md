@@ -126,19 +126,26 @@ from `global.rbac.enabled` and `global.rbac.dryRun`). Internal calls are
 authenticated with projected Kubernetes ServiceAccount tokens; no component
 presents a client certificate.
 
-The Helm setting `global.rbac.tls.provider` renders `authorization.tlsProvider` (`authz.Options.TLSProvider`), independently of the authorization mode. The default `radius` provider uses the TLS behavior below. The `external` provider uses HTTP under operator-provided encryption, loads no component certificate or CA material, and applies the same receiver-token verification and allowed-caller checks. Ordinary DryRun denials remain advisory; unavailable signing keys still return 503 in both providers. Unknown providers fail configuration, and neither provider retries through an unauthenticated transport. UCP's separate aggregated API TLS is unaffected.
+The Helm setting `global.rbac.tls.provider` renders `authorization.tlsProvider` (`authz.Options.TLSProvider`), independently of the authorization mode. The default `radius` provider uses the TLS behavior below. The `external` provider uses HTTP under operator-provided encryption, loads no component certificate or CA material, and applies the same receiver-token verification and allowed-caller checks. With either provider, unavailable signing keys cause DryRun to log a would-deny and serve the request without caller identity. Enforce returns 503. Unknown providers fail configuration, and neither provider retries through an unauthenticated transport. UCP's separate aggregated API TLS is unaffected.
 
 - `off` (default): plain HTTP, behavior unchanged.
 - `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
-  invalid tokens, and disallowed callers are logged as would-deny
-  (`InvalidAuthenticationInfo`, `AuthorizationFailed`), and the request is
-  served. Signing keys that could not be refreshed are the exception: every
-  request gets `503 AuthorizationUnavailable`, as in `enforce`.
+  invalid tokens, disallowed callers, and requests that can't be checked
+  because the signing keys are unavailable are logged as would-deny
+  (`InvalidAuthenticationInfo`, `AuthorizationFailed`,
+  `AuthorizationUnavailable`), and the request is served without a caller
+  identity.
 - `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
-  wrong-audience token gets `401 InvalidAuthenticationInfo`; signing keys that
-  could not be refreshed give `503 AuthorizationUnavailable`; and callers not in
-  the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
-  and `dynamic-rp` allow only the `ucp` identity.
+  wrong-audience token gets `401 InvalidAuthenticationInfo`; unavailable
+  signing keys give `503 AuthorizationUnavailable`; and callers not in the
+  server's allowed list get `403 AuthorizationFailed`. `applications-rp` and
+  `dynamic-rp` allow only the `ucp` identity.
+
+Signing keys are unavailable when none have loaded yet, when 15 minutes have
+passed since the last successful fetch, or when the last successful fetch
+returned no usable key. A failed refresh alone does not cause a `503`: the
+receiver keeps verifying tokens with the keys it already has until that
+15-minute limit.
 
 Each receiver presents the certificate that cert-manager issues to it in Secret
 `<receiver>-spiffe`, mounted at `/var/run/radius/spiffe` (`tls.crt`,

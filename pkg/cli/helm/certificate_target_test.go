@@ -96,6 +96,34 @@ spec:
 	require.ErrorContains(t, impl.CheckRadiusCertificates(t.Context(), opts, "selected-context"), "external TLS provider cannot project")
 }
 
+func TestPreflightRendersSelfSignedUpgrade(t *testing.T) {
+	c := certificateHelperChart(certificateTestChart(t))
+	c.Templates = append(c.Templates, &common.File{Name: "templates/upgrade.yaml", Data: []byte(`{{ if .Release.IsUpgrade }}{{ fail "invalid upgrade manifest" }}{{ end }}`)})
+	opts := NewDefaultClusterOptions()
+	opts.Radius.ChartPath = "chart"
+	client := NewMockHelmClient(gomock.NewController(t))
+	client.EXPECT().LoadChart("chart").Return(c, nil)
+	expectRadiusBaseline(t, client, opts)
+	impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{}}
+	require.ErrorContains(t, impl.CheckRadiusCertificates(t.Context(), opts, "selected-context"), "invalid upgrade manifest")
+}
+
+func TestCertificateTargetUsesChartTrustDomain(t *testing.T) {
+	for _, tt := range []struct {
+		value any
+		want  string
+	}{{"", "radius.internal"}, {42, "42"}} {
+		t.Run(tt.want, func(t *testing.T) {
+			current := map[string]any{}
+			setValue(current, true, "global", "rbac", "enabled")
+			setValue(current, tt.value, "global", "rbac", "spiffe", "trustDomain")
+			target, _, err := (&Impl{}).prepareCertificateTarget(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), current, "context")
+			require.NoError(t, err)
+			require.Equal(t, tt.want, target.TrustDomain)
+		})
+	}
+}
+
 func TestCertificateActionRenderOrdering(t *testing.T) {
 	for _, action := range []string{"reinstall", "upgrade", "reset"} {
 		for _, invalid := range []bool{false, true} {

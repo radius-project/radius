@@ -42,7 +42,7 @@ func TestCertificatePreparationSelectedChart(t *testing.T) {
 			}
 			settings, err := resolveAuthzMode(b.selected.Values, nil, b.values)
 			require.NoError(t, err)
-			target, err := certificateProfilePlan(b.selected, b.values, b.store.namespace, settings)
+			target, err := certificateProfilePlan(b.selected, b.target.Values, b.store.namespace, settings)
 			require.NoError(t, err)
 			for name, plane := range target.Planes {
 				signingSecret := "radius-ca"

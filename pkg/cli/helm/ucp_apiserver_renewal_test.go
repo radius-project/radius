@@ -603,7 +603,9 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 							stored = target
 							options.Radius.SetArgs = nil
 						}
-						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, chart.Values, stored, false, nil)
+						prepared, parseErr := parseUserValuesFromCLI(&options.Radius)
+						require.NoError(t, parseErr)
+						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, chart.Values, stored, prepared, false, nil)
 					case "rollback":
 						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
 						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)

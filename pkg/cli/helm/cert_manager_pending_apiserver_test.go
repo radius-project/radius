@@ -153,7 +153,10 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 						// before this dependency gate. Exercise the gate against
 						// real Helm storage without pretending the stub chart
 						// implements configured-CA bootstrap.
-						err = impl.ensureCertManager(t.Context(), options, testKubeContext, nil, nil, options.Radius.Reinstall)
+						prepared, parseErr := parseUserValuesFromCLI(&options.Radius)
+						require.NoError(t, parseErr)
+
+						err = impl.ensureCertManager(t.Context(), options, testKubeContext, nil, nil, prepared, options.Radius.Reinstall)
 					}
 					require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 					require.ErrorContains(t, err, string(status))

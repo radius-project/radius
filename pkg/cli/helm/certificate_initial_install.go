@@ -32,7 +32,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	helm "helm.sh/helm/v4/pkg/action"
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -222,7 +221,7 @@ func decodeInitialCertificateState(raw string, store *rotationStore, bound bool)
 }
 
 func (b *initialCertificateInstaller) check(ctx context.Context) error {
-	if err := b.operation.checkProviderJournal(ctx, b.store.release, b.impl.validateCompletedProviderJournal); err != nil {
+	if err := b.operation.checkProviderJournal(ctx, b.store.release, b.impl.completedProviderJournalValidator(b.store.namespace, b.store.release)); err != nil {
 		return err
 	}
 	return b.checkJournal(ctx)
@@ -275,11 +274,7 @@ func (b *initialCertificateInstaller) save(ctx context.Context) error {
 func (b *initialCertificateInstaller) run(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, effectiveTimeout(b.options.Radius.Timeout))
 	defer cancel()
-	values, err := valuesutil.CoalesceValues(b.selected, b.values)
-	if err != nil {
-		return err
-	}
-	valuesHash, err := bootstrapDigest(values)
+	valuesHash, err := bootstrapDigest(b.target.Values)
 	if err != nil {
 		return err
 	}

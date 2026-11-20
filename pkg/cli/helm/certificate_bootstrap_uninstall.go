@@ -22,16 +22,34 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContext string) error {
+func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContext string, confirmed []string, removed *bool) error {
 	store, err := i.rotationStoreForContext(kubeContext, namespace)
 	if err != nil {
 		return err
+	}
+	removeRelease := func() error {
+		if confirmed != nil {
+			rel, err := NewHelmAction(i.Helm).getRelease(kubeContext, radiusReleaseName, namespace)
+			if err != nil {
+				return err
+			}
+			if rel != nil {
+				return errors.New("Radius is installed; confirm a new uninstall")
+			}
+			return nil
+		}
+		if err := i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext); err != nil {
+			return err
+		}
+		*removed = true
+		return nil
 	}
 	journal, state, err := readInitialCertificateJournal(ctx, store)
 	if apierrors.IsNotFound(err) {
@@ -42,6 +60,9 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 			return nil
 		}
 		if err != nil {
+			return err
+		}
+		if err := store.excludeCertificateOffTransition(ctx); err != nil {
 			return err
 		}
 		return withIdentityOperation(ctx, store.kube, namespace, func(operation *identityOperation) error {
@@ -58,7 +79,7 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 			if err := operation.check(ctx); err != nil {
 				return err
 			}
-			if err := i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext); err != nil {
+			if err := removeRelease(); err != nil {
 				return err
 			}
 			ctx = withUCPMutationGuard(ctx, func(ctx context.Context, verb string, target metav1.PartialObjectMetadata) (bool, error) {
@@ -77,6 +98,9 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 				if err := store.excludeCertificateOffTransition(ctx); err != nil {
 					return false, err
 				}
+				if confirmed != nil && !slices.Contains(confirmed, uninstallInventoryEntry(target.Kind, &target)) {
+					return false, errors.New("uninstall inventory changed; confirm the remaining objects")
+				}
 				return false, ctx.Err()
 			})
 			return i.deleteUCPAPIServerLeftovers(ctx, kubeContext, store)
@@ -88,20 +112,23 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 	if state.Phase != "complete" {
 		return errors.New("finish the initial certificate installation before uninstalling")
 	}
+	if confirmed != nil && !slices.Contains(confirmed, bootstrapUninstallEntry(journal)) {
+		return errors.New("bootstrap uninstall inventory changed; confirm again")
+	}
 	b := &initialCertificateInstaller{impl: i, store: store, journal: journal, state: state}
 	return withIdentityOperation(ctx, store.kube, namespace, func(operation *identityOperation) error {
 		b.operation = operation
 		if err := b.check(ctx); err != nil {
 			return err
 		}
-		if err := i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext); err != nil {
+		if err := removeRelease(); err != nil {
 			return err
 		}
-		return b.retireBootstrap(ctx)
+		return b.retireBootstrap(ctx, confirmed)
 	})
 }
 
-func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context) error {
+func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context, confirmed []string) error {
 	// Keep the journal until every cleanup succeeds, so an interrupted uninstall
 	// can retry without accepting a foreign object as a new bootstrap.
 	for _, plane := range b.planeNames() {
@@ -185,26 +212,23 @@ func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context) error
 	}
 	// The signer and public source have stronger journal-specific checks above.
 	// Never let generic ownership metadata authorize their deletion on retry.
-	var orphans []ucpOffLeftoverSecret
-	for _, entry := range ucpOffLeftoverSecrets {
-		if entry.certificate == "" || entry.secret == "radius-ca" || entry.secret == ucpAPIServerCASecretName {
-			continue
+	orphans := b.bootstrapOrphans()
+	guarded := withUCPMutationGuard(ctx, func(ctx context.Context, _ string, target metav1.PartialObjectMetadata) (bool, error) {
+		if confirmed != nil && !slices.Contains(confirmed, uninstallInventoryEntry(target.Kind, &target)) {
+			return false, errors.New("bootstrap leaf inventory changed; confirm again")
 		}
-		protected := false
-		for _, anchor := range b.state.Anchors {
-			if anchor.Signer != nil && anchor.Signer.Name == entry.secret {
-				protected = true
-			}
-		}
-		if !protected {
-			orphans = append(orphans, entry)
-		}
-	}
-	guarded := withUCPMutationGuard(ctx, func(ctx context.Context, _ string, _ metav1.PartialObjectMetadata) (bool, error) {
 		return false, b.check(ctx)
 	})
 	if err := b.impl.deleteUCPOffLeftovers(guarded, "", b.store.kube, b.store.dynamic, b.store.namespace, orphans); err != nil {
 		return err
+	}
+	// The shared deleter retains replacements on conflict. Keep the recovery journal if eligible leaves remain.
+	remaining, err := ucpOffLeftovers(ctx, b.store.kube, b.store.dynamic, b.store.namespace, orphans)
+	if err != nil {
+		return err
+	}
+	if hasUCPOffLeftover(remaining) {
+		return errors.New("bootstrap leaves changed during cleanup; retry uninstall")
 	}
 	namespace, err := b.store.kube.CoreV1().Namespaces().Get(ctx, b.store.namespace, metav1.GetOptions{})
 	if err != nil {
@@ -236,6 +260,25 @@ func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context) error
 	return b.deleteBootstrapObject(ctx, b.journal, func(options metav1.DeleteOptions) error {
 		return b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Delete(ctx, b.journal.Name, options)
 	})
+}
+
+func (b *initialCertificateInstaller) bootstrapOrphans() []ucpOffLeftoverSecret {
+	var orphans []ucpOffLeftoverSecret
+	for _, entry := range ucpOffLeftoverSecrets {
+		if entry.certificate == "" || entry.secret == "radius-ca" || entry.secret == ucpAPIServerCASecretName {
+			continue
+		}
+		protected := false
+		for _, anchor := range b.state.Anchors {
+			if anchor.Signer != nil && anchor.Signer.Name == entry.secret {
+				protected = true
+			}
+		}
+		if !protected {
+			orphans = append(orphans, entry)
+		}
+	}
+	return orphans
 }
 
 func (b *initialCertificateInstaller) deleteBootstrapObject(ctx context.Context, object metav1.Object, remove func(metav1.DeleteOptions) error) error {

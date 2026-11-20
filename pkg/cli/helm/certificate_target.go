@@ -235,12 +235,8 @@ func certificateProfilePlan(selected *chart.Chart, effective map[string]any, nam
 "internalSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") }},{{ end }}
 "aggregationSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") }}
 }`)})
-	values, err := valuesutil.CoalesceValues(c, effective)
-	if err != nil {
-		return nil, fmt.Errorf("coalesce certificate target: %w", err)
-	}
 	rendered, err := engine.Render(c, common.Values{
-		"Values": values, "Capabilities": common.DefaultCapabilities,
+		"Values": target.Values, "Capabilities": common.DefaultCapabilities,
 		"Release": map[string]any{"Name": "radius", "Namespace": namespace, "Service": "Helm"},
 	})
 	if err != nil {
