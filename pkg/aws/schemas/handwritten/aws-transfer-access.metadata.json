@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::Transfer::Access",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": ""
+}
