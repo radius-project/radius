@@ -152,6 +152,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.12 h1:wzAqMZ2O
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.12/go.mod h1:/0TfyruByHsOlphzP26xDTRe2DKD0J1I1Uyy2TyP8EI=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.12 h1:H0IaQayT3TLiGIHiNnleQZTbndDlx7LGZ0NWZ5mDwjA=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.12/go.mod h1:YuJJNxaOjnknLIrscBmkLhIpnmg9LzHd25sQRKUboGU=
+github.com/aws/aws-sdk-go-v2/service/iot v1.84.12 h1:7Ia6qY6RsZXBukL6a0osNcXglgs1kVSkceS9+KEDVcQ=
+github.com/aws/aws-sdk-go-v2/service/iot v1.84.12/go.mod h1:HMP9f3VVFBkLGWfXqyJ2KYdrDB6Cgd7jc0zq6JKZU0k=
 github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12 h1:X7dFutoB5DIS+7qMoKYju4Itqn87qr27TvmXOMQ/x7M=
 github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12/go.mod h1:tHdGXu9YEgMNUqFLkoxVDSPQJ4Y0us8iaoojamrhldI=
 github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0 h1:IDPDfKcJyIhLZNvGnLk4zADq1lhdrUZ3HOe4AoF8WZc=
@@ -180,6 +182,8 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5 h1:uIOBLMhef4N16WguadoHKuBy
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5/go.mod h1:NwWmkFLtsTVyXQpbzPOlYLwEoANkdCFjJRtrNcbg/vY=
 github.com/aws/aws-sdk-go-v2/service/sts v1.52.0 h1:IaBLmJWiIEtKkjXMgMbYGZk7WKXbYA8148wCMCXq9hU=
 github.com/aws/aws-sdk-go-v2/service/sts v1.52.0/go.mod h1:MG6N8U9+lY4LqchrlHPqCOSr7hyxw70XU0Et2YR3eNA=
+github.com/aws/aws-sdk-go-v2/service/transfer v1.86.8 h1:5eMdPrYV6/koIV+cUE007U+RAGKmvvKxDyW0K5URSng=
+github.com/aws/aws-sdk-go-v2/service/transfer v1.86.8/go.mod h1:/bR/s324oTpf4PRt1kkMhcy8M3nziZWn1PPVFdKTm+4=
 github.com/aws/smithy-go v1.28.9 h1:zkZ058OpNX0iGTK24b+ZUEQSMc11CBA6oO7xtKZfzkY=
 github.com/aws/smithy-go v1.28.9/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/aymanbagabas/go-udiff v0.4.1 h1:OEIrQ8maEeDBXQDoGCbbTTXYJMYRCRO1fnodZ12Gv5o=
