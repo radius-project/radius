@@ -1,0 +1,134 @@
+{
+  "typeName": "AWS::OpenSearchService::PackageAssociation",
+  "description": "An OpenSearch Service package associated with a domain, made with AssociatePackage. AWS has no call that changes an association, so every property is create-only. AWS changes a domain's packages one at a time, and associating a plugin runs a blue/green deployment of the domain, so a deploy or delete while AWS is changing the domain or another of its packages fails with 409 Conflict. Give associations of one domain dependsOn on each other, and on the domain. A package keeps the version it was associated with until it is associated again.",
+  "definitions": {
+    "KeyStoreAccessOption": {
+      "type": "object",
+      "description": "Access to the key store the package needs.",
+      "properties": {
+        "KeyStoreAccessEnabled": {
+          "type": "boolean",
+          "description": "Whether the package can access the key store."
+        },
+        "KeyAccessRoleArn": {
+          "type": "string",
+          "description": "The IAM role that accesses the key store key.",
+          "minLength": 20,
+          "maxLength": 2048,
+          "pattern": "^arn:(aws|aws-cn|aws-us-gov|aws-iso|aws-iso-b):iam::[0-9]+:role/.*$"
+        }
+      },
+      "required": ["KeyStoreAccessEnabled"],
+      "additionalProperties": false
+    },
+    "AssociationConfiguration": {
+      "type": "object",
+      "description": "The configuration of the association. AWS may not return it, or may return the role in another form, so it is write-only.",
+      "properties": {
+        "KeyStoreAccessOption": {
+          "$ref": "#/definitions/KeyStoreAccessOption"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "DomainName": {
+      "type": "string",
+      "description": "The name of the domain to associate the package with.",
+      "minLength": 3,
+      "maxLength": 28,
+      "pattern": "^[a-z][a-z0-9\\-]+$"
+    },
+    "PackageID": {
+      "type": "string",
+      "description": "The ID of the package, such as the PackageID of an AWS::OpenSearchService::Package.",
+      "pattern": "^([FG][0-9]+)$|^(pkg-[a-f0-9]+)$"
+    },
+    "PrerequisitePackageIDList": {
+      "type": "array",
+      "description": "The IDs of packages that must be associated with the domain first, such as the plugin of a license or configuration package. AWS may not return them, so they are write-only.",
+      "insertionOrder": false,
+      "items": {
+        "type": "string",
+        "pattern": "^([FG][0-9]+)$|^(pkg-[a-f0-9]+)$"
+      }
+    },
+    "AssociationConfiguration": {
+      "$ref": "#/definitions/AssociationConfiguration"
+    },
+    "DomainPackageStatus": {
+      "type": "string",
+      "description": "The status of the association.",
+      "enum": [
+        "ASSOCIATING",
+        "ASSOCIATION_FAILED",
+        "ACTIVE",
+        "DISSOCIATING",
+        "DISSOCIATION_FAILED"
+      ]
+    },
+    "PackageName": {
+      "type": "string",
+      "description": "The name of the package."
+    },
+    "PackageType": {
+      "type": "string",
+      "description": "The type of the package.",
+      "enum": [
+        "TXT-DICTIONARY",
+        "ZIP-PLUGIN",
+        "PACKAGE-LICENSE",
+        "PACKAGE-CONFIG"
+      ]
+    },
+    "PackageVersion": {
+      "type": "string",
+      "description": "The version of the package the domain has."
+    },
+    "ReferencePath": {
+      "type": "string",
+      "description": "The path of the package on the domain's nodes, such as the synonyms_path of a dictionary."
+    }
+  },
+  "required": ["DomainName", "PackageID"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/DomainName", "/properties/PackageID"],
+  "createOnlyProperties": [
+    "/properties/DomainName",
+    "/properties/PackageID",
+    "/properties/PrerequisitePackageIDList",
+    "/properties/AssociationConfiguration"
+  ],
+  "writeOnlyProperties": [
+    "/properties/PrerequisitePackageIDList",
+    "/properties/AssociationConfiguration"
+  ],
+  "readOnlyProperties": [
+    "/properties/DomainPackageStatus",
+    "/properties/PackageName",
+    "/properties/PackageType",
+    "/properties/PackageVersion",
+    "/properties/ReferencePath"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "es:AssociatePackage",
+        "es:ListPackagesForDomain",
+        "iam:PassRole"
+      ],
+      "timeoutInMinutes": 180
+    },
+    "read": {
+      "permissions": ["es:ListPackagesForDomain"]
+    },
+    "update": {
+      "permissions": ["es:ListPackagesForDomain"]
+    },
+    "delete": {
+      "permissions": ["es:DissociatePackage", "es:ListPackagesForDomain"],
+      "timeoutInMinutes": 180
+    }
+  }
+}

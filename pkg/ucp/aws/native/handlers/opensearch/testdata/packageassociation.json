@@ -1,0 +1,90 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_OPENSEARCH_DOMAIN": "radius-rec-logs",
+    "RADIUS_REC_PACKAGE_ID": "F123456789"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": []}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "AssociatePackage",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetails\": {\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"ASSOCIATING\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"ASSOCIATING\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"ACTIVE\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"ACTIVE\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"ACTIVE\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DissociatePackage",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetails\": {\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"DISSOCIATING\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"DISSOCIATING\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": []}"
+    }
+  ]
+}
