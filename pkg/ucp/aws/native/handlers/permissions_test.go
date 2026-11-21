@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -47,6 +48,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"quicksight":               "quicksight",
 	"s3":                       "s3",
 	"s3control":                "s3",
 	"s3tables":                 "s3tables",
@@ -128,6 +130,15 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
+	// AWS checks the permission to change the asset's permissions when Quick Sight adds an asset to a folder or
+	// removes it.
+	quicksightAssets := []string{
+		"quicksight:UpdateAnalysisPermissions", "quicksight:UpdateDashboardPermissions", "quicksight:UpdateDataSetPermissions",
+		"quicksight:UpdateDataSourcePermissions", "quicksight:UpdateTopicPermissions",
+	}
+	for _, op := range []string{"create", "delete"} {
+		implied[op] = append(implied[op], quicksightAssets...)
+	}
 	// PutTableReplication also needs these on the source and destination tables, as its API reference says.
 	tableReplication := []string{
 		"s3tables:GetTable", "s3tables:CreateTable", "s3tables:CreateNamespace",
@@ -152,6 +163,10 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 					used[op] = append(used[op], src.iam[call]+":"+call)
 				}
 			}
+		}
+		if h.Options().Recovery == native.RecoverByResend {
+			// A DELETE that finds a lost create sends the create again (see Test_ResendDeletePermissionsCoverCreate).
+			used["delete"] = slices.Concat(used["delete"], used["create"], implied["create"])
 		}
 		// The services the handler's clients call. Permissions of other services, such as iam:PassRole, are for
 		// what a call does, and aren't checked.

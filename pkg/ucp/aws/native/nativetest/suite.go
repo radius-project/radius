@@ -198,6 +198,11 @@ type Suite struct {
 	// update instead.
 	AlwaysPresent bool
 
+	// Unrecorded are the top-level properties of Properties the handler leaves out of a read when UCP has no record of
+	// the resource (native.RecordReader), such as a value AWS's answer may not include. `existing` doesn't require
+	// them.
+	Unrecorded []string
+
 	// API records each AWS call the handler makes, by the name of its AWS SDK client method, such as
 	// CreateDBCluster: the call's page in AWS's API reference and the rules AWS documents for it, which the fake must
 	// enforce. It is nil for a handler that makes no AWS SDK calls, such as nativefake's.
@@ -737,7 +742,11 @@ func (s Suite) existing(t *testing.T) {
 
 	resp := h.existingResponse()
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
-	requireSubset(t, s.readable(s.Properties), resp.properties())
+	want := s.readable(s.Properties)
+	for _, name := range s.Unrecorded {
+		delete(want, name)
+	}
+	requireSubset(t, want, resp.properties())
 
 	// Recipes read an `existing` output resource again by the last segment of its ID, so the ID must give back the
 	// identifier.
@@ -749,7 +758,7 @@ func (s Suite) existing(t *testing.T) {
 	resp = h.getWithPost(map[string]any{"name": parsed.Name()})
 	h.headers = nil
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
-	requireSubset(t, s.readable(s.Properties), resp.properties())
+	requireSubset(t, want, resp.properties())
 	require.Equal(t, id, resp.body["id"])
 }
 
@@ -1593,7 +1602,9 @@ func (s Suite) multiCall(t *testing.T) {
 					}
 				}
 
-				h.deploy(s.MultiCall)
+				// AWS may still be finishing the calls that took effect, so a handler can answer the redeploy with
+				// 409 (native.Failure.Conflict) until it is done.
+				h.deployEventually(s.MultiCall)
 				requireSubset(t, s.readable(s.MultiCall), h.stored())
 				require.Equal(t, normalize(t, s.readable(s.MultiCall)), normalize(t, h.record().Properties.LastApplied))
 				for property := range s.Properties {
@@ -2386,6 +2397,17 @@ func (r *recorder) wrap() native.Handler {
 func (r *recorder) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	r.note("Read")
 	return r.Handler.Read(ctx, region, identifier)
+}
+
+// ReadRecorded passes UCP's recorded values to a handler that can't read some properties (native.RecordReader), and
+// reads as Read does for any other handler, as UCP does when a handler doesn't implement it.
+func (r *recorder) ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, []string, error) {
+	r.note("Read")
+	if reader, ok := r.Handler.(native.RecordReader); ok {
+		return reader.ReadRecorded(ctx, region, identifier, recorded)
+	}
+	properties, err := r.Handler.Read(ctx, region, identifier)
+	return properties, nil, err
 }
 
 // failCreatesPartway makes every later Create return the resource's identifier with err.

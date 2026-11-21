@@ -1,0 +1,64 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_ACCOUNT_ID": "123456789012",
+    "RADIUS_REC_QUICKSIGHT_FOLDER_ID": "radius-rec-folder",
+    "RADIUS_REC_QUICKSIGHT_DASHBOARD_ID": "radius-rec-dashboard"
+  },
+  "interactions": [
+    {
+      "service": "QuickSight",
+      "operation": "CreateFolderMembership",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FolderMember\": {\"MemberId\": \"radius-rec-dashboard\", \"MemberType\": \"DASHBOARD\"}, \"RequestId\": \"r-create\", \"Status\": 200}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "ListFolderMembers",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FolderMemberList\": [{\"MemberArn\": \"arn:aws:quicksight:us-west-2:123456789012:dashboard/radius-rec-dashboard\", \"MemberId\": \"radius-rec-dashboard\"}], \"RequestId\": \"r-list\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "ListFolderMembers",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FolderMemberList\": [{\"MemberArn\": \"arn:aws:quicksight:us-west-2:123456789012:dashboard/radius-rec-dashboard\", \"MemberId\": \"radius-rec-dashboard\"}], \"RequestId\": \"r-list\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DeleteFolderMembership",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r-delete\", \"Status\": 200}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "ListFolderMembers",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FolderMemberList\": [{\"MemberArn\": \"arn:aws:quicksight:us-west-2:123456789012:dashboard/radius-rec-dashboard\", \"MemberId\": \"radius-rec-dashboard\"}], \"RequestId\": \"r-list\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "ListFolderMembers",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"FolderMemberList\": [], \"RequestId\": \"r-list\"}"
+    }
+  ]
+}

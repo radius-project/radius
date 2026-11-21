@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::QuickSight::FolderMembership",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": ""
+}
