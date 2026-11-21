@@ -248,7 +248,9 @@ type RemovedItemField struct {
 func Run(t *testing.T, s Suite) {
 	t.Run("create, read, update, and delete", func(t *testing.T) { s.createReadUpdateDelete(t) })
 	t.Run("redeploy with no change", func(t *testing.T) { s.redeployNoChange(t) })
-	t.Run("redeploy with an empty list", s.emptyLists)
+	t.Run("redeploy with an empty list", func(t *testing.T) { s.emptyValues(t, "array", []any{}) })
+	t.Run("redeploy with an empty string", func(t *testing.T) { s.emptyValues(t, "string", "") })
+	t.Run("change a string to empty and back", s.emptyStringChanges)
 	t.Run("remove and add tags", s.tagChanges)
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
@@ -385,49 +387,87 @@ func (s Suite) redeployNoChange(t *testing.T) {
 	require.Equal(t, []string{"Read"}, h.handler.reset(), "an unchanged redeploy only reads AWS")
 }
 
-// emptyLists deploys Properties with each list property the schema declares set to an empty list, then deploys it
-// again. A read leaves out an empty list, so the redeploy must only read AWS. A list AWS requires items in, or fills
-// in a default for, such as a default security group, is skipped.
-func (s Suite) emptyLists(t *testing.T) {
-	paths := listPaths(t, s.Schema, s.Properties)
+// emptyValues deploys Properties with each property of the JSON schema type the schema declares set to empty, an
+// empty list or "", then deploys it again. A native handler's read leaves out empty values, so the redeploy must only
+// read AWS. A value the deploy rejects, or that AWS fills in a default for, such as a default security group, is
+// skipped.
+func (s Suite) emptyValues(t *testing.T, jsonType string, empty any) {
+	paths := propertyPaths(t, s.Schema, s.Properties, jsonType)
 	if len(paths) == 0 {
-		t.Skip("the type has no list property")
+		t.Skipf("the type has no %s property", jsonType)
 	}
 	for _, path := range paths {
 		t.Run(strings.Join(path, "/"), func(t *testing.T) {
 			h := s.newHarness(t)
 			properties := normalizeValue(s.Properties).(map[string]any)
-			setAt(properties, path, []any{})
-			resp := h.put(properties)
-			if !slices.Contains([]int{http.StatusOK, http.StatusCreated}, resp.status) {
-				t.Skipf("the deploy fails: %s", resp.raw)
+			setAt(properties, path, empty)
+			if failure := h.tryDeploy(properties); failure != "" {
+				t.Skipf("the deploy fails: %s", failure)
 			}
-			h.finish()
-			h.requireDeployed()
-			read, err := h.handler.Handler.Read(t.Context(), region, h.identifier())
-			require.NoError(t, err)
-			if values := valuesAt(normalizeValue(read), path); len(values) > 0 && !isEmpty(values[0]) {
-				t.Skipf("AWS reports %v", values[0])
+			if value := h.readAt(path); !isEmpty(value) {
+				t.Skipf("AWS reports %v", value)
 			}
 
 			h.handler.reset()
-			resp = h.put(properties)
+			resp := h.put(properties)
 			require.Equal(t, http.StatusOK, resp.status, resp.raw)
 			require.Equal(t, []string{"Read"}, h.handler.reset(), "an unchanged redeploy only reads AWS")
 		})
 	}
 }
 
-// isEmpty reports whether v is nil or an empty list.
+// emptyStringChanges deploys Properties, then each string it sets that a deploy can change set to "", then the value
+// again. Each change sends an update, and AWS then has the template's value. A string the deploy can't set to "", or
+// that AWS keeps a value for, such as a required one, is skipped.
+func (s Suite) emptyStringChanges(t *testing.T) {
+	var schema struct {
+		ReadOnly   []string `json:"readOnlyProperties"`
+		CreateOnly []string `json:"createOnlyProperties"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(s.Schema), &schema))
+	paths := slices.DeleteFunc(propertyPaths(t, s.Schema, s.Properties, "string"), func(path []string) bool {
+		values := valuesAt(normalizeValue(s.Properties), path)
+		p := "/properties/" + strings.Join(path, "/")
+		return len(values) == 0 || isEmpty(values[0]) || slices.ContainsFunc(slices.Concat(schema.ReadOnly, schema.CreateOnly), func(fixed string) bool {
+			return p == fixed || strings.HasPrefix(p, fixed+"/")
+		})
+	})
+	if len(paths) == 0 {
+		t.Skip("the type sets no string a deploy can change")
+	}
+	for _, path := range paths {
+		t.Run(strings.Join(path, "/"), func(t *testing.T) {
+			h := s.newHarness(t)
+			h.deploy(s.Properties)
+			properties := normalizeValue(s.Properties).(map[string]any)
+			value := valuesAt(properties, path)[0]
+			setAt(properties, path, "")
+			h.handler.reset()
+			if failure := h.tryDeploy(properties); failure != "" {
+				t.Skipf("the deploy fails: %s", failure)
+			}
+			require.Contains(t, h.handler.reset(), "Update", "the string changed to empty, so the deploy sends an update")
+			if kept := h.readAt(path); !isEmpty(kept) {
+				t.Skipf("the handler keeps %v", kept)
+			}
+
+			h.deploy(normalizeValue(s.Properties).(map[string]any))
+			require.Contains(t, h.handler.reset(), "Update", "the string changed from empty, so the deploy sends an update")
+			require.Equal(t, value, h.readAt(path), "AWS has the template's value")
+		})
+	}
+}
+
+// isEmpty reports whether v is nil, an empty list, or "".
 func isEmpty(v any) bool {
 	list, ok := v.([]any)
-	return v == nil || (ok && len(list) == 0)
+	return v == nil || v == "" || (ok && len(list) == 0)
 }
 
 // tagChanges deploys a tag, then an empty tag list, then another tag, for a type whose schema has a Tags list. Each
 // change sends an update, and AWS then has the template's tags.
 func (s Suite) tagChanges(t *testing.T) {
-	if !slices.ContainsFunc(listPaths(t, s.Schema, s.Properties), func(path []string) bool { return slices.Equal(path, []string{"Tags"}) }) {
+	if !slices.ContainsFunc(propertyPaths(t, s.Schema, s.Properties, "array"), func(path []string) bool { return slices.Equal(path, []string{"Tags"}) }) {
 		t.Skip("the type has no Tags list")
 	}
 	tag := func(value string) []any { return []any{map[string]any{"Key": "team", "Value": value}} }
@@ -437,16 +477,14 @@ func (s Suite) tagChanges(t *testing.T) {
 		h.handler.reset()
 		h.deploy(withValue(s.Properties, "Tags", tags))
 		require.Contains(t, h.handler.reset(), "Update", "the tags changed, so the deploy sends an update")
-		read, err := h.handler.Handler.Read(t.Context(), region, h.identifier())
-		require.NoError(t, err)
-		got, _ := normalizeValue(read["Tags"]).([]any)
+		got, _ := h.readAt([]string{"Tags"}).([]any)
 		require.ElementsMatch(t, tags, got, "AWS has the template's tags")
 	}
 }
 
-// listPaths returns the paths of the list properties the schema declares at the top level and inside the objects
-// properties sets, except read-only and write-only ones.
-func listPaths(t *testing.T, schemaJSON string, properties map[string]any) [][]string {
+// propertyPaths returns the paths of the properties of the JSON schema type the schema declares at the top level and
+// inside the objects properties sets, except read-only and write-only ones.
+func propertyPaths(t *testing.T, schemaJSON string, properties map[string]any, jsonType string) [][]string {
 	t.Helper()
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(schemaJSON), &schema))
@@ -474,7 +512,7 @@ func listPaths(t *testing.T, schemaJSON string, properties map[string]any) [][]s
 			if excluded["/properties/"+strings.Join(childPath, "/")] || childDef == nil {
 				continue
 			}
-			if childDef["type"] == "array" {
+			if childDef["type"] == jsonType {
 				out = append(out, childPath)
 			} else if object, ok := value[name].(map[string]any); ok {
 				walk(childDef, object, childPath)
@@ -2087,6 +2125,17 @@ func (h *harness) identifierFor(properties map[string]any) string {
 	return identifier
 }
 
+// readAt returns the value the handler reads from AWS at the path segments, or nil when it reads none.
+func (h *harness) readAt(path []string) any {
+	h.t.Helper()
+	read, err := h.handler.Handler.Read(h.t.Context(), region, h.identifier())
+	require.NoError(h.t, err)
+	if values := valuesAt(normalizeValue(read), path); len(values) > 0 {
+		return values[0]
+	}
+	return nil
+}
+
 func (h *harness) stored() map[string]any {
 	props, ok := h.cc.Read(h.s.TypeName, h.identifier())
 	if !ok {
@@ -2239,6 +2288,21 @@ func (h *harness) putNamed(identifier string, properties map[string]any) respons
 	return h.do(put, http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": properties})
 }
 
+// tryDeploy deploys properties, as deploy does. Instead of requiring the deploy to succeed, it returns why it failed,
+// or "" when it succeeded.
+func (h *harness) tryDeploy(properties map[string]any) string {
+	h.t.Helper()
+	resp := h.put(properties)
+	if !slices.Contains([]int{http.StatusOK, http.StatusCreated}, resp.status) {
+		return resp.raw
+	}
+	if failure := h.runQueued(); failure != nil {
+		return failure.Message
+	}
+	h.requireDeployed()
+	return ""
+}
+
 func (h *harness) requireDeployed() {
 	h.t.Helper()
 	rec := h.record()
@@ -2339,18 +2403,26 @@ func (h *harness) run(ctx context.Context, req *ctrl.Request) (ctrl.Result, erro
 // finish runs every queued operation and requires each to succeed.
 func (h *harness) finish() {
 	h.t.Helper()
+	require.Nil(h.t, h.runQueued(), "operation failed")
+}
+
+// runQueued runs the queued operations until one fails, and returns its error, or nil when every one succeeds.
+func (h *harness) runQueued() *v1.ErrorDetails {
+	h.t.Helper()
 	for {
 		msg, err := h.queue.Dequeue(h.t.Context(), queue.QueueClientConfig{})
 		if errors.Is(err, queue.ErrMessageNotFound) {
-			return
+			return nil
 		}
 		require.NoError(h.t, err)
 		req := &ctrl.Request{}
 		require.NoError(h.t, json.Unmarshal(msg.Data, req))
 		result, err := h.run(h.t.Context(), req)
 		require.NoError(h.t, err)
-		require.Nil(h.t, result.Error, "operation failed")
 		require.NoError(h.t, h.queue.FinishMessage(h.t.Context(), msg))
+		if result.Error != nil {
+			return result.Error
+		}
 	}
 }
 
