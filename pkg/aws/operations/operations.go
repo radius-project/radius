@@ -277,7 +277,7 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	uncertain := []string{}
 	for k, v := range flattenedDesiredStateObject {
 		current, ok := flattenedCurrentStateObject[k]
-		if current == nil && isEmptyList(v) && owned != nil && !opts.unresolvedAt(k) && ownsSame(owned, k, v) {
+		if isEmptyList(v) && reportsNothingAt(flattenedCurrentStateObject, k) && owned != nil && !opts.unresolvedAt(k) && ownsSame(owned, k, v) {
 			// AWS reports no items, and a read may leave out an empty list, such as a native handler's read of Tags.
 			// The last deploy set the same empty list, so leave AWS's value as it is. Without a record, such as on a
 			// take-over, the template's list is sent, because AWS may not have reported values it has.
@@ -475,6 +475,17 @@ func ownsSame(owned map[string]any, k string, v any) bool {
 func isEmptyList(v any) bool {
 	list, ok := v.([]any)
 	return ok && len(list) == 0
+}
+
+// reportsNothingAt reports whether the flattened state has no value at, under, or over path, other than null at path,
+// such as an object AWS reports where the template sets a list.
+func reportsNothingAt(flattened map[string]any, path string) bool {
+	for k, v := range flattened {
+		if overlapsAny(k, []string{path}) && (k != path || v != nil) {
+			return false
+		}
+	}
+	return true
 }
 
 // emptyObjects returns the flattened paths of the empty objects in state, which FlattenProperties leaves out.

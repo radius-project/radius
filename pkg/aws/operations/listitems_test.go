@@ -372,6 +372,20 @@ func Test_GeneratePatchWithOptions_EmptyList(t *testing.T) {
 			want:        []string{"remove /Tags/0"},
 		},
 		{
+			name:        "AWS has an object at the path",
+			lastApplied: map[string]any{"Config": []any{}},
+			current:     map[string]any{"Config": map[string]any{"Mode": "fast"}},
+			desired:     map[string]any{"Config": []any{}},
+			want:        []string{"replace /Config"},
+		},
+		{
+			name:        "AWS has a value above the path",
+			lastApplied: map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+			current:     map[string]any{"Vpc": "v"},
+			desired:     map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+			want:        []string{"replace /Vpc"},
+		},
+		{
 			name:        "the last deploy set items",
 			lastApplied: map[string]any{"Tags": []any{tag}},
 			current:     map[string]any{},
