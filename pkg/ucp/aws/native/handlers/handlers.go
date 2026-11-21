@@ -34,6 +34,7 @@ import (
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	redshiftsdk "github.com/aws/aws-sdk-go-v2/service/redshift"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	s3controlsdk "github.com/aws/aws-sdk-go-v2/service/s3control"
 	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
@@ -59,6 +60,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/redshift"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
@@ -103,6 +105,8 @@ func All(cfg aws.Config) []native.Handler {
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
 		iot.NewThingGroupMembership(iotsdk.NewFromConfig(cfg)),
 		transfer.NewAccess(transfersdk.NewFromConfig(cfg)),
+		redshift.NewDataShareAuthorization(redshiftsdk.NewFromConfig(cfg)),
+		redshift.NewDataShareConsumerAssociation(redshiftsdk.NewFromConfig(cfg)),
 	}
 }
 

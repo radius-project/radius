@@ -1,0 +1,74 @@
+{
+  "typeName": "AWS::Redshift::DataShareConsumerAssociation",
+  "description": "A consumer account's association of an Amazon Redshift data share another account authorized for it, made with Redshift's AssociateDataShareConsumer. Set exactly one of AssociateEntireAccount, ConsumerArn, or ConsumerRegion. AWS replaces an entire-account association with a namespace or Region one, and the other way around, so a deploy that would replace another association fails and changes nothing.",
+  "properties": {
+    "DataShareArn": {
+      "type": "string",
+      "description": "The ARN of the data share the producer authorized for this account.",
+      "maxLength": 2048
+    },
+    "AssociateEntireAccount": {
+      "type": "boolean",
+      "description": "Whether to associate the data share with the entire account."
+    },
+    "ConsumerArn": {
+      "type": "string",
+      "description": "The ARN of the consumer account's Redshift namespace, of a provisioned cluster or Redshift Serverless, to associate the data share with.",
+      "maxLength": 2048
+    },
+    "ConsumerRegion": {
+      "type": "string",
+      "description": "The Region whose existing and future namespaces get the data share.",
+      "maxLength": 64
+    },
+    "AllowWrites": {
+      "type": "boolean",
+      "description": "Whether the consumer accepts writes to the data share. AWS uses false when it is left out."
+    },
+    "ProducerArn": {
+      "type": "string",
+      "description": "The ARN of the producer namespace."
+    }
+  },
+  "required": ["DataShareArn"],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/DataShareArn",
+    "/properties/AssociateEntireAccount",
+    "/properties/ConsumerArn",
+    "/properties/ConsumerRegion"
+  ],
+  "createOnlyProperties": [
+    "/properties/DataShareArn",
+    "/properties/AssociateEntireAccount",
+    "/properties/ConsumerArn",
+    "/properties/ConsumerRegion"
+  ],
+  "readOnlyProperties": ["/properties/ProducerArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "redshift:AssociateDataShareConsumer",
+        "redshift:DescribeDataSharesForConsumer"
+      ]
+    },
+    "read": {
+      "permissions": ["redshift:DescribeDataSharesForConsumer"]
+    },
+    "update": {
+      "permissions": [
+        "redshift:AssociateDataShareConsumer",
+        "redshift:DescribeDataSharesForConsumer"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift:DisassociateDataShareConsumer",
+        "redshift:DescribeDataSharesForConsumer"
+      ]
+    },
+    "list": {
+      "permissions": ["redshift:DescribeDataSharesForConsumer"]
+    }
+  }
+}

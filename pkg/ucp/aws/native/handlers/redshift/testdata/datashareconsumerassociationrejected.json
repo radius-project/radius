@@ -1,0 +1,50 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_DATASHARE_ARN": "arn:aws:redshift:us-west-2:xxxxxxxxxxxx:datashare:99bb655c-5538-4fc0-b161-0774338456a2/radius_rec_cons",
+    "RADIUS_REC_MISSING_NAMESPACE_ARN": "arn:aws:redshift-serverless:us-west-2:123456789012:namespace/00000000-0000-0000-0000-000000000000",
+    "RADIUS_REC_PRODUCER_ACCOUNT": "xxxxxxxxxxxx"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataSharesForConsumer",
+      "request": "Action=DescribeDataSharesForConsumer\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesForConsumerResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesForConsumerResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e123677\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:xxxxxxxxxxxx:namespace/99bb655c-5538-4fc0-b161-0774338456a2\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:xxxxxxxxxxxx:namespace/99bb655c-5538-4fc0-b161-0774338456a2\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:xxxxxxxxxxxx:datashare:99bb655c-5538-4fc0-b161-0774338456a2/radius_rec_cons\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e123456789012\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-20T19:39:01.942Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-20T19:38:58.208Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAVAILABLE\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesForConsumerResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ee05364c2-be63-4884-9c9c-6784dd2cde7b\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesForConsumerResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "AssociateDataShareConsumer",
+      "request": "Action=AssociateDataShareConsumer\u0026AllowWrites=false\u0026ConsumerArn=arn%3Aaws%3Aredshift-serverless%3Aus-west-2%3A123456789012%3Anamespace%2F00000000-0000-0000-0000-000000000000\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3Axxxxxxxxxxxx%3Adatashare%3A99bb655c-5538-4fc0-b161-0774338456a2%2Fradius_rec_cons\u0026Version=2012-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidNamespaceFault\u003c/Code\u003e\n    \u003cMessage\u003eThe consumer's Amazon Resource Name (ARN) isn't valid because the namespace doesn't exist. Provide a valid namespace.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003edaee8e1c-dfa6-43aa-b107-d8be497c6f54\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataSharesForConsumer",
+      "request": "Action=DescribeDataSharesForConsumer\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesForConsumerResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesForConsumerResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e123677\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:xxxxxxxxxxxx:namespace/99bb655c-5538-4fc0-b161-0774338456a2\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:xxxxxxxxxxxx:namespace/99bb655c-5538-4fc0-b161-0774338456a2\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:xxxxxxxxxxxx:datashare:99bb655c-5538-4fc0-b161-0774338456a2/radius_rec_cons\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e123456789012\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-20T19:39:01.942Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-20T19:38:58.208Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAVAILABLE\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesForConsumerResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e6282b69f-a498-4ca5-9579-f9dfe3a0fb36\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesForConsumerResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "AssociateDataShareConsumer",
+      "request": "Action=AssociateDataShareConsumer\u0026AllowWrites=false\u0026ConsumerArn=arn%3Aaws%3Aredshift-serverless%3Aus-west-2%3A111122223333%3Anamespace%2F00000000-0000-0000-0000-000000000000\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3Axxxxxxxxxxxx%3Adatashare%3A99bb655c-5538-4fc0-b161-0774338456a2%2Fradius_rec_cons\u0026Version=2012-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidParameterValue\u003c/Code\u003e\n    \u003cMessage\u003eThe cluster namespace specified doesn't exist. Try associating the datashare with another cluster namespace.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003eb076d978-1fda-4e64-9084-5914453e2284\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    }
+  ]
+}
