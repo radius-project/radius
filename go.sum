@@ -140,6 +140,8 @@ github.com/aws/aws-sdk-go-v2/service/emr v1.71.3 h1:HZHQVVIbrppfprsZb+m7Z01SeM23
 github.com/aws/aws-sdk-go-v2/service/emr v1.71.3/go.mod h1:rgE0lPvaHMVnQ+s0w7ZMaPwFDTbRrIctSDsS187R85g=
 github.com/aws/aws-sdk-go-v2/service/fsx v1.74.12 h1:dQn3ZbC/dQZgrVGzQFZ8jskWHVJTgPbkfAdXZwUOUks=
 github.com/aws/aws-sdk-go-v2/service/fsx v1.74.12/go.mod h1:dPrDdVrxSUEwERjoaoLFZjcbG7vogtamCc0DKb4rcR4=
+github.com/aws/aws-sdk-go-v2/service/glue v1.176.0 h1:TtBq8o+YaGNzEGLl7fBE9YYKEl7aLX+E1N1oIHRScVY=
+github.com/aws/aws-sdk-go-v2/service/glue v1.176.0/go.mod h1:34rxTS3Y1PWu3ClPMnt6Xr+M93Nixt0wXxpoIAEnugc=
 github.com/aws/aws-sdk-go-v2/service/iam v1.65.0 h1:Xcpcm1NLM93YeDWEuZIItwiCwVWgZxawFHXjsfKTk7M=
 github.com/aws/aws-sdk-go-v2/service/iam v1.65.0/go.mod h1:mD7Udn/gwt5GfYA31g6LQRdwCRp0M33vQ11b4sVCc38=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.25 h1:rKwkY3Z+fvt2W0msjdNs6uNewPmXzPayQ961oyuWhes=
@@ -160,6 +162,8 @@ github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0 h1:3eggSHnymdEyXlI7Fv
 github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0/go.mod h1:Bf6uHN804FAJ+yUro0QW65wEVJ68eKBIsSzY1SD5oDw=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5 h1:ZoW0j6XRzzzcWEGsPRxZCuiEj0j281S1ACN1cxJ8Obo=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5/go.mod h1:DuktIBGJAIcDVjkXjUYY4jKjLUy3IISIteyikrHqqLI=
+github.com/aws/aws-sdk-go-v2/service/neptune v1.55.0 h1:wpkSHeCsBGcCoJbdG1j2BJKsp+VTWdP1Q8cdCanvMsw=
+github.com/aws/aws-sdk-go-v2/service/neptune v1.55.0/go.mod h1:YjFFQ+Gs1gtYCa7NqaUOHq7gnuNzR4jGLH2e5R7gwD0=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10 h1:WBJb2VxRzzKnuN94YWqZPiu5a5zc3IleFqgZnmVCyvU=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10/go.mod h1:8NhAIBVYkVHq0hIbbzujdoou0VkKwMdG+De9e5oX6qI=
 github.com/aws/aws-sdk-go-v2/service/s3control v1.81.0 h1:/bWPP/ruL/TFKghDKZ9FZqOdZ/tfnQ6lWZfvLiGD7tw=

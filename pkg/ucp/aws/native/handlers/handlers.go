@@ -29,11 +29,13 @@ import (
 	elbv2sdk "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
 	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
+	gluesdk "github.com/aws/aws-sdk-go-v2/service/glue"
 	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
 	iotsdk "github.com/aws/aws-sdk-go-v2/service/iot"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	neptunesdk "github.com/aws/aws-sdk-go-v2/service/neptune"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	s3controlsdk "github.com/aws/aws-sdk-go-v2/service/s3control"
 	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
@@ -54,11 +56,13 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/elbv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/glue"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iot"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/neptune"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
@@ -98,6 +102,8 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		neptune.NewClusterEndpoint(neptunesdk.NewFromConfig(cfg)),
+		glue.NewPartitionIndex(gluesdk.NewFromConfig(cfg)),
 		s3.NewBucketRequestPayment(s3API),
 		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
