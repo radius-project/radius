@@ -269,6 +269,13 @@ func Test_ExtraProperties_ReadFails(t *testing.T) {
 			message: "try again",
 		},
 		{
+			name:    "throttled",
+			err:     awsError(&smithy.GenericAPIError{Code: "TooManyRequestsException", Message: "Too many requests", Fault: smithy.FaultClient}),
+			status:  http.StatusTooManyRequests,
+			code:    "Throttled",
+			message: "AWS limited the rate of calls. Deploy again later: Too many requests",
+		},
+		{
 			name:    "not an AWS API error",
 			err:     errors.New("connection reset"),
 			status:  http.StatusInternalServerError,

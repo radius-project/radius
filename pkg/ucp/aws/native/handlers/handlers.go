@@ -18,6 +18,8 @@ limitations under the License.
 package handlers
 
 import (
+	"slices"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
 	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -34,6 +36,7 @@ import (
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	rdssdk "github.com/aws/aws-sdk-go-v2/service/rds"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	s3controlsdk "github.com/aws/aws-sdk-go-v2/service/s3control"
 	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
@@ -44,6 +47,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
@@ -59,6 +63,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/rds"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
@@ -67,11 +72,14 @@ import (
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
-// is in pkg/aws/schemas.
+// is in pkg/aws/schemas. The clients keep the SDK's attempts of a failed call on its error (awsapi.RecordAttempts), so a
+// handler can tell a call AWS rejected from a retry an earlier attempt of which may have reached AWS.
 func All(cfg aws.Config) []native.Handler {
+	cfg.APIOptions = append(slices.Clone(cfg.APIOptions), awsapi.RecordAttempts)
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
+	rdsAPI := rdssdk.NewFromConfig(cfg)
 	s3API := s3sdk.NewFromConfig(cfg)
 	stsAPI := stssdk.NewFromConfig(cfg)
 	return []native.Handler{
@@ -98,6 +106,8 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		rds.NewActivityStream(rdsAPI),
+		rds.NewTenantDatabase(rdsAPI),
 		s3.NewBucketRequestPayment(s3API),
 		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),

@@ -226,7 +226,7 @@ func Test_Native_FindLostCreate_Put(t *testing.T) {
 		h := newNativeHarness(t)
 		h.assigned.Opts.Recovery = native.RecoverBySearch
 		h.loseCreate(h.assigned, assignedPath, assigned)
-		h.assigned.Errors["Find"] = nativefake.ServerError("Throttling", "slow down")
+		h.assigned.Errors["Find"] = nativefake.ServerError("InternalFailure", "unavailable")
 		db := h.db
 		h.failSavesAfter(1, errors.New("database is down"))
 		require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, assigned).status)
@@ -440,7 +440,7 @@ func Test_Native_FindLostCreate_Delete(t *testing.T) {
 		h := newNativeHarness(t)
 		h.assigned.Opts.Recovery = native.RecoverBySearch
 		h.loseCreate(h.assigned, assignedPath, assigned)
-		h.assigned.Errors["Find"] = nativefake.ServerError("Throttling", "slow down")
+		h.assigned.Errors["Find"] = nativefake.ServerError("InternalFailure", "unavailable")
 
 		require.Equal(t, http.StatusInternalServerError, h.delete(assignedPath, testOwner).status)
 		h.requireCreateKept(assignedPath)
@@ -1130,6 +1130,12 @@ func Test_Native_FindLostCreate_DeleteFails(t *testing.T) {
 
 	h.deploy(nativePath, nativeProperties(1))
 	require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Tier")
+
+	h.fake.Errors["Delete"] = retriedCreateError(t)
+	resp = h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusInternalServerError, resp.status, "a retry's client fault doesn't show that AWS rejected the delete: %s", resp.raw)
+	require.Contains(t, resp.message(), "an earlier attempt may have reached AWS")
+	require.NotNil(t, h.record(nativePath), "the record stays")
 }
 
 // Test_Native_FindLostCreate_PutOwnsLostValues loses a create that set Tier, and recovers it with a PUT whose template

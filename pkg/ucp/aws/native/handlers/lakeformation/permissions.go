@@ -594,7 +594,7 @@ func (h *Permissions) Update(ctx context.Context, request native.UpdateRequest) 
 		calls = append(calls, func() error {
 			err := h.revoke(ctx, request.Region, t, revokePerms, revokeGrants)
 			if err != nil {
-				return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+				return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
 			}
 			return nil
 		})

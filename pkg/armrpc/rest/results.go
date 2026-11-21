@@ -651,6 +651,37 @@ func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req
 	return nil
 }
 
+// TooManyRequestsResponse represents an HTTP 429 with an ARM error payload.
+type TooManyRequestsResponse struct {
+	Body v1.ErrorResponse
+}
+
+// NewTooManyRequestsARMResponse creates a TooManyRequestsResponse with the given error.
+func NewTooManyRequestsARMResponse(body v1.ErrorResponse) Response {
+	return &TooManyRequestsResponse{Body: body}
+}
+
+// Apply renders 429 Too Many Requests HTTP response into http.ResponseWriter by setting Content-Type and serializing
+// response.
+func (r *TooManyRequestsResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusTooManyRequests), logging.LogHTTPStatusCode, http.StatusTooManyRequests)
+
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+
+	return nil
+}
+
 type InternalServerErrorResponse struct {
 	Body v1.ErrorResponse
 }

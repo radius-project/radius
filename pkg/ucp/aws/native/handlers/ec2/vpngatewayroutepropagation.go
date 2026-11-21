@@ -215,7 +215,7 @@ func (h *VPNGatewayRoutePropagation) Update(ctx context.Context, request native.
 		disable := h.disable(ctx, request.Region, gateway, table)
 		calls = append(calls, func() error {
 			if err := disable(); err != nil {
-				return &native.Failure{Message: fmt.Sprintf("failed to turn off route propagation to a route table: %s", err), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+				return &native.Failure{Message: fmt.Sprintf("failed to turn off route propagation to a route table: %s", err), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
 			}
 			return nil
 		})

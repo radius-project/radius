@@ -260,7 +260,11 @@ func failureOf(failed interface {
 	IsClientError() bool
 }, request *ctrl.Request) v1.ErrorDetails {
 	code := v1.CodeInternal
-	if failed.IsClientError() {
+	var failure *native.Failure
+	switch {
+	case errors.As(failed, &failure) && failure.Throttled:
+		code = v1.CodeThrottled
+	case failed.IsClientError():
 		code = v1.CodeInvalid
 	}
 	return v1.ErrorDetails{Code: code, Message: failed.Error(), Target: request.ResourceID}

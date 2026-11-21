@@ -252,7 +252,7 @@ func (h *UserToGroupAddition) Update(ctx context.Context, request native.UpdateR
 func rejected(call func() error) func() error {
 	return func() error {
 		if err := call(); err != nil {
-			return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+			return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
 		}
 		return nil
 	}

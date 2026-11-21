@@ -19,9 +19,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -31,9 +33,9 @@ import (
 )
 
 // HandleAWSError takes in an error and returns an ARMResponse and an error. It checks the error type and returns an
-// appropriate response based on the error code and message. If the error is a client fault, it returns a
-// BadRequestARMResponse, otherwise it returns an InternalServerErrorARMResponse and logs the AWS service,
-// operation, and error code.
+// appropriate response based on the error code and message. If AWS throttled the call, it returns 429 with the code
+// Throttled. If the error is another client fault, it returns a BadRequestARMResponse, otherwise it returns an
+// InternalServerErrorARMResponse and logs the AWS service, operation, and error code.
 func HandleAWSError(ctx context.Context, err error) (armrpc_rest.Response, error) {
 	operationErr := &smithy.OperationError{}
 	if !errors.As(err, &operationErr) {
@@ -46,7 +48,21 @@ func HandleAWSError(ctx context.Context, err error) (armrpc_rest.Response, error
 	}
 
 	var apiErr smithy.APIError
-	if !errors.As(httpErr.Err, &apiErr) {
+	decoded := errors.As(httpErr.Err, &apiErr)
+	if IsThrottled(err) {
+		// The status alone shows throttling, even when the SDK couldn't read the body.
+		var message string
+		if decoded {
+			message = apiErr.ErrorMessage()
+		} else {
+			message = httpErr.Error()
+		}
+		return armrpc_rest.NewTooManyRequestsARMResponse(armrpc_v1.ErrorResponse{Error: &armrpc_v1.ErrorDetails{
+			Code:    armrpc_v1.CodeThrottled,
+			Message: "AWS limited the rate of calls. Deploy again later: " + message,
+		}}), nil
+	}
+	if !decoded {
 		return nil, err
 	}
 
@@ -80,6 +96,23 @@ func HandleAWSError(ctx context.Context, err error) (armrpc_rest.Response, error
 		"awsErrorMessage", apiErr.ErrorMessage())
 
 	return armrpc_rest.NewInternalServerErrorARMResponse(e), nil
+}
+
+// IsThrottled reports whether err is AWS limiting the rate of calls: status 429, or an error code the SDK retries as
+// throttling. LimitExceededException is left out, because many services return it for a quota the user must raise,
+// which is the request's fault.
+func IsThrottled(err error) bool {
+	var response *smithyhttp.ResponseError
+	if errors.As(err, &response) && response.Response != nil && response.Response.Response != nil &&
+		response.HTTPStatusCode() == http.StatusTooManyRequests {
+		return true
+	}
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) || apiErr.ErrorCode() == "LimitExceededException" {
+		return false
+	}
+	_, ok := retry.DefaultThrottleErrorCodes[apiErr.ErrorCode()]
+	return ok
 }
 
 // IsClientFault reports whether AWS rejected a request because of the request itself, such as an invalid property or

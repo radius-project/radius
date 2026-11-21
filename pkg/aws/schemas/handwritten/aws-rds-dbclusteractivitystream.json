@@ -1,0 +1,57 @@
+{
+  "typeName": "AWS::RDS::DBClusterActivityStream",
+  "description": "A database activity stream of an Aurora DB cluster, started with StartActivityStream. Starting and stopping the stream applies at once and restarts the cluster. Deleting the resource stops the stream, which is AWS's default.",
+  "additionalProperties": false,
+  "properties": {
+    "ResourceArn": {
+      "type": "string",
+      "description": "The ARN of the DB cluster, such as arn:aws:rds:us-east-1:123456789012:cluster:das-cluster."
+    },
+    "Mode": {
+      "type": "string",
+      "description": "Whether database sessions handle activity events synchronously or asynchronously. Aurora MySQL supports only async.",
+      "enum": ["sync", "async"]
+    },
+    "KmsKeyId": {
+      "type": "string",
+      "description": "The AWS KMS key that encrypts the stream's messages: its key ARN, key ID, alias ARN, or alias name."
+    },
+    "KinesisStreamName": {
+      "type": "string",
+      "description": "The name of the Amazon Kinesis data stream AWS creates for the activity stream."
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["ResourceArn", "Mode", "KmsKeyId"],
+  "createOnlyProperties": [
+    "/properties/ResourceArn",
+    "/properties/Mode",
+    "/properties/KmsKeyId"
+  ],
+  "readOnlyProperties": ["/properties/KinesisStreamName"],
+  "primaryIdentifier": ["/properties/ResourceArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "rds:DescribeDBClusters",
+        "rds:StartActivityStream",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ]
+    },
+    "read": {
+      "permissions": ["rds:DescribeDBClusters"]
+    },
+    "update": {
+      "permissions": ["rds:DescribeDBClusters"]
+    },
+    "delete": {
+      "permissions": ["rds:DescribeDBClusters", "rds:StopActivityStream"]
+    },
+    "list": {
+      "permissions": ["rds:DescribeDBClusters"]
+    }
+  }
+}

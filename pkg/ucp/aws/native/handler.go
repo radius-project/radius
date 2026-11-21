@@ -332,6 +332,16 @@ type Failure struct {
 	// ClientError is true when the request caused the failure, such as an invalid property value, rather than AWS.
 	ClientError bool
 
+	// Conflict is true when AWS can't make the change now because the resource, or the one it belongs to, is busy
+	// with another change that ends on its own, such as an RDS instance changing another tenant database. UCP
+	// answers a start call's Conflict failure with 409, so the caller deploys again later.
+	Conflict bool
+
+	// Throttled is true when AWS limited the rate of calls, which isn't the request's fault. UCP answers a start
+	// call's Throttled failure with 429 and the code Throttled, so the caller deploys again later. Outcome still says
+	// how much of the operation AWS applied.
+	Throttled bool
+
 	// Outcome is how much of the operation AWS applied. The zero value, OutcomeUnknown, keeps the pending values as
 	// possibly applied.
 	Outcome Outcome

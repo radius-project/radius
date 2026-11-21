@@ -115,7 +115,7 @@ func stringField(out *kafka.GetBootstrapBrokersOutput, name string) *string {
 }
 
 // getBootstrapBrokersError returns the response for a failed kafka:GetBootstrapBrokers call. It maps the error as
-// HandleAWSError does for every AWS call: 400 for a client fault and 500 otherwise, with AWS's error code. It keeps
+// HandleAWSError does for every AWS call: 429 for throttling, 400 for another client fault, and 500 otherwise. It keeps
 // AWS's message, such as the message for a cluster that is not active yet, and names the call, so a missing permission
 // is clear.
 func getBootstrapBrokersError(ctx context.Context, arn string, err error) (armrpc_rest.Response, error) {
@@ -126,6 +126,9 @@ func getBootstrapBrokersError(ctx context.Context, arn string, err error) (armrp
 		r.Body.Error.Message = prefix + ": " + r.Body.Error.Message
 		return r, nil
 	case *armrpc_rest.InternalServerErrorResponse:
+		r.Body.Error.Message = prefix + ": " + r.Body.Error.Message
+		return r, nil
+	case *armrpc_rest.TooManyRequestsResponse:
 		r.Body.Error.Message = prefix + ": " + r.Body.Error.Message
 		return r, nil
 	}
