@@ -288,6 +288,9 @@ func (r *schemaRules) fill(segments []string, desired any, current any, parent m
 			case v == nil:
 			case fields.onlyWriteOnly(field, v):
 				out[k] = v
+			case isEmptyList(v) && fields.awsOwned(field):
+				// AWS reports no items, and a read may leave out an empty list. The last deploy set nothing the
+				// template drops here.
 			default:
 				return nil, false
 			}

@@ -325,6 +325,112 @@ func Test_GeneratePatchWithOptions_ListItemFields(t *testing.T) {
 	}
 }
 
+// Test_GeneratePatchWithOptions_EmptyList covers a template's empty list where AWS reports nothing, as a native
+// handler's read leaves out an empty list: it is unchanged unless the last deploy may have set items there.
+func Test_GeneratePatchWithOptions_EmptyList(t *testing.T) {
+	t.Parallel()
+
+	tag := map[string]any{"Key": "team", "Value": "a"}
+	tests := []struct {
+		name        string
+		schema      string
+		lastApplied map[string]any
+		unresolved  []string
+		current     map[string]any
+		desired     map[string]any
+		want        []string
+	}{
+		{
+			name:        "AWS leaves the list out",
+			lastApplied: map[string]any{"Tags": []any{}},
+			current:     map[string]any{},
+			desired:     map[string]any{"Tags": []any{}},
+		},
+		{
+			name:        "AWS reports the list as null",
+			lastApplied: map[string]any{"Tags": []any{}},
+			current:     map[string]any{"Tags": nil},
+			desired:     map[string]any{"Tags": []any{}},
+		},
+		{
+			name:    "no record of the last deploy",
+			current: map[string]any{},
+			desired: map[string]any{"Tags": []any{}},
+			want:    []string{"add /Tags"},
+		},
+		{
+			name:        "a list inside an object",
+			lastApplied: map[string]any{"Vpc": map[string]any{"Id": "v", "Subnets": []any{}}},
+			current:     map[string]any{"Vpc": map[string]any{"Id": "v"}},
+			desired:     map[string]any{"Vpc": map[string]any{"Id": "v", "Subnets": []any{}}},
+		},
+		{
+			name:        "AWS has items",
+			lastApplied: map[string]any{"Tags": []any{}},
+			current:     map[string]any{"Tags": []any{tag}},
+			desired:     map[string]any{"Tags": []any{}},
+			want:        []string{"remove /Tags/0"},
+		},
+		{
+			name:        "the last deploy set items",
+			lastApplied: map[string]any{"Tags": []any{tag}},
+			current:     map[string]any{},
+			desired:     map[string]any{"Tags": []any{}},
+			want:        []string{"add /Tags"},
+		},
+		{
+			name:        "an unresolved path",
+			lastApplied: map[string]any{"Tags": []any{}},
+			unresolved:  []string{"Tags"},
+			current:     map[string]any{},
+			desired:     map[string]any{"Tags": []any{}},
+			want:        []string{"add /Tags"},
+		},
+		{
+			name:        "a write-only list, which the record never holds",
+			schema:      `{"properties": {}, "writeOnlyProperties": ["/properties/Keys"]}`,
+			lastApplied: map[string]any{},
+			current:     map[string]any{},
+			desired:     map[string]any{"Keys": []any{}},
+			want:        []string{"add /Keys"},
+		},
+		{
+			name:        "a list whose items have write-only fields",
+			schema:      `{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Password"]}`,
+			lastApplied: map[string]any{"Users": []any{}},
+			current:     map[string]any{},
+			desired:     map[string]any{"Users": []any{}},
+		},
+		{
+			name:        "a list inside a list item",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+		},
+		{
+			name:        "a list inside a list item where the last deploy set items",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{"x"}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+			want:        []string{"add /Rules/0/Names"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			schema := tt.schema
+			if schema == "" {
+				schema = `{}`
+			}
+			require.ElementsMatch(t, orEmpty(tt.want), patchOps(t, tt.current, tt.desired, []byte(schema), PatchOptions{
+				LastApplied: tt.lastApplied,
+				Unresolved:  tt.unresolved,
+				Removed:     RemovedPaths(tt.lastApplied, tt.desired),
+			}))
+		})
+	}
+}
+
 // patchOps returns the patch from current to desired as "op path" strings.
 func patchOps(t *testing.T, current map[string]any, desired map[string]any, schema []byte, opts PatchOptions) []string {
 	t.Helper()

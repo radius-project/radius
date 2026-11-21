@@ -248,6 +248,8 @@ type RemovedItemField struct {
 func Run(t *testing.T, s Suite) {
 	t.Run("create, read, update, and delete", func(t *testing.T) { s.createReadUpdateDelete(t) })
 	t.Run("redeploy with no change", func(t *testing.T) { s.redeployNoChange(t) })
+	t.Run("redeploy with an empty list", s.emptyLists)
+	t.Run("remove and add tags", s.tagChanges)
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
 	t.Run("removed field of an array item", func(t *testing.T) { s.removedItemField(t) })
@@ -381,6 +383,115 @@ func (s Suite) redeployNoChange(t *testing.T) {
 	resp := h.put(s.Properties)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, []string{"Read"}, h.handler.reset(), "an unchanged redeploy only reads AWS")
+}
+
+// emptyLists deploys Properties with each list property the schema declares set to an empty list, then deploys it
+// again. A read leaves out an empty list, so the redeploy must only read AWS. A list AWS requires items in, or fills
+// in a default for, such as a default security group, is skipped.
+func (s Suite) emptyLists(t *testing.T) {
+	paths := listPaths(t, s.Schema, s.Properties)
+	if len(paths) == 0 {
+		t.Skip("the type has no list property")
+	}
+	for _, path := range paths {
+		t.Run(strings.Join(path, "/"), func(t *testing.T) {
+			h := s.newHarness(t)
+			properties := normalizeValue(s.Properties).(map[string]any)
+			setAt(properties, path, []any{})
+			resp := h.put(properties)
+			if !slices.Contains([]int{http.StatusOK, http.StatusCreated}, resp.status) {
+				t.Skipf("the deploy fails: %s", resp.raw)
+			}
+			h.finish()
+			h.requireDeployed()
+			read, err := h.handler.Handler.Read(t.Context(), region, h.identifier())
+			require.NoError(t, err)
+			if values := valuesAt(normalizeValue(read), path); len(values) > 0 && !isEmpty(values[0]) {
+				t.Skipf("AWS reports %v", values[0])
+			}
+
+			h.handler.reset()
+			resp = h.put(properties)
+			require.Equal(t, http.StatusOK, resp.status, resp.raw)
+			require.Equal(t, []string{"Read"}, h.handler.reset(), "an unchanged redeploy only reads AWS")
+		})
+	}
+}
+
+// isEmpty reports whether v is nil or an empty list.
+func isEmpty(v any) bool {
+	list, ok := v.([]any)
+	return v == nil || (ok && len(list) == 0)
+}
+
+// tagChanges deploys a tag, then an empty tag list, then another tag, for a type whose schema has a Tags list. Each
+// change sends an update, and AWS then has the template's tags.
+func (s Suite) tagChanges(t *testing.T) {
+	if !slices.ContainsFunc(listPaths(t, s.Schema, s.Properties), func(path []string) bool { return slices.Equal(path, []string{"Tags"}) }) {
+		t.Skip("the type has no Tags list")
+	}
+	tag := func(value string) []any { return []any{map[string]any{"Key": "team", "Value": value}} }
+	h := s.newHarness(t)
+	h.deploy(withValue(s.Properties, "Tags", tag("a")))
+	for _, tags := range [][]any{{}, tag("b")} {
+		h.handler.reset()
+		h.deploy(withValue(s.Properties, "Tags", tags))
+		require.Contains(t, h.handler.reset(), "Update", "the tags changed, so the deploy sends an update")
+		read, err := h.handler.Handler.Read(t.Context(), region, h.identifier())
+		require.NoError(t, err)
+		got, _ := normalizeValue(read["Tags"]).([]any)
+		require.ElementsMatch(t, tags, got, "AWS has the template's tags")
+	}
+}
+
+// listPaths returns the paths of the list properties the schema declares at the top level and inside the objects
+// properties sets, except read-only and write-only ones.
+func listPaths(t *testing.T, schemaJSON string, properties map[string]any) [][]string {
+	t.Helper()
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal([]byte(schemaJSON), &schema))
+	excluded := map[string]bool{}
+	for _, key := range []string{"readOnlyProperties", "writeOnlyProperties"} {
+		paths, _ := schema[key].([]any)
+		for _, p := range paths {
+			excluded[fmt.Sprint(p)] = true
+		}
+	}
+	resolve := func(def map[string]any) map[string]any {
+		if ref, ok := def["$ref"].(string); ok {
+			resolved, _ := schema["definitions"].(map[string]any)[strings.TrimPrefix(ref, "#/definitions/")].(map[string]any)
+			return resolved
+		}
+		return def
+	}
+	out := [][]string{}
+	var walk func(def map[string]any, value map[string]any, path []string)
+	walk = func(def map[string]any, value map[string]any, path []string) {
+		children, _ := def["properties"].(map[string]any)
+		for name, child := range children {
+			childDef := resolve(child.(map[string]any))
+			childPath := append(slices.Clone(path), name)
+			if excluded["/properties/"+strings.Join(childPath, "/")] || childDef == nil {
+				continue
+			}
+			if childDef["type"] == "array" {
+				out = append(out, childPath)
+			} else if object, ok := value[name].(map[string]any); ok {
+				walk(childDef, object, childPath)
+			}
+		}
+	}
+	walk(schema, properties, nil)
+	slices.SortFunc(out, func(a, b []string) int { return strings.Compare(strings.Join(a, "/"), strings.Join(b, "/")) })
+	return out
+}
+
+// setAt sets the value at the path segments of obj, whose objects on the way must exist.
+func setAt(obj map[string]any, segments []string, value any) {
+	for _, segment := range segments[:len(segments)-1] {
+		obj = obj[segment].(map[string]any)
+	}
+	obj[segments[len(segments)-1]] = value
 }
 
 func (s Suite) deletedOutsideRadius(t *testing.T) {
