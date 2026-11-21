@@ -45,6 +45,7 @@ var iamPrefixes = map[string]string{
 	"fsx":                      "fsx",
 	"grafana":                  "grafana",
 	"iam":                      "iam",
+	"iot":                      "iot",
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
@@ -54,6 +55,7 @@ var iamPrefixes = map[string]string{
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
 	"sts":                      "sts",
+	"transfer":                 "transfer",
 }
 
 // operationsOf maps a handler method to the schema handler operations whose permissions must cover the AWS calls it
