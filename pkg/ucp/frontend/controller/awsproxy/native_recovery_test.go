@@ -21,7 +21,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -32,12 +35,14 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/retry"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // loseCreate sends a PUT whose create reaches AWS but whose response is lost, as when UCP stops after AWS accepted
@@ -162,6 +167,83 @@ func Test_Native_FindLostCreate_Put(t *testing.T) {
 		rec := h.record(assignedPath)
 		require.Equal(t, "id-1", rec.Properties.AWSIdentifier)
 		require.Empty(t, rec.Properties.ClientToken)
+	})
+
+	t.Run("resend: AWS rejects the create", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.loseCreate(h.assigned, assignedPath, assigned)
+		h.assigned.Errors["Create"] = nativefake.ClientError("IdempotentParameterMismatch", "the request differs")
+
+		resp := h.put(assignedPath, assigned)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Equal(t, "the request differs", resp.message())
+		h.requireCreateKept(assignedPath)
+		require.Empty(t, h.record(assignedPath).Properties.AWSIdentifier)
+	})
+
+	for _, recovery := range []struct {
+		name string
+		mode native.Recovery
+		call string
+	}{{"resend", native.RecoverByResend, "Create"}, {"search", native.RecoverBySearch, "Find"}} {
+		t.Run(recovery.name+": UCP stops after it finds the create, before it saves the identifier", func(t *testing.T) {
+			for _, method := range []string{http.MethodPut, http.MethodDelete} {
+				t.Run(method, func(t *testing.T) {
+					h := newNativeHarness(t)
+					h.assigned.Opts.Recovery = recovery.mode
+					h.loseCreate(h.assigned, assignedPath, assigned)
+					db := h.db
+					h.failSavesAfter(1, errors.New("database is down"))
+					require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, assigned).status)
+					require.Equal(t, []string{recovery.call}, methods(h.assigned.Calls()))
+					rec := h.record(assignedPath)
+					require.Equal(t, v1.ProvisioningStateProvisioning, rec.ProvisioningState(), "the reservation stays")
+					require.Empty(t, rec.Properties.AWSIdentifier)
+					h.db = db
+
+					require.Equal(t, http.StatusConflict, h.delete(assignedPath, testOwner).status, "the reservation holds until it is stale")
+					require.Equal(t, http.StatusConflict, h.put(assignedPath, assigned).status)
+					require.Empty(t, h.assigned.Calls())
+
+					defer func() { records.Now = time.Now }()
+					records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+					if method == http.MethodPut {
+						h.deploy(assignedPath, assigned)
+						require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
+						require.Equal(t, []string{"id-1"}, h.cc.List(assignedType), "the next request finds the first resource")
+						return
+					}
+					require.Equal(t, http.StatusAccepted, h.delete(assignedPath, testOwner).status)
+					h.finish()
+					require.Nil(t, h.record(assignedPath))
+					require.Empty(t, h.cc.List(assignedType))
+				})
+			}
+		})
+	}
+
+	t.Run("search: Find fails and releasing the reservation fails", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.assigned.Opts.Recovery = native.RecoverBySearch
+		h.loseCreate(h.assigned, assignedPath, assigned)
+		h.assigned.Errors["Find"] = nativefake.ServerError("Throttling", "slow down")
+		db := h.db
+		h.failSavesAfter(1, errors.New("database is down"))
+		require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, assigned).status)
+		require.Equal(t, v1.ProvisioningStateProvisioning, h.record(assignedPath).ProvisioningState(), "the reservation stays")
+		h.db = db
+		delete(h.assigned.Errors, "Find")
+		h.assigned.Calls()
+
+		require.Equal(t, http.StatusConflict, h.put(assignedPath, assigned).status, "the reservation holds until it is stale")
+		require.Equal(t, http.StatusConflict, h.delete(assignedPath, testOwner).status)
+		require.Empty(t, h.assigned.Calls())
+
+		defer func() { records.Now = time.Now }()
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		h.deploy(assignedPath, assigned)
+		require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
+		require.Equal(t, []string{"id-1"}, h.cc.List(assignedType))
 	})
 
 	t.Run("search: Find finds the resource", func(t *testing.T) {
@@ -433,6 +515,226 @@ func Test_Native_FindLostCreate_HeldByAnotherAlias(t *testing.T) {
 		require.Empty(t, h.assigned.Calls(), "UCP never deletes a resource another alias manages")
 		h.requireCreateKept(assignedPath)
 		require.Equal(t, 1, h.cc.Count(assignedType))
+	})
+}
+
+// resendsOther is a handler whose Create returns the resource id-1, which another alias manages.
+type resendsOther struct {
+	*nativefake.Handler
+}
+
+func (h resendsOther) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	return "id-1", nil
+}
+
+func Test_Native_ResendLostCreate_HeldByAnotherAlias(t *testing.T) {
+	const otherPath = providers + "AWS.Test/Assigned/app-other"
+	h := newNativeHarness(t)
+	h.deploy(otherPath, map[string]any{"Size": 1})
+	h.failCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+	registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, resendsOther{h.assigned})
+	require.NoError(t, err)
+	h.native = registry
+
+	resp := h.put(assignedPath, map[string]any{"Size": 1})
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Contains(t, resp.message(), `already managed under the alias "app-other"`)
+	h.requireCreateKept(assignedPath)
+	require.Empty(t, h.record(assignedPath).Properties.AWSIdentifier)
+}
+
+// pauseDB pauses the first read of the record id until resume is closed, after the read, and lets later reads through, so a test can run another
+// request between a request's read of the record and the rest of it.
+type pauseDB struct {
+	database.Client
+	id     string
+	once   *atomic.Bool
+	paused chan struct{}
+	resume chan struct{}
+}
+
+func (p pauseDB) Get(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
+	obj, err := p.Client.Get(ctx, id, options...)
+	if strings.EqualFold(id, p.id) && p.once.CompareAndSwap(false, true) {
+		close(p.paused)
+		<-p.resume
+	}
+	return obj, err
+}
+
+// pauseCreate is a handler whose first Create waits until resume is closed before it calls AWS.
+type pauseCreate struct {
+	*nativefake.Handler
+	once   *atomic.Bool
+	paused chan struct{}
+	resume chan struct{}
+}
+
+func (h pauseCreate) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	if h.once.CompareAndSwap(false, true) {
+		close(h.paused)
+		<-h.resume
+	}
+	return h.Handler.Create(ctx, request)
+}
+
+// interleave starts first and, once it is paused, runs second to the end, finishes the operations second queued,
+// and clears the handler calls so far. Then it lets first go on, and returns both responses.
+func (h *nativeHarness) interleave(paused chan struct{}, resume chan struct{}, first func() response, second func() response, handler *nativefake.Handler) (response, response) {
+	h.t.Helper()
+	done := make(chan response, 1)
+	go func() { done <- first() }()
+	select {
+	case <-paused:
+	case <-time.After(10 * time.Second):
+		require.FailNow(h.t, "the first request never paused")
+	}
+	secondResp := second()
+	h.finish()
+	handler.Calls()
+	close(resume)
+	select {
+	case firstResp := <-done:
+		return firstResp, secondResp
+	case <-time.After(10 * time.Second):
+		require.FailNow(h.t, "the first request never finished")
+	}
+	return response{}, response{}
+}
+
+// pauseRead makes the next read of the record at path pause, and returns the channels interleave takes.
+func (h *nativeHarness) pauseRead(path string) (chan struct{}, chan struct{}) {
+	h.t.Helper()
+	id, err := resources.ParseResource(path)
+	require.NoError(h.t, err)
+	paused, resume := make(chan struct{}), make(chan struct{})
+	h.db = pauseDB{Client: h.db, id: id.String(), once: &atomic.Bool{}, paused: paused, resume: resume}
+	return paused, resume
+}
+
+// findCreates is a handler whose Find sends the create when AWS has no resource with the client token, like an API
+// that returns the existing resource for a create with the same values, such as KMS CreateGrant with a grant name.
+type findCreates struct {
+	*nativefake.Handler
+}
+
+func (h findCreates) Find(ctx context.Context, request native.CreateRequest) (string, error) {
+	identifier, err := h.Handler.Find(ctx, request)
+	if err != nil || identifier != "" {
+		return identifier, err
+	}
+	return h.Handler.Create(ctx, request)
+}
+
+// writes returns the methods of the calls that can change AWS.
+func writes(calls []nativefake.Call) []string {
+	out := []string{}
+	for _, m := range methods(calls) {
+		if m != "Read" && m != "Find" {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// Test_Native_FindLostCreate_PutAndDelete runs a PUT and a DELETE of an alias whose first create was lost at the same
+// time, for each way a handler finds a lost create. Both read the record before either reserves it. Only one recovers
+// the create, the other gets 409, and AWS never keeps a resource no record has.
+func Test_Native_FindLostCreate_PutAndDelete(t *testing.T) {
+	type mode struct {
+		name       string
+		path       string
+		typeName   string
+		properties map[string]any
+		handler    func(h *nativeHarness) *nativefake.Handler
+	}
+	modes := []mode{
+		{"identifier", nativePath, nativeType, nativeProperties(1), func(h *nativeHarness) *nativefake.Handler { return h.fake }},
+		{"resend", assignedPath, assignedType, map[string]any{"Size": 1}, func(h *nativeHarness) *nativefake.Handler { return h.assigned }},
+		{"search", assignedPath, assignedType, map[string]any{"Size": 1}, func(h *nativeHarness) *nativefake.Handler {
+			h.assigned.Opts.Recovery = native.RecoverBySearch
+			return h.assigned
+		}},
+		{"search that creates", assignedPath, assignedType, map[string]any{"Size": 1}, func(h *nativeHarness) *nativefake.Handler {
+			h.assigned.Opts.Recovery = native.RecoverBySearch
+			registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, findCreates{h.assigned})
+			require.NoError(h.t, err)
+			h.native = registry
+			return h.assigned
+		}},
+	}
+	for _, m := range modes {
+		setup := func(t *testing.T, reached bool) (*nativeHarness, *nativefake.Handler) {
+			h := newNativeHarness(t)
+			fake := m.handler(h)
+			if reached {
+				h.loseCreate(fake, m.path, m.properties)
+			} else {
+				h.failCreate(fake, m.path, m.properties)
+			}
+			return h, fake
+		}
+		put := func(h *nativeHarness) func() response {
+			return func() response { return h.put(m.path, m.properties) }
+		}
+		del := func(h *nativeHarness) func() response {
+			return func() response { return h.delete(m.path, testOwner) }
+		}
+
+		for _, reached := range []bool{true, false} {
+			suffix := "the create reached AWS"
+			if !reached {
+				suffix = "the create never reached AWS"
+			}
+
+			t.Run(m.name+": the DELETE runs after the PUT reads the record; "+suffix, func(t *testing.T) {
+				h, fake := setup(t, reached)
+				paused, resume := h.pauseRead(m.path)
+				putResp, delResp := h.interleave(paused, resume, put(h), del(h), fake)
+				require.Contains(t, []int{http.StatusAccepted, http.StatusNoContent}, delResp.status, delResp.raw)
+				require.Equal(t, http.StatusConflict, putResp.status, putResp.raw)
+				require.Empty(t, writes(fake.Calls()), "the PUT changes nothing in AWS after the DELETE changed the record")
+				h.finish()
+				require.Nil(t, h.record(m.path))
+				require.Empty(t, h.cc.List(m.typeName), "AWS keeps no resource without a record")
+			})
+
+			t.Run(m.name+": the PUT runs after the DELETE reads the record; "+suffix, func(t *testing.T) {
+				h, fake := setup(t, reached)
+				paused, resume := h.pauseRead(m.path)
+				delResp, putResp := h.interleave(paused, resume, del(h), put(h), fake)
+				require.Contains(t, []int{http.StatusOK, http.StatusCreated}, putResp.status, putResp.raw)
+				require.Equal(t, http.StatusConflict, delResp.status, delResp.raw)
+				require.Empty(t, writes(fake.Calls()), "the DELETE changes nothing in AWS after the PUT changed the record")
+				h.finish()
+				rec := h.record(m.path)
+				require.NotNil(t, rec)
+				require.Empty(t, rec.Properties.ClientToken, "the PUT finished the create")
+				require.Equal(t, []string{strings.ToLower(rec.Properties.AWSIdentifier)}, h.cc.List(m.typeName))
+			})
+		}
+	}
+
+	t.Run("resend: a DELETE while the PUT sends the create again gets 409", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.loseCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+		paused, resume := make(chan struct{}), make(chan struct{})
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, pauseCreate{Handler: h.assigned, once: &atomic.Bool{}, paused: paused, resume: resume})
+		require.NoError(t, err)
+		h.native = registry
+
+		putResp, delResp := h.interleave(paused, resume,
+			func() response { return h.put(assignedPath, map[string]any{"Size": 1}) },
+			func() response { return h.delete(assignedPath, testOwner) },
+			h.assigned)
+		require.Equal(t, http.StatusConflict, delResp.status, delResp.raw)
+		require.Contains(t, delResp.message(), "Another operation on the AWS resource")
+		require.Equal(t, http.StatusOK, putResp.status, putResp.raw)
+		h.finish()
+		rec := h.record(assignedPath)
+		require.Equal(t, "id-1", rec.Properties.AWSIdentifier)
+		require.Empty(t, rec.Properties.ClientToken)
+		require.Equal(t, []string{"id-1"}, h.cc.List(assignedType))
 	})
 }
 
@@ -744,8 +1046,8 @@ func (f *interleavedFind) Find(ctx context.Context, request native.CreateRequest
 }
 
 // Test_Native_ConcurrentSearchRecovery checks that two PUTs that recover the same lost create of a type that finds it
-// by search (native.RecoverBySearch) create one resource: each searches before it reserves the record, and the
-// reservation checks the record's ETag, so the request that reserves second gets 409 before it calls Create.
+// by search (native.RecoverBySearch) create one resource: the first reserves the record before it searches, so the
+// second, which runs during that search, gets 409 before it calls Find or Create.
 func Test_Native_ConcurrentSearchRecovery(t *testing.T) {
 	h := newNativeHarness(t)
 	h.assigned.Opts.Recovery = native.RecoverBySearch
@@ -766,15 +1068,19 @@ func Test_Native_ConcurrentSearchRecovery(t *testing.T) {
 	handler.during = func() { second = h.put(assignedPath, properties) }
 	first := h.put(assignedPath, properties)
 
-	require.Equal(t, http.StatusCreated, second.status, second.raw)
-	require.Equal(t, http.StatusConflict, first.status, first.raw)
-	creates := 0
+	require.Equal(t, http.StatusConflict, second.status, second.raw)
+	require.Equal(t, http.StatusCreated, first.status, first.raw)
+	creates, finds := 0, 0
 	for _, call := range h.assigned.Calls() {
-		if call.Method == "Create" {
+		switch call.Method {
+		case "Create":
 			creates++
+		case "Find":
+			finds++
 		}
 	}
 	require.Equal(t, 1, creates, "only the request that reserved the record called Create")
+	require.Equal(t, 1, finds, "the second request never searched")
 	require.Equal(t, 1, h.cc.Count(assignedType))
 }
 

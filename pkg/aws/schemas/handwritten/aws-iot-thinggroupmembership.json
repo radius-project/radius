@@ -1,0 +1,44 @@
+{
+  "typeName": "AWS::IoT::ThingGroupMembership",
+  "description": "A thing's membership in a static AWS IoT thing group, made with AddThingToThingGroup. AWS has no call that changes a membership, so every property is create-only.",
+  "properties": {
+    "ThingGroupName": {
+      "type": "string",
+      "description": "The name of the static thing group.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9:_-]+$"
+    },
+    "ThingName": {
+      "type": "string",
+      "description": "The name of the thing to add to the group.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-zA-Z0-9:_-]+$"
+    }
+  },
+  "required": ["ThingGroupName", "ThingName"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/ThingGroupName", "/properties/ThingName"],
+  "createOnlyProperties": [
+    "/properties/ThingGroupName",
+    "/properties/ThingName"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": ["iot:AddThingToThingGroup", "iot:ListThingGroupsForThing"]
+    },
+    "read": {
+      "permissions": ["iot:ListThingGroupsForThing"]
+    },
+    "update": {
+      "permissions": ["iot:ListThingGroupsForThing"]
+    },
+    "delete": {
+      "permissions": [
+        "iot:RemoveThingFromThingGroup",
+        "iot:ListThingGroupsForThing"
+      ]
+    }
+  }
+}

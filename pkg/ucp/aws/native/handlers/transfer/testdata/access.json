@@ -1,0 +1,91 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_TRANSFER_SERVER": "s-0123456789abcdef0",
+    "RADIUS_REC_TRANSFER_GROUP_SID": "S-1-1-12-1234567890-123456789-1234567890-1234",
+    "RADIUS_REC_TRANSFER_ROLE_ARN": "arn:aws:iam::123456789012:role/radius-rec-transfer",
+    "RADIUS_REC_TRANSFER_BUCKET": "radius-rec-transfer"
+  },
+  "interactions": [
+    {
+      "service": "Transfer",
+      "operation": "CreateAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/home\",\"Role\":\"arn:aws:iam::123456789012:role/radius-rec-transfer\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}"
+    },
+    {
+      "service": "Transfer",
+      "operation": "DescribeAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/home\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+    },
+    {
+      "service": "Transfer",
+      "operation": "DescribeAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/home\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+    },
+    {
+      "service": "Transfer",
+      "operation": "UpdateAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"Role\":\"arn:aws:iam::123456789012:role/radius-rec-transfer\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}"
+    },
+    {
+      "service": "Transfer",
+      "operation": "DescribeAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+    },
+    {
+      "service": "Transfer",
+      "operation": "DescribeAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Access\":{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"HomeDirectory\":\"/radius-rec-transfer/shared\",\"HomeDirectoryType\":\"PATH\"},\"ServerId\":\"s-0123456789abcdef0\"}"
+    },
+    {
+      "service": "Transfer",
+      "operation": "DeleteAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": ""
+    },
+    {
+      "service": "Transfer",
+      "operation": "DescribeAccess",
+      "request": "{\"ExternalId\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ServerId\":\"s-0123456789abcdef0\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ResourceNotFoundException\",\"Message\":\"Unknown access: S-1-1-12-1234567890-123456789-1234567890-1234 for server: s-0123456789abcdef0\",\"Resource\":\"S-1-1-12-1234567890-123456789-1234567890-1234\",\"ResourceType\":\"Access\"}"
+    }
+  ]
+}
