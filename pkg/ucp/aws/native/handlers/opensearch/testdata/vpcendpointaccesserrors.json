@@ -1,0 +1,38 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_OTHER_ACCOUNT_ID": "210987654321"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "ListVpcEndpointAccess",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Domain not found: radius-rec-missing\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "AuthorizeVpcEndpointAccess",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Domain not found: radius-rec-missing\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListVpcEndpointAccess",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Domain not found: radius-rec-missing\"}"
+    }
+  ]
+}
