@@ -60,7 +60,8 @@
     "delete": {
       "permissions": [
         "ec2:DisassociateClientVpnTargetNetwork",
-        "ec2:DescribeClientVpnTargetNetworks"
+        "ec2:DescribeClientVpnTargetNetworks",
+        "ec2:AssociateClientVpnTargetNetwork"
       ],
       "timeoutInMinutes": 130
     },
