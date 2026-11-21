@@ -111,6 +111,42 @@ func (c createFails) Create(ctx context.Context, request native.CreateRequest) (
 	return "app", c.err
 }
 
+// showsLate reads as not found for the first hidden Read, Progress, and Delete calls, though AWS has the resource, as
+// AWS's reads of a new resource can lag its create.
+type showsLate struct {
+	*nativefake.Handler
+	hidden *int
+}
+
+func (s showsLate) stillHidden() bool {
+	if *s.hidden == 0 {
+		return false
+	}
+	*s.hidden--
+	return true
+}
+
+func (s showsLate) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
+	if s.stillHidden() {
+		return nil, native.ErrNotFound
+	}
+	return s.Handler.Read(ctx, region, identifier)
+}
+
+func (s showsLate) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
+	if s.stillHidden() {
+		return native.Progress{}, native.ErrNotFound
+	}
+	return s.Handler.Progress(ctx, region, identifier, op)
+}
+
+func (s showsLate) Delete(ctx context.Context, region string, identifier string) error {
+	if s.stillHidden() {
+		return native.ErrNotFound
+	}
+	return s.Handler.Delete(ctx, region, identifier)
+}
+
 // firstDeleteFails reports the first delete as failed while AWS is still deleting the resource.
 type firstDeleteFails struct {
 	*nativefake.Handler
@@ -138,7 +174,7 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		store := awsfake.NewCloudControl()
 		store.Identifiers[typeName] = "Name"
 		h := nativefake.New(typeName, store)
-		l := Lifecycle{Handler: h, Session: awsreplay.New(t, file), Properties: map[string]any{"Name": "app"}, Poll: time.Millisecond}
+		l := Lifecycle{Handler: h, Session: awsreplay.New(t, file), Properties: map[string]any{"Name": "app"}, Poll: time.Millisecond, settle: 50 * time.Millisecond}
 		return l, h, store
 	}
 	deletes := func(h *nativefake.Handler) int {
@@ -270,16 +306,30 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		require.Equal(t, 15*time.Second, Lifecycle{}.poll(), "the default poll interval")
 	})
 
-	t.Run("a resource already gone needs no cleanup delete", func(t *testing.T) {
+	t.Run("a resource AWS shows late is still deleted in cleanup", func(t *testing.T) {
 		l, h, store := newRun(t, true)
+		hidden := 3
+		l.Handler = showsLate{Handler: h, hidden: &hidden}
 		f := newFakeTB(t)
-		l.Between = func() {
-			store.Remove(typeName, "app")
-			f.Fatalf("boom")
-		}
 		f.run(func() { l.Run(f) })
-		require.Len(t, f.errors, 1)
-		require.Equal(t, 1, deletes(h))
+		require.Len(t, f.errors, 1, "only the create's progress read fails")
+		require.Zero(t, hidden)
+		require.Zero(t, store.Count(typeName))
+	})
+
+	t.Run("a create that made nothing ends cleanup after the settle time", func(t *testing.T) {
+		l, h, store := newRun(t, true)
+		l.Handler = createFails{Handler: h, err: errors.New("the response was lost")}
+		f := newFakeTB(t)
+		start := time.Now()
+		f.run(func() { l.Run(f) })
+		elapsed := time.Since(start)
+		require.Len(t, f.errors, 1, f.errors)
+		require.Greater(t, deletes(h), 1, "cleanup checks again before it concludes there is nothing")
+		require.GreaterOrEqual(t, elapsed, l.settle)
+		require.Less(t, elapsed, l.settle+5*time.Second)
+		require.Zero(t, store.Count(typeName))
+		require.Equal(t, cleanupSettle, Lifecycle{}.settleTime(), "the default settle time")
 	})
 
 	t.Run("a cleanup delete AWS reports as done while it still has the resource says so", func(t *testing.T) {
@@ -300,6 +350,7 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		cancel()
 		_, err := l.Handler.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: l.Properties, ClientToken: "token"})
 		require.NoError(t, err)
+		require.ErrorIs(t, l.cleanup(ctx, "missing", false, ""), context.Canceled, "a cleanup that ends before the settle time doesn't conclude there is nothing")
 		require.ErrorIs(t, l.cleanup(ctx, "app", false, ""), context.Canceled)
 	})
 
