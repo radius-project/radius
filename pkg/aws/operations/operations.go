@@ -477,13 +477,17 @@ func isEmptyList(v any) bool {
 	return ok && len(list) == 0
 }
 
-// reportsNothingAt reports whether the flattened state has no value at, under, or over path, other than null at path,
-// such as an object AWS reports where the template sets a list.
+// reportsNothingAt reports whether the flattened state has no value at, under, or over path, other than null at path
+// and empty objects above it, such as an object AWS reports where the template sets a list.
 func reportsNothingAt(flattened map[string]any, path string) bool {
 	for k, v := range flattened {
-		if overlapsAny(k, []string{path}) && (k != path || v != nil) {
-			return false
+		if !overlapsAny(k, []string{path}) || (k == path && v == nil) {
+			continue
 		}
+		if m, ok := v.(map[string]any); ok && len(m) == 0 && strings.HasPrefix(path, k+"/") {
+			continue
+		}
+		return false
 	}
 	return true
 }

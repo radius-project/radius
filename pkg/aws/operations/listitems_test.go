@@ -372,6 +372,12 @@ func Test_GeneratePatchWithOptions_EmptyList(t *testing.T) {
 			want:        []string{"remove /Tags/0"},
 		},
 		{
+			name:        "AWS reports the object above the list as empty",
+			lastApplied: map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+			current:     map[string]any{"Vpc": map[string]any{}},
+			desired:     map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+		},
+		{
 			name:        "AWS has an object at the path",
 			lastApplied: map[string]any{"Config": []any{}},
 			current:     map[string]any{"Config": map[string]any{"Mode": "fast"}},
