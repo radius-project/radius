@@ -368,10 +368,10 @@ var connAPI = map[string]nativetest.Call{
 				Code:  connValidationCode,
 			},
 			{
-				Rule: "AWS answers UnknownError to a delete of a connection it is still validating or provisioning",
-				Doc:  connGuide,
+				Rule:  "AWS answers UnknownError to a delete of a connection it is still validating or provisioning",
+				Doc:   connGuide,
 				Break: connAgainst(connCreate(), connDelete(connFirstID)),
-				Code: "UnknownError",
+				Code:  "UnknownError",
 			},
 			{
 				Rule:  "AWS rejects a delete of a connection that doesn't exist with ResourceNotFoundException",
