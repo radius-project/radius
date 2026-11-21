@@ -124,6 +124,11 @@ observe() {
         select(test("^[a-z0-9][a-z0-9.-]*$"))' <<<"${pod}")"
     uid="$(jq -er '.metadata.uid |
         select(test("^[a-zA-Z0-9-]+$"))' <<<"${pod}")"
+    # Only Radius components log authorization decisions. Other pods in the
+    # namespace, such as Contour, are skipped so their missing logs cannot
+    # fail collection.
+    jq -e '.metadata.labels["app.kubernetes.io/part-of"] == "radius"' \
+        <<<"${pod}" >/dev/null || return 0
     for i in "${!KEYS[@]}"; do
         if [[ "${KEYS[i]}" == "${uid}."* ]]; then
             ACTIVE[i]=false
