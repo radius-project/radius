@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::RedshiftServerless::EndpointAccess",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": "EndpointArn"
+}

@@ -164,6 +164,11 @@ type Suite struct {
 	// handler whose Recovery is native.RecoverBySearch.
 	Duplicates bool
 
+	// FindSkipsHeld is true when the handler's Find leaves out resources another alias holds
+	// (native.CreateRequest.Held), so an identical resource another alias manages doesn't make a lost create
+	// ambiguous.
+	FindSkipsHeld bool
+
 	// RecordedForm, when set, is a create-only property whose template value AWS reports in a form only a record of
 	// the last deploy shows to match, such as a KMS alias AWS reports as the key's ARN.
 	RecordedForm *RecordedForm
@@ -297,6 +302,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("delete after the create sent again is lost", func(t *testing.T) { s.lostResend(t) })
 	t.Run("create-only change after a lost create", func(t *testing.T) { s.lostResendCreateOnly(t) })
 	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
+	t.Run("lost create that also matches a resource another alias holds", func(t *testing.T) { s.lostCreateHeldDuplicate(t) })
 	if s.NewHandler(awsfake.NewCloudControl()).Options().Recovery == native.RecoverByResend {
 		t.Run("deploy after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut, errPartway) })
 		t.Run("delete after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete, errPartway) })
@@ -911,6 +917,33 @@ func (s Suite) lostCreateDuplicates(t *testing.T) {
 	resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
 	h.finish()
 	requireAmbiguous(resp)
+}
+
+// lostCreateHeldDuplicate deploys the template under another alias, then loses a create of the same template that
+// reached AWS. Find leaves out the resource the other alias holds, so the next deploy finds the lost create's resource
+// and AWS ends with two, one for each alias. A delete of the alias then deletes its own resource and keeps the other
+// alias's.
+func (s Suite) lostCreateHeldDuplicate(t *testing.T) {
+	if !s.FindSkipsHeld {
+		t.Skip("the handler's Find doesn't leave out resources other aliases hold")
+	}
+	h := s.newHarness(t)
+	other := otherPath(h)
+	h.deployAt(other, s.Properties)
+	held := h.recordAt(other).Properties.AWSIdentifier
+
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.Equal(t, 2, h.cc.Count(s.TypeName))
+
+	h.deployEventually(s.Properties)
+	require.NotEqual(t, held, h.record().Properties.AWSIdentifier, "the alias manages the lost create's resource")
+	require.Equal(t, 2, h.cc.Count(s.TypeName), "UCP creates nothing more")
+
+	h.removeEventually()
+	require.Nil(t, h.record())
+	require.Equal(t, []string{held}, h.cc.List(s.TypeName), "the other alias's resource stays")
 }
 
 // lostCreateFailedDelete loses a create that reached AWS, and deletes the alias. The delete finds the resource, and
@@ -1593,7 +1626,9 @@ func (s Suite) multiCall(t *testing.T) {
 					}
 				}
 
-				h.deploy(s.MultiCall)
+				// AWS may still be finishing the calls that took effect, so a handler can answer the redeploy with
+				// 409 (native.Failure.Conflict) until it is done.
+				h.deployEventually(s.MultiCall)
 				requireSubset(t, s.readable(s.MultiCall), h.stored())
 				require.Equal(t, normalize(t, s.readable(s.MultiCall)), normalize(t, h.record().Properties.LastApplied))
 				for property := range s.Properties {

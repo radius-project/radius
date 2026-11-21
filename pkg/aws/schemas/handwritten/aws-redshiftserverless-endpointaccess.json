@@ -1,0 +1,171 @@
+{
+  "typeName": "AWS::RedshiftServerless::EndpointAccess",
+  "description": "A Redshift-managed VPC endpoint of an Amazon Redshift Serverless workgroup, made with Redshift Serverless's CreateEndpointAccess. It lets clients in other subnets, VPCs, or accounts reach the workgroup.",
+  "definitions": {
+    "NetworkInterface": {
+      "type": "object",
+      "properties": {
+        "AvailabilityZone": {
+          "type": "string"
+        },
+        "Ipv6Address": {
+          "type": "string"
+        },
+        "NetworkInterfaceId": {
+          "type": "string"
+        },
+        "PrivateIpAddress": {
+          "type": "string"
+        },
+        "SubnetId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "VpcEndpoint": {
+      "type": "object",
+      "properties": {
+        "NetworkInterfaces": {
+          "type": "array",
+          "insertionOrder": false,
+          "items": {
+            "$ref": "#/definitions/NetworkInterface"
+          }
+        },
+        "VpcEndpointId": {
+          "type": "string"
+        },
+        "VpcId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "EndpointName": {
+      "type": "string",
+      "description": "The name of the endpoint: lowercase letters, digits, and hyphens, starting with a letter, without two hyphens in a row or a hyphen at the end. Radius generates one when the template leaves it out.",
+      "minLength": 1,
+      "maxLength": 30,
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "WorkgroupName": {
+      "type": "string",
+      "description": "The workgroup the endpoint reaches.",
+      "minLength": 1
+    },
+    "SubnetIds": {
+      "type": "array",
+      "description": "The subnets Redshift Serverless chooses one from to put the endpoint in.",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "VpcSecurityGroupIds": {
+      "type": "array",
+      "description": "The security groups of the endpoint, which say which traffic can reach it. AWS can't remove the last one, so the template always sets at least one.",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "OwnerAccount": {
+      "type": "string",
+      "description": "The account that owns the workgroup, for an endpoint of a workgroup in another account. AWS doesn't return it.",
+      "pattern": "^[0-9]{12}$"
+    },
+    "EndpointArn": {
+      "type": "string",
+      "description": "The ARN of the endpoint."
+    },
+    "EndpointStatus": {
+      "type": "string",
+      "description": "The status of the endpoint, such as CREATING, ACTIVE, MODIFYING, or DELETING."
+    },
+    "Address": {
+      "type": "string",
+      "description": "The DNS address of the endpoint."
+    },
+    "Port": {
+      "type": "integer",
+      "description": "The port the endpoint listens on."
+    },
+    "VpcEndpoint": {
+      "$ref": "#/definitions/VpcEndpoint",
+      "description": "The VPC endpoint AWS made, with its network interfaces."
+    }
+  },
+  "required": ["WorkgroupName", "SubnetIds", "VpcSecurityGroupIds"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/EndpointName"],
+  "createOnlyProperties": [
+    "/properties/EndpointName",
+    "/properties/WorkgroupName",
+    "/properties/SubnetIds",
+    "/properties/OwnerAccount"
+  ],
+  "readOnlyProperties": [
+    "/properties/EndpointArn",
+    "/properties/EndpointStatus",
+    "/properties/Address",
+    "/properties/Port",
+    "/properties/VpcEndpoint"
+  ],
+  "writeOnlyProperties": ["/properties/OwnerAccount"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "redshift-serverless:CreateEndpointAccess",
+        "redshift-serverless:GetEndpointAccess",
+        "ec2:CreateVpcEndpoint",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs"
+      ]
+    },
+    "read": {
+      "permissions": ["redshift-serverless:GetEndpointAccess"]
+    },
+    "update": {
+      "permissions": [
+        "redshift-serverless:UpdateEndpointAccess",
+        "redshift-serverless:GetEndpointAccess",
+        "ec2:ModifyVpcEndpoint",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift-serverless:DeleteEndpointAccess",
+        "redshift-serverless:GetEndpointAccess",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs"
+      ]
+    },
+    "list": {
+      "permissions": ["redshift-serverless:ListEndpointAccess"]
+    }
+  }
+}

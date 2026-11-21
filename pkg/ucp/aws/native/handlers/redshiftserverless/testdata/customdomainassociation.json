@@ -1,0 +1,181 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_CERTIFICATE": "arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111",
+    "RADIUS_REC_CERTIFICATE2": "arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222",
+    "RADIUS_REC_DOMAIN": "radius-rec.example.com",
+    "RADIUS_REC_WORKGROUP": "radius-rec-workgroup"
+  },
+  "interactions": [
+    {
+      "service": "Redshift Serverless",
+      "operation": "CreateCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetWorkgroup",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroup\":{\"workgroupName\":\"radius-rec-workgroup\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/00000000-0000-4000-8000-000000000001\",\"namespaceName\":\"radius-rec-namespace\",\"status\":\"MODIFYING\",\"customDomainName\":\"radius-rec.example.com\",\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\"}}",
+      "request": "{\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetWorkgroup",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroup\":{\"workgroupName\":\"radius-rec-workgroup\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/00000000-0000-4000-8000-000000000001\",\"namespaceName\":\"radius-rec-namespace\",\"status\":\"AVAILABLE\",\"customDomainName\":\"radius-rec.example.com\",\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\"}}",
+      "request": "{\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/11111111-1111-1111-1111-111111111111\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "UpdateCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetWorkgroup",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroup\":{\"workgroupName\":\"radius-rec-workgroup\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/00000000-0000-4000-8000-000000000001\",\"namespaceName\":\"radius-rec-namespace\",\"status\":\"MODIFYING\",\"customDomainName\":\"radius-rec.example.com\",\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\"}}",
+      "request": "{\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetWorkgroup",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroup\":{\"workgroupName\":\"radius-rec-workgroup\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/00000000-0000-4000-8000-000000000001\",\"namespaceName\":\"radius-rec-namespace\",\"status\":\"AVAILABLE\",\"customDomainName\":\"radius-rec.example.com\",\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\"}}",
+      "request": "{\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/22222222-2222-2222-2222-222222222222\",\"customDomainCertificateExpiryTime\":\"2027-11-20T00:00:00Z\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "DeleteCustomDomainAssociation",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ResourceNotFoundException\",\"message\":\"The custom domain name is not used.\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetWorkgroup",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroup\":{\"workgroupName\":\"radius-rec-workgroup\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/00000000-0000-4000-8000-000000000001\",\"namespaceName\":\"radius-rec-namespace\",\"status\":\"MODIFYING\"}}",
+      "request": "{\"workgroupName\":\"radius-rec-workgroup\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetCustomDomainAssociation",
+      "request": "{\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rec-workgroup\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ResourceNotFoundException\",\"message\":\"The custom domain name is not used.\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetWorkgroup",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroup\":{\"workgroupName\":\"radius-rec-workgroup\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/00000000-0000-4000-8000-000000000001\",\"namespaceName\":\"radius-rec-namespace\",\"status\":\"AVAILABLE\"}}",
+      "request": "{\"workgroupName\":\"radius-rec-workgroup\"}"
+    }
+  ]
+}

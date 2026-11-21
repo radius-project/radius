@@ -606,7 +606,11 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 	if err != nil {
 		return "", err
 	}
-	return finder.Find(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
+	held := func(ctx context.Context, identifier string) (bool, error) {
+		holder, err := e.holderOf(ctx, r, identifier)
+		return holder != "", err
+	}
+	return finder.Find(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken, Held: held})
 }
 
 // searches reports whether r's native handler finds a lost create with its Find.
@@ -860,6 +864,10 @@ func failureResponse(id resources.ID, failure interface {
 	error
 	IsClientError() bool
 }) armrpc_rest.Response {
+	var busy *native.Failure
+	if errors.As(failure, &busy) && busy.Conflict {
+		return conflict("%s", failure.Error())
+	}
 	details := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: failure.Error(), Target: id.String()}}
 	if failure.IsClientError() {
 		details.Error.Code = v1.CodeInvalid

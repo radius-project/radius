@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::RedshiftServerless::UsageLimit",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": "UsageLimitArn"
+}

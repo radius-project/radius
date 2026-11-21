@@ -1,0 +1,322 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "d9b17b",
+    "RADIUS_REC_SG": "sg-05f63e0424b3a775b",
+    "RADIUS_REC_SG2": "sg-018bd51e926b63f58",
+    "RADIUS_REC_SUBNET": "subnet-0246473c74ffa9795",
+    "RADIUS_REC_WORKGROUP": "radius-rs-probe"
+  },
+  "interactions": [
+    {
+      "service": "Redshift Serverless",
+      "operation": "CreateEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\",\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroupIds\":[\"sg-05f63e0424b3a775b\"],\"workgroupName\":\"radius-rs-probe\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"CREATING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"ACTIVE\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"ACTIVE\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"ACTIVE\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "UpdateEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\",\"vpcSecurityGroupIds\":[\"sg-018bd51e926b63f58\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:57:21.169Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"MODIFYING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"creating\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"},{\"status\":\"deleting\",\"vpcSecurityGroupId\":\"sg-05f63e0424b3a775b\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"ACTIVE\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"ACTIVE\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"ACTIVE\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "DeleteEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"DELETING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"DELETING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"DELETING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"DELETING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"endpoint\":{\"address\":\"radius-rec-d9b17b-endpoint-6zzoao2mgdgebf6pxuwt.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"endpointArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:managedvpcendpoint/0b45d34a-fc2b-43c5-a1f3-8a83521da56d\",\"endpointCreateTime\":\"2026-11-20T18:59:22.963Z\",\"endpointName\":\"radius-rec-d9b17b\",\"endpointStatus\":\"DELETING\",\"port\":5439,\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcEndpoint\":{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0c807a433a09f294e\",\"privateIpAddress\":\"10.42.0.175\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-055e8ae84b8932e08\",\"vpcId\":\"vpc-0fbff0af6d535096d\"},\"vpcSecurityGroups\":[{\"status\":\"active\",\"vpcSecurityGroupId\":\"sg-018bd51e926b63f58\"}],\"workgroupName\":\"radius-rs-probe\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-d9b17b\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ResourceNotFoundException\",\"message\":\"The VPC endpoint name radius-rec-d9b17b can't be found for customer 123456789012\"}"
+    }
+  ]
+}
