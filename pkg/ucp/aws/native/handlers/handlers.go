@@ -30,6 +30,7 @@ import (
 	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
 	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
 	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
+	iotsdk "github.com/aws/aws-sdk-go-v2/service/iot"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
@@ -40,6 +41,7 @@ import (
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
 	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
+	transfersdk "github.com/aws/aws-sdk-go-v2/service/transfer"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -54,6 +56,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iot"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
@@ -62,6 +65,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/transfer"
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
@@ -100,6 +104,8 @@ func All(cfg aws.Config) []native.Handler {
 		s3.NewBucketRequestPayment(s3API),
 		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
+		iot.NewThingGroupMembership(iotsdk.NewFromConfig(cfg)),
+		transfer.NewAccess(transfersdk.NewFromConfig(cfg)),
 		opensearch.NewVpcEndpoint(opensearchAPI, ec2API),
 		opensearch.NewVpcEndpointAccess(opensearchAPI),
 	}
