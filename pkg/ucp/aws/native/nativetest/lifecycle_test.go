@@ -322,3 +322,24 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		require.Zero(t, deletes(h))
 	})
 }
+
+// Test_Lifecycle_ReadTypes checks that a replay fails when Read returns a value whose type doesn't match the schema of
+// a hand-written type, as it does for a native one.
+func Test_Lifecycle_ReadTypes(t *testing.T) {
+	const typeName = "AWS::OpenSearchService::OutboundConnection"
+	t.Setenv(awsreplay.RecordEnv, "")
+	file := filepath.Join(t.TempDir(), "cassette.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"source": "recorded", "interactions": []}`), 0o600))
+	store := awsfake.NewCloudControl()
+	store.Identifiers[typeName] = "ConnectionId"
+	h := nativefake.New(typeName, store)
+	l := Lifecycle{Handler: h, Session: awsreplay.New(t, file), Poll: time.Millisecond}
+
+	store.Put(typeName, "cc-0123456789", map[string]any{"ConnectionId": "cc-0123456789", "ConnectionAlias": "archive"})
+	l.read(t, t.Context(), "cc-0123456789")
+
+	store.Put(typeName, "cc-0123456789", map[string]any{"ConnectionId": "cc-0123456789", "ConnectionAlias": 5})
+	f := newFakeTB(t)
+	f.run(func() { l.read(f, f.Context(), "cc-0123456789") })
+	require.True(t, f.failed, "ConnectionAlias is a string in the hand-written schema")
+}
