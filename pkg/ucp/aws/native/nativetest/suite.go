@@ -1593,7 +1593,9 @@ func (s Suite) multiCall(t *testing.T) {
 					}
 				}
 
-				h.deploy(s.MultiCall)
+				// AWS may still be finishing the calls that took effect, so a handler can answer the redeploy with
+				// 409 (native.Failure.Conflict) until it is done.
+				h.deployEventually(s.MultiCall)
 				requireSubset(t, s.readable(s.MultiCall), h.stored())
 				require.Equal(t, normalize(t, s.readable(s.MultiCall)), normalize(t, h.record().Properties.LastApplied))
 				for property := range s.Properties {

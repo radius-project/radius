@@ -860,6 +860,10 @@ func failureResponse(id resources.ID, failure interface {
 	error
 	IsClientError() bool
 }) armrpc_rest.Response {
+	var busy *native.Failure
+	if errors.As(failure, &busy) && busy.Conflict {
+		return conflict("%s", failure.Error())
+	}
 	details := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: failure.Error(), Target: id.String()}}
 	if failure.IsClientError() {
 		details.Error.Code = v1.CodeInvalid

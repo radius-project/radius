@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -42,6 +43,7 @@ var iamPrefixes = map[string]string{
 	"elasticloadbalancingv2":   "elasticloadbalancing",
 	"emr":                      "elasticmapreduce",
 	"fsx":                      "fsx",
+	"grafana":                  "grafana",
 	"iam":                      "iam",
 	"iot":                      "iot",
 	"kinesisanalyticsv2":       "kinesisanalytics",
@@ -125,6 +127,8 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 			"dms:AddTagsToResource", "rds:AddTagsToResource", "fsx:TagResource", "dax:TagResource", "elasticmapreduce:AddTags",
 			// Tags sent in the create call itself: TagSpecifications, or Tags.
 			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
+			// Tags sent with PutManagedInsightRules, which its ManagedRule page says need both.
+			"cloudwatch:PutInsightRule", "cloudwatch:TagResource",
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
@@ -152,6 +156,10 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 					used[op] = append(used[op], src.iam[call]+":"+call)
 				}
 			}
+		}
+		if h.Options().Recovery == native.RecoverByResend {
+			// A DELETE that finds a lost create sends the create again (see Test_ResendDeletePermissionsCoverCreate).
+			used["delete"] = slices.Concat(used["delete"], used["create"], implied["create"])
 		}
 		// The services the handler's clients call. Permissions of other services, such as iam:PassRole, are for
 		// what a call does, and aren't checked.
