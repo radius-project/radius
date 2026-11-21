@@ -375,6 +375,17 @@ func merge(dst map[string]any, src map[string]any) {
 	}
 }
 
+// HasUnresolved reports whether the record has unresolved paths, in either form (see datamodel.AWSResourceProperties).
+func HasUnresolved(rec *datamodel.AWSResource) bool {
+	return len(rec.Properties.UnresolvedPaths) > 0 || len(rec.Properties.LegacyUnresolvedPaths) > 0
+}
+
+// ClearUnresolved drops the record's unresolved paths, in either form, once AWS has the values of a deploy.
+func ClearUnresolved(rec *datamodel.AWSResource) {
+	rec.Properties.UnresolvedPaths = nil
+	rec.Properties.LegacyUnresolvedPaths = nil
+}
+
 // ApplyPending finishes a successful create or update: the pending last-applied properties and fingerprints become
 // the last-applied ones, and the operation, the tokens, and the pending values are cleared. Clearing the client token
 // marks the first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports
@@ -393,7 +404,7 @@ func applyPendingValues(rec *datamodel.AWSResource) {
 	if rec.Properties.PendingLastApplied != nil {
 		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
 		rec.Properties.Fingerprints = rec.Properties.PendingFingerprints
-		rec.Properties.UnresolvedPaths = nil
+		ClearUnresolved(rec)
 	}
 	ClearPending(rec)
 }
