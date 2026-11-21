@@ -47,6 +47,8 @@ type QueueOperationOptions struct {
 	OperationTimeout time.Duration
 	// RetryAfter specifies the value of the Retry-After header that will be used for async operations.
 	RetryAfter time.Duration
+	// Force passes the caller's force request to the backend controller.
+	Force bool
 }
 
 //go:generate go tool mockgen -typed -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
@@ -57,8 +59,8 @@ type StatusManager interface {
 	Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error)
 	// QueueAsyncOperation creates an async operation status object and queue async operation.
 	QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, options QueueOperationOptions) error
-	// Update updates an async operation status.
-	Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error
+	// Update updates an async operation status. Non-empty properties are returned in the status's properties field.
+	Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails, properties map[string]any) error
 	// Delete deletes an async operation status.
 	Delete(ctx context.Context, id resources.ID, operationID uuid.UUID) error
 }
@@ -113,7 +115,7 @@ func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMR
 		return err
 	}
 
-	if err = aom.queueRequestMessage(ctx, sCtx, aos, options.OperationTimeout); err != nil {
+	if err = aom.queueRequestMessage(ctx, sCtx, aos, options); err != nil {
 		delErr := aom.databaseClient.Delete(ctx, opID)
 		if delErr != nil {
 			return delErr
@@ -143,7 +145,7 @@ func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID 
 
 // Update retrieves an existing operation status resource from the store, updates its fields with the
 // given parameters, and saves it back to the store.
-func (aom *statusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error {
+func (aom *statusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails, properties map[string]any) error {
 	opID := aom.operationStatusResourceID(id, operationID)
 	obj, err := aom.databaseClient.Get(ctx, opID)
 	if err != nil {
@@ -164,6 +166,10 @@ func (aom *statusManager) Update(ctx context.Context, id resources.ID, operation
 		s.Error = opError
 	}
 
+	if len(properties) > 0 {
+		s.Properties = properties
+	}
+
 	s.LastUpdatedTime = time.Now().UTC()
 
 	obj.Data = s
@@ -178,7 +184,8 @@ func (aom *statusManager) Delete(ctx context.Context, id resources.ID, operation
 }
 
 // queueRequestMessage function is to put the async operation message to the queue to be worked on.
-func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMRequestContext, aos *Status, operationTimeout time.Duration) error {
+func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMRequestContext, aos *Status, options QueueOperationOptions) error {
+	operationTimeout := options.OperationTimeout
 	msg := &ctrl.Request{
 		APIVersion:       sCtx.APIVersion,
 		OperationID:      sCtx.OperationID,
@@ -190,6 +197,7 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMR
 		HomeTenantID:     sCtx.HomeTenantID,
 		ClientObjectID:   sCtx.ClientObjectID,
 		OperationTimeout: &operationTimeout,
+		Force:            options.Force,
 	}
 
 	return aom.queue.Enqueue(ctx, queue.NewMessage(msg))

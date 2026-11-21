@@ -54,7 +54,7 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 	executionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	recipeOutput, definition, err := e.executeCore(ctx, opts.Recipe, opts.PreviousState)
+	recipeOutput, definition, err := e.executeCore(ctx, opts)
 	if err != nil {
 		result = metrics.FailedOperationState
 		if errorDetails := recipes.GetErrorDetails(err); errorDetails != nil {
@@ -71,7 +71,8 @@ func (e *engine) Execute(ctx context.Context, opts ExecuteOptions) (*recipes.Rec
 
 // executeCore function is the core logic of the Execute function.
 // Any changes to the core logic of the Execute function should be made here.
-func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadata, prevState []string) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
+func (e *engine) executeCore(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, *recipes.EnvironmentDefinition, error) {
+	recipe := opts.Recipe
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
@@ -96,11 +97,12 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
-		Configuration: *configuration,
-		Recipe:        recipe,
-		Definition:    *definition,
-		Secrets:       secrets,
-		PrevState:     prevState,
+		Configuration:      *configuration,
+		Recipe:             recipe,
+		Definition:         *definition,
+		Secrets:            secrets,
+		PrevState:          opts.PreviousState,
+		PendingDeployments: opts.PendingDeployments,
 	})
 	return res, definition, err
 }
@@ -137,8 +139,8 @@ func (e *engine) deleteCore(ctx context.Context, opts DeleteOptions) (*recipes.E
 	}
 
 	if configuration.Simulated {
-		if len(pendingDeployments) > 0 {
-			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, "cannot skip pending recipe deployment cleanup in a simulated environment", "", nil)
+		if len(pendingDeployments) > 0 && !opts.Force {
+			return nil, recipes.NewRecipeError(recipes.RecipeCleanupInventoryUnavailable, "cannot clean up pending recipe deployments in a simulated environment. "+recipes.ForceDeleteHint, "", nil)
 		}
 		logger.Info("simulated environment enabled, skipping deleting resources")
 		return nil, nil
@@ -150,7 +152,12 @@ func (e *engine) deleteCore(ctx context.Context, opts DeleteOptions) (*recipes.E
 	}
 
 	if len(pendingDeployments) > 0 && definition.Driver != recipes.TemplateKindBicep {
-		return definition, recipes.NewRecipeError(recipes.RecipeDeletionFailed, "pending Bicep deployment cleanup requires a Bicep recipe driver", "", nil)
+		if !opts.Force {
+			return definition, recipes.NewRecipeError(recipes.RecipeCleanupInventoryUnavailable, "pending Bicep deployment cleanup requires a Bicep recipe driver. "+recipes.ForceDeleteHint, "", nil)
+		}
+		// Only the Bicep driver can read deployment inventory. The caller reports these deployments as skipped.
+		logger.Info("Skipping pending Bicep deployments for a forced delete with a non-Bicep recipe driver", "pendingDeployments", pendingDeployments)
+		pendingDeployments = nil
 	}
 
 	secrets, err := e.getRecipeConfigSecrets(ctx, driver, configuration, definition)
@@ -165,6 +172,7 @@ func (e *engine) deleteCore(ctx context.Context, opts DeleteOptions) (*recipes.E
 		OutputResources:    opts.OutputResources,
 		PendingDeployments: pendingDeployments,
 		PersistCleanup:     opts.PersistCleanup,
+		Force:              opts.Force,
 	})
 	if err != nil {
 		return definition, err

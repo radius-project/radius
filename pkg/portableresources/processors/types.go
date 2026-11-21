@@ -50,6 +50,9 @@ type Options struct {
 
 	// UcpClient is the UCP client factory.
 	UcpClient *v20231001preview.ClientFactory
+
+	// Force reports a forced delete. A processor that deletes child resources forces their deletes too.
+	Force bool
 }
 
 // ValidationError represents a user-facing validation message reported by the processor.

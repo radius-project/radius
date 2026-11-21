@@ -69,7 +69,7 @@ func Test_Run_CascadeManagedSecretCleanup(t *testing.T) {
 				client := clients.NewMockApplicationsManagementClient(gomock.NewController(t))
 				client.EXPECT().ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 					Return([]generated.GenericResource{owner, {ID: &secretID, Type: &secretType}}, nil)
-				client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).Return(true, nil)
+				client.EXPECT().DeleteResource(gomock.Any(), *owner.Type, *owner.ID, false).Return(clients.DeleteResourceResult{Deleted: true}, nil)
 				release := make(chan struct{})
 				client.EXPECT().GetResource(gomock.Any(), secretType, strings.ToLower(secretID)).
 					DoAndReturn(func(ctx context.Context, _, _ string) (generated.GenericResource, error) {
@@ -317,11 +317,11 @@ func Test_Run_Cascade(t *testing.T) {
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("env-scoped"), false).
-			Return(true, nil).
+			Return(clients.DeleteResourceResult{Deleted: true}, nil).
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("app-owned"), false).
-			Return(true, nil).
+			Return(clients.DeleteResourceResult{Deleted: true}, nil).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -380,7 +380,7 @@ func Test_Run_Cascade(t *testing.T) {
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("env-scoped"), false).
-			Return(true, nil).
+			Return(clients.DeleteResourceResult{Deleted: true}, nil).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -553,7 +553,7 @@ func Test_Run_Cascade(t *testing.T) {
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("env-scoped"), true).
-			Return(true, nil).
+			Return(clients.DeleteResourceResult{Deleted: true}, nil).
 			Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -605,7 +605,7 @@ func Test_Run_Cascade(t *testing.T) {
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("env-scoped"), true).
-			Return(true, nil).
+			Return(clients.DeleteResourceResult{Deleted: true}, nil).
 			Times(1)
 
 		runner := &Runner{
@@ -693,7 +693,7 @@ func Test_Run_Cascade(t *testing.T) {
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("env-scoped"), false).
-			Return(false, fmt.Errorf("simulated delete failure")).
+			Return(clients.DeleteResourceResult{}, fmt.Errorf("simulated delete failure")).
 			Times(1)
 
 		outputSink := &output.MockOutput{}

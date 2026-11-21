@@ -128,6 +128,10 @@ type RecipeOutput struct {
 	// It is driver bookkeeping, not a template output.
 	PendingDeploymentID string `json:"-"`
 
+	// ResolvedPendingDeployments lists earlier pending deployments that no longer need to block deletion.
+	// It is driver bookkeeping, not a template output.
+	ResolvedPendingDeployments []string `json:"-"`
+
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
 

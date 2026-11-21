@@ -69,7 +69,7 @@ func Test_Run_ManagedSecretCleanup(t *testing.T) {
 						{ID: &ownerID, Type: new(ownerType), Properties: map[string]any{"secrets": map[string]any{"name": "rabbitmq-secret"}}},
 						{ID: &secretID, Type: new(secretType)},
 					}, nil)
-				client.EXPECT().DeleteResource(gomock.Any(), ownerType, ownerID, false).Return(true, nil)
+				client.EXPECT().DeleteResource(gomock.Any(), ownerType, ownerID, false).Return(clients.DeleteResourceResult{Deleted: true}, nil)
 				release := make(chan struct{})
 				client.EXPECT().GetResource(gomock.Any(), secretType, strings.ToLower(secretID)).
 					DoAndReturn(func(ctx context.Context, _, _ string) (generated.GenericResource, error) {
@@ -194,7 +194,7 @@ func mockManagementClientWithResources(ctrl *gomock.Controller, appID string, fo
 		Times(1)
 	mock.EXPECT().
 		DeleteResource(gomock.Any(), resourceType, resourceID, force).
-		Return(true, nil).
+		Return(clients.DeleteResourceResult{Deleted: true}, nil).
 		Times(1)
 	return mock
 }
@@ -441,7 +441,7 @@ func Test_Run(t *testing.T) {
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), resourceType, resourceID, false).
-			Return(false, fmt.Errorf("simulated delete failure")).
+			Return(clients.DeleteResourceResult{}, fmt.Errorf("simulated delete failure")).
 			Times(1)
 
 		runner := &Runner{
@@ -538,7 +538,7 @@ func Test_Run(t *testing.T) {
 		// Only the well-formed resource is deleted.
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), resourceType, resourceID, false).
-			Return(true, nil).
+			Return(clients.DeleteResourceResult{Deleted: true}, nil).
 			Times(1)
 
 		runner := &Runner{
@@ -629,7 +629,7 @@ func Test_Run(t *testing.T) {
 				Times(1)
 			mockMgmt.EXPECT().
 				DeleteResource(gomock.Any(), resourceType, resourceID, false).
-				Return(true, nil).
+				Return(clients.DeleteResourceResult{Deleted: true}, nil).
 				Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -731,7 +731,7 @@ func Test_Run(t *testing.T) {
 				for _, id := range resourceIDs {
 					mockMgmt.EXPECT().
 						DeleteResource(gomock.Any(), resourceType, id, false).
-						Return(true, nil).
+						Return(clients.DeleteResourceResult{Deleted: true}, nil).
 						Times(1)
 				}
 

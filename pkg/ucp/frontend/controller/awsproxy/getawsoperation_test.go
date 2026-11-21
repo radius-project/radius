@@ -83,7 +83,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 
 	id, err := resources.ParseResource(testOperationResourceID)
 	require.NoError(t, err)
-	require.NoError(t, options.StatusManager.Update(t.Context(), id, operationID, v1.ProvisioningStateFailed, nil, &v1.ErrorDetails{Code: v1.CodeInvalid, Message: "AWS rejected it"}))
+	require.NoError(t, options.StatusManager.Update(t.Context(), id, operationID, v1.ProvisioningStateFailed, nil, &v1.ErrorDetails{Code: v1.CodeInvalid, Message: "AWS rejected it"}, nil))
 
 	res = runOperationRequest(t, NewGetAWSOperationStatuses, options, operationPath("operationStatuses", operationID.String()))
 	defer res.Body.Close()
@@ -104,7 +104,7 @@ func Test_GetAWSOperationResults(t *testing.T) {
 
 	id, err := resources.ParseResource(testOperationResourceID)
 	require.NoError(t, err)
-	require.NoError(t, options.StatusManager.Update(t.Context(), id, operationID, v1.ProvisioningStateSucceeded, nil, nil))
+	require.NoError(t, options.StatusManager.Update(t.Context(), id, operationID, v1.ProvisioningStateSucceeded, nil, nil, nil))
 
 	res = runOperationRequest(t, NewGetAWSOperationResults, options, operationPath("operationResults", operationID.String()))
 	defer res.Body.Close()

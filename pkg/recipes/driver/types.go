@@ -83,6 +83,9 @@ type ExecuteOptions struct {
 	BaseOptions
 	// Previously deployed state of output resource IDs.
 	PrevState []string
+
+	// PendingDeployments identifies earlier Bicep deployments whose output inventory is still unknown.
+	PendingDeployments []string
 }
 
 // DeleteOptions is the options for the Delete method.
@@ -95,6 +98,10 @@ type DeleteOptions struct {
 	// PendingDeployments identifies Bicep deployments whose output inventory must be recovered before deletion.
 	PendingDeployments []string
 
-	// PersistCleanup saves recovered inventory before any infrastructure is deleted.
+	// PersistCleanup saves recovered inventory before any infrastructure is deleted. Its pending list keeps
+	// the deployments still to recover and, for a forced delete, the ones skipped so far.
 	PersistCleanup func(context.Context, []rpv1.OutputResource, []string) error
+
+	// Force skips pending deployments whose inventory can't be recovered instead of failing the delete.
+	Force bool
 }

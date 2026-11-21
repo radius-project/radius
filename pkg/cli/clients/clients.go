@@ -147,6 +147,16 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
+// DeleteResourceResult is the outcome of a successful DeleteResource call.
+type DeleteResourceResult struct {
+	// Deleted is false when the resource did not exist.
+	Deleted bool
+
+	// SkippedRecipeDeployments lists the recipe deployments a forced delete skipped because Radius could not
+	// confirm which resources they created. Those resources may still exist.
+	SkippedRecipeDeployments []string
+}
+
 //go:generate go tool mockgen -typed -destination=./mock_applicationsclient.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients ApplicationsManagementClient
 
 // ApplicationsManagementClient is the client abstraction used with the CLI to interact wih the Radius API.
@@ -196,8 +206,9 @@ type ApplicationsManagementClient interface {
 	CreateOrUpdateResource(ctx context.Context, resourceType string, resourceNameOrID string, resource *generated.GenericResource) (generated.GenericResource, error)
 
 	// DeleteResource deletes a resource by its type and name (or id).
-	// When force is true, the delete will proceed even if the resource is in a non-terminal provisioning state.
-	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (bool, error)
+	// When force is true, the delete will proceed even if the resource is in a non-terminal provisioning state,
+	// and recipe deployments whose resource inventory is unknown are skipped and reported.
+	DeleteResource(ctx context.Context, resourceType string, resourceNameOrID string, force bool) (DeleteResourceResult, error)
 
 	// ListApplications lists all applications in the configured scope.
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
