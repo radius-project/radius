@@ -59,8 +59,13 @@ type AWSResourceProperties struct {
 	// isn't confirmed in AWS: an operation that changed them failed partway, or UCP can't tell how it ended, and its
 	// values were kept as possibly applied. AWS may still hold values LastApplied no longer has at these paths, such
 	// as a field inside a list item. A deploy sends the template's value at them, and they are cleared once a deploy
-	// succeeds.
-	UnresolvedPaths []string `json:"unresolvedPaths,omitempty"`
+	// succeeds. A key that holds "/" or "~" is escaped in a path as in a JSON Pointer, as "~1" and "~0".
+	UnresolvedPaths []string `json:"unresolvedPropertyPaths,omitempty"`
+
+	// LegacyUnresolvedPaths are unresolved paths that UCP saved before it escaped keys in paths, with each key as it is.
+	// A key that holds "/" makes such a path ambiguous, so it isn't converted: UCP matches it against each path written
+	// the same way, as it did when it saved it. UCP adds no new paths here, and clears them with UnresolvedPaths.
+	LegacyUnresolvedPaths []string `json:"unresolvedPaths,omitempty"`
 
 	// Fingerprints are the fingerprints of the write-only values of the last successful deploy. UCP compares them
 	// with the template's values, because AWS never returns write-only values, so an unchanged value is not sent.
