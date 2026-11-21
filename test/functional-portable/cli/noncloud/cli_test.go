@@ -56,6 +56,13 @@ import (
 
 const (
 	retries = 10
+
+	// healthRequestTimeout bounds one health request. A port taken by another process can
+	// accept the connection and never answer.
+	healthRequestTimeout = 30 * time.Second
+
+	// exposeAttempts is how many free ports the expose test tries.
+	exposeAttempts = 3
 )
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
@@ -133,35 +140,77 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	})
 
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
-		port, err := GetAvailablePort()
+		// We open a local port-forward and then make a request to it.
+		expose := func(ctx context.Context, port int) (string, error) {
+			output, err := cli.ResourceExpose(ctx, "Radius.Compute/containers", appName, containerName, port, 3000)
+			t.Logf("ResourceExpose - output: %s", output)
+			return output, err
+		}
+		checkHealth := func(ctx context.Context, port int) error {
+			return getHealthEndpointOnLocalPort(ctx, t, retries, port, healthRequestTimeout)
+		}
+		exposeAndCheckHealth(ctx, t, exposeAttempts, GetAvailablePort, expose, checkHealth)
+	})
+}
+
+// exposeAndCheckHealth runs expose on a free local port and checks the health endpoint through
+// it. Another process can take the port after getPort releases it. rad then exits because it
+// cannot listen, so the check stops and the next attempt uses a new port.
+func exposeAndCheckHealth(
+	ctx context.Context,
+	t *testing.T,
+	attempts int,
+	getPort func() (int, error),
+	expose func(ctx context.Context, port int) (string, error),
+	checkHealth func(ctx context.Context, port int) error,
+) {
+	for attempt := 1; ; attempt++ {
+		port, err := getPort()
 		require.NoError(t, err)
 
-		// We open a local port-forward and then make a request to it.
-		child, cancel := context.WithCancel(ctx)
-
-		done := make(chan error)
+		exposeCtx, stopExpose := context.WithCancel(ctx)
+		healthCtx, stopHealth := context.WithCancel(ctx)
+		var output string
+		var exposeErr error
+		exited := make(chan struct{})
 		go func() {
-			output, err := cli.ResourceExpose(child, "Radius.Compute/containers", appName, containerName, port, 3000)
-			t.Logf("ResourceExpose - output: %s", output)
-			done <- err
+			defer close(exited)
+			output, exposeErr = expose(exposeCtx, port)
+			// Stop waiting for the health endpoint once rad has exited.
+			stopHealth()
 		}()
 
-		callHealthEndpointOnLocalPort(t, retries, port)
+		healthErr := checkHealth(healthCtx, port)
+		stopExpose()
+		<-exited
+		stopHealth()
 
-		cancel()
-		err = <-done
-
-		// The error should be due to cancellation (we can canceled the command).
-		require.Equal(t, context.Canceled, err)
-	})
+		// Check for a taken port first: the process holding it may answer the health check.
+		if strings.Contains(output, "unable to listen on any of the requested ports") {
+			require.Less(t, attempt, attempts, "port %d was taken on every attempt; rad output: %s", port, output)
+			t.Logf("port %d was taken before rad could listen on it; retrying with a new port", port)
+			continue
+		}
+		require.NoError(t, healthErr, "health check failed on port %d; rad output: %s", port, output)
+		// The error should be due to cancellation (we canceled the command).
+		require.Equal(t, context.Canceled, exposeErr)
+		return
+	}
 }
 
 // callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
 // test if the exceed the number of retries without success.
 func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
+	require.NoError(t, getHealthEndpointOnLocalPort(t.Context(), t, retries, port, healthRequestTimeout))
+}
+
+// getHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It stops when
+// ctx is canceled, and gives up on a single request after requestTimeout.
+func getHealthEndpointOnLocalPort(ctx context.Context, t *testing.T, retries int, port int, requestTimeout time.Duration) error {
 	healthzURL := fmt.Sprintf("http://localhost:%d/healthz", port)
 
 	retryClient := retryablehttp.NewClient()
+	retryClient.HTTPClient.Timeout = requestTimeout
 	retryClient.RetryMax = retries
 	retryClient.RetryWaitMin = 5 * time.Second
 	retryClient.RetryWaitMax = 20 * time.Second
@@ -170,13 +219,22 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 		t.Logf("retry calling healthz endpoint %s, retry: %d", healthzURL, retry)
 	}
 
-	resp, err := retryClient.Get(healthzURL)
-	require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
+	req, err := retryablehttp.NewRequestWithContext(ctx, http.MethodGet, healthzURL, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := retryClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to connect to resource after %d retries: %w", retries, err)
+	}
 	defer resp.Body.Close()
 	content, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
 
 	t.Logf("[response] %s", string(content))
+	return nil
 }
 
 func Test_Run_Logger(t *testing.T) {
