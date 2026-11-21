@@ -1,0 +1,18 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "a76e32"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "CreateAuthenticationProfile",
+      "request": "Action=CreateAuthenticationProfile\u0026AuthenticationProfileContent=%7B%22App_ID%22%3A+%22example%22%2C+%22Password%22%3A+%22not-a-secret%22%7D\u0026AuthenticationProfileName=radius-rec-a76e32\u0026Version=2012-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eInvalidAuthenticationProfileRequestFault\u003c/Code\u003e\n    \u003cMessage\u003eThis authentication profile contains sensitive data fields: [Password]. Please remove all of them and try again.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003ea19d0049-52c5-473b-9650-53056ed4b5fb\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    }
+  ]
+}

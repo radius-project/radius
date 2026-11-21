@@ -1,0 +1,59 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_ACCOUNT": "123456789012",
+    "RADIUS_REC_CLUSTER": "radius-rs-item42-pr3"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "AddPartner",
+      "request": "AccountId=123456789012\u0026Action=AddPartner\u0026ClusterIdentifier=radius-rs-item42-pr3\u0026DatabaseName=dev\u0026PartnerName=Fivetran\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cAddPartnerResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cAddPartnerResult\u003e\n    \u003cDatabaseName\u003edev\u003c/DatabaseName\u003e\n    \u003cPartnerName\u003eFivetran\u003c/PartnerName\u003e\n  \u003c/AddPartnerResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ec0491fdd-c30f-4378-84d3-daa0d286d9b4\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/AddPartnerResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribePartners",
+      "request": "AccountId=123456789012\u0026Action=DescribePartners\u0026ClusterIdentifier=radius-rs-item42-pr3\u0026DatabaseName=dev\u0026PartnerName=Fivetran\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribePartnersResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribePartnersResult\u003e\n    \u003cPartnerIntegrationInfoList\u003e\n      \u003cPartnerIntegrationInfo\u003e\n        \u003cCreatedAt\u003e2026-11-20T19:48:00.137Z\u003c/CreatedAt\u003e\n        \u003cDatabaseName\u003edev\u003c/DatabaseName\u003e\n        \u003cPartnerName\u003eFivetran\u003c/PartnerName\u003e\n      \u003c/PartnerIntegrationInfo\u003e\n    \u003c/PartnerIntegrationInfoList\u003e\n  \u003c/DescribePartnersResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e7490d81d-d8c7-4c09-9392-402a5204f654\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribePartnersResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribePartners",
+      "request": "AccountId=123456789012\u0026Action=DescribePartners\u0026ClusterIdentifier=radius-rs-item42-pr3\u0026DatabaseName=dev\u0026PartnerName=Fivetran\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribePartnersResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribePartnersResult\u003e\n    \u003cPartnerIntegrationInfoList\u003e\n      \u003cPartnerIntegrationInfo\u003e\n        \u003cCreatedAt\u003e2026-11-20T19:48:00.137Z\u003c/CreatedAt\u003e\n        \u003cDatabaseName\u003edev\u003c/DatabaseName\u003e\n        \u003cPartnerName\u003eFivetran\u003c/PartnerName\u003e\n      \u003c/PartnerIntegrationInfo\u003e\n    \u003c/PartnerIntegrationInfoList\u003e\n  \u003c/DescribePartnersResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eeb0ecd25-94fd-490e-9e73-fa9d0d5d2bce\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribePartnersResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DeletePartner",
+      "request": "AccountId=123456789012\u0026Action=DeletePartner\u0026ClusterIdentifier=radius-rs-item42-pr3\u0026DatabaseName=dev\u0026PartnerName=Fivetran\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDeletePartnerResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDeletePartnerResult\u003e\n    \u003cDatabaseName\u003edev\u003c/DatabaseName\u003e\n    \u003cPartnerName\u003eFivetran\u003c/PartnerName\u003e\n  \u003c/DeletePartnerResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ec899c075-1433-498a-85ab-bc0e3445ff91\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DeletePartnerResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribePartners",
+      "request": "AccountId=123456789012\u0026Action=DescribePartners\u0026ClusterIdentifier=radius-rs-item42-pr3\u0026DatabaseName=dev\u0026PartnerName=Fivetran\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribePartnersResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribePartnersResult\u003e\n    \u003cPartnerIntegrationInfoList/\u003e\n  \u003c/DescribePartnersResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e57693e2b-70a1-45f6-9eba-891f4f1e2e45\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribePartnersResponse\u003e\n"
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "typeName": "AWS::Redshift::NamespaceRegistration",
+  "description": "A provisioned cluster or a serverless namespace registered to the AWS Glue Data Catalog of a consumer account, made with Redshift's RegisterNamespace. AWS has no call that reads a registration, so Radius reads it as the INTERNAL data share RegisterNamespace makes on the namespace. A registration makes the cluster, or the serverless namespace and workgroup, busy for a while, so give resources that change them dependsOn on each other.",
+  "definitions": {
+    "ServerlessIdentifier": {
+      "type": "object",
+      "description": "A serverless namespace and a workgroup of it.",
+      "additionalProperties": false,
+      "properties": {
+        "NamespaceIdentifier": {
+          "type": "string",
+          "description": "The name of the serverless namespace. It must be the namespace of the workgroup.",
+          "minLength": 3,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "WorkgroupIdentifier": {
+          "type": "string",
+          "description": "The name of a workgroup of the namespace.",
+          "minLength": 3,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+$"
+        }
+      },
+      "required": ["NamespaceIdentifier", "WorkgroupIdentifier"]
+    },
+    "ProvisionedIdentifier": {
+      "type": "object",
+      "description": "A provisioned cluster.",
+      "additionalProperties": false,
+      "properties": {
+        "ClusterIdentifier": {
+          "type": "string",
+          "description": "The cluster identifier, in lowercase.",
+          "minLength": 1,
+          "maxLength": 63,
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      },
+      "required": ["ClusterIdentifier"]
+    },
+    "NamespaceIdentifier": {
+      "type": "object",
+      "description": "The namespace to register. Set exactly one of ServerlessIdentifier and ProvisionedIdentifier.",
+      "additionalProperties": false,
+      "properties": {
+        "ServerlessIdentifier": {
+          "$ref": "#/definitions/ServerlessIdentifier"
+        },
+        "ProvisionedIdentifier": {
+          "$ref": "#/definitions/ProvisionedIdentifier"
+        }
+      }
+    }
+  },
+  "properties": {
+    "NamespaceIdentifier": {
+      "$ref": "#/definitions/NamespaceIdentifier"
+    },
+    "ConsumerIdentifiers": {
+      "type": "array",
+      "description": "The ID of the consumer account whose AWS Glue Data Catalog the namespace is registered to.",
+      "minItems": 1,
+      "maxItems": 1,
+      "insertionOrder": false,
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9]{12}$"
+      }
+    }
+  },
+  "required": ["NamespaceIdentifier", "ConsumerIdentifiers"],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/NamespaceIdentifier",
+    "/properties/ConsumerIdentifiers"
+  ],
+  "createOnlyProperties": [
+    "/properties/NamespaceIdentifier",
+    "/properties/ConsumerIdentifiers"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "redshift:RegisterNamespace",
+        "redshift:DescribeDataSharesForProducer",
+        "redshift:DescribeClusters",
+        "redshift-serverless:GetWorkgroup",
+        "redshift-serverless:GetNamespace"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "redshift:DescribeDataSharesForProducer",
+        "redshift:DescribeClusters",
+        "redshift-serverless:GetWorkgroup",
+        "redshift-serverless:GetNamespace"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "redshift:DescribeDataSharesForProducer",
+        "redshift:DescribeClusters",
+        "redshift-serverless:GetWorkgroup",
+        "redshift-serverless:GetNamespace"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift:DeregisterNamespace",
+        "redshift:DescribeDataSharesForProducer",
+        "redshift:DescribeClusters",
+        "redshift-serverless:GetWorkgroup",
+        "redshift-serverless:GetNamespace"
+      ]
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "typeName": "AWS::Redshift::PartnerIntegration",
+  "description": "A partner allowed to send status updates for a database of a provisioned Redshift cluster, made with Redshift's AddPartner. To finish the integration, also set it up at the partner's website. Deleting it stops the status updates, but data can still flow to the cluster until the integration is also deleted at the partner's website.",
+  "properties": {
+    "AccountId": {
+      "type": "string",
+      "description": "The ID of the AWS account that owns the cluster.",
+      "minLength": 12,
+      "maxLength": 12,
+      "pattern": "^[0-9]+$"
+    },
+    "ClusterIdentifier": {
+      "type": "string",
+      "description": "The identifier of the cluster that receives data from the partner, in lowercase.",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "DatabaseName": {
+      "type": "string",
+      "description": "The name of the database that receives data from the partner.",
+      "maxLength": 127,
+      "pattern": "^[\\p{L}_][\\p{L}\\p{N}@$#_]+$"
+    },
+    "PartnerName": {
+      "type": "string",
+      "description": "The name of the partner, such as Fivetran. It is case sensitive.",
+      "maxLength": 255,
+      "pattern": "^[a-zA-Z0-9\\-_]+$"
+    },
+    "Status": {
+      "type": "string",
+      "description": "The status the partner reports: Active, Inactive, RuntimeFailure, or ConnectionFailure. AWS returns none until the partner reports one.",
+      "enum": ["Active", "Inactive", "RuntimeFailure", "ConnectionFailure"]
+    },
+    "StatusMessage": {
+      "type": "string",
+      "description": "The message the partner reports with its status."
+    }
+  },
+  "required": ["AccountId", "ClusterIdentifier", "DatabaseName", "PartnerName"],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/AccountId",
+    "/properties/ClusterIdentifier",
+    "/properties/DatabaseName",
+    "/properties/PartnerName"
+  ],
+  "createOnlyProperties": [
+    "/properties/AccountId",
+    "/properties/ClusterIdentifier",
+    "/properties/DatabaseName",
+    "/properties/PartnerName"
+  ],
+  "readOnlyProperties": ["/properties/Status", "/properties/StatusMessage"],
+  "handlers": {
+    "create": {
+      "permissions": ["redshift:AddPartner", "redshift:DescribePartners"]
+    },
+    "read": {
+      "permissions": ["redshift:DescribePartners"]
+    },
+    "update": {
+      "permissions": ["redshift:DescribePartners"]
+    },
+    "delete": {
+      "permissions": ["redshift:DeletePartner", "redshift:DescribePartners"]
+    }
+  }
+}
