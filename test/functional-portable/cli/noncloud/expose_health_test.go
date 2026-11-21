@@ -58,39 +58,58 @@ func Test_GetHealthEndpointOnLocalPort_HungServer(t *testing.T) {
 func Test_ExposeAndCheckHealth_RetriesTakenPort(t *testing.T) {
 	t.Parallel()
 
-	ports := []int{1001, 1002}
-	var tried []int
-	getPort := func() (int, error) {
-		port := ports[len(tried)]
-		tried = append(tried, port)
-		return port, nil
-	}
-	expose := func(ctx context.Context, port int) (string, error) {
-		if port == 1001 {
-			return "Error: failed to port-forward: unable to listen on any of the requested ports: [{1001 3000}]", context.DeadlineExceeded
-		}
-		<-ctx.Done()
-		return "", context.Canceled
-	}
-	checkHealth := func(ctx context.Context, port int) error {
-		if port == 1001 {
-			// Nothing answers on a port rad could not listen on.
-			<-ctx.Done()
-			return ctx.Err()
-		}
-		return nil
-	}
+	for _, tc := range []struct {
+		name string
+		// takenPortAnswers is true when the process holding the taken port answers the health check.
+		takenPortAnswers bool
+	}{
+		{name: "nothing answers on the taken port"},
+		{name: "the process holding the port answers", takenPortAnswers: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		exposeAndCheckHealth(t.Context(), t, exposeAttempts, getPort, expose, checkHealth)
-	}()
+			ports := []int{1001, 1002}
+			var tried []int
+			getPort := func() (int, error) {
+				port := ports[len(tried)]
+				tried = append(tried, port)
+				return port, nil
+			}
+			rad1001Exited := make(chan struct{})
+			expose := func(ctx context.Context, port int) (string, error) {
+				if port == 1001 {
+					close(rad1001Exited)
+					return "Error: failed to port-forward: unable to listen on any of the requested ports: [{1001 3000}]", context.DeadlineExceeded
+				}
+				<-ctx.Done()
+				return "", context.Canceled
+			}
+			checkHealth := func(ctx context.Context, port int) error {
+				if port == 1001 {
+					if tc.takenPortAnswers {
+						// Answer only after rad has exited, so its output shows the taken port.
+						<-rad1001Exited
+						return nil
+					}
+					<-ctx.Done()
+					return ctx.Err()
+				}
+				return nil
+			}
 
-	select {
-	case <-done:
-	case <-time.After(10 * time.Second):
-		require.Fail(t, "health check kept waiting after rad exited")
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				exposeAndCheckHealth(t.Context(), t, exposeAttempts, getPort, expose, checkHealth)
+			}()
+
+			select {
+			case <-done:
+			case <-time.After(10 * time.Second):
+				require.Fail(t, "health check kept waiting after rad exited")
+			}
+			require.Equal(t, []int{1001, 1002}, tried)
+		})
 	}
-	require.Equal(t, []int{1001, 1002}, tried)
 }

@@ -185,16 +185,16 @@ func exposeAndCheckHealth(
 		<-exited
 		stopHealth()
 
-		if healthErr == nil {
-			// The error should be due to cancellation (we canceled the command).
-			require.Equal(t, context.Canceled, exposeErr)
-			return
-		}
-		if attempt < attempts && strings.Contains(output, "unable to listen on any of the requested ports") {
+		// Check for a taken port first: the process holding it may answer the health check.
+		if strings.Contains(output, "unable to listen on any of the requested ports") {
+			require.Less(t, attempt, attempts, "port %d was taken on every attempt; rad output: %s", port, output)
 			t.Logf("port %d was taken before rad could listen on it; retrying with a new port", port)
 			continue
 		}
 		require.NoError(t, healthErr, "health check failed on port %d; rad output: %s", port, output)
+		// The error should be due to cancellation (we canceled the command).
+		require.Equal(t, context.Canceled, exposeErr)
+		return
 	}
 }
 
