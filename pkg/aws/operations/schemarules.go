@@ -195,13 +195,18 @@ type listFields struct {
 	awsOwned func(path []string) bool
 }
 
+// writeOnlyAt reports whether path is at or inside a write-only path.
+func (f listFields) writeOnlyAt(path []string) bool {
+	return slices.ContainsFunc(f.writeOnly, func(w []string) bool {
+		return len(path) >= len(w) && slices.Equal(path[:len(w)], w)
+	})
+}
+
 // onlyWriteOnly reports whether v, at path, holds only values at write-only paths, such as an Auth object that holds
 // only a write-only Password. AWS never returns such a value.
 func (f listFields) onlyWriteOnly(path []string, v any) bool {
-	for _, w := range f.writeOnly {
-		if len(path) >= len(w) && slices.Equal(path[:len(w)], w) {
-			return true
-		}
+	if f.writeOnlyAt(path) {
+		return true
 	}
 	switch t := v.(type) {
 	case map[string]any:
@@ -220,6 +225,24 @@ func (f listFields) onlyWriteOnly(path []string, v any) bool {
 		return len(t) > 0
 	}
 	return false
+}
+
+// readsAsNothing reports whether a read that leaves out empty values reports nothing for v, at path: v is an empty
+// list, "", or an object that holds only such values, and none of them is at a write-only path. An empty object
+// counts as a value, so it is sent.
+func (f listFields) readsAsNothing(path []string, v any) bool {
+	if f.writeOnlyAt(path) {
+		return false
+	}
+	if m, ok := v.(map[string]any); ok {
+		for k, child := range m {
+			if !f.readsAsNothing(append(slices.Clone(path), k), child) {
+				return false
+			}
+		}
+		return len(m) > 0
+	}
+	return isEmptyValue(v)
 }
 
 // fillAt returns the template's value of the list at path with the fields AWS filled in inside its items, such as a
@@ -281,6 +304,12 @@ func (r *schemaRules) fill(segments []string, desired any, current any, parent m
 			field := append(slices.Clone(segments), k)
 			cv, has := c[k]
 			switch {
+			case cv == nil && fields.readsAsNothing(field, v) && fields.awsOwned(field):
+				// AWS reports nothing (missing or null), and a read may leave out an empty list, string, or object.
+				// The last deploy set nothing the template drops here.
+				if has {
+					out[k] = nil
+				}
 			case has:
 				if out[k], ok = r.fill(field, v, cv, d, root, fields); !ok {
 					return nil, false
@@ -288,9 +317,6 @@ func (r *schemaRules) fill(segments []string, desired any, current any, parent m
 			case v == nil:
 			case fields.onlyWriteOnly(field, v):
 				out[k] = v
-			case isEmptyValue(v) && fields.awsOwned(field):
-				// AWS reports nothing, and a read may leave out an empty list or string. The last deploy set nothing
-				// the template drops here.
 			default:
 				return nil, false
 			}

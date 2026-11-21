@@ -428,6 +428,12 @@ func Test_GeneratePatchWithOptions_EmptyList(t *testing.T) {
 			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
 		},
 		{
+			name:        "a list inside a list item where AWS reports null",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": nil}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+		},
+		{
 			name:        "a list inside a list item where the last deploy set items",
 			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{"x"}}}},
 			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
@@ -551,6 +557,40 @@ func Test_GeneratePatchWithOptions_EmptyString(t *testing.T) {
 			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
 			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
 			want:        []string{"add /Rules/0/Note"},
+		},
+		{
+			name:        "a string inside a list item where AWS reports null",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": nil}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+		},
+		{
+			name:        "an object of empty strings inside a list item, which a read leaves out",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+		},
+		{
+			name:        "an object of empty strings inside an item of a list in any order",
+			schema:      `{"properties": {"Rules": {"type": "array", "insertionOrder": false}}}`,
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}, map[string]any{"Name": "b"}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "b"}, map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}, map[string]any{"Name": "b"}}},
+		},
+		{
+			name:        "an object of empty strings inside a list item where the last deploy set a value",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": "x"}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+			want:        []string{"add /Rules/0/Info"},
+		},
+		{
+			name:        "an object with a write-only empty string inside a list item",
+			schema:      `{"properties": {}, "writeOnlyProperties": ["/properties/Rules/*/Info/Secret"]}`,
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": "", "Secret": ""}}}},
+			want:        []string{"add /Rules/0/Info"},
 		},
 		{
 			name:        "a string inside a list item where AWS reports a value",
