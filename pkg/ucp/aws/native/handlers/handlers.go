@@ -32,6 +32,7 @@ import (
 	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
 	iotsdk "github.com/aws/aws-sdk-go-v2/service/iot"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
+	kmssdk "github.com/aws/aws-sdk-go-v2/service/kms"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -57,6 +58,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iot"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
@@ -103,6 +105,7 @@ func All(cfg aws.Config) []native.Handler {
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
 		iot.NewThingGroupMembership(iotsdk.NewFromConfig(cfg)),
 		transfer.NewAccess(transfersdk.NewFromConfig(cfg)),
+		kms.NewGrant(kmssdk.NewFromConfig(cfg)),
 	}
 }
 

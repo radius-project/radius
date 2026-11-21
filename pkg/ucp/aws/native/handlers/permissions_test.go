@@ -45,6 +45,7 @@ var iamPrefixes = map[string]string{
 	"iam":                      "iam",
 	"iot":                      "iot",
 	"kinesisanalyticsv2":       "kinesisanalytics",
+	"kms":                      "kms",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
 	"s3":                       "s3",

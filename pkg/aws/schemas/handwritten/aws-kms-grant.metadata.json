@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::KMS::Grant",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": ""
+}
