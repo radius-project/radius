@@ -48,6 +48,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"rds":                      "rds",
 	"s3":                       "s3",
 	"s3control":                "s3",
 	"s3tables":                 "s3tables",
@@ -170,7 +171,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 			// Tags sent in the create call itself: TagSpecifications, or Tags.
 			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
 		},
-		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
+		"delete": {"rds:CreateDBClusterSnapshot", "rds:CreateDBSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
 	// PutTableReplication also needs these on the source and destination tables, as its API reference says.
 	tableReplication := []string{
