@@ -126,9 +126,19 @@ observe() {
         select(test("^[a-zA-Z0-9-]+$"))' <<<"${pod}")"
     # Only Radius components log authorization decisions. Other pods in the
     # namespace, such as Contour, are skipped so their missing logs cannot
-    # fail collection.
-    jq -e '.metadata.labels["app.kubernetes.io/part-of"] == "radius"' \
-        <<<"${pod}" >/dev/null || return 0
+    # fail collection. Like authz-would-deny-check.sh, fail on a Radius
+    # component without the label rather than skip it silently.
+    if ! jq -e '.metadata.labels["app.kubernetes.io/part-of"] == "radius"' \
+        <<<"${pod}" >/dev/null; then
+        container="$(jq -r '
+            [(.spec.containers // [])[].name,
+             (.status.containerStatuses // [])[].name] |
+            map(select(IN("ucp", "applications-rp", "dynamic-rp",
+                "controller"))) | first // empty' <<<"${pod}")"
+        [[ -z "${container}" ]] ||
+            die "pod ${name} runs Radius component ${container} without the app.kubernetes.io/part-of=radius label"
+        return 0
+    fi
     for i in "${!KEYS[@]}"; do
         if [[ "${KEYS[i]}" == "${uid}."* ]]; then
             ACTIVE[i]=false
