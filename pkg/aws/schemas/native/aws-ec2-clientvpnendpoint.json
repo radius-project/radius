@@ -384,7 +384,11 @@
       "permissions": [
         "ec2:DeleteClientVpnEndpoint",
         "ec2:DescribeClientVpnEndpoints",
-        "ec2:GetClientVpnEndpointAuthorizationPolicy"
+        "ec2:GetClientVpnEndpointAuthorizationPolicy",
+        "ec2:CreateClientVpnEndpoint",
+        "ec2:ModifyClientVpnEndpointAuthorizationPolicy",
+        "ec2:CreateTags",
+        "iam:CreateServiceLinkedRole"
       ]
     },
     "list": {
