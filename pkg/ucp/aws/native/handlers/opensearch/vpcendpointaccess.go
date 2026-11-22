@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -308,7 +309,14 @@ func (h *VpcEndpointAccess) Create(ctx context.Context, request native.CreateReq
 		input.Service = types.AWSServicePrincipal(id.principal)
 	}
 	if _, err := h.api.AuthorizeVpcEndpointAccess(ctx, input, inRegion(request.Region), sendWithoutRetry); err != nil {
-		return "", awsapi.Rejected(err)
+		// AWS may have applied a call that failed without rejecting it, so the identifier goes back with the error,
+		// for UCP to keep the record and find the authorization by it.
+		err = awsapi.Rejected(err)
+		var failure *native.Failure
+		if (errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected) || ucp_aws.IsClientFault(err) {
+			return "", err
+		}
+		return id.String(), err
 	}
 	return id.String(), nil
 }

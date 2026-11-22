@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch"
 	"github.com/aws/aws-sdk-go-v2/service/opensearch/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -295,4 +296,27 @@ func Test_VpcEndpointAccess_PrincipalTypes(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, api.calls["AuthorizeVpcEndpointAccess"])
 	require.NoError(t, h.Delete(t.Context(), region, id))
+}
+
+// Test_VpcEndpointAccess_CreateUnknown checks that an authorization AWS may have applied returns its identifier with
+// the error, so UCP keeps the record and a failed recording still deletes it, and that one AWS rejected returns none.
+func Test_VpcEndpointAccess_CreateUnknown(t *testing.T) {
+	h, api := newAccessHandler()
+	properties := map[string]any{"DomainName": "logs", "Account": otherAccount}
+	api.failer.FailOn(0, &smithy.GenericAPIError{Code: "InternalException", Message: "lost", Fault: smithy.FaultServer}, true)
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.Error(t, err)
+	require.Equal(t, "logs|"+otherAccount, id)
+	require.NotEmpty(t, api.store.List(vpcEndpointAccessType), "AWS applied the authorization")
+
+	h, api = newAccessHandler()
+	api.errs["AuthorizeVpcEndpointAccess"] = &smithy.GenericAPIError{Code: "InternalException", Message: "down", Fault: smithy.FaultServer}
+	id, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.Error(t, err)
+	require.Equal(t, "logs|"+otherAccount, id, "a server error can't tell whether AWS applied it")
+
+	api.errs["AuthorizeVpcEndpointAccess"] = fault("LimitExceededException", "too many")
+	id, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.Error(t, err)
+	require.Empty(t, id, "AWS rejected the authorization")
 }
