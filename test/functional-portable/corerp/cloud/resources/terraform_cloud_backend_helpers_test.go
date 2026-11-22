@@ -447,6 +447,22 @@ func TestTerraformCloudAzureFederatedAssertion(t *testing.T) {
 		require.Equal(t, 3, calls)
 	})
 
+	t.Run("the credential retries twice with 2 and 4 second waits", func(t *testing.T) {
+		t.Parallel()
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer server.Close()
+
+		start := time.Now()
+		_, err := azureFederatedAssertion(t.Context(), server.URL, "request-token")
+		require.ErrorContains(t, err, "HTTP 503")
+		require.Equal(t, 3, calls)
+		require.GreaterOrEqual(t, time.Since(start), 6*time.Second)
+	})
+
 	t.Run("retries stop after two", func(t *testing.T) {
 		t.Parallel()
 		var calls int
