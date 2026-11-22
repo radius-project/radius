@@ -275,6 +275,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
 	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
 	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
+	t.Run("take over a resource with a write-only value", func(t *testing.T) { s.takeOverWriteOnly(t) })
 	t.Run("list", func(t *testing.T) { s.list(t) })
 	t.Run("read values have the schema's types", func(t *testing.T) { s.readTypes(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
@@ -505,6 +506,50 @@ func (s Suite) writeOnlyValues(t *testing.T) {
 	resp = h.put(s.ChangedWriteOnly)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, []string{"Read"}, h.handler.reset())
+}
+
+// takeOverWriteOnly takes over by name a resource AWS already has, with a template whose write-only values differ from
+// AWS's. UCP has no fingerprint of them, so it sends each one a deploy can change, and the next deploy sends nothing.
+// A create-only write-only value is never sent after create, so it isn't checked.
+func (s Suite) takeOverWriteOnly(t *testing.T) {
+	updatable := Updatable(t, s.Schema)
+	paths := []string{}
+	for _, p := range s.WriteOnly {
+		if name, _, _ := strings.Cut(p, "/"); slices.Contains(updatable, name) {
+			paths = append(paths, p)
+		}
+	}
+	if s.ChangedWriteOnly == nil || len(paths) == 0 {
+		t.Skip("the type has no write-only value a deploy can change")
+	}
+	h := s.newHarness(t)
+	identifier, err := h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: s.Properties, ClientToken: uuid.NewString()})
+	require.NoError(t, err)
+	if identifier == "" {
+		identifier, err = h.handler.Handler.(native.IdentifierEncoder).Identifier(s.Properties)
+		require.NoError(t, err)
+	}
+	for range maxPolls {
+		if progress, err := h.handler.Handler.Progress(t.Context(), region, identifier, native.OperationCreate); err == nil && progress.Done {
+			break
+		}
+	}
+	h.handler.reset()
+
+	resp := h.do(h.putFactory(), http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": s.ChangedWriteOnly})
+	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+	h.finish()
+	h.requireDeployed()
+	require.Contains(t, h.handler.reset(), "Update", "the take-over sends the template's write-only values")
+	resource := h.cc.Resource(s.TypeName, h.identifier())
+	for _, p := range paths {
+		segments := strings.Split(p, "/")
+		require.EqualValues(t, valuesAt(normalizeValue(s.ChangedWriteOnly), segments), valuesAt(normalizeValue(resource), segments), "AWS has the template's %s", p)
+	}
+
+	resp = h.put(s.ChangedWriteOnly)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset(), "the next deploy sends nothing")
 }
 
 // noWriteOnlyInResponses checks every response for the type, and the record, for the write-only values the templates
