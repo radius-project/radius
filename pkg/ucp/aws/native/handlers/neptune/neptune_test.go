@@ -28,6 +28,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/neptune"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -113,7 +114,7 @@ func Test_Suite_ClusterEndpoint(t *testing.T) {
 		Changed:            with(endpoint, map[string]any{"StaticMembers": nil, "ExcludedMembers": []any{"graph-3"}}),
 		Removable:          "Tags",
 		CreateOnlyChange:   with(endpoint, map[string]any{"DBClusterIdentifier": "other-graph", "StaticMembers": []any{"other-1"}}),
-		OtherForm:          map[string]any{"StaticMembers": []any{"graph-2", "graph-1"}},
+		OtherForm:          map[string]any{"StaticMembers": []any{"graph-2", "graph-1"}, "DBClusterIdentifier": "Graph"},
 		SameResource:       []map[string]any{with(endpoint, map[string]any{"DBClusterEndpointIdentifier": "Reads", "DBClusterIdentifier": "Graph"})},
 		SameResourceNames:  []string{"READS"},
 		Invalid: []map[string]any{
@@ -154,7 +155,8 @@ func Test_Identifier(t *testing.T) {
 	require.Equal(t, "reads", id)
 }
 
-func Test_sameMembers(t *testing.T) {
+// Test_equivalent checks the values Neptune returns in another form than the template sets them.
+func Test_equivalent(t *testing.T) {
 	tests := []struct {
 		path     string
 		template any
@@ -167,9 +169,14 @@ func Test_sameMembers(t *testing.T) {
 		{"StaticMembers", []any{"graph-1", "graph-1"}, []any{"graph-1", "graph-2"}, false},
 		{"StaticMembers", "graph-1", []any{"graph-1"}, false},
 		{"Tags", []any{"a"}, []any{"A"}, false},
+		{"DBClusterIdentifier", "Graph", "graph", true},
+		{"DBClusterEndpointIdentifier", "Reads", "reads", true},
+		{"DBClusterIdentifier", "graph", "graph-2", false},
+		{"EndpointType", "reader", "READER", false},
 	}
+	equivalent := NewClusterEndpoint(nil).Options().Equivalent
 	for _, tt := range tests {
-		require.Equal(t, tt.want, sameMembers(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
+		require.Equal(t, tt.want, equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
 	}
 }
 
@@ -233,6 +240,30 @@ func Test_CreateIgnoresOtherCaseKeys(t *testing.T) {
 	require.Equal(t, "graph", stored["DBClusterIdentifier"])
 	require.Equal(t, []any{"graph-1", "graph-2"}, stored["StaticMembers"])
 	require.Nil(t, api.store.Resource(endpointType, "other"))
+}
+
+// Test_ReadNoTags checks that an endpoint with no tags reads as Tags: [], so a template that sets Tags to [] is no
+// change.
+func Test_ReadNoTags(t *testing.T) {
+	h, _ := newHandler()
+	created(t, h, with(endpoint, map[string]any{"Tags": []any{}}))
+	got, err := h.Read(t.Context(), region, "reads")
+	require.NoError(t, err)
+	require.Equal(t, []any{}, got["Tags"])
+}
+
+// Test_CreateFailsInAWS checks that a create AWS answered with an error returns the endpoint's identifier, because AWS
+// may have made it, and that a create refused before any AWS call returns none.
+func Test_CreateFailsInAWS(t *testing.T) {
+	h, api := newHandler()
+	api.errs["CreateDBClusterEndpoint"] = &smithy.GenericAPIError{Code: "InternalFailure", Message: "internal error", Fault: smithy.FaultServer}
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(endpoint, map[string]any{"DBClusterEndpointIdentifier": "Reads"})})
+	require.ErrorContains(t, err, "InternalFailure")
+	require.Equal(t, "reads", id)
+
+	id, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(endpoint, map[string]any{"DBClusterIdentifier": "missing"})})
+	require.ErrorContains(t, err, "DBClusterNotFoundFault")
+	require.Empty(t, id)
 }
 
 func Test_ReadOtherProduct(t *testing.T) {

@@ -388,7 +388,8 @@ var partitionIndexAPI = map[string]nativetest.Call{
 			"key names are compared ignoring case; the fake compares them as they are, and returns them as the call sent " +
 			"them. The page takes one index per call and has no idempotency token, so a create sent again gets " +
 			"AlreadyExistsException. The handler reads the index before it creates one, and reports that error as an " +
-			"unknown outcome, because an SDK retry of a create whose response was lost gets it." + constraintNote,
+			"unknown outcome. The SDK sends the call once: a retry of a create whose response was lost could find the " +
+			"index CREATING and get the error for a busy table, which reads as rejected." + constraintNote,
 	},
 	"GetPartitionIndexes": {
 		Doc: apiReference + "API_GetPartitionIndexes.html",

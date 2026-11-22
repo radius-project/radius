@@ -71,6 +71,7 @@ func Test_Suite_PartitionIndex(t *testing.T) {
 		// Every property is create-only, so a deploy of the same template is the only update.
 		Changed:          properties,
 		CreateOnlyChange: partitionIndex("by_date", "year"),
+		OtherForm:        map[string]any{"DatabaseName": "Sales", "TableName": "ORDERS"},
 		SameResource: []map[string]any{
 			with(properties, map[string]any{"DatabaseName": "Sales", "TableName": "ORDERS"}),
 		},
@@ -348,6 +349,16 @@ func Test_TableBusy(t *testing.T) {
 	})
 }
 
+// Test_SameName checks that a database or table name AWS Glue returns in lowercase is the same name, so a template
+// that sets it in another case is no change.
+func Test_SameName(t *testing.T) {
+	equivalent := NewPartitionIndex(nil).Options().Equivalent
+	require.True(t, equivalent("DatabaseName", "Sales", "sales"))
+	require.True(t, equivalent("TableName", "ORDERS", "orders"))
+	require.False(t, equivalent("TableName", "orders", "orders_2"))
+	require.False(t, equivalent("CatalogId", "A", "a"))
+}
+
 func Test_Update(t *testing.T) {
 	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
 	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region}))
@@ -369,10 +380,11 @@ func Test_CreateAlreadyExists(t *testing.T) {
 	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
 	require.NoError(t, err)
-	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
 	var failure *native.Failure
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the index, so UCP keeps the record")
+	require.Equal(t, account+"|sales|orders|by_date", id)
 	require.Contains(t, failure.Message, "AlreadyExistsException")
 }
 

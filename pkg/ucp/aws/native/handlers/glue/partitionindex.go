@@ -74,7 +74,19 @@ func (h *PartitionIndex) TypeName() string {
 
 // Options returns how UCP uses the handler. AWS lists indexes only by table, so the type can't be listed.
 func (h *PartitionIndex) Options() native.Options {
-	return native.Options{List: native.ListNone, Recovery: native.RecoverByIdentifier}
+	return native.Options{List: native.ListNone, Recovery: native.RecoverByIdentifier, Equivalent: sameName}
+}
+
+// sameName treats a database or table name AWS Glue returns in lowercase, such as sales for Sales, as the same name,
+// because Glue stores it that way.
+var sameName = awsapi.CaseInsensitive("DatabaseName", "TableName")
+
+// noRetry makes the SDK send a call once. A CreatePartitionIndex whose response was lost left the index CREATING, so a
+// retry could get Glue's error for a table busy with another index, which reads as a create AWS rejected, and UCP
+// would drop the record of an index AWS has. Without the retry, the error leaves the outcome unknown, and the next
+// deploy finds the index by its identifier.
+func noRetry(o *glue.Options) {
+	o.RetryMaxAttempts = 1
 }
 
 // indexID names a partition index.
@@ -336,22 +348,23 @@ func (h *PartitionIndex) Create(ctx context.Context, request native.CreateReques
 		DatabaseName:   aws.String(id.database),
 		TableName:      aws.String(id.table),
 		PartitionIndex: &types.PartitionIndex{IndexName: aws.String(id.name), Keys: keys},
-	}, inRegion(request.Region))
+	}, inRegion(request.Region), noRetry)
 	if buildsOneAtATime(err) {
 		return "", tableBusy(id, "")
 	}
 	if awsapi.HasCode(err, "AlreadyExistsException") {
-		// UCP reads AWS by the identifier before it creates an index, so this index may be the one an earlier attempt
-		// of this create made, such as when the SDK retried a call whose response was lost. The outcome is then
-		// unknown, so UCP keeps the record and the next deploy finds the index by its identifier.
-		return "", &native.Failure{
+		// UCP reads AWS by the identifier before it creates an index, so this index appeared since, and may be the one
+		// an earlier attempt of this deploy made. The outcome is then unknown, so UCP keeps the record and the next
+		// deploy finds the index by its identifier.
+		return id.String(), &native.Failure{
 			Message:     fmt.Sprintf("the table already has a partition index named %q, which an earlier attempt of this deploy may have created. Deploy again to manage it, or choose another name: %v", id.name, err),
 			ClientError: true,
 			Outcome:     native.OutcomeUnknown,
 		}
 	}
 	if err != nil {
-		return "", err
+		// The create reached AWS, which may have made the index, so the identifier goes back with the error.
+		return id.String(), err
 	}
 	return id.String(), nil
 }

@@ -487,7 +487,8 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 			"list sent with members replaced the other list; the fake does the same, and the handler rejects a template " +
 			"that removes the last list. It doesn't say which endpoint states " +
 			"InvalidDBClusterEndpointStateFault or InvalidDBClusterStateFault covers; the fake takes a change only while the " +
-			"endpoint and its cluster are available.",
+			"endpoint and its cluster are available. So a retry of a modify whose response was lost would find the " +
+			"endpoint modifying and get InvalidDBClusterEndpointStateFault, and the SDK sends the call once.",
 	},
 	"DeleteDBClusterEndpoint": {
 		Doc: apiReference + "API_DeleteDBClusterEndpoint.html",

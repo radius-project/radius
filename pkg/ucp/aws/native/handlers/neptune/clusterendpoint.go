@@ -92,9 +92,18 @@ func (h *ClusterEndpoint) Options() native.Options {
 		List:             native.ListRegion,
 		Recovery:         native.RecoverByIdentifier,
 		NameProperty:     "DBClusterEndpointIdentifier",
-		Equivalent:       sameMembers,
+		Equivalent:       equivalent,
 		DisruptiveUpdate: true,
 	}
+}
+
+// sameIdentifier treats an identifier Neptune returns in lowercase, such as graph for Graph, as the same identifier,
+// because Neptune stores it that way.
+var sameIdentifier = awsapi.CaseInsensitive("DBClusterEndpointIdentifier", "DBClusterIdentifier")
+
+// equivalent treats values Neptune returns in another form than the template sets them as the same values.
+func equivalent(path string, template any, current any) bool {
+	return sameIdentifier(path, template, current) || sameMembers(path, template, current)
 }
 
 // sameMembers treats a list of members AWS returns in another case, such as graph-1 for Graph-1, as the same list,
@@ -189,7 +198,8 @@ func (h *ClusterEndpoint) properties(ctx context.Context, region string, e *type
 	}
 	// An endpoint always has both lists, so a template that sets one to [] matches AWS instead of sending a change,
 	// which would make the endpoint unusable until Neptune finishes it.
-	properties := map[string]any{"StaticMembers": anyList(e.StaticMembers), "ExcludedMembers": anyList(e.ExcludedMembers)}
+	// Tags is always there too, empty when the endpoint has none, so a template that sets Tags to [] matches.
+	properties := map[string]any{"StaticMembers": anyList(e.StaticMembers), "ExcludedMembers": anyList(e.ExcludedMembers), "Tags": []any{}}
 	for name, value := range map[string]*string{
 		"DBClusterEndpointIdentifier":         e.DBClusterEndpointIdentifier,
 		"DBClusterIdentifier":                 e.DBClusterIdentifier,
@@ -347,10 +357,12 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 		ExcludedMembers:             excluded,
 		Tags:                        awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties)),
 	}
+	identifier := strings.ToLower(aws.ToString(input.DBClusterEndpointIdentifier))
 	if _, err := h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region)); err != nil {
-		return "", awsapi.Rejected(lostCreate(err))
+		// The create reached AWS, which may have made the endpoint, so the identifier goes back with the error.
+		return identifier, awsapi.Rejected(lostCreate(err))
 	}
-	return h.Identifier(request.Properties)
+	return identifier, nil
 }
 
 // lostCreate returns err, unless it says the endpoint already exists. UCP reads AWS by the identifier before it creates
@@ -417,11 +429,18 @@ func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateReque
 	}
 	if modify {
 		calls = append(calls, func() error {
-			_, err := h.api.ModifyDBClusterEndpoint(ctx, input, opt)
+			_, err := h.api.ModifyDBClusterEndpoint(ctx, input, opt, noRetry)
 			return err
 		})
 	}
 	return awsapi.Rejected(awsapi.Calls(calls...))
+}
+
+// noRetry makes the SDK send a call once. A ModifyDBClusterEndpoint whose response was lost left the endpoint
+// modifying, so a retry would get InvalidDBClusterEndpointStateFault, which reads as a change AWS rejected. Without the
+// retry, the error leaves the outcome unknown, and the next deploy reads what AWS has.
+func noRetry(o *neptune.Options) {
+	o.RetryMaxAttempts = 1
 }
 
 // anyList returns list as a JSON list.
