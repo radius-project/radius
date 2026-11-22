@@ -135,6 +135,28 @@
       "binary": true
     },
     {
+      "service": "CloudWatch",
+      "operation": "ListTagsForResource",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWRUYWdzgaJjS2V5ZHRlYW1lVmFsdWVnbmV0d29yaw==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "ListManagedInsightRules",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "oWxNYW5hZ2VkUnVsZXODomxUZW1wbGF0ZU5hbWV4MFZwY0VuZHBvaW50U2VydmljZS1OZXdDb25uZWN0aW9uc0J5RW5kcG9pbnRJZC12MWlSdWxlU3RhdGWiZVN0YXRlaERJU0FCTEVEaFJ1bGVOYW1leEtWcGNFbmRwb2ludFNlcnZpY2UtTmV3Q29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjEtdnBjZS1zdmMtMGExYjJjM2Q0ZTVmNjA3MTihbFRlbXBsYXRlTmFtZXg1VnBjRW5kcG9pbnRTZXJ2aWNlLVJlamVjdGVkQ29ubmVjdGlvbnNCeUVuZHBvaW50SWQtdjGhbFRlbXBsYXRlTmFtZXgnVnBjRW5kcG9pbnRTZXJ2aWNlLUJ5dGVzQnlFbmRwb2ludElkLXYx",
+      "binary": true
+    },
+    {
       "service": "STS",
       "operation": "GetCallerIdentity",
       "request": "Action=GetCallerIdentity&Version=2011-06-15",

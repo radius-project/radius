@@ -55,6 +55,13 @@ const (
 	maxTagValue    = 256
 )
 
+// confirmAttempts is how many times a create or an update reads AWS for a change it made, confirmInterval apart,
+// before it gives up. AWS doesn't say how soon its reads show a change, so this bounds the wait to about 10 seconds.
+const (
+	confirmAttempts = 6
+	confirmInterval = 2 * time.Second
+)
+
 // ruleTimeout is how long UCP waits for AWS to stop listing a deleted rule. AWS documents no delay, so this only
 // bounds a wait that should be short.
 const ruleTimeout = 10 * time.Minute
@@ -95,12 +102,15 @@ var (
 type ManagedInsightRule struct {
 	api      InsightRuleAPI
 	accounts AccountAPI
+
+	// confirmEvery is how long a create or an update waits between reads for a change it made.
+	confirmEvery time.Duration
 }
 
 // NewManagedInsightRule returns the handler for managed Contributor Insights rules. It learns the current account,
 // for the rule's ARN, with accounts.
 func NewManagedInsightRule(api InsightRuleAPI, accounts AccountAPI) *ManagedInsightRule {
-	return &ManagedInsightRule{api: api, accounts: accounts}
+	return &ManagedInsightRule{api: api, accounts: accounts, confirmEvery: confirmInterval}
 }
 
 // TypeName returns AWS::CloudWatch::ManagedInsightRule.
@@ -363,7 +373,11 @@ func (h *ManagedInsightRule) Create(ctx context.Context, request native.CreateRe
 	}
 	out, err := h.api.PutManagedInsightRules(ctx, &cloudwatch.PutManagedInsightRulesInput{ManagedRules: []types.ManagedRule{rule}}, inRegion(request.Region))
 	if err != nil {
-		return "", awsapi.Rejected(err)
+		// Only a call AWS rejected made no rule. Otherwise AWS may have made it, so UCP keeps the identifier.
+		if err = awsapi.Rejected(err); outcomeRejected(err) {
+			return "", err
+		}
+		return id.String(), err
 	}
 	if err := ruleFailures("create", id, out.Failures); err != nil {
 		return id.String(), err
@@ -375,8 +389,73 @@ func (h *ManagedInsightRule) Create(ctx context.Context, request native.CreateRe
 				Outcome: native.OutcomePartial,
 			}
 		}
+		if err := h.confirm(ctx, id, "disabling", h.showsState(ctx, request.Region, id, ruleDisabled)); err != nil {
+			return id.String(), err
+		}
 	}
 	return id.String(), nil
+}
+
+// outcomeRejected reports whether err is a failure AWS applied none of: a rejected native.Failure, or a client fault.
+func outcomeRejected(err error) bool {
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failure.Outcome == native.OutcomeRejected
+	}
+	return ucp_aws.IsClientFault(err)
+}
+
+// confirm reads AWS with shows until it shows a change the create or update made, up to confirmAttempts times. AWS
+// accepted the change, but doesn't say how soon its reads show it, so when they never do, confirm returns a failure
+// whose outcome is unknown, which asks for another deploy. A read that fails counts as one that doesn't show it.
+func (h *ManagedInsightRule) confirm(ctx context.Context, id ruleID, what string, shows func() (bool, error)) error {
+	var last error
+	for attempt := range confirmAttempts {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				last = ctx.Err()
+			case <-time.After(h.confirmEvery):
+			}
+			if ctx.Err() != nil {
+				break
+			}
+		}
+		ok, err := shows()
+		if err == nil && ok {
+			return nil
+		}
+		last = err
+	}
+	message := fmt.Sprintf("AWS accepted the %s of the managed Contributor Insights rule of the template %q for %q, but its reads didn't show it after %d tries. Deploy again to check it",
+		what, id.template, id.resourceARN, confirmAttempts)
+	if last != nil {
+		message += fmt.Sprintf(" (the last read failed: %v)", last)
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
+}
+
+// showsState returns a read that reports whether AWS lists the rule with state.
+func (h *ManagedInsightRule) showsState(ctx context.Context, region string, id ruleID, state string) func() (bool, error) {
+	return func() (bool, error) {
+		got, err := h.find(ctx, region, id)
+		if err != nil {
+			return false, err
+		}
+		return strings.EqualFold(aws.ToString(got.State), state), nil
+	}
+}
+
+// showsTags returns a read that reports whether the rule has exactly the tags want, leaving out tags AWS adds.
+func (h *ManagedInsightRule) showsTags(ctx context.Context, region string, ruleARN string, want []awsapi.Tag) func() (bool, error) {
+	return func() (bool, error) {
+		got, err := h.tags(ctx, region, ruleARN)
+		if err != nil {
+			return false, err
+		}
+		set, remove := awsapi.TagChanges(awsapi.Tags(map[string]any{"Tags": awsapi.TagListOf(got)}), want)
+		return len(set) == 0 && len(remove) == 0, nil
+	}
 }
 
 // disableNew disables a rule Create just made.
@@ -415,7 +494,7 @@ func changes(request native.UpdateRequest, name string) bool {
 }
 
 // Update changes the rule's State and Tags, the properties the patch changes, from what AWS has now: it enables or
-// disables the rule, and removes and sets tags. A State the template no longer sets goes back to ENABLED.
+// disables the rule, and removes and sets tags. It then waits for AWS's reads to show each change (see confirm). A State the template no longer sets goes back to ENABLED.
 func (h *ManagedInsightRule) Update(ctx context.Context, request native.UpdateRequest) error {
 	id, err := parseRuleID(request.Identifier)
 	if err != nil {
@@ -434,12 +513,14 @@ func (h *ManagedInsightRule) Update(ctx context.Context, request native.UpdateRe
 	}
 	name := aws.ToString(state.RuleName)
 	calls := []func() error{}
+	confirms := []func() error{}
 	if want := desiredState(request.Desired); changeState && !strings.EqualFold(aws.ToString(state.State), want) {
-		setState := h.disable
+		setState, what := h.disable, "disabling"
 		if want == ruleEnabled {
-			setState = h.enable
+			setState, what = h.enable, "enabling"
 		}
 		calls = append(calls, func() error { return setState(ctx, request.Region, id, name) })
+		confirms = append(confirms, func() error { return h.confirm(ctx, id, what, h.showsState(ctx, request.Region, id, want)) })
 	}
 	if changeTags {
 		ruleARN, err := h.ruleARN(ctx, request.Region, name)
@@ -464,8 +545,21 @@ func (h *ManagedInsightRule) Update(ctx context.Context, request native.UpdateRe
 				return err
 			})
 		}
+		if len(set) > 0 || len(remove) > 0 {
+			want := awsapi.Tags(request.Desired)
+			confirms = append(confirms, func() error { return h.confirm(ctx, id, "tag change", h.showsTags(ctx, request.Region, ruleARN, want)) })
+		}
 	}
-	return awsapi.Rejected(awsapi.Calls(calls...))
+	if err := awsapi.Rejected(awsapi.Calls(calls...)); err != nil {
+		return err
+	}
+	// AWS accepted every change, so the update is done once AWS's reads show each one.
+	for _, confirm := range confirms {
+		if err := confirm(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // beforeRuleChange returns err, from a call made before any call that changes AWS, as a failure AWS applied none of,

@@ -99,6 +99,9 @@ type ghost struct {
 // the suite's Cloud Control sees the same rules. It rejects the requests CloudWatch's API reference says AWS rejects
 // (see ruleAPI), and where the docs are silent it takes the pessimistic side:
 //
+//   - After a rule is enabled or disabled, ListManagedInsightRules shows its old state for stateLag more lists, and
+//     after its tags change, ListTagsForResource shows the old tags for tagLag more calls. Both are 1 by default, so the
+//     first read after a change never shows it.
 //   - A deleted rule stays in ListManagedInsightRules for ruleSettleReads reads of its resource's rules, though
 //     TagResource and the rule calls already see the change. With createLag set, a created rule stays out of the list
 //     for that many reads. It is off by default, because UCP takes a create AWS doesn't list as one that never reached
@@ -121,6 +124,13 @@ type fakeRuleAPI struct {
 
 	// lowercase makes ListManagedInsightRules return a rule's state in lowercase.
 	lowercase bool
+
+	// stale holds what reads still show of a rule after a change, by identifier. stateLag is how many lists of the
+	// rule's resource show its old state after it is enabled or disabled, and tagLag how many ListTagsForResource
+	// calls show its old tags after a tag change.
+	stale    map[string]*staleRule
+	stateLag int
+	tagLag   int
 
 	// gone holds the resources that were deleted. others holds rules the store doesn't, by name: true for a managed
 	// rule of another resource, and false for a rule made with PutInsightRule.
@@ -151,7 +161,56 @@ func newFakeRuleAPI(store *awsfake.CloudControl) *fakeRuleAPI {
 		failures: map[string]types.PartialFailure{},
 		gone:     map[string]bool{},
 		others:   map[string]bool{},
+		stale:    map[string]*staleRule{},
+		stateLag: 1,
+		tagLag:   1,
 	}
+}
+
+// staleRule is what reads still show of a rule after a change: its old state for stateReads more lists, and its old
+// tags for tagReads more ListTagsForResource calls.
+type staleRule struct {
+	state      string
+	stateReads int
+	tags       []types.Tag
+	tagReads   int
+}
+
+// staleOf returns the stale reads of the rule, adding them when there are none.
+func (f *fakeRuleAPI) staleOf(identifier string) *staleRule {
+	if f.stale[identifier] == nil {
+		f.stale[identifier] = &staleRule{}
+	}
+	return f.stale[identifier]
+}
+
+// changeState sets the rule's state, and keeps its old state in reads for stateLag lists.
+func (f *fakeRuleAPI) changeState(identifier string, p map[string]any, state string) {
+	if old := p["State"].(string); old != state && f.stateLag > 0 {
+		st := f.staleOf(identifier)
+		if st.stateReads == 0 {
+			st.state = old
+		}
+		st.stateReads = f.stateLag
+	}
+	p["State"] = state
+	f.store.Put(managedInsightRuleType, identifier, p)
+}
+
+// changeTags sets the rule's tags, and keeps its old tags in reads for tagLag calls.
+func (f *fakeRuleAPI) changeTags(identifier string, p map[string]any, tags []types.Tag) {
+	if f.tagLag > 0 {
+		st := f.staleOf(identifier)
+		if st.tagReads == 0 {
+			st.tags = storedTags(p)
+		}
+		st.tagReads = f.tagLag
+	}
+	p["Tags"] = tagList(tags)
+	if len(tags) == 0 {
+		delete(p, "Tags")
+	}
+	f.store.Put(managedInsightRuleType, identifier, p)
 }
 
 // begin counts a call and returns the error errs holds for it.
@@ -324,8 +383,7 @@ func (f *fakeRuleAPI) PutManagedInsightRules(ctx context.Context, in *cloudwatch
 			}
 			if p := f.rule(identifier); p != nil {
 				// AWS re-enables a rule that is there, and ignores the tags of the call.
-				p["State"] = ruleEnabled
-				f.store.Put(managedInsightRuleType, identifier, p)
+				f.changeState(identifier, p, ruleEnabled)
 				continue
 			}
 			if len(f.store.List(managedInsightRuleType)) >= maxRules {
@@ -433,6 +491,9 @@ func (f *fakeRuleAPI) listed(identifier string) *types.ManagedRuleState {
 		return nil
 	}
 	state := p["State"].(string)
+	if st := f.stale[identifier]; st != nil && st.stateReads > 0 {
+		state = st.state
+	}
 	if f.lowercase {
 		state = strings.ToLower(state)
 	}
@@ -456,6 +517,11 @@ func (f *fakeRuleAPI) settle(resource string) {
 			if g.reads--; g.reads <= 0 {
 				delete(f.ghosts, identifier)
 			}
+		}
+	}
+	for identifier, st := range f.stale {
+		if strings.HasPrefix(identifier, prefix) && st.stateReads > 0 {
+			st.stateReads--
 		}
 	}
 }
@@ -524,9 +590,7 @@ func (f *fakeRuleAPI) setState(method string, names []string, state string) ([]t
 				failures = append(failures, failure(ruleNotFound, name, "no such rule"))
 				continue
 			}
-			p := f.rule(identifier)
-			p["State"] = state
-			f.store.Put(managedInsightRuleType, identifier, p)
+			f.changeState(identifier, f.rule(identifier), state)
 		}
 	})
 	return failures, err
@@ -575,6 +639,7 @@ func (f *fakeRuleAPI) DeleteInsightRules(ctx context.Context, in *cloudwatch.Del
 			p := f.rule(identifier)
 			f.ghosts[identifier] = &ghost{state: &types.ManagedRuleState{RuleName: aws.String(name), State: aws.String(p["State"].(string))}, reads: ruleSettleReads}
 			delete(f.pending, identifier)
+			delete(f.stale, identifier)
 			f.store.Remove(managedInsightRuleType, identifier)
 		}
 	})
@@ -628,10 +693,7 @@ func (f *fakeRuleAPI) TagResource(ctx context.Context, in *cloudwatch.TagResourc
 	if userTags(tags) > maxRuleTags {
 		return nil, ruleFault(invalidValue, "a rule can have at most %d tags", maxRuleTags)
 	}
-	if err := f.change(func() {
-		p["Tags"] = tagList(tags)
-		f.store.Put(managedInsightRuleType, identifier, p)
-	}); err != nil {
+	if err := f.change(func() { f.changeTags(identifier, p, tags) }); err != nil {
 		return nil, err
 	}
 	return &cloudwatch.TagResourceOutput{}, nil
@@ -661,13 +723,7 @@ func (f *fakeRuleAPI) UntagResource(ctx context.Context, in *cloudwatch.UntagRes
 		return nil, err
 	}
 	tags := slices.DeleteFunc(storedTags(p), func(t types.Tag) bool { return slices.Contains(in.TagKeys, aws.ToString(t.Key)) })
-	if err := f.change(func() {
-		p["Tags"] = tagList(tags)
-		if len(tags) == 0 {
-			delete(p, "Tags")
-		}
-		f.store.Put(managedInsightRuleType, identifier, p)
-	}); err != nil {
+	if err := f.change(func() { f.changeTags(identifier, p, tags) }); err != nil {
 		return nil, err
 	}
 	return &cloudwatch.UntagResourceOutput{}, nil
@@ -679,9 +735,13 @@ func (f *fakeRuleAPI) ListTagsForResource(ctx context.Context, in *cloudwatch.Li
 	if err := f.begin("ListTagsForResource"); err != nil {
 		return nil, err
 	}
-	_, p, err := f.ruleByARN(in.ResourceARN)
+	identifier, p, err := f.ruleByARN(in.ResourceARN)
 	if err != nil {
 		return nil, err
+	}
+	if st := f.stale[identifier]; st != nil && st.tagReads > 0 {
+		st.tagReads--
+		return &cloudwatch.ListTagsForResourceOutput{Tags: st.tags}, nil
 	}
 	return &cloudwatch.ListTagsForResourceOutput{Tags: storedTags(p)}, nil
 }

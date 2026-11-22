@@ -23,6 +23,7 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -58,7 +59,14 @@ func ruleTemplate(template string) map[string]any {
 
 func newRuleHandler() (*ManagedInsightRule, *fakeRuleAPI) {
 	api := newFakeRuleAPI(awsfake.NewCloudControl())
-	return NewManagedInsightRule(api, api), api
+	return newTestRuleHandler(api), api
+}
+
+// newTestRuleHandler returns the handler with api, waiting no time between the reads that confirm a change.
+func newTestRuleHandler(api *fakeRuleAPI) *ManagedInsightRule {
+	h := NewManagedInsightRule(api, api)
+	h.confirmEvery = 0
+	return h
 }
 
 func Test_Suite_ManagedInsightRule(t *testing.T) {
@@ -107,7 +115,7 @@ func ruleSuite(t *testing.T, properties map[string]any, lowercase bool) {
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
 			api := newFakeRuleAPI(store)
 			api.lowercase = lowercase
-			return NewManagedInsightRule(api, api)
+			return newTestRuleHandler(api)
 		},
 		Properties:       properties,
 		Identifier:       endpointService + "|" + newConnections,
@@ -582,4 +590,86 @@ func Test_ManagedInsightRule_IsManaged(t *testing.T) {
 	require.True(t, isManaged(types.InsightRule{Schema: aws.String(managedSchema)}))
 	require.False(t, isManaged(types.InsightRule{Schema: aws.String(customSchema), ManagedRule: aws.Bool(false)}))
 	require.False(t, isManaged(types.InsightRule{Schema: aws.String("not json")}))
+}
+
+// Test_ManagedInsightRule_CreateUnknownKeepsIdentifier checks that a create whose outcome is unknown, such as a lost
+// response after AWS made the rule, returns the rule's identifier, so UCP keeps the record and a recording registers
+// cleanup. Only a create AWS rejected returns none.
+func Test_ManagedInsightRule_CreateUnknownKeepsIdentifier(t *testing.T) {
+	h, api := newRuleHandler()
+	api.failer.FailOn(0, errors.New("connection reset"), true)
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: ruleTemplate(newConnections)})
+	require.ErrorContains(t, err, "connection reset")
+	require.Equal(t, endpointService+"|"+newConnections, id)
+	require.Len(t, api.store.List(managedInsightRuleType), 1, "AWS made the rule")
+
+	api.errs["PutManagedInsightRules"] = &smithy.GenericAPIError{Code: invalidValue, Message: "bad", Fault: smithy.FaultClient}
+	id, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: ruleTemplate(rejectedConnections)})
+	require.Error(t, err)
+	require.Empty(t, id, "AWS rejected the create")
+}
+
+// Test_ManagedInsightRule_UpdateConfirmed checks that an update waits for AWS's reads to show the change, which AWS
+// may not do at once, and fails with an unknown outcome that asks for another deploy when they never do.
+func Test_ManagedInsightRule_UpdateConfirmed(t *testing.T) {
+	h, api := newRuleHandler()
+	id := createRule(t, h, ruleTemplate(newConnections))
+	api.stateLag, api.tagLag = 2, 2
+	desired := with(ruleTemplate(newConnections), map[string]any{"State": ruleDisabled, "Tags": tags("team", "a")})
+	request := ruleUpdate(t, h, id, desired)
+	require.NoError(t, h.Update(t.Context(), request))
+	got, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+	require.Equal(t, ruleDisabled, got["State"])
+	require.Equal(t, tags("team", "a"), got["Tags"])
+
+	// AWS never shows the change.
+	api.stateLag = confirmAttempts + 1
+	err = h.Update(t.Context(), ruleUpdate(t, h, id, ruleTemplate(newConnections)))
+	requireRuleFailure(t, err, native.OutcomeUnknown, "Deploy again")
+
+	api.stateLag = 0
+	api.tagLag = confirmAttempts + 1
+	err = h.Update(t.Context(), ruleUpdate(t, h, id, with(ruleTemplate(newConnections), map[string]any{"Tags": tags("team", "b")})))
+	requireRuleFailure(t, err, native.OutcomeUnknown, "Deploy again")
+}
+
+// Test_ManagedInsightRule_CreateDisabledConfirmed checks that a create that disables the new rule waits for AWS's list
+// to show it disabled, and otherwise fails with an unknown outcome and the rule's identifier.
+func Test_ManagedInsightRule_CreateDisabledConfirmed(t *testing.T) {
+	h, api := newRuleHandler()
+	api.stateLag = confirmAttempts + 1
+	properties := with(ruleTemplate(newConnections), map[string]any{"State": ruleDisabled})
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.Equal(t, endpointService+"|"+newConnections, id)
+	requireRuleFailure(t, err, native.OutcomeUnknown, "Deploy again")
+
+	h, api = newRuleHandler()
+	api.stateLag = 2
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.NoError(t, err)
+}
+
+// Test_ManagedInsightRule_ConfirmReadFails checks that a read that fails while a change is confirmed counts as one that
+// doesn't show it, so the change fails with an unknown outcome that names the read's error, and that a canceled request
+// stops waiting.
+func Test_ManagedInsightRule_ConfirmReadFails(t *testing.T) {
+	h, api := newRuleHandler()
+	id := createRule(t, h, ruleTemplate(newConnections))
+	rule, err := parseRuleID(id)
+	require.NoError(t, err)
+	api.errs["ListManagedInsightRules"] = errors.New("list down")
+	api.errs["ListTagsForResource"] = errors.New("tags down")
+	err = h.confirm(t.Context(), rule, "disabling", h.showsState(t.Context(), region, rule, ruleDisabled))
+	requireRuleFailure(t, err, native.OutcomeUnknown, "list down")
+	err = h.confirm(t.Context(), rule, "tag change", h.showsTags(t.Context(), region, ruleARNOf(newConnections), nil))
+	requireRuleFailure(t, err, native.OutcomeUnknown, "tags down")
+
+	h.confirmEvery = time.Hour
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	reads := 0
+	err = h.confirm(ctx, rule, "disabling", func() (bool, error) { reads++; return false, nil })
+	requireRuleFailure(t, err, native.OutcomeUnknown, "context canceled")
+	require.Equal(t, 1, reads, "a canceled request reads once and stops")
 }

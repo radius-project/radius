@@ -105,6 +105,18 @@ func settleRules(ctx context.Context, f *fakeRuleAPI) error {
 	return nil
 }
 
+// settleTags reads the tags of the rule of template until ListTagsForResource shows every change.
+func settleTags(template string) ruleCall {
+	return func(ctx context.Context, f *fakeRuleAPI) error {
+		for range f.tagLag {
+			if _, err := f.ListTagsForResource(ctx, &cloudwatch.ListTagsForResourceInput{ResourceARN: aws.String(ruleARNOf(template))}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
 // ruleState returns a call that fails unless the list shows the rule of template with state, or with no rule when
 // state is "".
 func ruleState(template string, state string) ruleCall {
@@ -272,9 +284,9 @@ var ruleAPI = map[string]nativetest.Call{
 				Rule: "a call for a rule that is there, and disabled, enables it again, and its tags are ignored",
 				Doc:  managedRuleDoc,
 				Check: ruleCalls(putRule(newConnections, func(r *types.ManagedRule) { r.Tags = []types.Tag{tag("team", "a")} }), settleRules,
-					ruleNamesCall("DisableInsightRules", ruleNameOf(newConnections)), ruleState(newConnections, ruleDisabled),
+					ruleNamesCall("DisableInsightRules", ruleNameOf(newConnections)), settleRules, ruleState(newConnections, ruleDisabled),
 					putRule(newConnections, func(r *types.ManagedRule) { r.Tags = []types.Tag{tag("team", "b")} }),
-					ruleState(newConnections, ruleEnabled), ruleTags(newConnections, map[string]string{"team": "a"})),
+					settleRules, ruleState(newConnections, ruleEnabled), ruleTags(newConnections, map[string]string{"team": "a"})),
 			},
 			{
 				Rule:  "a region has at most 100 Contributor Insights rules",
@@ -340,16 +352,17 @@ var ruleAPI = map[string]nativetest.Call{
 	"EnableInsightRules": {
 		Doc:   apiReference + "API_EnableInsightRules.html",
 		Rules: ruleNamesRules("EnableInsightRules"),
-		Unclear: ruleNamesUnclear + " When AWS returns LimitExceededException, and how soon the list shows the new state: the fake " +
-			"never returns it, and shows the state at once.",
+		Unclear: ruleNamesUnclear + " When AWS returns LimitExceededException: the fake never does. How soon the list shows the new " +
+			"state: the fake shows the old state for one more list, so the handler waits for a list to show it.",
 	},
 	"DisableInsightRules": {
 		Doc: apiReference + "API_DisableInsightRules.html",
 		Rules: append(ruleNamesRules("DisableInsightRules"), nativetest.Rule{
 			Rule:  "a disabled rule is listed as DISABLED",
-			Check: ruleCalls(putRule(newConnections), settleRules, ruleNamesCall("DisableInsightRules", ruleNameOf(newConnections)), ruleState(newConnections, ruleDisabled)),
+			Check: ruleCalls(putRule(newConnections), settleRules, ruleNamesCall("DisableInsightRules", ruleNameOf(newConnections)), settleRules, ruleState(newConnections, ruleDisabled)),
 		}),
-		Unclear: ruleNamesUnclear + " How soon the list shows the new state: the fake shows it at once.",
+		Unclear: ruleNamesUnclear + " How soon the list shows the new state: the fake shows the old state for one more " +
+			"list, so the handler waits for a list to show it.",
 	},
 	"DeleteInsightRules": {
 		Doc: apiReference + "API_DeleteInsightRules.html",
@@ -403,10 +416,11 @@ var ruleAPI = map[string]nativetest.Call{
 			},
 			{
 				Rule:  "a tag with a key the resource has replaces its value, and other tags stay",
-				Check: ruleCalls(putRule(newConnections), tagRule(newConnections, tag("a", "1"), tag("b", "2")), tagRule(newConnections, tag("a", "3")), ruleTags(newConnections, map[string]string{"a": "3", "b": "2"})),
+				Check: ruleCalls(putRule(newConnections), tagRule(newConnections, tag("a", "1"), tag("b", "2")), tagRule(newConnections, tag("a", "3")), settleTags(newConnections), ruleTags(newConnections, map[string]string{"a": "3", "b": "2"})),
 			},
 		},
-		Unclear: "When AWS returns ConcurrentModificationException or ConflictException: the fake never does, because the " +
+		Unclear: "How soon ListTagsForResource shows a change: the fake shows the old tags for one more call, so the handler " +
+			"waits for a read to show it. When AWS returns ConcurrentModificationException or ConflictException: the fake never does, because the " +
 			"handler makes one change to a rule at a time.",
 	},
 	"UntagResource": {
