@@ -384,7 +384,7 @@ func Test_CreateAlreadyExists(t *testing.T) {
 	var failure *native.Failure
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the index, so UCP keeps the record")
-	require.Equal(t, account+"|sales|orders|by_date", id)
+	require.Empty(t, id, "the index isn't one this call made, so a failed recording doesn't delete it")
 	require.Contains(t, failure.Message, "AlreadyExistsException")
 }
 

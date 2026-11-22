@@ -81,6 +81,41 @@ func Test_ModifyNotRetried(t *testing.T) {
 	require.False(t, errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected, "the outcome stays unknown: %v", err)
 }
 
+// Test_CreateNotRetried checks that the SDK never sends CreateDBClusterEndpoint again after an error, through the
+// real SDK client. AWS may have made the endpoint before the error, so a retry gets
+// DBClusterEndpointAlreadyExistsFault, and the endpoint would look like one this call didn't make. Without the retry,
+// the error leaves the outcome unknown, and the create returns the identifier.
+func Test_CreateNotRetried(t *testing.T) {
+	var creates atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, r.ParseForm())
+		w.Header().Set("Content-Type", "text/xml")
+		switch r.Form.Get("Action") {
+		case "DescribeDBClusters":
+			_, _ = w.Write([]byte(retryCluster))
+		case "CreateDBClusterEndpoint":
+			if creates.Add(1) == 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write(fmt.Appendf(nil, retryError, "Receiver", "InternalFailure", "internal error"))
+				return
+			}
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write(fmt.Appendf(nil, retryError, "Sender", "DBClusterEndpointAlreadyExistsFault", "the endpoint already exists"))
+		default:
+			t.Errorf("unexpected call %s", r.Form.Get("Action"))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	h := NewClusterEndpoint(neptune.NewFromConfig(retryConfig(server.URL)))
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"DBClusterEndpointIdentifier": "Reads", "DBClusterIdentifier": "graph", "EndpointType": "READER"}})
+	require.Error(t, err)
+	require.Equal(t, int32(1), creates.Load(), "the SDK sent the create again")
+	var failure *native.Failure
+	require.False(t, errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected, "the outcome stays unknown: %v", err)
+	require.Equal(t, "reads", id, "AWS may have made the endpoint")
+}
+
 // retryConfig returns a config for an AWS API at url, whose SDK retries a failed call at once.
 func retryConfig(url string) aws.Config {
 	return aws.Config{

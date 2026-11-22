@@ -358,21 +358,23 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 		Tags:                        awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties)),
 	}
 	identifier := strings.ToLower(aws.ToString(input.DBClusterEndpointIdentifier))
-	if _, err := h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region)); err != nil {
+	_, err = h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region), noRetry)
+	if awsapi.HasCode(err, "DBClusterEndpointAlreadyExistsFault") {
+		// The SDK sent the create once, so the endpoint isn't one this call made, and its identifier doesn't go back.
+		return "", lostCreate(err)
+	}
+	if err != nil {
 		// The create reached AWS, which may have made the endpoint, so the identifier goes back with the error.
-		return identifier, awsapi.Rejected(lostCreate(err))
+		return identifier, awsapi.Rejected(err)
 	}
 	return identifier, nil
 }
 
-// lostCreate returns err, unless it says the endpoint already exists. UCP reads AWS by the identifier before it creates
-// an endpoint, so that endpoint may be the one an earlier attempt of this create made, such as when the SDK retried a
-// call whose response was lost. The outcome is then unknown, so UCP keeps the record and the next deploy finds the
-// endpoint by its identifier, instead of dropping it and leaving an endpoint no record manages.
+// lostCreate returns the failure of a create AWS answered with DBClusterEndpointAlreadyExistsFault. UCP reads AWS by
+// the identifier before it creates an endpoint, so that endpoint appeared since, and may be the one an earlier attempt
+// of this deploy made. The outcome is then unknown, so UCP keeps the record and the next deploy finds the endpoint by
+// its identifier, instead of dropping it and leaving an endpoint no record manages.
 func lostCreate(err error) error {
-	if !awsapi.HasCode(err, "DBClusterEndpointAlreadyExistsFault") {
-		return err
-	}
 	return &native.Failure{
 		Message:     "AWS already has a Neptune custom endpoint with the DBClusterEndpointIdentifier, which an earlier attempt of this deploy may have created. Deploy again to manage it, or choose another name: " + err.Error(),
 		ClientError: true,
@@ -437,7 +439,8 @@ func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateReque
 }
 
 // noRetry makes the SDK send a call once. A ModifyDBClusterEndpoint whose response was lost left the endpoint
-// modifying, so a retry would get InvalidDBClusterEndpointStateFault, which reads as a change AWS rejected. Without the
+// modifying, so a retry would get InvalidDBClusterEndpointStateFault, which reads as a change AWS rejected, and a
+// CreateDBClusterEndpoint retry would get DBClusterEndpointAlreadyExistsFault for the endpoint it made. Without the
 // retry, the error leaves the outcome unknown, and the next deploy reads what AWS has.
 func noRetry(o *neptune.Options) {
 	o.RetryMaxAttempts = 1

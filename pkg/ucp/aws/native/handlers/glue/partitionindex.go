@@ -355,8 +355,9 @@ func (h *PartitionIndex) Create(ctx context.Context, request native.CreateReques
 	if awsapi.HasCode(err, "AlreadyExistsException") {
 		// UCP reads AWS by the identifier before it creates an index, so this index appeared since, and may be the one
 		// an earlier attempt of this deploy made. The outcome is then unknown, so UCP keeps the record and the next
-		// deploy finds the index by its identifier.
-		return id.String(), &native.Failure{
+		// deploy finds the index by its identifier. The SDK sent the create once, so the index isn't one this call
+		// made, and its identifier doesn't go back.
+		return "", &native.Failure{
 			Message:     fmt.Sprintf("the table already has a partition index named %q, which an earlier attempt of this deploy may have created. Deploy again to manage it, or choose another name: %v", id.name, err),
 			ClientError: true,
 			Outcome:     native.OutcomeUnknown,

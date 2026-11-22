@@ -460,10 +460,11 @@ func Test_ErrorPaths(t *testing.T) {
 func Test_CreateAlreadyExists(t *testing.T) {
 	h, api := newHandler()
 	api.errs["CreateDBClusterEndpoint"] = fault("DBClusterEndpointAlreadyExistsFault")
-	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
 	var failure *native.Failure
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the endpoint, so UCP keeps the record")
+	require.Empty(t, id, "the endpoint isn't one this call made, so a failed recording doesn't delete it")
 	require.Contains(t, failure.Message, "DBClusterEndpointAlreadyExistsFault")
 	api.errs["CreateDBClusterEndpoint"] = fault("DBClusterEndpointQuotaExceededFault")
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
