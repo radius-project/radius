@@ -46,6 +46,15 @@ type API interface {
 
 var inRegion = awsapi.InRegion[kms.Options]
 
+// once makes the SDK send a call once. AWS returns the existing grant for a create sent again with the same name and
+// values, but its docs don't say how soon after the first create, and the SDK retries within a second. A retry could
+// then make a second grant no record tracks, or fail with a client error UCP reads as AWS rejecting the create, which
+// drops the record of the grant the first attempt made. Sent once, a lost answer leaves the outcome unknown, and the
+// next deploy finds the grant (see Find).
+func once(o *kms.Options) {
+	o.RetryMaxAttempts = 1
+}
+
 var (
 	_ native.Handler            = (*Grant)(nil)
 	_ native.IdentifierEncoder  = (*Grant)(nil)
@@ -376,7 +385,7 @@ func (h *Grant) create(ctx context.Context, request native.CreateRequest) (strin
 		GranteeServicePrincipal:  optional(g.GranteeServicePrincipal),
 		RetiringPrincipal:        optional(g.RetiringPrincipal),
 		RetiringServicePrincipal: optional(g.RetiringServicePrincipal),
-	}, inRegion(request.Region))
+	}, inRegion(request.Region), once)
 	if err != nil {
 		return "", true, err
 	}
