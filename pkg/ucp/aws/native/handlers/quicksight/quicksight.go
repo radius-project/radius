@@ -20,12 +20,14 @@ package quicksight
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/quicksight"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -40,9 +42,26 @@ type API interface {
 	DescribeTemplateAlias(ctx context.Context, params *quicksight.DescribeTemplateAliasInput, optFns ...func(*quicksight.Options)) (*quicksight.DescribeTemplateAliasOutput, error)
 }
 
-// timeout is how long UCP waits for an operation. AWS answers each call at once, and UCP only waits for its reads to
-// show the change.
-const timeout = 10 * time.Minute
+const (
+	// timeout is how long UCP waits for an operation. AWS answers each call at once, and UCP only waits for its reads
+	// to show the change.
+	timeout = 10 * time.Minute
+
+	// confirmReads is how many times a change reads before it stops waiting for a read to show it, and confirmPause
+	// is how long it waits between reads.
+	confirmReads = 20
+	confirmPause = time.Second
+)
+
+// pause waits for d, or until ctx ends.
+type pause func(ctx context.Context, d time.Duration)
+
+func sleep(ctx context.Context, d time.Duration) {
+	select {
+	case <-ctx.Done():
+	case <-time.After(d):
+	}
+}
 
 var inRegion = awsapi.InRegion[quicksight.Options]
 
@@ -83,6 +102,16 @@ func startError(typeName string, what string, err error) error {
 		return busy(typeName, what, err)
 	}
 	return awsapi.Rejected(err)
+}
+
+// rejected reports whether err is a call AWS rejected, so it applied none of it: a failure whose outcome says so, or a
+// client fault.
+func rejected(err error) bool {
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failure.Outcome == native.OutcomeRejected
+	}
+	return ucp_aws.IsClientFault(err)
 }
 
 // stringProperty returns the property name of properties, or "" when it is absent. It returns a client failure when

@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/quicksight"
@@ -43,8 +44,9 @@ const (
 	// pageSize is how many members or aliases a list page has. AWS doesn't document its page size.
 	pageSize = 2
 
-	// settleReads is how many reads of a folder still list a member after it is removed. AWS doesn't say how soon a
-	// read shows a removal, so the first read after one never does.
+	// settleReads is how many reads of a folder still list a member after it is removed, and how many reads of an
+	// alias still show its previous version after an update. AWS doesn't say how soon a read shows either, so the first
+	// read after one never does.
 	settleReads = 2
 
 	// invalidCode is the error the membership calls list for a value that isn't valid, and validationCode the one the
@@ -82,6 +84,12 @@ type pending struct {
 	reads int
 }
 
+// staleVersion is the version reads of an alias still show after an update, and for how many more reads.
+type staleVersion struct {
+	version float64
+	reads   int
+}
+
 // fakeAPI is an in-memory Amazon Quick Sight API for folder memberships and template aliases. It keeps them in an
 // awsfake store, in their types' property format, so the suite's Cloud Control sees the same resources, and takes
 // up any the suite puts in the store directly, even with properties left out. It follows the rules in membershipAPI and
@@ -89,6 +97,7 @@ type pending struct {
 //
 //   - After a member is removed from a folder, the next settleReads reads of the folder still list it. Until then, the
 //     folder is still changing, and AWS rejects another change of its members with ConflictException.
+//   - After an alias is pointed to another version, the next settleReads reads still show the previous version.
 //   - A template that is making a new version (building) rejects a change of its aliases with ConflictException.
 //   - An asset, a folder, a template, or a template version that doesn't exist fails with ResourceNotFoundException.
 //
@@ -113,6 +122,13 @@ type fakeAPI struct {
 	// optional.
 	noArn, noMemberID bool
 
+	// stale holds, for each alias whose version an update changed, the version reads still show and for how many
+	// more reads.
+	stale map[string]*staleVersion
+
+	// holdVersion keeps reads showing an alias's previous version after an update.
+	holdVersion bool
+
 	// noVersion and noAliasArn make the alias calls leave out an alias's TemplateVersionNumber or Arn. The API
 	// reference marks both optional.
 	noVersion, noAliasArn bool
@@ -131,6 +147,7 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 		store:    store,
 		pending:  map[string]*pending{},
 		building: map[string]int{},
+		stale:    map[string]*staleVersion{},
 		calls:    map[string]int{},
 		errs:     map[string]error{},
 	}
@@ -426,13 +443,20 @@ func (f *fakeAPI) UpdateTemplateAlias(ctx context.Context, in *quicksight.Update
 	}
 	err = f.change(func() {
 		properties := f.store.Resource(templateAliasType, id)
+		if previous, ok := properties["TemplateVersionNumber"].(float64); ok && previous != float64(*in.TemplateVersionNumber) {
+			f.stale[id] = &staleVersion{version: previous, reads: settleReads}
+		}
 		properties["TemplateVersionNumber"] = float64(*in.TemplateVersionNumber)
 		f.store.Put(templateAliasType, id, properties)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &quicksight.UpdateTemplateAliasOutput{TemplateAlias: f.templateAlias(id), Status: 200}, nil
+	out := f.templateAlias(id)
+	if !f.noVersion {
+		out.TemplateVersionNumber = in.TemplateVersionNumber
+	}
+	return &quicksight.UpdateTemplateAliasOutput{TemplateAlias: out, Status: 200}, nil
 }
 
 func (f *fakeAPI) DescribeTemplateAlias(ctx context.Context, in *quicksight.DescribeTemplateAliasInput, _ ...func(*quicksight.Options)) (*quicksight.DescribeTemplateAliasOutput, error) {
@@ -448,5 +472,15 @@ func (f *fakeAPI) DescribeTemplateAlias(ctx context.Context, in *quicksight.Desc
 	if f.store.Resource(templateAliasType, id) == nil {
 		return nil, fault("ResourceNotFoundException", "the template has no alias %q", aws.ToString(in.AliasName))
 	}
-	return &quicksight.DescribeTemplateAliasOutput{TemplateAlias: f.templateAlias(id), Status: 200}, nil
+	out := f.templateAlias(id)
+	if old, ok := f.stale[id]; ok && out.TemplateVersionNumber != nil {
+		out.TemplateVersionNumber = aws.Int64(int64(old.version))
+		if old.reads--; old.reads <= 0 && !f.holdVersion {
+			delete(f.stale, id)
+		}
+	}
+	return &quicksight.DescribeTemplateAliasOutput{TemplateAlias: out, Status: 200}, nil
 }
+
+// noWait is a pause that doesn't wait.
+func noWait(context.Context, time.Duration) {}

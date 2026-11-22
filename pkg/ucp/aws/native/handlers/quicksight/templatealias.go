@@ -18,6 +18,7 @@ package quicksight
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 
@@ -48,12 +49,13 @@ var (
 // delete leaves the alias in AWS (see Delete). The identifier is known before the create, so a lost create is found by
 // it. Names that start with $, such as $LATEST, are AWS's own and can't be managed.
 type TemplateAlias struct {
-	api API
+	api  API
+	wait pause
 }
 
 // NewTemplateAlias returns the handler for Quick Sight template aliases.
 func NewTemplateAlias(api API) *TemplateAlias {
-	return &TemplateAlias{api: api}
+	return &TemplateAlias{api: api, wait: sleep}
 }
 
 // TypeName returns AWS::QuickSight::TemplateAlias.
@@ -192,7 +194,7 @@ func (h *TemplateAlias) ReadRecorded(ctx context.Context, region string, identif
 	return properties, nil, nil
 }
 
-// point points the alias to version, for an alias that exists.
+// point points the alias to version, for an alias that exists, and waits until a read shows it.
 func (h *TemplateAlias) point(ctx context.Context, region string, id aliasID, version int64) error {
 	_, err := h.api.UpdateTemplateAlias(ctx, &quicksight.UpdateTemplateAliasInput{
 		AwsAccountId:          aws.String(id.account),
@@ -200,7 +202,37 @@ func (h *TemplateAlias) point(ctx context.Context, region string, id aliasID, ve
 		AliasName:             aws.String(id.alias),
 		TemplateVersionNumber: aws.Int64(version),
 	}, inRegion(region))
-	return startError(templateAliasType, "template", err)
+	if err != nil {
+		return startError(templateAliasType, "template", err)
+	}
+	return h.confirm(ctx, region, id, version)
+}
+
+// confirm reads the alias until it shows version, for up to confirmReads reads. AWS accepted the change, but until a
+// read shows it, the next deploy could read the previous version and keep it. So when no read shows it, confirm
+// returns a failure whose outcome is unknown, and the next deploy sends the template's version again. A read without
+// a version, which AWS's TemplateAlias allows, shows nothing to compare, so it counts as showing it.
+func (h *TemplateAlias) confirm(ctx context.Context, region string, id aliasID, version int64) error {
+	var err error
+	for i := range confirmReads {
+		if i > 0 {
+			h.wait(ctx, confirmPause)
+		}
+		if ctx.Err() != nil {
+			err = ctx.Err()
+			break
+		}
+		var alias *types.TemplateAlias
+		if alias, err = h.describe(ctx, region, id); err == nil && (alias.TemplateVersionNumber == nil || *alias.TemplateVersionNumber == version) {
+			return nil
+		}
+	}
+	message := fmt.Sprintf("%s: AWS accepted pointing the alias %q to version %d, but no read showed it within %s, so UCP can't tell what AWS has. Deploy again.",
+		templateAliasType, id, version, confirmReads*confirmPause)
+	if err != nil {
+		message += " The last read failed: " + err.Error()
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
 }
 
 // Create creates the alias. When AWS already has it, such as after a create whose response was lost, Create points it
@@ -226,10 +258,15 @@ func (h *TemplateAlias) Create(ctx context.Context, request native.CreateRequest
 	if awsapi.HasCode(err, "ResourceExistsException") {
 		return id.String(), h.point(ctx, request.Region, id, version)
 	}
-	if err != nil {
-		return "", startError(templateAliasType, "template", err)
+	if err == nil {
+		return id.String(), nil
 	}
-	return id.String(), nil
+	// A create AWS didn't reject, such as one whose answer was lost, may have made the alias, so the identifier is kept
+	// with the error.
+	if err = startError(templateAliasType, "template", err); rejected(err) {
+		return "", err
+	}
+	return id.String(), err
 }
 
 // Update points the alias to the template's version. AWS answers ResourceNotFoundException for a version the template
@@ -257,8 +294,8 @@ func (h *TemplateAlias) List(ctx context.Context, region string) ([]native.Resou
 	return nil, nil
 }
 
-// Progress reads the alias, which AWS returns once the create or update call returns, so the operation is done once
-// it reads. It returns ErrNotFound when AWS has no such alias.
+// Progress reads the alias, which AWS returns once the create call returns, so the operation is done once it reads.
+// An update already waited until a read showed the new version. It returns ErrNotFound when AWS has no such alias.
 func (h *TemplateAlias) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	id, err := parseAliasID(identifier)
 	if err != nil {

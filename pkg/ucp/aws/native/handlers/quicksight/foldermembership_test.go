@@ -308,3 +308,18 @@ func (m *membershipInputs) DeleteFolderMembership(ctx context.Context, in *quick
 	m.deleted = struct{ account, folder, kind, member string }{aws.ToString(in.AwsAccountId), aws.ToString(in.FolderId), string(in.MemberType), aws.ToString(in.MemberId)}
 	return m.fakeAPI.DeleteFolderMembership(ctx, in, opts...)
 }
+
+// Test_FolderMembership_CreateKeepsIdentifier checks that a create AWS may have applied returns the membership's
+// identifier with its error, and one AWS rejected returns none.
+func Test_FolderMembership_CreateKeepsIdentifier(t *testing.T) {
+	h, api := newMembershipHandler()
+	api.errs["CreateFolderMembership"] = &smithy.GenericAPIError{Code: "InternalFailureException", Message: "lost", Fault: smithy.FaultServer}
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: membershipTemplate()})
+	require.Error(t, err)
+	require.Equal(t, account+"|sales|DASHBOARD|dash-1", id)
+
+	api.errs["CreateFolderMembership"] = fault("ThrottlingException", "slow down")
+	id, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: membershipTemplate()})
+	requireRejected(t, err)
+	require.Empty(t, id)
+}

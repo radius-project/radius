@@ -36,6 +36,15 @@
     },
     {
       "service": "QuickSight",
+      "operation": "DescribeTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 2}}"
+    },
+    {
+      "service": "QuickSight",
       "operation": "UpdateTemplateAlias",
       "status": 404,
       "headers": {

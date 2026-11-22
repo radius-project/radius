@@ -18,6 +18,7 @@ package quicksight
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -356,12 +357,22 @@ var aliasAPI = map[string]nativetest.Call{
 				Code:  validationCode,
 			},
 			{
-				Rule:  "the alias points to the version the update sets",
-				Check: against(createAlias(), updateAlias(3), describeAlias("live", 3)),
+				Rule: "the alias points to the version the update sets, once a read shows it",
+				Check: against(createAlias(), updateAlias(3), func(ctx context.Context, f *fakeAPI) error {
+					if describeAlias("live", 3)(ctx, f) == nil {
+						return errors.New("the first read after the update shows the new version, so a handler never waits for it")
+					}
+					for range settleReads - 1 {
+						if err := describeAlias("live", 0)(ctx, f); err != nil {
+							return err
+						}
+					}
+					return nil
+				}, describeAlias("live", 3)),
 			},
 		},
 		Unclear: "What a version the template doesn't have does: the fake fails with ResourceNotFoundException, the same " +
-			"error as for a missing alias. How soon a read shows the new version: the fake shows it at once." +
+			"error as for a missing alias. How soon a read shows the new version: the fake shows the previous one for two reads." +
 			templateBusyNote + aliasCodeNote,
 	},
 	"DescribeTemplateAlias": {

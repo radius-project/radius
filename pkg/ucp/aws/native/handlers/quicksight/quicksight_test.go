@@ -17,10 +17,12 @@ limitations under the License.
 package quicksight
 
 import (
+	"context"
 	"maps"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/quicksight"
 	"github.com/stretchr/testify/require"
@@ -123,7 +125,9 @@ func runAliasSuite(t *testing.T, configure func(*fakeAPI)) {
 			if configure != nil {
 				configure(f)
 			}
-			return NewTemplateAlias(f)
+			h := NewTemplateAlias(f)
+			h.wait = noWait
+			return h
 		},
 		Unrecorded:       unrecorded,
 		Properties:       properties,
@@ -151,4 +155,13 @@ func Test_InRegion(t *testing.T) {
 	opts := quicksight.Options{}
 	inRegion("eu-west-2")(&opts)
 	require.Equal(t, "eu-west-2", opts.Region)
+}
+
+func Test_Sleep(t *testing.T) {
+	sleep(t.Context(), time.Millisecond)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	start := time.Now()
+	sleep(ctx, time.Hour)
+	require.Less(t, time.Since(start), time.Minute, "a context that ends stops the wait")
 }

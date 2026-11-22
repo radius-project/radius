@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/quicksight"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -32,7 +33,9 @@ import (
 
 func newAliasHandler() (*TemplateAlias, *fakeAPI) {
 	api := newFakeAPI(awsfake.NewCloudControl())
-	return NewTemplateAlias(api), api
+	h := NewTemplateAlias(api)
+	h.wait = noWait
+	return h, api
 }
 
 func makeAlias(t *testing.T, h *TemplateAlias, properties map[string]any) string {
@@ -221,4 +224,74 @@ func Test_TemplateAlias_SparseAnswer(t *testing.T) {
 	read, _, err = h.ReadRecorded(t.Context(), region, id, with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(3)}))
 	require.NoError(t, err)
 	require.Equal(t, float64(2), read["TemplateVersionNumber"])
+}
+
+// Test_TemplateAlias_UpdateShown checks that an update finishes only once a read shows the alias's new version, so the
+// next deploy reads what the update set.
+func Test_TemplateAlias_UpdateShown(t *testing.T) {
+	h, _ := newAliasHandler()
+	id := makeAlias(t, h, aliasTemplate())
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(3)})}))
+	wait(t, h, id, native.OperationUpdate)
+	read, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+	require.Equal(t, float64(3), read["TemplateVersionNumber"])
+}
+
+// Test_TemplateAlias_CreateExistingShown checks that a create that points an existing alias to the template's version
+// returns only once a read shows that version.
+func Test_TemplateAlias_CreateExistingShown(t *testing.T) {
+	h, _ := newAliasHandler()
+	makeAlias(t, h, with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(1)}))
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: aliasTemplate()})
+	require.NoError(t, err)
+	read, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+	require.Equal(t, float64(2), read["TemplateVersionNumber"])
+}
+
+// Test_TemplateAlias_CreateKeepsIdentifier checks that a create AWS may have applied returns the alias's identifier
+// with its error, and one AWS rejected returns none.
+func Test_TemplateAlias_CreateKeepsIdentifier(t *testing.T) {
+	h, api := newAliasHandler()
+	api.errs["CreateTemplateAlias"] = &smithy.GenericAPIError{Code: "InternalFailureException", Message: "lost", Fault: smithy.FaultServer}
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: aliasTemplate()})
+	require.Error(t, err)
+	require.Equal(t, account+"|report|live", id)
+
+	api.errs["CreateTemplateAlias"] = fault("ThrottlingException", "slow down")
+	id, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: aliasTemplate()})
+	requireRejected(t, err)
+	require.Empty(t, id)
+}
+
+// Test_TemplateAlias_UpdateNotShown checks that an update no read confirms fails with an unknown outcome, which asks
+// the user to deploy again, instead of reporting success.
+func Test_TemplateAlias_UpdateNotShown(t *testing.T) {
+	h, api := newAliasHandler()
+	id := makeAlias(t, h, aliasTemplate())
+	api.holdVersion = true
+	err := h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(3)})})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.False(t, failure.ClientError)
+	require.Contains(t, failure.Message, "Deploy again")
+	require.Equal(t, 1+confirmReads, api.calls["DescribeTemplateAlias"], "one read for the create, then confirmReads")
+
+	// A read that fails while confirming is named in the failure, and stays unknown.
+	api.holdVersion = false
+	api.errs["DescribeTemplateAlias"] = fault("ThrottlingException", "slow down")
+	err = h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: with(aliasTemplate(), map[string]any{"TemplateVersionNumber": float64(1)})})
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.Contains(t, failure.Message, "ThrottlingException")
+
+	// A context that ends stops the wait.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	h.wait = sleep
+	err = h.confirm(ctx, region, aliasID{account: account, template: "report", alias: "live"}, 3)
+	require.ErrorAs(t, err, &failure)
+	require.Contains(t, failure.Message, context.Canceled.Error())
 }

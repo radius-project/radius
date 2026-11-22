@@ -211,10 +211,15 @@ func (h *FolderMembership) Create(ctx context.Context, request native.CreateRequ
 		MemberType:   id.kind,
 		MemberId:     aws.String(id.member),
 	}, inRegion(request.Region))
-	if err != nil && !awsapi.HasCode(err, "ResourceExistsException") {
-		return "", startError(folderMembershipType, "folder", err)
+	if err == nil || awsapi.HasCode(err, "ResourceExistsException") {
+		return id.String(), nil
 	}
-	return id.String(), nil
+	// A create AWS didn't reject, such as one whose answer was lost, may have added the asset, so the identifier is
+	// kept with the error.
+	if err = startError(folderMembershipType, "folder", err); rejected(err) {
+		return "", err
+	}
+	return id.String(), err
 }
 
 // Update changes nothing, because every property is create-only.
