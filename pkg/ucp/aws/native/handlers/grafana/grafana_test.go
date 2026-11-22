@@ -21,12 +21,14 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/grafana"
 	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -186,7 +188,10 @@ func Test_WorkspaceServiceAccount_Busy(t *testing.T) {
 	requireFailure(t, err, true, "dependsOn")
 	require.NotContains(t, err.Error(), "this name", "only a create can clash on the name")
 	_, err = h.Read(t.Context(), region, id)
-	requireFailure(t, err, true, "dependsOn")
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.Conflict)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "a read never reports rejected")
 	require.Len(t, api.store.List(serviceAccountType), 1)
 	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: serviceAccount("ci")})
 	require.NoError(t, err)
@@ -345,4 +350,43 @@ func Test_InRegion(t *testing.T) {
 	opts := grafana.Options{}
 	inRegion("eu-west-2")(&opts)
 	require.Equal(t, "eu-west-2", opts.Region)
+}
+
+// Test_WorkspaceServiceAccount_ReadErrorsStayErrors checks that a 4xx from the list in Read, Find, or Progress, such
+// as throttling, stays an error, never a rejected failure, which would end an applied operation as rejected. A
+// workspace that is busy keeps Progress waiting.
+func Test_WorkspaceServiceAccount_ReadErrorsStayErrors(t *testing.T) {
+	h, api := newHandler()
+	id := createAccount(t, h, serviceAccount("ci"))
+	api.busy[workspace] = 0
+	throttled := &smithyhttp.ResponseError{
+		Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusTooManyRequests}},
+		Err:      &smithy.GenericAPIError{Code: "ThrottlingException", Message: "slow down"},
+	}
+	api.errs["ListWorkspaceServiceAccounts"] = throttled
+	var failure *native.Failure
+	_, err := h.Read(t.Context(), region, id)
+	require.ErrorContains(t, err, "ThrottlingException")
+	require.False(t, errors.As(err, &failure), "Read: %v", err)
+	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: serviceAccount("ci")})
+	require.ErrorContains(t, err, "ThrottlingException")
+	require.False(t, errors.As(err, &failure), "Find: %v", err)
+	for _, op := range []native.Operation{native.OperationCreate, native.OperationDelete} {
+		_, err = h.Progress(t.Context(), region, id, op)
+		require.ErrorContains(t, err, "ThrottlingException")
+		require.False(t, errors.As(err, &failure), "Progress: %v", err)
+	}
+
+	delete(api.errs, "ListWorkspaceServiceAccounts")
+	api.busy[workspace] = 1
+	p, err := h.Progress(t.Context(), region, id, native.OperationCreate)
+	require.NoError(t, err)
+	require.False(t, p.Done, "the workspace is busy")
+
+	// A busy workspace while Find looks is a conflict whose outcome is unknown, so the caller tries again.
+	api.busy[workspace] = 1
+	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: serviceAccount("ci")})
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.Conflict)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
 }

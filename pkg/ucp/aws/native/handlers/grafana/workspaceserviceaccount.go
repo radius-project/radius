@@ -168,35 +168,40 @@ func (h *WorkspaceServiceAccount) Identifier(properties map[string]any) (string,
 }
 
 // busy returns the conflict of a call AWS rejected because the workspace is changing. UCP answers 409, so the caller
-// tries again later.
-func busy(workspace string, cause error) error {
+// tries again later. outcome is OutcomeRejected for a start call, which changed nothing, and OutcomeUnknown for a read,
+// which says nothing about what an earlier change did.
+func busy(workspace string, cause error, outcome native.Outcome) error {
 	return &native.Failure{
-		Message: fmt.Sprintf("AWS rejected the call because the Grafana workspace %q is busy, so nothing was changed. Try again once the workspace is active, "+
+		Message: fmt.Sprintf("AWS rejected the call because the Grafana workspace %q is busy. Try again once the workspace is active, "+
 			"and give the service account dependsOn on the workspace: %v", workspace, cause),
 		ClientError: true,
 		Conflict:    true,
-		Outcome:     native.OutcomeRejected,
+		Outcome:     outcome,
 	}
 }
 
-// callError returns the error of a call: a conflict for AWS's ConflictException, which AWS returns while the workspace
-// is changing, ErrNotFound for ResourceNotFoundException, and AWS's error otherwise, as a rejected client failure when
-// AWS answered with a 4xx status.
+// callError returns the error of a start call, Create or Delete: a conflict for AWS's ConflictException, which AWS
+// returns while the workspace is changing, ErrNotFound for ResourceNotFoundException, and AWS's error otherwise, as a
+// rejected client failure when AWS answered with a 4xx status. Reads never use it: a read that fails, such as when
+// throttled, says nothing about what a change did, so it stays an error.
 func callError(err error, workspace string) error {
 	if awsapi.HasCode(err, "ConflictException") {
-		return busy(workspace, err)
+		return busy(workspace, err, native.OutcomeRejected)
 	}
 	return awsapi.Rejected(awsapi.NotFound(err, "ResourceNotFoundException"))
 }
 
 // list calls each with every service account of the workspace, and stops at the first error. It returns ErrNotFound
-// when the workspace doesn't exist.
+// when the workspace doesn't exist, a conflict with an unknown outcome while it is busy, and AWS's error otherwise.
 func (h *WorkspaceServiceAccount) list(ctx context.Context, region string, workspace string, each func(s *types.ServiceAccountSummary)) error {
 	input := &grafana.ListWorkspaceServiceAccountsInput{WorkspaceId: aws.String(workspace)}
 	for {
 		page, err := h.api.ListWorkspaceServiceAccounts(ctx, input, inRegion(region))
 		if err != nil {
-			return callError(err, workspace)
+			if awsapi.HasCode(err, "ConflictException") {
+				return busy(workspace, err, native.OutcomeUnknown)
+			}
+			return awsapi.NotFound(err, "ResourceNotFoundException")
 		}
 		for i := range page.ServiceAccounts {
 			each(&page.ServiceAccounts[i])
