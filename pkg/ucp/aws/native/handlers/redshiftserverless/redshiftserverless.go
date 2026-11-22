@@ -25,6 +25,7 @@ package redshiftserverless
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -32,6 +33,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/redshiftserverless"
 	"github.com/aws/aws-sdk-go-v2/service/redshiftserverless/types"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -98,6 +100,23 @@ func rejected(what string, err error) error {
 		return busyFailure(what, err)
 	}
 	return awsapi.Rejected(err)
+}
+
+// created returns what a Create whose start call failed with err returns: the identifier, unless AWS rejected the call
+// and made nothing. A create AWS may have made, such as one whose answer was lost, keeps the identifier with its
+// error, so a caller that cleans up what a create may have made, such as a failed recording, finds it.
+func created(identifier string, err error) (string, error) {
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		if failure.Outcome == native.OutcomeRejected {
+			return "", err
+		}
+		return identifier, err
+	}
+	if ucp_aws.IsClientFault(err) {
+		return "", err
+	}
+	return identifier, err
 }
 
 // unconfirmed is the failure of a create or an update AWS answered with ConflictException, err, when the read that

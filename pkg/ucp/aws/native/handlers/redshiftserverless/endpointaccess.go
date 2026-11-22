@@ -217,7 +217,7 @@ func (h *EndpointAccess) Create(ctx context.Context, request native.CreateReques
 	}
 	_, err := h.api.CreateEndpointAccess(ctx, input, inRegion(request.Region))
 	if err != nil {
-		return "", endpointCreateError(awsapi.String(p, "WorkgroupName"), err)
+		return created(name, endpointCreateError(awsapi.String(p, "WorkgroupName"), err))
 	}
 	return name, nil
 }

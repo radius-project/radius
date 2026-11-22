@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/redshiftserverless"
 	"github.com/aws/aws-sdk-go-v2/service/redshiftserverless/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -328,4 +329,96 @@ func (f *failSecondGet) GetEndpointAccess(ctx context.Context, in *redshiftserve
 
 func (f *failSecondGet) GetCustomDomainAssociation(ctx context.Context, in *redshiftserverless.GetCustomDomainAssociationInput, opts ...func(*redshiftserverless.Options)) (*redshiftserverless.GetCustomDomainAssociationOutput, error) {
 	return nil, fault("ThrottlingException", "slow down")
+}
+
+// Test_CreateKeepsTheIdentifierAWSMayHaveUsed checks that a Create whose call AWS may have applied, such as one whose
+// answer was lost or that AWS answered "already exists", returns the identifier with its failure, so a failed recording
+// registers cleanup for what AWS may have made, and that a Create AWS rejected returns none.
+func Test_CreateKeepsTheIdentifierAWSMayHaveUsed(t *testing.T) {
+	serverError := &smithy.GenericAPIError{Code: "InternalServerException", Message: "lost", Fault: smithy.FaultServer}
+	tests := []struct {
+		name    string
+		create  func(api *fakeAPI) (string, error)
+		prepare func(api *fakeAPI)
+		want    string
+	}{
+		{
+			name:    "an endpoint whose answer was lost",
+			prepare: func(api *fakeAPI) { api.errs["CreateEndpointAccess"] = serverError },
+			create: func(api *fakeAPI) (string, error) {
+				return NewEndpointAccess(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: ownEndpoint})
+			},
+			want: "reads",
+		},
+		{
+			name: "an endpoint AWS already has",
+			prepare: func(api *fakeAPI) {
+				_, _ = NewEndpointAccess(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: ownEndpoint})
+			},
+			create: func(api *fakeAPI) (string, error) {
+				return NewEndpointAccess(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: ownEndpoint})
+			},
+			want: "reads",
+		},
+		{
+			name:    "an endpoint of a busy workgroup",
+			prepare: func(api *fakeAPI) { api.held["analytics"] = true },
+			create: func(api *fakeAPI) (string, error) {
+				return NewEndpointAccess(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: ownEndpoint})
+			},
+		},
+		{
+			name:    "an endpoint of a missing workgroup",
+			prepare: func(api *fakeAPI) {},
+			create: func(api *fakeAPI) (string, error) {
+				return NewEndpointAccess(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: with(ownEndpoint, map[string]any{"WorkgroupName": "missing"})})
+			},
+		},
+		{
+			name:    "an association whose answer was lost",
+			prepare: func(api *fakeAPI) { api.errs["CreateCustomDomainAssociation"] = serverError },
+			create: func(api *fakeAPI) (string, error) {
+				return NewCustomDomainAssociation(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: domain})
+			},
+			want: domainID,
+		},
+		{
+			name: "an association AWS already has",
+			prepare: func(api *fakeAPI) {
+				_, _ = NewCustomDomainAssociation(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: domain})
+				api.busy["analytics"] = 0
+			},
+			create: func(api *fakeAPI) (string, error) {
+				return NewCustomDomainAssociation(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: domain})
+			},
+			want: domainID,
+		},
+		{
+			name: "an association whose conflict AWS can't confirm",
+			prepare: func(api *fakeAPI) {
+				api.errs["CreateCustomDomainAssociation"] = fault(conflict, "busy")
+				api.errs["GetCustomDomainAssociation"] = fault("ThrottlingException", "slow down")
+			},
+			create: func(api *fakeAPI) (string, error) {
+				return NewCustomDomainAssociation(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: domain})
+			},
+			want: domainID,
+		},
+		{
+			name:    "an association with a certificate ACM doesn't have",
+			prepare: func(api *fakeAPI) {},
+			create: func(api *fakeAPI) (string, error) {
+				return NewCustomDomainAssociation(api).Create(t.Context(), native.CreateRequest{Region: region, Properties: with(domain, map[string]any{"CustomDomainCertificateArn": "arn:aws:acm:us-west-2:123456789012:certificate/missing"})})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			api := newAPI()
+			tt.prepare(api)
+			identifier, err := tt.create(api)
+			require.Error(t, err)
+			require.Equal(t, tt.want, identifier)
+		})
+	}
 }

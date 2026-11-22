@@ -164,17 +164,17 @@ func (h *CustomDomainAssociation) Create(ctx context.Context, request native.Cre
 		_, getErr := h.get(ctx, request.Region, identifier)
 		switch {
 		case getErr == nil:
-			return "", &native.Failure{
+			return identifier, &native.Failure{
 				Message:     fmt.Sprintf("AWS already associates %s with the workgroup %s, which an earlier attempt of this deploy may have done. Deploy again to manage it: %s", domain, workgroup, err.Error()),
 				ClientError: true,
 				Outcome:     native.OutcomeUnknown,
 			}
 		case !errors.Is(getErr, native.ErrNotFound):
-			return "", unconfirmed(err, getErr)
+			return identifier, unconfirmed(err, getErr)
 		}
 	}
 	if err != nil {
-		return "", rejected("The workgroup "+workgroup, err)
+		return created(identifier, rejected("The workgroup "+workgroup, err))
 	}
 	return identifier, nil
 }

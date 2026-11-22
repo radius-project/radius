@@ -97,7 +97,7 @@ func Test_Replay_EndpointAccessWorkgroupBusy(t *testing.T) {
 	})
 
 	workgroup := s.Input("RADIUS_REC_WORKGROUP")
-	_, err = NewEndpointAccess(api).Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{
+	identifier, err := NewEndpointAccess(api).Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{
 		"EndpointName":        "radius-rec-" + s.Input("RADIUS_REC_RUN"),
 		"WorkgroupName":       workgroup,
 		"SubnetIds":           []any{s.Input("RADIUS_REC_SUBNET")},
@@ -110,6 +110,7 @@ func Test_Replay_EndpointAccessWorkgroupBusy(t *testing.T) {
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Contains(t, failure.Message, "The workgroup "+workgroup+" is busy")
 	require.Contains(t, failure.Message, conflict)
+	require.Empty(t, identifier, "AWS made nothing, so a recording has nothing to clean up")
 }
 
 // Test_Replay_CustomDomainAssociation associates a domain with a workgroup, changes its certificate, and removes it,
@@ -139,7 +140,7 @@ func Test_Replay_CustomDomainAssociation(t *testing.T) {
 func Test_Replay_CustomDomainRejected(t *testing.T) {
 	s := awsreplay.New(t, "testdata/customdomainrejected.json")
 	api := redshiftserverless.NewFromConfig(s.Config(t.Context()))
-	_, err := NewCustomDomainAssociation(api).Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{
+	identifier, err := NewCustomDomainAssociation(api).Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{
 		"WorkgroupName":              s.Input("RADIUS_REC_WORKGROUP"),
 		"CustomDomainName":           "radius-rec.example.com",
 		"CustomDomainCertificateArn": "arn:aws:acm:us-west-2:123456789012:certificate/00000000-0000-0000-0000-000000000000",
@@ -150,4 +151,5 @@ func Test_Replay_CustomDomainRejected(t *testing.T) {
 	require.False(t, failure.Conflict)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Contains(t, failure.Message, validation)
+	require.Empty(t, identifier, "AWS made nothing, so a recording has nothing to clean up")
 }
