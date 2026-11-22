@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -234,8 +235,13 @@ func (h *AuthenticationProfile) Create(ctx context.Context, request native.Creat
 		AuthenticationProfileName:    aws.String(name),
 		AuthenticationProfileContent: aws.String(content),
 	}, profileRegion(request.Region), profileOnce)
-	if err != nil {
-		return "", awsapi.Rejected(err)
+	if err = awsapi.Rejected(err); err != nil {
+		// AWS may have made the profile when it didn't reject the call, such as when the response was lost.
+		var failure *native.Failure
+		if errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected {
+			return "", err
+		}
+		return name, err
 	}
 	return name, nil
 }

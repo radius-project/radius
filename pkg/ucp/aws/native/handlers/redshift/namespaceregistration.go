@@ -18,6 +18,7 @@ package redshift
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -418,8 +419,13 @@ func (h *NamespaceRegistration) Create(ctx context.Context, request native.Creat
 	if awsapi.HasCode(err, registrationBusy) {
 		return "", registrationBusyFailure(r, err)
 	}
-	if err != nil {
-		return "", awsapi.Rejected(err)
+	if err = awsapi.Rejected(err); err != nil {
+		// AWS may have made the registration when it didn't reject the call, such as when the response was lost.
+		var failure *native.Failure
+		if errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected {
+			return "", err
+		}
+		return r.identifier(), err
 	}
 	return r.identifier(), nil
 }

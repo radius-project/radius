@@ -18,6 +18,7 @@ package redshift
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -214,8 +215,13 @@ func (h *PartnerIntegration) Create(ctx context.Context, request native.CreateRe
 		DatabaseName:      aws.String(values[2]),
 		PartnerName:       aws.String(values[3]),
 	}, partnerRegion(request.Region))
-	if err != nil {
-		return "", awsapi.Rejected(err)
+	if err = awsapi.Rejected(err); err != nil {
+		// AWS may have added the integration when it didn't reject the call, such as when the response was lost.
+		var failure *native.Failure
+		if errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected {
+			return "", err
+		}
+		return strings.Join(values, "|"), err
 	}
 	return strings.Join(values, "|"), nil
 }

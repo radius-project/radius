@@ -17,6 +17,7 @@ limitations under the License.
 package redshift
 
 import (
+	"errors"
 	"maps"
 	"os"
 	"strings"
@@ -192,4 +193,13 @@ func Test_PartnerIntegration_LostResponse(t *testing.T) {
 	err := NewPartnerIntegration(redshift.NewFromConfig(cfg)).Delete(t.Context(), partnerTestRegion, partnerTestID)
 	require.ErrorIs(t, err, native.ErrNotFound)
 	require.Equal(t, 2, *calls)
+}
+
+// Test_PartnerIntegration_CreateLostResponse checks that an add AWS may have applied, whose response was lost, returns
+// the integration's identifier with the unknown outcome, so UCP and a recording's cleanup know what AWS may have.
+func Test_PartnerIntegration_CreateLostResponse(t *testing.T) {
+	id, err := NewPartnerIntegration(redshift.NewFromConfig(allResponsesLost())).Create(t.Context(), native.CreateRequest{Region: partnerTestRegion, Properties: partnerProps(nil)})
+	require.Error(t, err)
+	require.False(t, errors.As(err, new(*native.Failure)), "a lost response is an unknown outcome")
+	require.Equal(t, partnerTestID, id)
 }

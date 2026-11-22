@@ -32,6 +32,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/redshift"
 	"github.com/aws/aws-sdk-go-v2/service/redshift/types"
 	"github.com/aws/aws-sdk-go-v2/service/redshiftserverless"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -456,17 +457,36 @@ func (f roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
 }
 
+// Test_NamespaceRegistration_CreateRejected checks that a registration AWS rejected, including one rejected because
+// the namespace is busy, returns no identifier, because AWS made nothing.
+func Test_NamespaceRegistration_CreateRejected(t *testing.T) {
+	api := newRegistrationAPI()
+	h := NewNamespaceRegistration(api, api)
+	api.errs["RegisterNamespace"] = &smithyhttp.ResponseError{
+		Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusBadRequest}},
+		Err:      registrationFault(registrationInvalid, "The consumer identifier isn't valid."),
+	}
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: registrationTestRegion, Properties: analyticsProps()})
+	require.Error(t, err)
+	require.Empty(t, id)
+	api.errs["RegisterNamespace"] = registrationFault(registrationBusy, "busy")
+	id, err = h.Create(t.Context(), native.CreateRequest{Region: registrationTestRegion, Properties: analyticsProps()})
+	require.Error(t, err)
+	require.Empty(t, id)
+}
+
 // Test_NamespaceRegistration_LostResponse checks that a register or deregister AWS may have applied, whose response
 // was lost, is never reported as rejected. The SDK would send it again and AWS would answer InvalidClusterState,
 // because the first call left the cluster busy, which would drop the record of a registration AWS made.
 func Test_NamespaceRegistration_LostResponse(t *testing.T) {
 	cfg, calls := firstResponseLost(t, registrationBusy)
 	h := NewNamespaceRegistration(redshift.NewFromConfig(cfg), nil)
-	_, err := h.Create(t.Context(), native.CreateRequest{Region: registrationTestRegion, Properties: provisionedRegistration("warehouse", registrationConsumer)})
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: registrationTestRegion, Properties: provisionedRegistration("warehouse", registrationConsumer)})
 	require.Error(t, err)
 	var failure *native.Failure
 	require.False(t, errors.As(err, &failure), "a lost response is an unknown outcome, not %v", failure)
 	require.Equal(t, 1, *calls, "the SDK doesn't send a registration again")
+	require.Equal(t, "warehouse|"+registrationConsumer, id, "AWS may have made the registration, so Create returns its identifier")
 
 	cfg, calls = firstResponseLost(t, registrationBusy)
 	h = NewNamespaceRegistration(redshift.NewFromConfig(cfg), nil)
@@ -474,4 +494,17 @@ func Test_NamespaceRegistration_LostResponse(t *testing.T) {
 	require.Error(t, err)
 	require.False(t, errors.As(err, &failure), "a lost response is an unknown outcome, not %v", failure)
 	require.Equal(t, 1, *calls, "the SDK doesn't send a deregistration again")
+}
+
+// allResponsesLost returns an AWS config whose calls all reach AWS but lose their responses, and whose SDK sends
+// each call once.
+func allResponsesLost() aws.Config {
+	return aws.Config{
+		Region:           registrationTestRegion,
+		Credentials:      credentials.NewStaticCredentialsProvider("AKIATEST", "test", ""),
+		RetryMaxAttempts: 1,
+		HTTPClient: &http.Client{Transport: roundTripper(func(req *http.Request) (*http.Response, error) {
+			return nil, &net.OpError{Op: "read", Net: "tcp", Err: syscall.ECONNRESET}
+		})},
+	}
 }

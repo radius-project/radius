@@ -224,11 +224,12 @@ func Test_AuthenticationProfile_List(t *testing.T) {
 // which would drop the record of a profile AWS made.
 func Test_AuthenticationProfile_LostResponse(t *testing.T) {
 	cfg, calls := firstResponseLost(t, profileExists)
-	_, err := NewAuthenticationProfile(redshift.NewFromConfig(cfg)).Create(t.Context(), native.CreateRequest{Region: profileTestRegion, Properties: profileProps("odbc", `{"a":"1"}`)})
+	id, err := NewAuthenticationProfile(redshift.NewFromConfig(cfg)).Create(t.Context(), native.CreateRequest{Region: profileTestRegion, Properties: profileProps("odbc", `{"a":"1"}`)})
 	require.Error(t, err)
 	var failure *native.Failure
 	require.False(t, errors.As(err, &failure), "a lost response is an unknown outcome, not %v", failure)
 	require.Equal(t, 1, *calls, "the SDK doesn't send a create again")
+	require.Equal(t, "odbc", id, "AWS may have made the profile, so Create returns its identifier")
 }
 
 // Test_AuthenticationProfile_LostDelete checks that a delete the SDK sends again after a lost response, which AWS
