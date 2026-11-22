@@ -18,6 +18,7 @@ package rds
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"strings"
@@ -56,6 +57,10 @@ type fakeDBInstances struct {
 
 	// incomplete makes the next DescribeDBInstances leave out DBInstanceStatus, which the API reference marks optional.
 	incomplete bool
+
+	// lost names a call whose next response is lost after RDS acted on it. The SDK then sends the call again, unless
+	// the call set RetryMaxAttempts to 1, and RDS answers the second call for the status the first one left.
+	lost string
 }
 
 var _ DBInstanceAPI = (*fakeDBInstances)(nil)
@@ -85,6 +90,23 @@ func dbFault(code string) error {
 }
 
 // call records a call, and returns the error errs sets for it. A call without a region fails, as with AWS.
+// errLost is the error of a call whose response is lost, such as a reset connection, which the SDK may retry.
+var errLost = errors.New("read: connection reset by peer")
+
+// lostResponse reports whether the response of the call name is lost (see lost), and whether the SDK sends the call
+// again then.
+func (f *fakeDBInstances) lostResponse(name string, opts []func(*rds.Options)) (lost bool, retry bool) {
+	if f.lost != name {
+		return false, false
+	}
+	f.lost = ""
+	options := rds.Options{}
+	for _, fn := range opts {
+		fn(&options)
+	}
+	return true, options.RetryMaxAttempts != 1
+}
+
 func (f *fakeDBInstances) call(name string, opts []func(*rds.Options)) error {
 	f.calls = append(f.calls, name)
 	options := rds.Options{}
@@ -178,6 +200,17 @@ func (f *fakeDBInstances) DescribeDBInstances(ctx context.Context, in *rds.Descr
 func (f *fakeDBInstances) StartDBInstance(ctx context.Context, in *rds.StartDBInstanceInput, opts ...func(*rds.Options)) (*rds.StartDBInstanceOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	out, err := f.startDBInstance(in, opts)
+	if lost, retry := f.lostResponse("StartDBInstance", opts); lost && err == nil {
+		if retry {
+			return f.startDBInstance(in, opts)
+		}
+		return nil, errLost
+	}
+	return out, err
+}
+
+func (f *fakeDBInstances) startDBInstance(in *rds.StartDBInstanceInput, opts []func(*rds.Options)) (*rds.StartDBInstanceOutput, error) {
 	if err := f.call("StartDBInstance", opts); err != nil {
 		return nil, err
 	}
@@ -195,6 +228,17 @@ func (f *fakeDBInstances) StartDBInstance(ctx context.Context, in *rds.StartDBIn
 func (f *fakeDBInstances) StopDBInstance(ctx context.Context, in *rds.StopDBInstanceInput, opts ...func(*rds.Options)) (*rds.StopDBInstanceOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	out, err := f.stopDBInstance(in, opts)
+	if lost, retry := f.lostResponse("StopDBInstance", opts); lost && err == nil {
+		if retry {
+			return f.stopDBInstance(in, opts)
+		}
+		return nil, errLost
+	}
+	return out, err
+}
+
+func (f *fakeDBInstances) stopDBInstance(in *rds.StopDBInstanceInput, opts []func(*rds.Options)) (*rds.StopDBInstanceOutput, error) {
 	if err := f.call("StopDBInstance", opts); err != nil {
 		return nil, err
 	}

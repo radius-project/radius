@@ -281,6 +281,36 @@ func Test_InstanceState_CantStop(t *testing.T) {
 	require.ErrorContains(t, err, "EC2 failed")
 }
 
+// Test_InstanceState_LostResponse checks a start or stop whose response is lost after EC2 acted on it. EC2 may answer
+// the same call for the state it left with IncorrectInstanceState, so an SDK retry would read as a call EC2 rejected.
+// The handler sends the call once, so the error leaves the outcome unknown, and the next deploy, which sends the
+// update again, waits for the instance instead of calling EC2 again.
+func Test_InstanceState_LostResponse(t *testing.T) {
+	for _, tt := range []struct {
+		state   types.InstanceStateName
+		desired string
+		call    string
+	}{
+		{types.InstanceStateNameStopped, "running", "StartInstances"},
+		{types.InstanceStateNameRunning, "stopped", "StopInstances"},
+	} {
+		t.Run(tt.call, func(t *testing.T) {
+			h, api := newInstanceState(tt.state, nil)
+			request := update(t, h, tt.desired)
+			api.lost = tt.call
+			err := h.Update(t.Context(), request)
+			var failure *native.Failure
+			require.False(t, errors.As(err, &failure), "EC2 may have acted on the call, so its outcome is unknown")
+			require.ErrorIs(t, err, errLost)
+
+			api.calls = nil
+			require.NoError(t, h.Update(t.Context(), request))
+			require.Equal(t, []string{"DescribeInstances"}, api.calls, "the instance is on its way, so nothing is sent again")
+			waitInstance(t, h, request.State, tt.desired)
+		})
+	}
+}
+
 func Test_InstanceState_Progress(t *testing.T) {
 	h, api := newInstanceState(types.InstanceStateNamePending, nil)
 	id := testInstance

@@ -310,6 +310,31 @@ func Test_DBInstanceState_CantStop(t *testing.T) {
 	require.ErrorContains(t, err, "RDS failed")
 }
 
+// Test_DBInstanceState_LostResponse checks a start or stop whose response is lost after RDS acted on it. RDS answers
+// the same call for the status it left with InvalidDBInstanceState, so an SDK retry would read as a call RDS
+// rejected. The handler sends the call once, so the error leaves the outcome unknown, and the next deploy, which
+// sends the update again, waits for the DB instance instead of calling RDS again.
+func Test_DBInstanceState_LostResponse(t *testing.T) {
+	for _, tt := range []struct{ status, desired, call string }{
+		{"stopped", "running", "StartDBInstance"},
+		{"available", "stopped", "StopDBInstance"},
+	} {
+		t.Run(tt.call, func(t *testing.T) {
+			h, api := newDBInstanceState(tt.status, nil)
+			api.lost = tt.call
+			err := h.Update(t.Context(), dbUpdateRequest(t, tt.status, tt.desired))
+			var failure *native.Failure
+			require.False(t, errors.As(err, &failure), "RDS may have acted on the call, so its outcome is unknown")
+			require.ErrorIs(t, err, errLost)
+
+			api.calls = nil
+			require.NoError(t, h.Update(t.Context(), dbUpdateRequest(t, tt.status, tt.desired)))
+			require.Equal(t, []string{"DescribeDBInstances"}, api.calls, "the DB instance is on its way, so nothing is sent again")
+			waitDBInstance(t, h, tt.status, tt.desired)
+		})
+	}
+}
+
 func Test_DBInstanceState_Progress(t *testing.T) {
 	h, api := newDBInstanceState("starting", nil)
 	progress, err := h.Progress(t.Context(), dbRegion, testDBInstance, native.OperationCreate)

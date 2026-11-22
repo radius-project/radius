@@ -201,10 +201,10 @@ func (h *InstanceState) apply(ctx context.Context, region string, id string, des
 	}
 	verb := "start"
 	if desired == awsapi.StateRunning {
-		_, err = h.api.StartInstances(ctx, &awsec2.StartInstancesInput{InstanceIds: []string{id}}, inRegion(region))
+		_, err = h.api.StartInstances(ctx, &awsec2.StartInstancesInput{InstanceIds: []string{id}}, inRegion(region), sendOnce)
 	} else {
 		verb = "stop"
-		_, err = h.api.StopInstances(ctx, &awsec2.StopInstancesInput{InstanceIds: []string{id}}, inRegion(region))
+		_, err = h.api.StopInstances(ctx, &awsec2.StopInstancesInput{InstanceIds: []string{id}}, inRegion(region), sendOnce)
 	}
 	if err == nil || !ucp_aws.IsClientFault(err) {
 		return err
@@ -214,6 +214,14 @@ func (h *InstanceState) apply(ctx context.Context, region string, id string, des
 		ClientError: true,
 		Outcome:     native.OutcomeRejected,
 	}
+}
+
+// sendOnce stops the SDK from sending a start or stop again after an error. EC2 may answer a start of an instance that
+// isn't stopped, or a stop of one that isn't running, with IncorrectInstanceState, so a retry of a call EC2 acted on
+// before its response was lost would read as a call EC2 rejected. The error of the one call leaves the outcome
+// unknown instead, and the next deploy finds the instance on its way.
+func sendOnce(o *awsec2.Options) {
+	o.RetryMaxAttempts = 1
 }
 
 // instanceTarget returns the state an instance in state is in or on its way to: running for pending, stopped for

@@ -19,6 +19,7 @@ package ec2
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"net/netip"
@@ -1215,9 +1216,30 @@ type fakeInstances struct {
 	// noMetadata makes the next DescribeInstances leave out StateReason and LaunchTime, and noState leaves out State.
 	// The API reference marks each of them optional.
 	noMetadata, noState bool
+
+	// lost names a call whose next response is lost after EC2 acted on it. The SDK then sends the call again, unless
+	// the call set RetryMaxAttempts to 1, and EC2 answers the second call for the state the first one left.
+	lost string
 }
 
 var _ InstanceAPI = (*fakeInstances)(nil)
+
+// errLost is the error of a call whose response is lost, such as a reset connection, which the SDK may retry.
+var errLost = errors.New("read: connection reset by peer")
+
+// lostResponse reports whether the response of the call name is lost (see lost), and whether the SDK sends the call
+// again then.
+func (f *fakeInstances) lostResponse(name string, opts []func(*awsec2.Options)) (lost bool, retry bool) {
+	if f.lost != name {
+		return false, false
+	}
+	f.lost = ""
+	options := awsec2.Options{}
+	for _, fn := range opts {
+		fn(&options)
+	}
+	return true, options.RetryMaxAttempts != 1
+}
 
 // firstLaunch is the LaunchTime of an instance the fake hasn't launched.
 var firstLaunch = time.Date(2026, 11, 19, 12, 0, 0, 0, time.UTC)
@@ -1348,6 +1370,17 @@ func (f *fakeInstances) DescribeInstances(ctx context.Context, in *awsec2.Descri
 func (f *fakeInstances) StartInstances(ctx context.Context, in *awsec2.StartInstancesInput, opts ...func(*awsec2.Options)) (*awsec2.StartInstancesOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	out, err := f.startInstances(in, opts)
+	if lost, retry := f.lostResponse("StartInstances", opts); lost && err == nil {
+		if retry {
+			return f.startInstances(in, opts)
+		}
+		return nil, errLost
+	}
+	return out, err
+}
+
+func (f *fakeInstances) startInstances(in *awsec2.StartInstancesInput, opts []func(*awsec2.Options)) (*awsec2.StartInstancesOutput, error) {
 	if err := f.call("StartInstances", opts); err != nil {
 		return nil, err
 	}
@@ -1373,6 +1406,17 @@ func (f *fakeInstances) StartInstances(ctx context.Context, in *awsec2.StartInst
 func (f *fakeInstances) StopInstances(ctx context.Context, in *awsec2.StopInstancesInput, opts ...func(*awsec2.Options)) (*awsec2.StopInstancesOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	out, err := f.stopInstances(in, opts)
+	if lost, retry := f.lostResponse("StopInstances", opts); lost && err == nil {
+		if retry {
+			return f.stopInstances(in, opts)
+		}
+		return nil, errLost
+	}
+	return out, err
+}
+
+func (f *fakeInstances) stopInstances(in *awsec2.StopInstancesInput, opts []func(*awsec2.Options)) (*awsec2.StopInstancesOutput, error) {
 	if err := f.call("StopInstances", opts); err != nil {
 		return nil, err
 	}

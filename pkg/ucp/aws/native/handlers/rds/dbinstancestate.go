@@ -272,10 +272,10 @@ func (h *DBInstanceState) apply(ctx context.Context, region string, id string, d
 	}
 	verb := "start"
 	if desired == awsapi.StateRunning {
-		_, err = h.api.StartDBInstance(ctx, &rds.StartDBInstanceInput{DBInstanceIdentifier: instance.DBInstanceIdentifier}, dbInstanceRegion(region))
+		_, err = h.api.StartDBInstance(ctx, &rds.StartDBInstanceInput{DBInstanceIdentifier: instance.DBInstanceIdentifier}, dbInstanceRegion(region), sendOnce)
 	} else {
 		verb = "stop"
-		_, err = h.api.StopDBInstance(ctx, &rds.StopDBInstanceInput{DBInstanceIdentifier: instance.DBInstanceIdentifier}, dbInstanceRegion(region))
+		_, err = h.api.StopDBInstance(ctx, &rds.StopDBInstanceInput{DBInstanceIdentifier: instance.DBInstanceIdentifier}, dbInstanceRegion(region), sendOnce)
 	}
 	if err == nil || !ucp_aws.IsClientFault(err) {
 		return err
@@ -285,6 +285,14 @@ func (h *DBInstanceState) apply(ctx context.Context, region string, id string, d
 		ClientError: true,
 		Outcome:     native.OutcomeRejected,
 	}
+}
+
+// sendOnce stops the SDK from sending a start or stop again after an error. RDS answers a start of a DB instance that
+// isn't stopped, or a stop of one that isn't available, with InvalidDBInstanceState, so a retry of a call RDS acted on
+// before its response was lost would read as a call RDS rejected. The error of the one call leaves the outcome
+// unknown instead, and the next deploy finds the DB instance on its way.
+func sendOnce(o *rds.Options) {
+	o.RetryMaxAttempts = 1
 }
 
 // Delete changes nothing. The type's metadata makes a delete leave the DB instance as it is, so UCP never calls it.

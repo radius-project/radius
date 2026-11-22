@@ -225,6 +225,7 @@ EMR and FSx tag a create with `radius-operation-id`, so they can find it if UCP 
 - A stop never hibernates the instance. Starting an instance that was hibernated outside Radius resumes it.
 - Starting an EC2 instance whose EBS volumes are encrypted with a customer managed key needs `kms:CreateGrant` on that key, because EC2 creates a grant for the volumes as the caller of `StartInstances`. Without it, the instance stops again with `Client.InternalError`. The schema lists the action for an update. Grant it on the key's ARN only, with the condition `kms:GrantIsForAWSResource` set to `true`, so the grant can only be made for an AWS service. See [EBS encryption requirements](https://docs.aws.amazon.com/ebs/latest/userguide/ebs-encryption-requirements.html).
 - Before an update, the handler saves the instance's state on the record (`native.UpdatePreparer`), so the update waits for the other state. A start that ends with the instance stopped again, such as when EC2 has no capacity for it, fails the deploy with AWS's reason.
+- The handler sends each start or stop once, without the SDK's retries. AWS answers a start or stop of an instance already on its way with an error, so a retry of a call AWS acted on before its response was lost would read as a call AWS rejected. The error of the one call leaves the outcome unknown, and the next deploy finds the instance on its way and waits for it.
 
 #### Testing native handlers
 
