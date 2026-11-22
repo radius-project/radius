@@ -197,7 +197,8 @@ func (h *DataShareAuthorization) Read(ctx context.Context, region string, identi
 	return dataShareAuthorizationProperties(share, a), nil
 }
 
-// Create authorizes the data share for the consumer. The producer must have granted it to the consumer in SQL first.
+// Create authorizes the data share for the consumer, and waits until a read shows it. The producer must have granted
+// it to the consumer in SQL first.
 func (h *DataShareAuthorization) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	identifier, err := h.Identifier(request.Properties)
 	if err != nil {
@@ -207,7 +208,22 @@ func (h *DataShareAuthorization) Create(ctx context.Context, request native.Crea
 		return "", dataShareInvalid(dataShareAuthorizationType, "DataShareArn and ConsumerIdentifier", "set")
 	}
 	arn, consumer := awsapi.String(request.Properties, "DataShareArn"), awsapi.String(request.Properties, "ConsumerIdentifier")
-	return identifier, h.authorize(ctx, request.Region, arn, consumer, dataShareBool(request.Properties, "AllowWrites"))
+	allowWrites := dataShareBool(request.Properties, "AllowWrites")
+	if err := h.authorize(ctx, request.Region, arn, consumer, allowWrites); err != nil {
+		return identifier, err
+	}
+	return identifier, h.confirm(ctx, request.Region, identifier, allowWrites)
+}
+
+// confirm waits until a read shows the authorization with allowWrites.
+func (h *DataShareAuthorization) confirm(ctx context.Context, region string, identifier string, allowWrites bool) error {
+	return dataShareConfirm(ctx, "the authorization "+identifier, func() (bool, error) {
+		_, a, err := h.find(ctx, region, identifier)
+		if err != nil || a == nil {
+			return false, err
+		}
+		return slices.Contains(dataShareAuthorizedStatuses, a.Status) && aws.ToBool(a.ProducerAllowedWrites) == allowWrites, nil
+	})
 }
 
 // authorize sends AuthorizeDataShare with allowWrites. AWS sets AllowWrites to false when the call leaves it out, so
@@ -246,7 +262,11 @@ func (h *DataShareAuthorization) Update(ctx context.Context, request native.Upda
 	if _, _, err := h.find(ctx, request.Region, request.Identifier); err != nil {
 		return err
 	}
-	return h.authorize(ctx, request.Region, arn, consumer, dataShareBool(request.Desired, "AllowWrites"))
+	allowWrites := dataShareBool(request.Desired, "AllowWrites")
+	if err := h.authorize(ctx, request.Region, arn, consumer, allowWrites); err != nil {
+		return err
+	}
+	return h.confirm(ctx, request.Region, request.Identifier, allowWrites)
 }
 
 // Delete removes the authorization. AWS then also removes the consumer's associations with the data share. It first

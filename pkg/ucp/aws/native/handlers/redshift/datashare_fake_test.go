@@ -85,6 +85,7 @@ var (
 //     for one (see the Progress of each handler).
 //   - Describe calls return at most dataSharePageSize data shares.
 //   - ProducerAllowedWrites and ConsumerAcceptedWrites, which the API reference marks optional, are left out when false.
+//   - A changed AllowWrites reads as it was once more, though AWS showed the change on the next read in a run.
 type dataShareFake struct {
 	store *awsfake.CloudControl
 
@@ -100,6 +101,11 @@ type dataShareFake struct {
 	// lag holds the status the next read of an authorization or association reports, by type and identifier.
 	lag map[string]types.DataShareStatus
 
+	// writesLag holds the AllowWrites the next read of an authorization or association still reports after a change,
+	// by type and identifier, and stuck those that keep reporting it, as if AWS never showed the change.
+	writesLag map[string]bool
+	stuck     map[string]bool
+
 	// grants are the consumers each data share is granted to in SQL, which the API can't change.
 	grants map[string][]string
 
@@ -112,13 +118,15 @@ var _ DataShareAPI = (*dataShareFake)(nil)
 
 func newDataShareFake(store *awsfake.CloudControl, caller string) *dataShareFake {
 	return &dataShareFake{
-		store:  store,
-		caller: caller,
-		grants: maps.Clone(dataShareGrants),
-		ended:  map[string]types.DataShareStatus{},
-		lag:    map[string]types.DataShareStatus{},
-		errs:   map[string]error{},
-		calls:  map[string]int{},
+		store:     store,
+		caller:    caller,
+		grants:    maps.Clone(dataShareGrants),
+		ended:     map[string]types.DataShareStatus{},
+		lag:       map[string]types.DataShareStatus{},
+		writesLag: map[string]bool{},
+		stuck:     map[string]bool{},
+		errs:      map[string]error{},
+		calls:     map[string]int{},
 	}
 }
 
@@ -166,6 +174,26 @@ func (f *dataShareFake) internal(arn string) bool {
 	return false
 }
 
+// writes returns the AllowWrites a read of the entry reports, using up a lag.
+func (f *dataShareFake) writes(typeName string, id string, value bool) bool {
+	key := typeName + "|" + id
+	old, ok := f.writesLag[key]
+	if !ok {
+		return value
+	}
+	if !f.stuck[key] {
+		delete(f.writesLag, key)
+	}
+	return old
+}
+
+// changeWrites makes the next read of the entry still report its AllowWrites before a change to value.
+func (f *dataShareFake) changeWrites(typeName string, id string, previous map[string]any, value bool) {
+	if old := dataShareBool(previous, "AllowWrites"); old != value {
+		f.writesLag[typeName+"|"+id] = old
+	}
+}
+
 // read returns the status a read of the entry reports, using up a lag.
 func (f *dataShareFake) read(typeName string, id string, status types.DataShareStatus) types.DataShareStatus {
 	key := typeName + "|" + id
@@ -198,7 +226,7 @@ func (f *dataShareFake) producerView(arn string) types.DataShare {
 		a := types.DataShareAssociation{ConsumerIdentifier: aws.String(consumer), Status: types.DataShareStatusPendingAuthorization}
 		if props := f.store.Resource(dataShareAuthorizationType, id); props != nil {
 			a.Status = types.DataShareStatusAuthorized
-			a.ProducerAllowedWrites = dataShareTrueOrNil(dataShareBool(props, "AllowWrites"))
+			a.ProducerAllowedWrites = dataShareTrueOrNil(f.writes(dataShareAuthorizationType, id, dataShareBool(props, "AllowWrites")))
 			if consumer == dataShareConsumerAccount && len(f.associations(arn)) > 0 {
 				a.Status = types.DataShareStatusActive
 			}
@@ -233,7 +261,7 @@ func (f *dataShareFake) consumerView(arn string) types.DataShare {
 			ConsumerIdentifier:     aws.String(dataShareConsumerAccount),
 			Status:                 status,
 			ProducerAllowedWrites:  dataShareTrueOrNil(writes),
-			ConsumerAcceptedWrites: dataShareTrueOrNil(dataShareBool(props, "AllowWrites")),
+			ConsumerAcceptedWrites: dataShareTrueOrNil(f.writes(dataShareConsumerType, id, dataShareBool(props, "AllowWrites"))),
 		}
 		switch {
 		case dataShareBool(props, "AssociateEntireAccount"):
@@ -339,6 +367,7 @@ func (f *dataShareFake) AuthorizeDataShare(ctx context.Context, in *redshift.Aut
 		return nil, r.err
 	}
 	id := arn + "|" + consumer
+	f.changeWrites(dataShareAuthorizationType, id, f.store.Resource(dataShareAuthorizationType, id), aws.ToBool(in.AllowWrites))
 	if f.store.Resource(dataShareAuthorizationType, id) != nil {
 		// AWS reports an authorization it authorized again as AUTHORIZED, even with an ACTIVE association, before it
 		// reports it ACTIVE again.
@@ -516,6 +545,7 @@ func (f *dataShareFake) AssociateDataShareConsumer(ctx context.Context, in *reds
 		}
 	}
 	id := dataShareAssociationID(arn, entire, consumerArn, region)
+	f.changeWrites(dataShareConsumerType, id, f.store.Resource(dataShareConsumerType, id), aws.ToBool(in.AllowWrites))
 	props := map[string]any{"DataShareArn": arn, "AssociateEntireAccount": entire, "AllowWrites": aws.ToBool(in.AllowWrites), "ProducerArn": dataShareProducerArn}
 	if consumerArn != "" {
 		props["ConsumerArn"] = consumerArn

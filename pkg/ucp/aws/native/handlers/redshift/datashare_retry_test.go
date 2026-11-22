@@ -149,9 +149,12 @@ func Test_DataShare_RetryAfterLostResponse(t *testing.T) {
 		call      func(api *redshift.Client) error
 	}{
 		{
-			name:      "authorize",
-			op:        "AuthorizeDataShare",
-			responses: map[string][]dataShareRetryResponse{"AuthorizeDataShare": {reset, ok("AuthorizeDataShare", authorized)}},
+			name: "authorize",
+			op:   "AuthorizeDataShare",
+			responses: map[string][]dataShareRetryResponse{
+				"AuthorizeDataShare": {reset, ok("AuthorizeDataShare", authorized)},
+				"DescribeDataShares": {described("DescribeDataShares", authorized)},
+			},
 			call: func(api *redshift.Client) error {
 				_, err := NewDataShareAuthorization(api).Create(t.Context(), native.CreateRequest{Region: dataShareRegionName,
 					Properties: map[string]any{"DataShareArn": dataShareRetryArn, "ConsumerIdentifier": dataShareRetryConsumer}})
@@ -174,7 +177,7 @@ func Test_DataShare_RetryAfterLostResponse(t *testing.T) {
 			name: "associate",
 			op:   "AssociateDataShareConsumer",
 			responses: map[string][]dataShareRetryResponse{
-				"DescribeDataSharesForConsumer": {described("DescribeDataSharesForConsumer", dataShareMember(dataShareRetryConsumer, "", "AVAILABLE"))},
+				"DescribeDataSharesForConsumer": {described("DescribeDataSharesForConsumer", dataShareMember(dataShareRetryConsumer, "", "AVAILABLE")), described("DescribeDataSharesForConsumer", associated)},
 				"AssociateDataShareConsumer":    {reset, ok("AssociateDataShareConsumer", associated)},
 			},
 			call: func(api *redshift.Client) error {

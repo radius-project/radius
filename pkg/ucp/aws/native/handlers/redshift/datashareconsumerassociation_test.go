@@ -333,3 +333,62 @@ func Test_DataShareConsumerAssociation_UpdateReplaced(t *testing.T) {
 	_, err = h.Read(t.Context(), dataShareRegionName, entire)
 	require.NoError(t, err, "AWS keeps the other client's association")
 }
+
+// Test_DataShareConsumerAssociation_ConfirmsWrites checks that a create or an update that changes AllowWrites
+// finishes only once a read shows the change, and fails with an unknown outcome when no read does.
+func Test_DataShareConsumerAssociation_ConfirmsWrites(t *testing.T) {
+	h, f := newDataShareConsumer()
+	writes := dataShareWith(dataShareConsumerAssociation, map[string]any{"AllowWrites": true})
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: dataShareRegionName, Properties: writes})
+	require.NoError(t, err)
+	properties, err := h.Read(t.Context(), dataShareRegionName, id)
+	require.NoError(t, err)
+	require.Equal(t, true, properties["AllowWrites"], "the create finishes only once a read shows AllowWrites")
+
+	require.NoError(t, dataShareUpdate(t, h, dataShareConsumerFile, id, writes, dataShareConsumerAssociation))
+	properties, err = h.Read(t.Context(), dataShareRegionName, id)
+	require.NoError(t, err)
+	require.Equal(t, false, properties["AllowWrites"], "the update finishes only once a read shows AllowWrites")
+
+	f.stuck[dataShareConsumerType+"|"+id] = true
+	err = dataShareUpdate(t, h, dataShareConsumerFile, id, dataShareConsumerAssociation, writes)
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "AWS may have applied the change no read showed")
+	require.Contains(t, failure.Message, "Deploy again")
+}
+
+// dataShareReadFailsAfterAssociate fails every read of the consumer's data shares once an associate call was sent.
+type dataShareReadFailsAfterAssociate struct {
+	*dataShareFake
+	sent bool
+}
+
+func (r *dataShareReadFailsAfterAssociate) AssociateDataShareConsumer(ctx context.Context, in *redshift.AssociateDataShareConsumerInput, opts ...func(*redshift.Options)) (*redshift.AssociateDataShareConsumerOutput, error) {
+	r.sent = true
+	return r.dataShareFake.AssociateDataShareConsumer(ctx, in, opts...)
+}
+
+func (r *dataShareReadFailsAfterAssociate) DescribeDataSharesForConsumer(ctx context.Context, in *redshift.DescribeDataSharesForConsumerInput, opts ...func(*redshift.Options)) (*redshift.DescribeDataSharesForConsumerOutput, error) {
+	if r.sent {
+		return nil, dataShareError("ThrottlingException", "slow down")
+	}
+	return r.dataShareFake.DescribeDataSharesForConsumer(ctx, in, opts...)
+}
+
+func Test_DataShareConsumerAssociation_ConfirmFails(t *testing.T) {
+	_, f := newDataShareConsumer()
+	_, err := NewDataShareConsumerAssociation(&dataShareReadFailsAfterAssociate{dataShareFake: f}).Create(t.Context(),
+		native.CreateRequest{Region: dataShareRegionName, Properties: dataShareConsumerAssociation})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "a throttled read after an accepted associate is never reported as rejected")
+	require.Contains(t, failure.Message, "ThrottlingException")
+
+	h := NewDataShareConsumerAssociation(f)
+	writes := dataShareWith(dataShareConsumerAssociation, map[string]any{"AllowWrites": true})
+	id := dataShareAssociated(t, h, dataShareConsumerAssociation)
+	f.errs["AssociateDataShareConsumer"] = dataShareError(dataShareParameterFault, "bad value")
+	err = dataShareUpdate(t, h, dataShareConsumerFile, id, dataShareConsumerAssociation, writes)
+	require.ErrorContains(t, err, dataShareParameterFault, "an update AWS rejects isn't read again")
+}

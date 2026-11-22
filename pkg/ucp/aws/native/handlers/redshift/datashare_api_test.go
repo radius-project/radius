@@ -240,7 +240,7 @@ var dataShareAuthorizationAPI = map[string]nativetest.Call{
 				Check: dataShareAgainst(dataShareAuthorize(dataShareSales, dataShareConsumerAccount, nil),
 					dataShareAs(dataShareConsumerAccount), dataShareAssociate(dataShareEntire), dataShareAs(dataShareProducer), dataShareNoLag,
 					dataShareAuthorize(dataShareSales, dataShareConsumerAccount, aws.Bool(true)),
-					dataShareExpectProducer(dataShareSales, dataShareConsumerAccount, types.DataShareStatusAuthorized, aws.Bool(true)),
+					dataShareExpectProducer(dataShareSales, dataShareConsumerAccount, types.DataShareStatusAuthorized, nil),
 					dataShareExpectProducer(dataShareSales, dataShareConsumerAccount, types.DataShareStatusActive, aws.Bool(true))),
 			},
 			{
@@ -258,6 +258,7 @@ var dataShareAuthorizationAPI = map[string]nativetest.Call{
 			"identifier that isn't one with InvalidParameterValue, which the SDK doesn't model. It answered an authorization again " +
 			"with the same one, set ProducerAllowedWrites to the call's AllowWrites (false when left out), and reported an ACTIVE " +
 			"association AUTHORIZED in its response and ACTIVE again on the next read, with the consumer's association kept. " +
+			"The page doesn't say how soon a read shows a changed AllowWrites; the fake shows it only on the second read. " +
 			"The page doesn't say whether that interrupts the consumer's queries. It authorized a REJECTED and a DEAUTHORIZED data " +
 			"share again. The call takes no idempotency token. The pages don't say what AWS does for a data share Redshift made " +
 			"for itself (DataShareType INTERNAL); the handler never sends one, and the fake accepts it.",
@@ -446,7 +447,8 @@ var dataShareConsumerAPI = map[string]nativetest.Call{
 			"another account with InvalidParameterValue, and a call that named none, or more " +
 			"than one, of the entire account, a namespace, and a Region with InvalidParameterValue. It replaced the namespace and " +
 			"Region associations with an entire-account one, and the other way around, which the page doesn't say. It answered an " +
-			"association again with the same one, with ConsumerAcceptedWrites set to the call's AllowWrites. The call takes no " +
+			"association again with the same one, with ConsumerAcceptedWrites set to the call's AllowWrites, which the next read " +
+			"showed; the page doesn't say how soon, so the fake shows a changed AllowWrites only on the second read. The call takes no " +
 			"idempotency token. The run associated only Redshift Serverless namespaces, never an AWS Glue Data Catalog, so the " +
 			"handler takes only namespace ARNs.",
 	},

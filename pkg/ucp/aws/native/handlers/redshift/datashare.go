@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/redshift"
 	"github.com/aws/aws-sdk-go-v2/service/redshift/types"
@@ -117,4 +118,44 @@ func dataShareGone(err error, gone func() bool) error {
 		return fmt.Errorf("%w: %w", native.ErrNotFound, err)
 	}
 	return awsapi.Rejected(err)
+}
+
+const (
+	// dataShareConfirmReads is how many times a create or an update reads AWS to see a change AWS accepted.
+	dataShareConfirmReads = 5
+)
+
+// dataShareConfirmWait is how long a create or an update waits between those reads.
+var dataShareConfirmWait = 2 * time.Second
+
+// dataShareConfirm calls shown until it reports that a read shows a change AWS accepted, up to dataShareConfirmReads
+// times. When no read shows it, it returns a failure of unknown outcome, because AWS may have applied the change, so
+// UCP keeps the values as possibly applied and the next deploy reads AWS again. A failed read is never reported as
+// rejected: AWS already accepted the change.
+func dataShareConfirm(ctx context.Context, what string, shown func() (bool, error)) error {
+	var last error
+	for i := range dataShareConfirmReads {
+		if i > 0 {
+			select {
+			case <-ctx.Done():
+				return dataShareUnconfirmed(what, ctx.Err())
+			case <-time.After(dataShareConfirmWait):
+			}
+		}
+		ok, err := shown()
+		if err == nil && ok {
+			return nil
+		}
+		last = err
+	}
+	return dataShareUnconfirmed(what, last)
+}
+
+// dataShareUnconfirmed is the failure of a change AWS accepted that no read showed.
+func dataShareUnconfirmed(what string, err error) error {
+	message := fmt.Sprintf("AWS accepted the change to %s, but no read showed it, so UCP can't tell whether it applied. Deploy again.", what)
+	if err != nil {
+		message += " The last read failed: " + err.Error()
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
 }

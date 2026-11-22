@@ -294,7 +294,22 @@ func (h *DataShareConsumerAssociation) Create(ctx context.Context, request nativ
 	if err := dataShareReplaced(share, c); err != nil {
 		return "", err
 	}
-	return identifier, h.associate(ctx, request.Region, arn, c, dataShareBool(request.Properties, "AllowWrites"))
+	allowWrites := dataShareBool(request.Properties, "AllowWrites")
+	if err := h.associate(ctx, request.Region, arn, c, allowWrites); err != nil {
+		return identifier, err
+	}
+	return identifier, h.confirm(ctx, request.Region, identifier, allowWrites)
+}
+
+// confirm waits until a read shows the association ACTIVE with allowWrites.
+func (h *DataShareConsumerAssociation) confirm(ctx context.Context, region string, identifier string, allowWrites bool) error {
+	return dataShareConfirm(ctx, "the association "+identifier, func() (bool, error) {
+		_, _, a, err := h.association(ctx, region, identifier)
+		if err != nil || a == nil {
+			return false, err
+		}
+		return a.Status == types.DataShareStatusActive && aws.ToBool(a.ConsumerAcceptedWrites) == allowWrites, nil
+	})
 }
 
 // dataShareReplaced returns the failure of an association with c that AWS would make by replacing another ACTIVE association
@@ -373,7 +388,11 @@ func (h *DataShareConsumerAssociation) Update(ctx context.Context, request nativ
 		return native.ErrNotFound
 	}
 	arn, _, _ := strings.Cut(request.Identifier, "|")
-	return h.associate(ctx, request.Region, arn, c, dataShareBool(request.Desired, "AllowWrites"))
+	allowWrites := dataShareBool(request.Desired, "AllowWrites")
+	if err := h.associate(ctx, request.Region, arn, c, allowWrites); err != nil {
+		return err
+	}
+	return h.confirm(ctx, request.Region, request.Identifier, allowWrites)
 }
 
 // Delete removes the association. It first reads the data share, so it never removes an association with one

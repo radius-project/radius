@@ -374,3 +374,52 @@ func Test_DataShareAuthorization_NotProduced(t *testing.T) {
 	_, err = NewDataShareAuthorization(dataShareProducesNone{f}).Read(t.Context(), dataShareRegionName, id)
 	require.ErrorIs(t, err, native.ErrNotFound, "an ACTIVE data share the account doesn't produce isn't its authorization")
 }
+
+// Test_DataShareAuthorization_ConfirmsWrites checks that a create or an update that changes AllowWrites finishes only
+// once a read shows the change, and fails with an unknown outcome when no read does.
+func Test_DataShareAuthorization_ConfirmsWrites(t *testing.T) {
+	h, f := newDataShareProducer()
+	writes := dataShareWith(dataShareAuthorization, map[string]any{"AllowWrites": true})
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: dataShareRegionName, Properties: writes})
+	require.NoError(t, err)
+	properties, err := h.Read(t.Context(), dataShareRegionName, id)
+	require.NoError(t, err)
+	require.Equal(t, true, properties["AllowWrites"], "the create finishes only once a read shows AllowWrites")
+
+	require.NoError(t, dataShareUpdate(t, h, "aws-redshift-datashareauthorization.json", id, writes, dataShareAuthorization))
+	properties, err = h.Read(t.Context(), dataShareRegionName, id)
+	require.NoError(t, err)
+	require.Equal(t, false, properties["AllowWrites"], "the update finishes only once a read shows AllowWrites")
+
+	f.stuck[dataShareAuthorizationType+"|"+id] = true
+	err = dataShareUpdate(t, h, "aws-redshift-datashareauthorization.json", id, dataShareAuthorization, writes)
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "AWS may have applied the change no read showed")
+	require.Contains(t, failure.Message, "Deploy again")
+
+	f.errs["DescribeDataShares"] = dataShareError("ThrottlingException", "slow down")
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: dataShareRegionName, Properties: dataShareWith(writes, map[string]any{"ConsumerIdentifier": dataShareOtherConsumer})})
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "a throttled read after an accepted create is never reported as rejected")
+	require.Contains(t, failure.Message, "ThrottlingException")
+}
+
+func Test_DataShareAuthorization_ConfirmStops(t *testing.T) {
+	h, f := newDataShareProducer()
+	writes := dataShareWith(dataShareAuthorization, map[string]any{"AllowWrites": true})
+	id := dataShareAuthorized(t, h, dataShareAuthorization)
+
+	f.errs["AuthorizeDataShare"] = dataShareError(dataShareParameterFault, "bad value")
+	require.ErrorContains(t, dataShareUpdate(t, h, "aws-redshift-datashareauthorization.json", id, dataShareAuthorization, writes), dataShareParameterFault)
+	delete(f.errs, "AuthorizeDataShare")
+
+	f.stuck[dataShareAuthorizationType+"|"+id] = true
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	err := h.confirm(ctx, dataShareRegionName, id, true)
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "a deploy that stops waiting can't tell whether AWS applied the change")
+	require.Contains(t, failure.Message, context.Canceled.Error())
+}
