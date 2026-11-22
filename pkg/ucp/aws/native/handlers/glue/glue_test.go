@@ -383,8 +383,8 @@ func Test_CreateAlreadyExists(t *testing.T) {
 	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
 	var failure *native.Failure
 	require.ErrorAs(t, err, &failure)
-	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the index, so UCP keeps the record")
-	require.Empty(t, id, "the index isn't one this call made, so a failed recording doesn't delete it")
+	require.Equal(t, native.OutcomeRejected, failure.Outcome, "the SDK sent the create once, so the index isn't one this deploy made")
+	require.Empty(t, id, "a failed recording doesn't delete an index it didn't make")
 	require.Contains(t, failure.Message, "AlreadyExistsException")
 }
 

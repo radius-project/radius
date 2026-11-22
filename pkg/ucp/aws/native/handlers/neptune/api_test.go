@@ -342,8 +342,9 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 			"The SDK doesn't model InvalidParameterValue or InvalidParameterCombination, so their fault is unknown; the " +
 			"handler reports any 4xx answer as rejected, which Test_Replay_RejectedCreate shows through the SDK. The page lists DBClusterEndpointQuotaExceededFault without the limit " +
 			"it applies, so the fake has none. The call takes no idempotency token: a create sent again gets " +
-			"DBClusterEndpointAlreadyExistsFault. The handler reads the endpoint by its name before it creates one, and " +
-			"reports that error as an unknown outcome. The SDK sends the call once, so its own retry never gets that error." + tagsUnclear,
+			"DBClusterEndpointAlreadyExistsFault. The handler reads the endpoint by its name before it creates one, and the " +
+			"SDK sends the call once, so that error means another caller made the endpoint, and the handler reports it as " +
+			"rejected." + tagsUnclear,
 	},
 	"DescribeDBClusterEndpoints": {
 		Doc: apiReference + "API_DescribeDBClusterEndpoints.html",

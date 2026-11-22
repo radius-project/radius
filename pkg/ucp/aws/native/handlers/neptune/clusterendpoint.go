@@ -360,8 +360,7 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 	identifier := strings.ToLower(aws.ToString(input.DBClusterEndpointIdentifier))
 	_, err = h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region), noRetry)
 	if awsapi.HasCode(err, "DBClusterEndpointAlreadyExistsFault") {
-		// The SDK sent the create once, so the endpoint isn't one this call made, and its identifier doesn't go back.
-		return "", lostCreate(err)
+		return "", nameTaken(err)
 	}
 	if err != nil {
 		// The create reached AWS, which may have made the endpoint, so the identifier goes back with the error.
@@ -370,15 +369,16 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 	return identifier, nil
 }
 
-// lostCreate returns the failure of a create AWS answered with DBClusterEndpointAlreadyExistsFault. UCP reads AWS by
-// the identifier before it creates an endpoint, so that endpoint appeared since, and may be the one an earlier attempt
-// of this deploy made. The outcome is then unknown, so UCP keeps the record and the next deploy finds the endpoint by
-// its identifier, instead of dropping it and leaving an endpoint no record manages.
-func lostCreate(err error) error {
+// nameTaken returns the failure of a create AWS answered with DBClusterEndpointAlreadyExistsFault. UCP reads AWS by the
+// identifier before it creates an endpoint, and the SDK sends the create once, so the endpoint isn't one this call
+// made: it appeared since the read. AWS changed nothing, so the create is rejected, and its identifier doesn't go
+// back. UCP then drops the record of a first create, so a later delete can't remove an endpoint Radius didn't make,
+// and keeps the record of a create it sent again, whose earlier attempt may have made the endpoint.
+func nameTaken(err error) error {
 	return &native.Failure{
-		Message:     "AWS already has a Neptune custom endpoint with the DBClusterEndpointIdentifier, which an earlier attempt of this deploy may have created. Deploy again to manage it, or choose another name: " + err.Error(),
+		Message:     "AWS already has a Neptune custom endpoint with the DBClusterEndpointIdentifier, which this deploy didn't create, so it changed nothing. Deploy again to manage it, or choose another name: " + err.Error(),
 		ClientError: true,
-		Outcome:     native.OutcomeUnknown,
+		Outcome:     native.OutcomeRejected,
 	}
 }
 

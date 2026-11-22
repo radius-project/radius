@@ -463,8 +463,8 @@ func Test_CreateAlreadyExists(t *testing.T) {
 	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
 	var failure *native.Failure
 	require.ErrorAs(t, err, &failure)
-	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the endpoint, so UCP keeps the record")
-	require.Empty(t, id, "the endpoint isn't one this call made, so a failed recording doesn't delete it")
+	require.Equal(t, native.OutcomeRejected, failure.Outcome, "the SDK sent the create once, so the endpoint isn't one this deploy made")
+	require.Empty(t, id, "a failed recording doesn't delete an endpoint it didn't make")
 	require.Contains(t, failure.Message, "DBClusterEndpointAlreadyExistsFault")
 	api.errs["CreateDBClusterEndpoint"] = fault("DBClusterEndpointQuotaExceededFault")
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
