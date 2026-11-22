@@ -461,7 +461,10 @@ func (f *fakeAPI) tenantOf(key string, t map[string]any, status string) types.Te
 		TenantDatabaseResourceId: aws.String(awsapi.String(t, "TenantDatabaseResourceId")),
 		DbiResourceId:            aws.String(awsapi.String(t, "DbiResourceId")),
 		Status:                   aws.String(status),
-		TagList:                  awsapi.SDKTags[types.Tag](awsapi.Tags(t)),
+	}
+	// RDS leaves TagList out of a tenant database with no tags.
+	if tags := awsapi.Tags(t); len(tags) > 0 {
+		out.TagList = awsapi.SDKTags[types.Tag](tags)
 	}
 	if secret, ok := t["MasterUserSecret"].(map[string]any); ok {
 		out.MasterUserSecret = &types.MasterUserSecret{
@@ -544,6 +547,8 @@ func (f *fakeAPI) CreateTenantDatabase(ctx context.Context, in *rds.CreateTenant
 	if aws.ToBool(in.ManageMasterUserPassword) {
 		t["MasterUserSecret"] = secret(key, aws.ToString(in.MasterUserSecretKmsKeyId))
 	}
+	// A create keeps the template's empty list, which Read returns for a tenant database with no tags.
+	t["Tags"] = []any{}
 	if len(in.Tags) > 0 {
 		t["Tags"] = awsapi.TagListOf(in.Tags)
 	}

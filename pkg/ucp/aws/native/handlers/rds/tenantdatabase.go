@@ -182,6 +182,9 @@ func tenantProperties(t *types.TenantDatabase) map[string]any {
 		setString(secret, "KmsKeyId", t.MasterUserSecret.KmsKeyId)
 		p["MasterUserSecret"] = secret
 	}
+	// RDS leaves TagList out of a tenant database with no tags, so Read returns an empty list, which a template that
+	// sets Tags to one matches.
+	p["Tags"] = []any{}
 	if tags := awsapi.TagListOf(t.TagList); tags != nil {
 		p["Tags"] = tags
 	}

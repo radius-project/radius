@@ -161,3 +161,29 @@ func Test_Suite_TenantDatabase(t *testing.T) {
 		API: tenantDatabaseAPI,
 	})
 }
+
+// Test_Suite_TenantDatabaseEmptyTags runs the suite on a template that sets Tags to an empty list. RDS leaves TagList
+// out of a tenant database that has no tags, so Read must return the empty list, or every deploy would start an update.
+func Test_Suite_TenantDatabaseEmptyTags(t *testing.T) {
+	empty := with(tenant, map[string]any{"Tags": []any{}})
+	nativetest.Run(t, nativetest.Suite{
+		TypeName:    tenantDatabaseType,
+		Schema:      schema(t, "aws-rds-tenantdatabase.json"),
+		HandWritten: true,
+		Metadata:    schema(t, "aws-rds-tenantdatabase.metadata.json"),
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			addInstance(store, "app-cdb")
+			return NewTenantDatabase(newFakeAPI(store))
+		},
+		IdentifierProperty: "TenantDBName",
+		IdentifierProperties: func(identifier string) map[string]any {
+			instance, name, _ := strings.Cut(identifier, "|")
+			return map[string]any{"DBInstanceIdentifier": instance, "TenantDBName": name}
+		},
+		WriteOnly:  []string{"MasterUserPassword", "MasterUserSecretKmsKeyId"},
+		Properties: empty,
+		Identifier: "app-cdb|pdb1",
+		Changed:    with(empty, map[string]any{"Tags": tags("team", "b")}),
+		API:        tenantDatabaseAPI,
+	})
+}
