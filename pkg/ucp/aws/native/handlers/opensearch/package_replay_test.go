@@ -144,11 +144,14 @@ func Test_Replay_PackageAssociationErrors(t *testing.T) {
 	h := NewPackageAssociation(opensearch.NewFromConfig(s.Config(t.Context())))
 	domain, packageID := s.Input("RADIUS_REC_OPENSEARCH_DOMAIN"), s.Input("RADIUS_REC_PACKAGE_ID")
 
-	_, err := h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{"DomainName": domain, "PackageID": packageID}})
+	// AWS rejected both creates, so neither returns an identifier.
+	created, err := h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{"DomainName": domain, "PackageID": packageID}})
 	requireReplayFailure(t, err, true, "dependsOn")
+	require.Empty(t, created)
 
-	_, err = h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{"DomainName": "radius-rec-missing", "PackageID": packageID}})
+	created, err = h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{"DomainName": "radius-rec-missing", "PackageID": packageID}})
 	requireReplayFailure(t, err, false, "ResourceNotFoundException")
+	require.Empty(t, created)
 
 	_, err = h.Read(t.Context(), awsreplay.Region, "radius-rec-missing|"+packageID)
 	require.ErrorIs(t, err, native.ErrNotFound)

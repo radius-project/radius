@@ -290,13 +290,15 @@ func (a associateErrors) DissociatePackage(context.Context, *opensearch.Dissocia
 }
 
 // Test_PackageAssociation_ServerErrors checks that a server error from AssociatePackage or DissociatePackage is
-// returned as it is, so UCP counts the call as possibly applied, not as rejected.
+// returned as it is, so UCP counts the call as possibly applied, not as rejected. Create also returns the identifier,
+// so a caller that registers cleanup from it, such as a live recording, removes what AWS may have made.
 func Test_PackageAssociation_ServerErrors(t *testing.T) {
 	api := newPkgFake(awsfake.NewCloudControl())
 	id := createAssociation(t, NewPackageAssociation(api), pluginTemplate)
 	boom := fmt.Errorf("connection reset")
 	h := NewPackageAssociation(associateErrors{pkgFake: api, err: boom})
-	_, err := h.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{"DomainName": "logs", "PackageID": "F111111111"}})
+	created, err := h.Create(t.Context(), native.CreateRequest{Region: pkgRegion, Properties: map[string]any{"DomainName": "logs", "PackageID": "F111111111"}})
 	require.ErrorIs(t, err, boom)
+	require.Equal(t, "logs|F111111111", created)
 	require.ErrorIs(t, h.Delete(t.Context(), pkgRegion, id), boom)
 }

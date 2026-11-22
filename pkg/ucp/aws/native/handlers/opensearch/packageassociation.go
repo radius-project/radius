@@ -289,7 +289,13 @@ func (h *PackageAssociation) Create(ctx context.Context, request native.CreateRe
 		if awsapi.HasCode(err, "ConflictException") {
 			return "", associationBusy(fmt.Sprintf("the domain %q or another of its packages", id.domain), err)
 		}
-		return "", awsapi.Rejected(err)
+		// AWS may have made the association when it didn't answer, or answered with a server error, so the
+		// identifier goes back with the error. A call AWS rejected made nothing.
+		var failure *native.Failure
+		if err = awsapi.Rejected(err); errors.As(err, &failure) && failure.Outcome == native.OutcomeRejected {
+			return "", err
+		}
+		return id.String(), err
 	}
 	return id.String(), nil
 }
