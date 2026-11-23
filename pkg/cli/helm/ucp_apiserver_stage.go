@@ -273,6 +273,9 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if mounted == "" {
 		return nil
 	}
+	if !helmOwned(deployment, radiusNamespace, releaseName) {
+		return foreignUCPDeploymentError(radiusNamespace, releaseName)
+	}
 	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
 	if err != nil || apiService == nil {
 		return err
@@ -338,9 +341,21 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	if mounted != ucpOffCertificateSecretName {
-		patch, err := json.Marshal(map[string]any{"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
-			"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
-		}}}})
+		// The waits above let the Deployment's status change, so rad reads it again and patches only the Deployment it
+		// inspected, at the resourceVersion it checked.
+		current, err := deployments.Get(ctx, "ucp", metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
+		}
+		if current.UID != deployment.UID || !helmOwned(current, radiusNamespace, releaseName) {
+			return foreignUCPDeploymentError(radiusNamespace, releaseName)
+		}
+		patch, err := json.Marshal(map[string]any{
+			"metadata": map[string]any{"uid": current.UID, "resourceVersion": current.ResourceVersion},
+			"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
+				"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
+			}}},
+		})
 		if err != nil {
 			return err
 		}
@@ -364,6 +379,13 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	return nil
+}
+
+// foreignUCPDeploymentError reports that the ucp Deployment is not the one the Radius release owns, so rad refuses to
+// mount a Secret in it.
+func foreignUCPDeploymentError(radiusNamespace, releaseName string) error {
+	return fmt.Errorf("Deployment %s/ucp does not belong to Helm release %q, or was replaced after rad read it, so rad did not mount Secret %s in it. "+
+		"Helm has not changed Radius; check the Deployment, then run the command again", radiusNamespace, releaseName, ucpOffCertificateSecretName)
 }
 
 // apiServiceCACertificates returns the CA certificates in the caBundle of apiService.

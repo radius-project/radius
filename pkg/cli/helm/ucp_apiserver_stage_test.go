@@ -21,6 +21,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -952,6 +953,47 @@ func Test_UpgradeRadius_OffAfterFailedOnRevisionStagesUCPOffCertificate(t *testi
 			require.Equal(t, 1, helmCalls)
 			require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic))
 			c.requireOffTrust(t)
+		})
+	}
+}
+
+// Turning authorization off mounts Secret ucp-cert in the ucp Deployment only when the Radius release owns it, and
+// only in the Deployment rad inspected: a foreign Deployment, or one replaced while rad waited, keeps its Secret.
+func Test_UpgradeRadius_StageUCPOffCertificateRefusesForeignDeployment(t *testing.T) {
+	for _, replaced := range []bool{false, true} {
+		t.Run(fmt.Sprintf("replaced=%t", replaced), func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			u := newStageUpgrade(t, authzOnValues, "upgrade")
+			c := newStageCluster(t, nil, true)
+			c.onUCP(t)
+			deployments := c.kube.AppsV1().Deployments(RadiusSystemNamespace)
+			deployment, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+			require.NoError(t, err)
+			if replaced {
+				gets := 0
+				c.kube.PrependReactor("get", "deployments", func(clienttesting.Action) (bool, runtime.Object, error) {
+					if gets++; gets == 2 {
+						replacement := deployment.DeepCopy()
+						replacement.UID = "ucp-uid-2"
+						require.NoError(t, c.kube.Tracker().Delete(schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}, RadiusSystemNamespace, "ucp"))
+						require.NoError(t, c.kube.Tracker().Add(replacement))
+					}
+					return false, nil, nil
+				})
+			} else {
+				deployment.Annotations[helmReleaseNameAnnotation] = "other"
+				_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+
+			err = u.run(t, c.impl(u.mock(t, 0, func() {})), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"})
+			require.ErrorContains(t, err, `Deployment radius-system/ucp does not belong to Helm release "radius", or was replaced after rad read it`)
+			live, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, ucpAPIServerTLSSecretName, ucpCertificateSecret(live), "rad must not change the Deployment")
+			if !replaced {
+				require.Nil(t, c.stagedOffCertificate(t), "rad must refuse before it writes anything")
+			}
 		})
 	}
 }

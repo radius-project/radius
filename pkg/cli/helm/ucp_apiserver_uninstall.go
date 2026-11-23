@@ -246,7 +246,7 @@ func stagedForRelease(object *unstructured.Unstructured, releaseNamespace, relea
 
 // helmOwned reports whether object has the Helm ownership metadata of release releaseName in releaseNamespace, which
 // Helm uninstall requires before it deletes an object of the release.
-func helmOwned(object *unstructured.Unstructured, releaseNamespace, releaseName string) bool {
+func helmOwned(object metav1.Object, releaseNamespace, releaseName string) bool {
 	annotations := object.GetAnnotations()
 	return object.GetLabels()[helmManagedByLabel] == helmManagedByValue &&
 		annotations[helmReleaseNameAnnotation] == releaseName &&
