@@ -43,10 +43,12 @@ func Test_SecretStores_Upgrade(t *testing.T) {
 	k8sClient, err := newKubernetesClient()
 	require.NoError(t, err)
 	cleanupAndWait(t, ctx, k8sClient)
+	resetControllerCRDsForBaseline(t, ctx)
 	t.Cleanup(func() {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
 		defer cancel()
 		helmUninstall(t, cleanup)
+		resetControllerCRDsForBaseline(t, cleanup)
 	})
 	baselineArgs := []string{
 		"helm", "install", helmReleaseName, "oci://ghcr.io/radius-project/helm-chart/radius",
