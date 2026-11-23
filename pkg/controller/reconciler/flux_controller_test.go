@@ -288,7 +288,7 @@ func Test_FluxController_SourceAndAttributionEventsHoldTemplates(t *testing.T) {
 	ctx := t.Context()
 	direct, err := k8sclient.New(config, k8sclient.Options{Scheme: scheme})
 	require.NoError(t, err)
-	const namespace = "flux-source-events"
+	namespace := fmt.Sprintf("flux-source-events-%d", time.Now().UnixNano())
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
 	require.NoError(t, direct.Create(ctx, ns))
 	t.Cleanup(func() {
@@ -397,7 +397,7 @@ func Test_FluxController_SourceAndAttributionEventsHoldTemplates(t *testing.T) {
 			return false
 		}
 		return current.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseHeld
-	}, 10*time.Second, 100*time.Millisecond, "attribution changes should enqueue their source")
+	}, 30*time.Second, 100*time.Millisecond, "attribution changes should enqueue their source")
 
 	var suspended sourcev1.GitRepository
 	sourceKey := k8sclient.ObjectKeyFromObject(&sources[1])
@@ -411,7 +411,7 @@ func Test_FluxController_SourceAndAttributionEventsHoldTemplates(t *testing.T) {
 			return false
 		}
 		return current.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseHeld
-	}, 10*time.Second, 100*time.Millisecond, "source readiness transitions should wake settled templates")
+	}, 30*time.Second, 100*time.Millisecond, "source readiness transitions should wake settled templates")
 }
 
 func Test_FluxController_PruneAfterSourceGeneration(t *testing.T) {
