@@ -68,6 +68,13 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- if eq $issuer.kind "Issuer" -}}{{- $issuerNamespace = .Release.Namespace -}}{{- end -}}
 {{- $existing := lookup "cert-manager.io/v1" $issuer.kind $issuerNamespace $issuer.name -}}
 {{- if not $existing -}}{{- fail "issuerRef prerequisite: the configured existing Issuer/ClusterIssuer is missing; use a live cluster-connected Helm render." -}}{{- end -}}
+{{- if eq $issuer.kind "Issuer" -}}
+{{- $signer := dig "spec" "ca" "secretName" "" $existing -}}
+{{- if and $signer (or (and .Values.global.rootCA.cert (eq .Values.global.rootCA.secretName $signer))
+    (and .Values.global.targetCluster.enabled (eq .Values.global.targetCluster.secretName $signer))) -}}
+{{- fail (printf "A shared workload mount must not use the selected Issuer's signing Secret %q." $signer) -}}
+{{- end -}}
+{{- end -}}
 {{- $ready := false -}}
 {{- range dig "status" "conditions" list $existing -}}
 {{- if and (eq .type "Ready") (eq .status "True") (gt (int64 $existing.metadata.generation) 0) (eq (int64 .observedGeneration) (int64 $existing.metadata.generation)) -}}

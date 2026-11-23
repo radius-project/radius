@@ -81,6 +81,20 @@ type certificateChartFixture struct {
 	forbiddenPath string
 }
 
+func TestNamespacedIssuerSharedSignerMount(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			f := newCertificateChartFixture(t)
+			f.objects[1].Object["spec"] = map[string]any{"ca": map[string]any{"secretName": "operator-key"}}
+			global := f.values["global"].(map[string]any)
+			global["rbac"].(map[string]any)["tls"] = map[string]any{"provider": provider}
+			global["targetCluster"] = map[string]any{"enabled": true, "secretName": "operator-key"}
+			_, err := f.renderChart(t)
+			require.ErrorContains(t, err, "operator-key")
+		})
+	}
+}
+
 func TestExternalIssuerReadiness(t *testing.T) {
 	for _, tt := range []struct {
 		name, kind, namespace string
