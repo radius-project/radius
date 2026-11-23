@@ -794,6 +794,8 @@ test("cross-run recovery requires paired explicit provenance and never regenerat
     runId: 10,
     generationAttempt: 1,
     commit: sourceSha,
+    repository: "radius-project/radius",
+    workflow: ".github/workflows/build-release.yaml",
     ref: context.ref
   };
   const record = {
@@ -802,6 +804,19 @@ test("cross-run recovery requires paired explicit provenance and never regenerat
   const github = {
     rest: {
       actions: {
+        getWorkflowRunAttempt: async () => ({
+          data: {
+            id: 10,
+            run_attempt: 1,
+            run_number: 10,
+            head_sha: sourceSha,
+            head_branch: "v0.62.1",
+            event: "push",
+            path: source.workflow,
+            repository: { full_name: source.repository },
+            head_repository: { full_name: source.repository }
+          }
+        }),
         listWorkflowRuns: "runs",
         listWorkflowRunArtifacts: "artifacts"
       }

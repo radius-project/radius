@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { capture, tool } from "./bicep-types.mjs";
+import { tool } from "./bicep-types.mjs";
 import {
   bicepExtensionTargets,
   plannedBicepExtensions,
@@ -16,6 +16,7 @@ import {
 } from "./release-bicep-extensions.mjs";
 import script, {
   approvedRelease,
+  captureSelected,
   existingManifest,
   generationSource,
   prepareRelease,
@@ -352,7 +353,20 @@ test("first capture after Helm failed before generation requires complete skippe
         actions: {
           listWorkflowRuns: async () => [prior],
           listWorkflowRunArtifacts: async () => [],
-          getWorkflowRunAttempt: async () => ({ data: prior }),
+          getWorkflowRunAttempt: async ({ run_id, attempt_number }) => ({
+            data:
+              (
+                run_id === retry.runId &&
+                attempt_number === retry.generationAttempt
+              ) ?
+                {
+                  ...workflowRun,
+                  id: retry.runId,
+                  run_attempt: retry.generationAttempt,
+                  run_number: 50
+                }
+              : prior
+          }),
           listJobsForWorkflowRunAttempt: async () => [skipped]
         }
       }
@@ -399,6 +413,109 @@ test("first capture after Helm failed before generation requires complete skippe
       /registry forbidden/
     );
   }
+});
+
+test("selection permits local snapshot retention after remote reads become unavailable", async (t) => {
+  const directory = await temp(t);
+  await writeFile(
+    join(directory, "capture-selection.json"),
+    JSON.stringify({ source, expected })
+  );
+  const core = {
+    getInput: (name) => (name === "registry" ? "localhost:5000" : "")
+  };
+  const commands = [];
+  const run = async (args) => {
+    commands.push(args);
+    if (args[0] === "yq") return JSON.stringify(plan);
+    if (args[0] === "git" && args[1] === "rev-parse") return source.commit;
+    if (args[0] === "bicep") return "";
+    if (args[0] === "oras" && args[1] === "cp") {
+      const layout = args.at(-1).slice(0, -":bundle".length);
+      await mkdir(layout, { recursive: true });
+      await writeFile(
+        join(layout, "index.json"),
+        JSON.stringify({ manifests: [{ digest: hash("native") }] })
+      );
+      return "";
+    }
+    if (args[0] === "tar") {
+      await writeFile(args[2], "retained snapshot");
+      return "";
+    }
+    throw new Error("remote history and registry reads unavailable");
+  };
+  await captureSelected({ core, context }, directory, env, run);
+  assert.equal(
+    await readFile(join(directory, artifact.name), "utf8"),
+    "retained snapshot"
+  );
+  assert.ok(
+    !commands.some((args) => args[0] === "gh" || args[1] === "manifest")
+  );
+  await assert.rejects(
+    captureSelected(
+      { core, context },
+      directory,
+      { ...env, GITHUB_RUN_ATTEMPT: "2" },
+      run
+    ),
+    /another source or attempt/
+  );
+});
+
+test("later queued first attempts cannot block capture but queued reruns retain earlier history", async () => {
+  const later = {
+    ...workflowRun,
+    id: 124,
+    run_number: 51,
+    status: "queued",
+    run_attempt: 1
+  };
+  const previous = { ...later, run_attempt: 1, status: "completed" };
+  const github = {
+    paginate: async (method, args) => method(args),
+    rest: {
+      actions: {
+        getWorkflowRunAttempt: async ({ run_id, attempt_number }) => ({
+          data:
+            run_id === source.runId ? { ...workflowRun, run_number: 50 }
+            : attempt_number === later.run_attempt ? later
+            : previous
+        }),
+        listWorkflowRuns: async () => [later],
+        listWorkflowRunArtifacts: async () => [],
+        listJobsForWorkflowRunAttempt: async ({ attempt_number }) =>
+          attempt_number === later.run_attempt ? [] : [job]
+      }
+    }
+  };
+  const absent = async () => {
+    throw Object.assign(new Error("not found"), {
+      code: 1,
+      stderr: `Error response from registry: failed to fetch the content of "${expected.reference}": ${expected.reference}: not found`
+    });
+  };
+  await proveFirstCapture(github, source, expected, absent);
+  later.run_attempt = 2;
+  await assert.rejects(
+    proveFirstCapture(github, source, expected, absent),
+    /generation step|generation may/
+  );
+  later.run_attempt = 1;
+  later.run_number = undefined;
+  await assert.rejects(
+    proveFirstCapture(github, source, expected, absent),
+    /still active/
+  );
+  later.run_number = 51;
+  github.rest.actions.listJobsForWorkflowRunAttempt = async () => [
+    { status: "in_progress", started_at: "2026-10-01T10:00:00Z" }
+  ];
+  await assert.rejects(
+    proveFirstCapture(github, source, expected, absent),
+    /may already have started/
+  );
 });
 
 test("original snapshot produces the exact Radius-only R1 record and preserves its attempt on retry", async (t) => {
@@ -783,6 +900,18 @@ test("release caller activates the credential-isolated full-version producer and
     "utf8"
   );
   const [, bundle, publisher] = yaml.split(/^  (?:bundle|publish):\s*$/m);
+  const orderedSteps = [
+    "Validate approved source and select immutable snapshot",
+    "Generate types once for the full release version",
+    "Capture native Bicep OCI snapshot",
+    "Retain original native snapshot"
+  ].map((name) => bundle.indexOf(`- name: ${name}\n`));
+  assert.ok(
+    orderedSteps.every(
+      (position, index) =>
+        position >= 0 && (index === 0 || position > orderedSteps[index - 1])
+    )
+  );
   for (const step of job.steps) {
     assert.ok(bundle.includes(`- name: ${step.name}\n`));
   }
@@ -880,8 +1009,14 @@ test(
             { ...workflowRun, status: "completed", conclusion: "failure" }
           ],
           listWorkflowRunArtifacts: async () => [],
-          getWorkflowRunAttempt: async () => ({
-            data: { ...workflowRun, status: "completed", conclusion: "failure" }
+          getWorkflowRunAttempt: async ({ attempt_number }) => ({
+            data: {
+              ...workflowRun,
+              run_attempt: attempt_number,
+              run_number: 50,
+              status: "completed",
+              conclusion: "failure"
+            }
           }),
           listJobsForWorkflowRunAttempt: async () => [
             {
@@ -895,7 +1030,26 @@ test(
     };
     await proveFirstCapture(history, source, expected, run);
     assert.equal(selectSnapshot([], source, false, true), "");
-    await capture(source, directory, registry);
+    await writeFile(
+      join(directory, "capture-selection.json"),
+      JSON.stringify({ source, expected })
+    );
+    history.rest.actions.getWorkflowRunAttempt = async () => {
+      throw new Error("history unavailable after generation");
+    };
+    await captureSelected(
+      {
+        context,
+        core: { getInput: (name) => (name === "registry" ? registry : "") }
+      },
+      directory,
+      { ...env, GITHUB_RUN_ATTEMPT: "2" },
+      async (args, options) => {
+        if (args[0] === "yq") return JSON.stringify(plan);
+        if (args[0] === "git" && args[1] === "rev-parse") return source.commit;
+        return tool(args, options);
+      }
+    );
     const nativeArtifact = {
       ...artifact,
       digest: hash(await readFile(archive))
