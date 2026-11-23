@@ -58,7 +58,16 @@ kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/
   radapp.io/release-name=radius radapp.io/release-namespace=radius-system
 ```
 
-If the hook fails anyway, run the same `helm upgrade` again once the Secret holds both CAs. After the `ucp` Deployment rolls out, finally delete the `radius-apiserver-trust` Secret and run `helm upgrade` again, so the APIService trusts only `radius-apiserver-ca` and follows its renewals. cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.
+If the hook fails anyway, run the same `helm upgrade` again once the Secret holds both CAs. After the `ucp` Deployment rolls out, check that `kubectl get apiservice v1alpha3.api.ucp.dev` reports `Available` as `True`, then delete the `radius-apiserver-trust` Secret and run `helm upgrade` again, so the APIService trusts only `radius-apiserver-ca` and follows its renewals. With Helm 4 server-side apply, cainjector co-owns the APIService's `spec.caBundle`, so this upgrade can fail with a field-manager conflict on `caBundle`; if it does, run the same `helm upgrade` with `--force-conflicts`:
+
+```bash
+kubectl rollout status deployment/ucp -n radius-system
+kubectl get apiservice v1alpha3.api.ucp.dev
+kubectl delete secret radius-apiserver-trust -n radius-system
+helm upgrade radius deploy/Chart -n radius-system --reuse-values --force-conflicts
+```
+
+cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.
 
 Do not `helm rollback` to the first of these upgrades. Helm recorded that revision's APIService with the `radius-apiserver-trust` Secret, which you have since deleted and which held only the earlier CA when Helm rendered it, so the rollback restores a `caBundle` that UCP may not serve. To return to that configuration, run `helm upgrade` with the target chart and your saved values instead, or, for a release that `rad` manages, use `rad rollback kubernetes`, which stages the CAs itself.
 
