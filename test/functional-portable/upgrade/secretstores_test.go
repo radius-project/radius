@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -50,15 +51,9 @@ func Test_SecretStores_Upgrade(t *testing.T) {
 		helmUninstall(t, cleanup)
 		resetControllerCRDsForBaseline(t, cleanup)
 	})
-	baselineArgs := []string{
-		"helm", "install", helmReleaseName, "oci://ghcr.io/radius-project/helm-chart/radius",
-		"--version", baseline, "--namespace", radiusNamespace, "--create-namespace",
-		"--wait", "--timeout", helmTimeout, "--set", "preupgrade.enabled=false",
-	}
-	for _, component := range radiusImageComponents {
-		baselineArgs = append(baselineArgs, "--set-string", component.key+".tag="+baseline)
-	}
-	require.NoError(t, runCommand(ctx, baselineArgs))
+	baselineCLI := downloadReleasedCLI(t, baseline)
+	out, err := exec.CommandContext(ctx, baselineCLI, "install", "kubernetes", "--skip-contour-install").CombinedOutput()
+	require.NoErrorf(t, err, "Released rad install failed: %s", out)
 	requireContainerImage(t, ctx, k8sClient, "applications-rp", "applications-rp", "ghcr.io/radius-project/applications-rp:"+baseline)
 	requireContainerImage(t, ctx, k8sClient, "ucp", "ucp", "ghcr.io/radius-project/ucpd:"+baseline)
 	cli := radcli.NewCLI(t, "")
@@ -85,15 +80,11 @@ func Test_SecretStores_Upgrade(t *testing.T) {
 	registry, tag := testutil.SetDefault()
 	deImage, err := deploymentEngineImageFromEnv()
 	require.NoError(t, err)
-	args := helmReleaseArgs("upgrade", registry, tag, deImage, map[string]string{
-		"preupgrade.enabled":  "false",
-		"global.rbac.enabled": "false",
-		"global.rbac.dryRun":  "false",
-	})
-	if cert := os.Getenv("RADIUS_REGISTRY_CERT_FILE"); cert != "" {
-		args = append(args, "--set-file", "global.rootCA.cert="+cert)
-	}
-	require.NoError(t, runCommand(ctx, args))
+	// rad upgrade migrates chart changes, such as the controller strategy, that a raw Helm upgrade cannot.
+	upgradeArgs := append([]string{"upgrade", "kubernetes", "--skip-preflight", "--chart", relativeChartPath},
+		radUpgradeImageArgs(registry, tag, deImage, os.Getenv("RADIUS_REGISTRY_CERT_FILE"))...)
+	_, err = cli.RunCommand(ctx, upgradeArgs)
+	require.NoError(t, err)
 	requireContainerImage(t, ctx, k8sClient, "applications-rp", "applications-rp", registry+"/applications-rp:"+tag)
 	requireContainerImage(t, ctx, k8sClient, "ucp", "ucp", registry+"/ucpd:"+tag)
 	persisted, err := client.API.Get(ctx, client.Scope, name, nil)
