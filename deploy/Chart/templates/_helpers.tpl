@@ -351,7 +351,7 @@ global.targetCluster.secretName) is a Secret that cert-manager writes a private 
 mounted whole into several pods, so reusing one of these names exposes the key. Also fails when a
 global.imagePullSecrets name is a receiver's <receiver>-spiffe Secret: cert-manager cannot add the
 certificate to an existing registry Secret, so the receiver's pod cannot start.
-Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
+Check shared mounts even when issuance is disabled: a prior release's Secret can survive rollback.
 */}}
 {{- define "radius.authz.validateSecretNames" -}}
 {{- $shared := list -}}
@@ -362,6 +362,7 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- $shared = append $shared (list "global.targetCluster.secretName" .Values.global.targetCluster.secretName) -}}
 {{- end -}}
 {{- $reserved := dict
+  "ucp-cert" "the chart writes UCP's legacy API server certificate and key to that Secret"
   "radius-ca" "cert-manager writes the Radius CA certificate and signing key to that Secret"
   "radius-apiserver-ca" "cert-manager writes the UCP API server CA certificate and signing key to that Secret"
   "ucp-apiserver-tls" "cert-manager writes UCP's API server certificate and key to that Secret" -}}
@@ -370,14 +371,14 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- fail (printf "%s must not be %q: %s" (index . 0) (index . 1) (get $reserved (index . 1))) -}}
 {{- end -}}
 {{- end -}}
-{{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- range $receiver := include "radius.authz.spiffe.allReceivers" . | fromJsonArray -}}
 {{- range $shared -}}
 {{- if eq (index . 1) (printf "%s-spiffe" $receiver) -}}
 {{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
 {{- end -}}
 {{- end -}}
 {{- range $i, $pullSecret := $.Values.global.imagePullSecrets -}}
-{{- if and (kindIs "map" $pullSecret) (eq (toString $pullSecret.name) (printf "%s-spiffe" $receiver)) -}}
+{{- if and (ne (include "radius.authz.mode" $) "off") (kindIs "map" $pullSecret) (eq (toString $pullSecret.name) (printf "%s-spiffe" $receiver)) -}}
 {{- fail (printf "global.imagePullSecrets[%d].name must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret, and cannot add them to an existing registry Secret" $i $pullSecret.name $receiver) -}}
 {{- end -}}
 {{- end -}}
@@ -491,13 +492,17 @@ SPIFFE trust domain of the Radius server certificates.
 {{- $trustDomain -}}
 {{- end -}}
 
+{{- define "radius.authz.spiffe.allReceivers" -}}
+{{- list "ucp" "applications-rp" "dynamic-rp" "bicep-de" | toJson -}}
+{{- end -}}
+
 {{/*
 Components that receive internal calls and get a SPIFFE server certificate, as a JSON list.
 */}}
 {{- define "radius.authz.spiffe.receivers" -}}
-{{- $receivers := list "ucp" "applications-rp" "dynamic-rp" -}}
-{{- if eq (include "radius.de.internalAuth.enabled" .) "true" -}}
-{{- $receivers = append $receivers "bicep-de" -}}
+{{- $receivers := include "radius.authz.spiffe.allReceivers" . | fromJsonArray -}}
+{{- if ne (include "radius.de.internalAuth.enabled" .) "true" -}}
+{{- $receivers = without $receivers "bicep-de" -}}
 {{- end -}}
 {{- $receivers | toJson -}}
 {{- end -}}
