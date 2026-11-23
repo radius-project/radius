@@ -339,7 +339,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		union, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
 		clean := union.DeepCopy()
-		clean.SetAnnotations(nil)
+		removeInjectAnnotations(clean)
 		require.NoError(t, unstructured.SetNestedField(clean.Object, base64.StdEncoding.EncodeToString(c.ucpCA.pem), "spec", "caBundle"))
 		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, clean, ""))
 		restored := false
@@ -363,7 +363,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		c := newOffAfterOnCluster(t)
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
-		apiService.SetAnnotations(nil)
+		removeInjectAnnotations(apiService)
 		withLeaf := append(append([]byte{}, c.ucpCA.pem...), issueUCPCertificate(t, c.ucpCA)...)
 		require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(withLeaf), "spec", "caBundle"))
 		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, apiService, ""))
@@ -486,4 +486,13 @@ func Test_ReconcileUCPOffAPIServerTrust_DeletesInterruptedStage(t *testing.T) {
 			require.Empty(t, c.clusterWrites())
 		})
 	}
+}
+
+// removeInjectAnnotations removes the cert-manager inject annotations from apiService and keeps Helm's.
+func removeInjectAnnotations(apiService *unstructured.Unstructured) {
+	annotations := apiService.GetAnnotations()
+	for _, annotation := range ucpInjectAnnotations {
+		delete(annotations, annotation)
+	}
+	apiService.SetAnnotations(annotations)
 }
