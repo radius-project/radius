@@ -160,6 +160,11 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- $secret := lookup "v1" "Secret" $root.Release.Namespace $signing -}}
 {{- $observed = $secret -}}
 {{- $bundle = dig "data" "ca.crt" "" $secret | b64dec -}}
+{{- $copy := lookup "v1" "ConfigMap" $root.Release.Namespace "radius-mtls-ca" -}}
+{{- if and $copy (or (ne (len ($copy.data | default dict)) 1) (not (empty $copy.binaryData))
+  (ne (trim (dig "data" "ca.crt" "" $copy)) (trim $bundle))) -}}
+{{- fail "The retained internal ConfigMap differs from the selected CA; restore the pinned source before retrying." -}}
+{{- end -}}
 {{- else -}}
 {{- $bundle = dig "data" "ca.crt" "" $existing | b64dec -}}
 {{- end -}}

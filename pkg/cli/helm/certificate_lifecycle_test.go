@@ -237,6 +237,47 @@ func TestLifecycleProjectionRevisionAndIdentity(t *testing.T) {
 				if phase == rotationComplete {
 					plane.Source.Bundle = plane.NewCA
 				}
+
+				func TestRetainedInternalProjection(t *testing.T) {
+					for _, scenario := range []string{"match", "extra CA", "missing CA", "missing object", "recreated"} {
+						t.Run(scenario, func(t *testing.T) {
+							state, journal := lifecycleFixture(t)
+							state.Phase = rotationComplete
+							plane := state.Planes["internal"]
+							plane.Source.Bundle = plane.NewCA
+							source := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+								Name: plane.Source.Name, Namespace: state.Namespace, UID: plane.Source.UID, ResourceVersion: "5",
+								Labels: map[string]string{helmManagedByLabel: helmManagedByValue},
+								Annotations: map[string]string{helmReleaseNameAnnotation: state.Release, helmReleaseNamespaceAnnotation: state.Namespace,
+									"radius.io/certificate-mode": state.Mode, rotationJournalUID: string(journal.UID), rotationRevision: state.ID + "/complete"},
+							}, Data: map[string]string{caCertificateKey: string(plane.NewCA)}}
+							signer := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: plane.Signer.Name, Namespace: state.Namespace, UID: plane.Signer.UID},
+								Data: map[string][]byte{caCertificateKey: plane.NewCA}}
+							switch scenario {
+							case "extra CA":
+								signer.Data[caCertificateKey] = append(bytes.Clone(plane.NewCA), plane.OldCA...)
+							case "missing CA":
+								delete(signer.Data, caCertificateKey)
+							case "recreated":
+								source.UID = "replacement"
+							}
+							kube := kubefake.NewClientset(signer)
+							if scenario != "missing object" {
+								require.NoError(t, kube.Tracker().Add(source))
+							}
+							store := &rotationStore{kube: kube, namespace: state.Namespace, now: time.Now}
+							err := store.checkLifecycleProjection(t.Context(), journal, state, "internal", plane)
+							if scenario == "match" {
+								require.NoError(t, err)
+							} else {
+								require.Error(t, err)
+							}
+							for _, action := range kube.Actions() {
+								require.Equal(t, "get", action.GetVerb())
+							}
+						})
+					}
+				}
 				source := permanentPublicTrustSecret(plane.Source.Bundle)
 				source.UID, source.ResourceVersion = plane.Source.UID, plane.Source.ResourceVersion
 				source.Annotations[rotationJournalUID] = string(journal.UID)

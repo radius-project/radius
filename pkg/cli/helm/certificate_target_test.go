@@ -98,6 +98,7 @@ spec:
 		t.Run(action, func(t *testing.T) {
 			opts := opts
 			opts.Contour.Disabled, opts.RadiusInstalled = true, true
+			opts.RadiusReleaseValues = authzOnValues
 			opts.CertManager.ChartPath = "cert-manager"
 			client := NewMockHelmClient(gomock.NewController(t))
 			client.EXPECT().LoadChart("chart").Return(c, nil)
@@ -215,9 +216,11 @@ func TestRollbackCertificateObservations(t *testing.T) {
 					err = impl.RollbackRadius(t.Context(), "selected")
 				}
 				require.ErrorContains(t, err, want)
-				require.Empty(t, cluster.clusterWrites())
 				if change == "failed attempt" {
+					require.Equal(t, []string{"create leases", "delete leases"}, cluster.clusterWrites())
 					require.Empty(t, keys.Actions())
+				} else {
+					require.Empty(t, cluster.clusterWrites())
 				}
 			})
 		}
@@ -244,7 +247,7 @@ func TestExternalIssuerDependencyParity(t *testing.T) {
 				require.NoError(t, kube.AppsV1().Deployments("security").Delete(t.Context(), "cert-manager-cainjector", metav1.DeleteOptions{}))
 				keys := kube.(*fake.Clientset)
 				keys.ClearActions()
-				impl := &Impl{Helm: client, contourCluster: &fakeContourCluster{}, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) { return kube, ext, nil }}
+				impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{}, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) { return kube, ext, nil }}
 				run := impl.UpgradeRadius
 				if preflight {
 					run = impl.CheckRadiusCertificates
@@ -357,7 +360,6 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 				expectRadiusBaseline(t, client, options)
 				if !invalid {
 					client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(nil, driver.ErrReleaseNotFound)
-					expectControllerStrategyMigration(client, !options.ResetValues).Return(nil)
 					if action == "reinstall" {
 						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: c, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil)
 					}

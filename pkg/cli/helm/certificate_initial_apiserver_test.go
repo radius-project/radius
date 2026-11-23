@@ -21,6 +21,7 @@ package helm
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -70,7 +71,7 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 	t.Setenv("KUBECONFIG", kubeconfig)
 	selected, err := loader.Load("../../../deploy/Chart")
 	require.NoError(t, err)
-	for _, name := range []string{"radius", "external", "external-workload"} {
+	for _, name := range []string{"radius", "external", "external-workload", "radius-historical"} {
 		t.Run(name, func(t *testing.T) {
 			provider, _, _ := strings.Cut(name, "-")
 			local := *store
@@ -134,6 +135,11 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 					return len(fixtures) == 0, nil
 				})
 			}()
+			if name == "radius-historical" {
+				checkHistoricalBootstrapRetry(t, &local, kubeconfig)
+				require.NoError(t, <-issued)
+				return
+			}
 			if name == "external-workload" {
 				checkExternalBootstrapRetry(t, &local, kubeconfig)
 				require.NoError(t, <-issued)
@@ -283,4 +289,101 @@ spec:
 	require.Equal(t, journal.UID, resumed.UID)
 	require.Equal(t, state.ID, again.ID)
 	require.Equal(t, "published", again.Phase)
+}
+
+func checkHistoricalBootstrapRetry(t *testing.T, store *rotationStore, kubeconfig string) {
+	t.Helper()
+	ctx := t.Context()
+	selected := certificateTestChart(t)
+	// No worker nodes are present to run readiness hooks.
+	selected.Templates = slices.DeleteFunc(selected.Templates, func(f *common.File) bool {
+		return strings.HasPrefix(f.Name, "templates/control-plane-readiness/") || strings.HasPrefix(f.Name, "templates/pre-upgrade/")
+	})
+	archive, err := chartutil.Save(selected, t.TempDir())
+	require.NoError(t, err)
+	options := NewDefaultClusterOptions()
+	options.Contour.Disabled = true
+	options.Radius.Namespace = store.namespace
+	options.Radius.ChartPath = archive
+	options.Radius.Wait = false
+	options.Radius.Timeout = time.Minute
+	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=radius"}
+	controller := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	impl := &Impl{Helm: NewHelmClient(), newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+		k, e := (fakeCertManagerCluster{crd: true, controller: controller}).clients()
+		return k, e, nil
+	}}
+	configuration := newTestHelmConfiguration(t, kubeconfig, store.namespace)
+	expireUCPAPIServiceWait(t)
+	err = impl.InstallRadius(ctx, options, "fixture")
+	require.ErrorContains(t, err, "aggregation deployment has not converged")
+	journal, state, err := readInitialCertificateJournal(ctx, store)
+	require.NoError(t, err)
+	require.Equal(t, "published", state.Phase)
+	require.Equal(t, 1, state.Version)
+	require.Equal(t, "selfSigned", state.Mode)
+	// Seed the publication witness recorded by historical schema-1 installers.
+	pin := state.Sources["internal"]
+	require.Equal(t, "Secret", pin.Kind)
+	cm, err := store.kube.CoreV1().ConfigMaps(store.namespace).Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "radius-mtls-ca", Namespace: store.namespace, Labels: map[string]string{helmManagedByLabel: helmManagedByValue}, Annotations: map[string]string{helmReleaseNameAnnotation: store.release, helmReleaseNamespaceAnnotation: store.namespace, initialCertificateIntent: string(journal.UID), "radius.io/certificate-mode": "selfSigned", "helm.sh/resource-policy": "keep"}}, Data: map[string]string{caCertificateKey: string(pin.Bundle)}}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	pin.Kind, pin.Name, pin.UID, pin.ResourceVersion = "ConfigMap", cm.Name, cm.UID, cm.ResourceVersion
+	state.Sources["internal"] = pin
+	payload, err := json.Marshal(state)
+	require.NoError(t, err)
+	journal.Data[rotationJournalKey] = string(payload)
+	journal, err = store.kube.CoreV1().ConfigMaps(store.namespace).Update(ctx, journal, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "radius-mtls-ca", state.Sources["internal"].Name)
+	recorded, err := impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
+	require.Equal(t, 1, recorded.Version)
+	require.Equal(t, state.ID, recorded.Labels[initialCertificateIntent])
+	actual, err := bootstrapDigest(recorded.Chart)
+	require.NoError(t, err)
+	require.Equal(t, state.ChartSHA256, actual)
+	options.RadiusInstalled, options.RadiusReleaseValues = true, recorded.Config
+	require.ErrorContains(t, impl.InstallRadius(ctx, options, "fixture"), "--reinstall")
+	options.Radius.Reinstall = true
+	err = impl.InstallRadius(ctx, options, "fixture")
+	require.ErrorContains(t, err, "aggregation deployment has not converged")
+	after, err := impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
+	require.Equal(t, 2, after.Version)
+	resumed, again, err := readInitialCertificateJournal(ctx, store)
+	require.NoError(t, err)
+	require.Equal(t, journal.UID, resumed.UID)
+	require.Equal(t, state.Sources["internal"], again.Sources["internal"])
+	objects, err := parsePendingProbeManifest(after.Manifest)
+	require.NoError(t, err)
+	found := false
+	for _, object := range objects {
+		if object.GetKind() != "Deployment" || object.GetName() != "ucp" {
+			continue
+		}
+		volumes, _, err := unstructured.NestedSlice(object.Object, "spec", "template", "spec", "volumes")
+		require.NoError(t, err)
+		for _, item := range volumes {
+			v := item.(map[string]any)
+			name, _, err := unstructured.NestedString(v, "secret", "secretName")
+			require.NoError(t, err)
+			if name == "radius-ca" {
+				found = true
+			}
+		}
+	}
+	require.True(t, found, "baseline control: committed revision 2 UCP Deployment uses the signer Secret (journal witness is distinct)")
+	t.Log("selfSigned/radius, initial journal v1 published, internal ConfigMap/radius-mtls-ca; labeled Helm revision 1; ordinary retry refused; identical --reinstall applied revision 2; journal and source identity unchanged; no serving convergence")
+}
+
+func parsePendingProbeManifest(manifest string) ([]unstructured.Unstructured, error) {
+	var result []unstructured.Unstructured
+	for _, doc := range strings.Split(manifest, "\n---\n") {
+		var obj unstructured.Unstructured
+		if err := yaml.Unmarshal([]byte(doc), &obj); err != nil {
+			return nil, err
+		}
+		result = append(result, obj)
+	}
+	return result, nil
 }

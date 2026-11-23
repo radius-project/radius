@@ -367,7 +367,10 @@ func TestSelfSignedInternalSource(t *testing.T) {
 			copy = newTestCA(t, "previous").pem
 		}
 		for _, obj := range []map[string]any{
-			{"kind": "Secret", "metadata": map[string]any{"name": "radius-ca"}, "data": map[string]any{"ca.crt": base64.StdEncoding.EncodeToString(signer)}},
+			{"kind": "Secret", "type": "kubernetes.io/tls", "metadata": map[string]any{"name": "radius-ca", "annotations": map[string]any{
+				certificateNameAnnotation: "radius-ca", "cert-manager.io/issuer-name": radiusBootstrapIssuerName,
+				"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io",
+			}}, "data": map[string]any{"ca.crt": base64.StdEncoding.EncodeToString(signer), "tls.crt": base64.StdEncoding.EncodeToString(signer), "tls.key": "fixture"}},
 			{"kind": "ConfigMap", "metadata": map[string]any{"name": "radius-mtls-ca"}, "data": map[string]any{"ca.crt": string(copy)}},
 		} {
 			obj["apiVersion"] = "v1"

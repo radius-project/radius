@@ -166,7 +166,9 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		}
 	}
 	selected.Templates = append(templates, &common.File{Name: "templates/snapshot.json",
-		Data: []byte(`{{ include "radius.lifecycleSnapshot" . }}`)})
+		Data: []byte(`{{ include "radius.lifecycleSnapshot" . }}`)}, &common.File{Name: "templates/internal-volume.yaml",
+		Data: []byte(`{{ include "radius.authz.caBundle.volume" . }}`)})
+	selected.Values = resolveEffectiveChartValues(selected.Values, nil, authzOnValues)
 	renderer := engine.New(config)
 	render := func() (map[string]map[string]any, error) {
 		output, renderErr := renderer.RenderWithContext(t.Context(), selected, common.Values{"Values": selected.Values, "Chart": selected.Metadata,
@@ -174,6 +176,9 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		if renderErr != nil {
 			return nil, renderErr
 		}
+		volume := output[selected.Name()+"/templates/internal-volume.yaml"]
+		require.Contains(t, volume, "configMap:")
+		require.Contains(t, volume, "name: radius-mtls-ca")
 		var snapshot map[string]map[string]any
 		decodeErr := json.Unmarshal([]byte(output[selected.Name()+"/templates/snapshot.json"]), &snapshot)
 		return snapshot, decodeErr

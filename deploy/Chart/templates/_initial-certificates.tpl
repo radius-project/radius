@@ -35,6 +35,18 @@ not an override of a subsequent CA lifecycle.
 {{- if or (empty $namespace) (ne $namespace.metadata.uid $state.namespaceUID) -}}
 {{- fail "Initial certificate namespace identity changed." -}}
 {{- end -}}
+{{- if and (eq $state.phase "complete") (eq $state.mode "selfSigned") (eq (dig "internal" "kind" "" $state.sources) "ConfigMap") (not (lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation")) -}}
+{{- $pin := $state.sources.internal -}}
+{{- $source := lookup "v1" "ConfigMap" .Release.Namespace "radius-mtls-ca" -}}
+{{- $signer := $state.anchors.internal.signer -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace $signer.name -}}
+{{- if or (ne $pin.name "radius-mtls-ca") (not $pin.uid) (ne (dig "metadata" "uid" "" $source) $pin.uid)
+    (ne (dig "metadata" "uid" "" $secret) $signer.uid) (not $secret) (not $source)
+    (ne (dig "data" "ca.crt" "" $source) (b64dec $pin.bundle))
+    (ne (trim (b64dec $pin.bundle)) (trim (dig "data" "ca.crt" "" $secret | b64dec))) -}}
+{{- fail "Historical bootstrap ConfigMap or signer changed; restore the recorded internal trust source." -}}
+{{- end -}}
+{{- end -}}
 {{- if ne $state.phase "complete" -}}
 {{- if ne $state.phase "published" -}}
 {{- fail "Finish initial certificate public-source publication before applying the full chart." -}}
