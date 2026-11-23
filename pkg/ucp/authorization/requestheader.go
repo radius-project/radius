@@ -75,7 +75,7 @@ func newRequestHeaderAuthenticator(options *RequestHeaderOptions, loadCA func() 
 	}
 	roots := x509.NewCertPool()
 	count := 0
-	for remaining := bytes.TrimSpace(bundle); len(remaining) > 0; count++ {
+	for remaining := skipBlankLines(bundle); len(remaining) > 0; count++ {
 		const begin = "-----BEGIN CERTIFICATE-----"
 		const end = "-----END CERTIFICATE-----"
 		if !bytes.HasPrefix(remaining, []byte(begin)) {
@@ -109,7 +109,7 @@ func newRequestHeaderAuthenticator(options *RequestHeaderOptions, loadCA func() 
 			return nil, fmt.Errorf("parse request-header CA certificate: %w", err)
 		}
 		roots.AddCert(certificate)
-		remaining = bytes.TrimSpace(remaining[len(encoded):])
+		remaining = skipBlankLines(remaining[len(encoded):])
 	}
 	if count == 0 {
 		return nil, fmt.Errorf("request-header CA bundle contains no certificates")
@@ -117,6 +117,23 @@ func newRequestHeaderAuthenticator(options *RequestHeaderOptions, loadCA func() 
 	return &RequestHeaderAuthenticator{
 		roots: roots, allowedNames: slices.Clone(options.AllowedNames), issuer: options.KubernetesIssuer,
 	}, nil
+}
+
+// skipBlankLines drops whole whitespace-only lines. It never trims a line with
+// content, so an indented BEGIN line, which pem.Decode and AppendCertsFromPEM
+// ignore, is rejected instead of trusted.
+func skipBlankLines(data []byte) []byte {
+	for len(data) > 0 {
+		line, rest, found := bytes.Cut(data, []byte("\n"))
+		if len(bytes.TrimSpace(line)) != 0 {
+			return data
+		}
+		if !found {
+			return nil
+		}
+		data = rest
+	}
+	return data
 }
 
 // TLSConfig requests client certificates for application-level proxy verification.
