@@ -142,7 +142,8 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 // DeleteRadiusUninstallLeftovers resumes the cleanup that UninstallRadius runs after Helm uninstalls Radius, for a
 // cluster where the Radius release is already gone. It deletes only leftovers, which RadiusUninstallLeftovers listed
 // and the user confirmed, each pinned to the uid and resourceVersion rad read for the list, so an object that changed
-// or was replaced since survives.
+// or was replaced since survives. It stops at the first object that changed and returns an error, because a listed Secret
+// can depend on a Certificate listed before it, and the cleanup is then incomplete, so the caller keeps cert-manager.
 func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext string, leftovers []UninstallLeftover) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -158,7 +159,7 @@ func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext s
 		switch {
 		case err == nil, apierrors.IsNotFound(err), meta.IsNoMatchError(err):
 		case apierrors.IsConflict(err):
-			i.logInfo("Warning: rad did not delete %s, which changed after rad listed it. Run the command again to review it", leftover)
+			return fmt.Errorf("%s changed after rad listed it, so rad stopped before deleting the remaining objects. Run the command again to review them", leftover)
 		default:
 			return fmt.Errorf("failed to delete %s: %w", leftover, err)
 		}
@@ -245,7 +246,7 @@ func stagedForRelease(object *unstructured.Unstructured, releaseNamespace, relea
 
 // helmOwned reports whether object has the Helm ownership metadata of release releaseName in releaseNamespace, which
 // Helm uninstall requires before it deletes an object of the release.
-func helmOwned(object *unstructured.Unstructured, releaseNamespace, releaseName string) bool {
+func helmOwned(object metav1.Object, releaseNamespace, releaseName string) bool {
 	annotations := object.GetAnnotations()
 	return object.GetLabels()[helmManagedByLabel] == helmManagedByValue &&
 		annotations[helmReleaseNameAnnotation] == releaseName &&

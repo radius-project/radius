@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,6 +36,7 @@ import (
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/radius-project/radius/pkg/authz"
 )
@@ -108,12 +111,12 @@ func Test_waitForUCPAPIService(t *testing.T) {
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return ucpAPIServiceDynamicClient(), nil },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
 	}
-	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil))
+	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil, false))
 	unreachable := &Impl{
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return nil, errors.New("no cluster") },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
 	}
-	require.ErrorContains(t, unreachable.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil), "no cluster")
+	require.ErrorContains(t, unreachable.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil, false), "no cluster")
 
 	tests := []struct {
 		name    string
@@ -223,6 +226,33 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 	// nothing, so rad waits for radius-apiserver-ca rather than reporting success without it.
 	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), enabled, nil, nil), "Secret radius-system/radius-apiserver-ca is not usable")
 	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, nil), "Secret radius-system/radius-apiserver-ca is not usable")
+}
+
+// A fresh install with authorization off has no staged radius-apiserver-ca chain to remove, so a user who cannot read
+// cert-manager Issuers and Certificates can install it. After an upgrade, rad still reads them and reports a failure.
+func Test_waitForInstalledUCPAPIService_FreshOffSkipsStageCleanup(t *testing.T) {
+	for _, version := range []int{1, 2} {
+		t.Run(fmt.Sprintf("revision=%d", version), func(t *testing.T) {
+			client := ucpAPIServiceDynamicClient(ucpAPIService("", "", "")).(*dynamicfake.FakeDynamicClient)
+			for _, resource := range []string{"issuers", "certificates"} {
+				client.PrependReactor("*", resource, func(action k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("not allowed"))
+				})
+			}
+			impl := &Impl{
+				newUCPAPIServerTrustClient:  uninstallTrustClient,
+				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return client, nil },
+			}
+			applied := &releasev1.Release{Version: version, Manifest: "apiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n"}
+
+			err := impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil)
+			if version == 1 {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, "is forbidden: not allowed")
+			}
+		})
+	}
 }
 
 // With a chart that enables authorization by default, rad stages radius-apiserver-ca from the rendered chart before
