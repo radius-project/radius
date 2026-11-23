@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::Chime::VoiceConnectorLoggingConfiguration",
+  "identityScope": "region",
+  "onDelete": "reset",
+  "arnProperty": ""
+}

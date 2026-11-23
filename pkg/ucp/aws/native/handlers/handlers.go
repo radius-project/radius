@@ -46,6 +46,7 @@ import (
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chime"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chimevoice"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
@@ -107,6 +108,10 @@ func All(cfg aws.Config) []native.Handler {
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
 		iot.NewThingGroupMembership(iotsdk.NewFromConfig(cfg)),
 		transfer.NewAccess(transfersdk.NewFromConfig(cfg)),
+		chime.NewLoggingConfiguration(chimeAPI),
+		chime.NewStreamingConfiguration(chimeAPI),
+		chime.NewOrigination(chimeAPI),
+		chime.NewTermination(chimeAPI),
 	}
 }
 
