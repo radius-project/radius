@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -110,6 +111,70 @@ func frontendRequestOptions(t *testing.T, pathBase string) *ucp.Options {
 	return options
 }
 
+func TestServiceInspectionMount(t *testing.T) {
+	t.Parallel()
+	const pathBase = "/apis/api.ucp.dev/v1alpha3"
+	for _, mode := range []authapi.UserAuthorizationMode{authapi.UserAuthorizationModeDryRun, authapi.UserAuthorizationModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			options := frontendRequestOptions(t, pathBase)
+			db, err := options.DatabaseProvider.GetClient(t.Context())
+			require.NoError(t, err)
+			_, runtime := frontendRequestPolicy(t, db, mode)
+			options.UserAuthorization = runtime
+			caFile, certificate := frontendProxyCertificate(t, "front-proxy-client")
+			options.Config.Server.TLSCertificateDirectory = t.TempDir()
+			options.Config.CallerAuthentication = &authorization.RequestHeaderOptions{
+				CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
+			}
+			core, logs := observer.New(zap.InfoLevel)
+			ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
+			server, err := NewService(options).Initialize(ctx)
+			require.NoError(t, err)
+			listener := httptest.NewUnstartedServer(server.Handler)
+			listener.Config.BaseContext = func(net.Listener) context.Context { return ctx }
+			listener.TLS = server.TLSConfig
+			listener.StartTLS()
+			defer listener.Close()
+			transport := listener.Client().Transport.(*http.Transport).Clone()
+			defer transport.CloseIdleConnections()
+			transport.TLSClientConfig.Certificates = []tls.Certificate{certificate}
+			client := &http.Client{Transport: transport}
+			for _, prefix := range []string{pathBase, "", pathBase + "-other"} {
+				t.Run("prefix="+prefix, func(t *testing.T) {
+					logs.TakeAll()
+					request, err := http.NewRequestWithContext(t.Context(), http.MethodPost, listener.URL+prefix+"/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview",
+						strings.NewReader(`{"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`))
+					require.NoError(t, err)
+					request.Header.Set("X-Remote-User", "alice")
+					request.Header.Set("Content-Type", "application/json")
+					response, err := client.Do(request)
+					require.NoError(t, err)
+					defer response.Body.Close()
+					body, err := io.ReadAll(response.Body)
+					require.NoError(t, err)
+					events := logs.FilterMessage("User authorization request").All()
+					if prefix == pathBase {
+						require.Equal(t, http.StatusOK, response.StatusCode, string(body))
+						require.Contains(t, string(body), `"checks"`)
+						require.Empty(t, events)
+						return
+					}
+					require.NotContains(t, string(body), `"checks"`)
+					require.Len(t, events, 1)
+					if mode == authapi.UserAuthorizationModeEnforce {
+						require.Equal(t, http.StatusServiceUnavailable, response.StatusCode, string(body))
+						require.Equal(t, "deny", events[0].ContextMap()["result"])
+						require.Equal(t, "enforceUnsupported", events[0].ContextMap()["reason"])
+					} else {
+						require.Equal(t, "indeterminate", events[0].ContextMap()["result"])
+						require.NotEqual(t, http.StatusOK, response.StatusCode, string(body))
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestServiceDryRunRequests(t *testing.T) {
 	t.Parallel()
 	const pathBase = "/apis/api.ucp.dev/v1alpha3"
@@ -157,6 +222,22 @@ func TestServiceDryRunRequests(t *testing.T) {
 		t.Helper()
 		return callAt(pathBase, method, path, subject, body)
 	}
+	t.Run("inspection exact request keys", func(t *testing.T) {
+		for _, principal := range []string{
+			`"principal":null,"Principal":{"type":"user","issuer":"kubernetes:test-cluster","subject":"alice"}`,
+			`"Principal":{"type":"user","issuer":"kubernetes:test-cluster","subject":"alice"},"principal":null`,
+			`"principal":{"type":"user","issuer":"kubernetes:test-cluster","subject":"alice","displayName":null,"DisplayName":"Alice"}`,
+			`"principal":{"type":"user","issuer":"kubernetes:test-cluster","subject":"alice","DisplayName":"Alice","displayName":null}`,
+		} {
+			t.Run(principal, func(t *testing.T) {
+				body := `{` + principal + `,"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`
+				status, _, data := call(http.MethodPost, "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", "alice", body)
+				require.Equal(t, http.StatusBadRequest, status, data)
+				require.Contains(t, data, "InvalidRequestContent")
+				require.NotContains(t, data, `"checks"`)
+			})
+		}
+	})
 	// Exercise the real UCP write/read controllers, not a proxy-only stand-in.
 	code, _, body := call(http.MethodPut, "/planes/radius/local?api-version=2023-10-01-preview", "alice", `{"location":"global","properties":{"resourceProviders":{}}}`)
 	require.Equal(t, http.StatusOK, code, body)
@@ -299,6 +380,38 @@ func TestServiceDryRunRequests(t *testing.T) {
 				}
 			})
 		}
+		t.Run("Azure checkAccess stays local", func(t *testing.T) {
+			for _, suffix := range []string{"", "/"} {
+				for _, scope := range []string{azure, azure + "/resourceGroups/unsupported", azure + "/subscriptions/123"} {
+					for _, subject := range []string{"alice", "bob"} {
+						t.Run(scope+"/"+subject+"/suffix="+suffix, func(t *testing.T) {
+							logs.TakeAll()
+							before := calls.Load()
+							body := fmt.Sprintf(`{"checks":[{"permission":"System.Azure/credentials/use/action","target":%q}]}`, scope)
+							status, headers, data := call(http.MethodPost, scope+"/providers/Radius.Core/checkAccess"+suffix+"?api-version=2025-08-01-preview", subject, body)
+							require.Equal(t, before, calls.Load(), "inspection must not reach the Azure proxy")
+							require.Empty(t, headers.Get("X-Downstream"))
+							require.Empty(t, logs.FilterMessage("User authorization request").All(), "inspection must run before workload evaluation")
+							if scope != azure {
+								require.Equal(t, http.StatusBadRequest, status, data)
+								require.Contains(t, data, "InvalidRequestContent")
+								require.NotContains(t, data, `"checks"`)
+								return
+							}
+							require.Equal(t, http.StatusOK, status, data)
+							var result authapi.CheckAccessResponse
+							require.NoError(t, json.Unmarshal([]byte(data), &result))
+							require.Equal(t, subject, *result.Principal.Subject)
+							require.Equal(t, authapi.UserAuthorizationModeDryRun, *result.Mode)
+							require.Equal(t, runtime.State().Generation, *result.Generation)
+							require.Equal(t, []*authapi.AccessCheckResult{{
+								Permission: to.Ptr("System.Azure/credentials/use/action"), Target: to.Ptr(azure), Allowed: to.Ptr(subject == "alice"),
+							}}, result.Checks)
+						})
+					}
+				}
+			}
+		})
 	})
 
 	var downstreamCalls atomic.Int32

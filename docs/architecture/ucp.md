@@ -109,6 +109,53 @@ The protected-target guard checks successive URL parses, matching the Azure prox
 
 Ordinary deployments and their payloads continue unchanged. This layer does not implement deployment delegation, template preflight, reference extraction, PATCH effective-state checks, or response filtering, and does not scan templates or promise atomic rejection of mixed workload/policy deployments before workload side effects. Any attempted policy mutation that returns through UCP, including a deployment's subrequest, hits the same protected guard; there is no public writer or mutable generic resource record that commits policy. Direct access to a downstream component or database remains outside this user-facing boundary and requires the separate internal component authorization boundary.
 
+### User Authorization Inspection
+
+[Inspection](../../pkg/ucp/authorization/inspection_http.go) serves `GET /providers/Radius.Core/whoAmI` and `POST {scope}/providers/Radius.Core/checkAccess` with API version `2025-08-01-preview`, before generic resource/proxy routing. These operations require verified caller identity in every workload mode, including `Disabled`. Missing identity returns HTTP 401; absent, stale, starting, or stopped policy returns HTTP 503 `AuthorizationUnavailable`, never a fabricated `Disabled` response. The observer defers only these inspection operations to their explicit handlers, so they also work with fresh `Enforce` policy without enabling workload enforcement. The protected policy-mutation boundary remains unchanged.
+
+Both layers use the same mount-aware inspection matcher. A single trailing slash remains a local inspection request, including on cloud-plane paths; unsupported scopes fail locally rather than reaching a proxy. Off-mount requests do not receive the inspection exemption from workload observation.
+
+`WhoAmI` returns the stable principal, verified groups, issuer, mode, and whether an installation-wide built-in Radius Administrator assignment matches the caller or their groups. Its optional `warnings` field comes from the same fresh policy: disabled/observation-only/unsupported enforcement, bootstrap-only administrators, and unavailable recovery-grant management. Warnings disclose no assignments or other principals. This slice does not create recovery grants or provide recovery management.
+
+`CheckAccess` evaluates every requested permission and concrete target, preserving request order and returning one generation and mode for the complete batch. Both the authorization to inspect someone else and all returned results use the same immutable snapshot, captured under short read locks; evaluation never holds refresh locks. Before publishing any result, inspection rechecks the captured snapshot's freshness and runtime cancellation, not a newer cache timestamp. Decisions reflect real grants even in `Disabled` and `DryRun`. The scope must be a supported assignment scope, and every target must be within it. Invalid scopes, unknown permissions, malformed or oversized JSON, empty batches, and caller-supplied group memberships fail explicitly. Granting role and assignment identifiers are not returned.
+
+Access-check input is limited to 100 checks per request, 256 characters per principal issuer or permission, 512 per principal subject, 128 per display name, and 2048 per scope or target including its leading slash (2047 for the URL's scope parameter without that slash). Lengths count Unicode characters, matching the TypeSpec/OpenAPI constraints. Principal type is a closed enum (`user`, `group`, `workload`). The 128-character display-label bound follows the authorization resource-name convention; the larger subject bound accommodates Kubernetes service-account identities with a 63-character namespace and a 253-character account name. Issuer and permission bounds leave room for trust domains and catalog names; path bounds accommodate hierarchical IDs without permitting unbounded parsing. Batches and fields are validated before policy access in both the HTTP handler and runtime; violations return HTTP 400 `InvalidRequestContent` with the field and limit, including through the CLI. The 1 MiB JSON body cap remains a separate bound. Split larger batches into separate requests; each response has its own generation, not a cross-request consistency guarantee.
+
+Omitting `principal`, or supplying the exact verified principal tuple within the input limits, checks the caller with their current verified groups. Explicit `principal: null` is invalid input, not omission. The `AccessCheckPrincipal` input bounds do not constrain the verified `Principal` output: `WhoAmI` and omitted-principal self checks preserve full subjects, issuers, and groups without truncation. A different principal first requires `Radius.Core/checkAccess/action` at the inspection scope in every mode; denial is HTTP 403. Another group can be evaluated against its own assignments without enumerating members. Another user or workload returns HTTP 503 `AuthorizationIndeterminate`: the forwarded request cannot establish that other identity's memberships, and dropping unknown groups would produce misleading denials. There is no directory resolver or impersonation delegation in this slice.
+
+Request, principal and check properties require exact, unique JSON field names. Unknown keys, including case variants such as `Principal` or `DisplayName`, and duplicate member names return HTTP 400; neither can overwrite a canonical null field. An omitted display name is valid, but explicit `displayName: null` is not. Scope-length bounds apply to access-check inputs only, not existing policy scope properties, policy-change filters or management URL parameters. The inspection permission-length bound does not constrain existing role definitions, catalog entries or effective-access permission lists. Both `checkAccess` operations use `BoundedAccessCheckRequest`; the existing `AccessCheckRequest` used by installation and scoped `explainAccess` retains its original batch, principal and target contracts without these new bounds. This schema separation does not add an explain-access handler.
+
+The read-only [`rad auth` commands](../../pkg/cli/cmd/auth/auth.go) use the current workspace's normal Kubernetes connection and generated authorization clients. All support `--workspace` and `--output json|table`:
+
+```bash
+rad auth whoami --output json
+rad auth status
+rad auth access check --action Radius.Core/applications/read
+rad auth access check --scope / --action Radius.Core/applications/read --target /planes/radius/local --action Radius.Core/applications/write --target /planes/radius/local
+rad auth access check --scope / --principal group:developers --action Radius.Core/applications/read
+```
+
+`access check` defaults scope and target to the workspace resource group. The resolved scope is validated before connecting, including when it comes from workspace configuration; `/` selects installation scope, while query strings, fragments, and dot segments are invalid. Repeat `--action` for a batch; either omit all `--target` flags or supply one per action in the same order. `--principal` takes `user:<subject>`, `group:<subject>`, or `workload:<subject>`; `--issuer` defaults to the current caller's verified issuer. A denied policy check is a successful inspection with `allowed: false`, not a command failure or a workload-enforcement decision. Both output formats require a complete identity response or a complete, ordered result for every requested check. When `--principal` is supplied, the returned principal's type, issuer, and subject must exactly match the request; display names do not affect identity equality. Missing required fields, incomplete batches, or a mismatched explicit principal fail before formatting. Transport, authentication, authorization, unavailable-policy, and indeterminate-membership errors are command failures with no success-shaped output.
+
+Omit `--principal` to check the caller. An explicitly empty `--principal=` is an error before connection, not a self check.
+
+#### Kubernetes access to inspection
+
+The chart creates the unbound `ucp-inspection` ClusterRole for ordinary users of the aggregated API. It grants only `get` on `providers/whoAmI` (used by both `whoami` and `status`) and `create` on `providers/checkAccess`, with resource name `Radius.Core` in API group `api.ucp.dev`. Kubernetes classifies the read-only access-check POST as `create`, like its own access-review APIs; this does not grant policy or workload writes. The chart adds no binding, no `system:authenticated` grant, and no aggregation into Kubernetes' `view` role. A cluster administrator can opt in an existing Kubernetes user explicitly:
+
+```bash
+kubectl --context <cluster-context> create clusterrolebinding radius-inspection-alice \
+  --clusterrole=ucp-inspection --user=alice
+rad auth whoami --output json
+rad auth status --output json
+rad auth access check --scope / --action Radius.Core/applications/read \
+  --target /planes/radius/local/resourceGroups/team-a
+```
+
+Replace `<cluster-context>` with the intended cluster; use the matching Radius workspace for the `rad` commands. `--scope /` selects the installation endpoint covered by this role, while `--target` can still select a concrete resource group or descendant. The default workspace-scoped POST is **not** covered: Kubernetes interprets that URL as `create` on `planes/local` named `radius`, which cannot be restricted to the inspection suffix and would grant unrelated plane writes. Such a caller receives Kubernetes HTTP 403 before reaching UCP. Other provider names/subresources and all plane mutations remain forbidden by `ucp-inspection`; an unbound ordinary user receives Kubernetes 403 even for inspection.
+
+This Kubernetes role only permits transport to UCP. It does not configure trusted caller authentication, initialize user policy, assign Radius grants, or bypass the Radius permission required to inspect another principal. Those prerequisites remain separate; successful transport can still return the documented UCP 401/403/503 errors.
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.
