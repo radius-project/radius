@@ -1,0 +1,57 @@
+{
+  "typeName": "AWS::S3::BucketRequestPayment",
+  "description": "The Requester Pays setting of an S3 general purpose bucket: who pays for requests to the bucket and for data downloaded from it. Set it with PutBucketRequestPayment. Deleting the resource sets the bucket back to AWS's default, BucketOwner. UCP calls S3 in the Region of the resource ID, which must be the bucket's Region.",
+  "additionalProperties": false,
+  "properties": {
+    "Bucket": {
+      "type": "string",
+      "description": "The name of the bucket."
+    },
+    "RequestPaymentConfiguration": {
+      "$ref": "#/definitions/RequestPaymentConfiguration"
+    }
+  },
+  "definitions": {
+    "RequestPaymentConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Payer": {
+          "type": "string",
+          "description": "Who pays for requests to the bucket and for data downloaded from it: Requester or BucketOwner.",
+          "enum": ["Requester", "BucketOwner"]
+        }
+      },
+      "required": ["Payer"]
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["Bucket", "RequestPaymentConfiguration"],
+  "createOnlyProperties": ["/properties/Bucket"],
+  "primaryIdentifier": ["/properties/Bucket"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "s3:PutBucketRequestPayment",
+        "s3:GetBucketRequestPayment"
+      ]
+    },
+    "read": {
+      "permissions": ["s3:GetBucketRequestPayment"]
+    },
+    "update": {
+      "permissions": [
+        "s3:PutBucketRequestPayment",
+        "s3:GetBucketRequestPayment"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "s3:PutBucketRequestPayment",
+        "s3:GetBucketRequestPayment"
+      ]
+    }
+  }
+}

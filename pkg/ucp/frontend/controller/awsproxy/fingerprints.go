@@ -71,7 +71,7 @@ func (e *engine) fingerprints(r *request, schema *typeSchema, properties map[str
 	values := map[string]any{}
 	for _, w := range writeOnly {
 		// Only a write-only value the template sets needs a fingerprint, not the array or object that would hold it.
-		if !hasValueAt(properties, strings.Split(w, "/")) {
+		if !hasValueAt(properties, awsoperations.PathSegments(w)) {
 			continue
 		}
 		path := coveringPath(paths, fingerprintPath(w))
@@ -169,10 +169,11 @@ func hasValueAt(value any, segments []string) bool {
 	}
 }
 
-// valueAt returns the value at a "/"-separated path of nested objects in properties.
+// valueAt returns the value at a path of nested objects in properties, such as a key of
+// awsoperations.FlattenProperties.
 func valueAt(properties map[string]any, path string) (any, bool) {
 	var current any = properties
-	for _, segment := range strings.Split(path, "/") {
+	for _, segment := range awsoperations.PathSegments(path) {
 		obj, ok := current.(map[string]any)
 		if !ok {
 			return nil, false

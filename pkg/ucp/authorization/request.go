@@ -44,7 +44,7 @@ type RequestMapping struct {
 
 // MapRequest maps a normalized path after the configured UCP path base has
 // been removed. It rejects unknown actions, malformed IDs and unknown types.
-// It is intentionally not installed as middleware.
+// It does not authenticate, enforce, inspect references, or filter responses.
 func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 	if !slices.Contains([]string{http.MethodGet, http.MethodPut, http.MethodPatch, http.MethodDelete, http.MethodPost}, method) {
 		return RequestMapping{}, fmt.Errorf("unsupported request method %q", method)
@@ -73,6 +73,39 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			return RequestMapping{Kind: DiscoveryRequest}, nil
 		}
 	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	// Classify cloud plane routes before interpreting a suffix as an inspection
+	// API. chi matches fixed segments exactly, so these checks must not fold case.
+	if len(parts) >= 4 && strings.EqualFold(parts[0], "planes") {
+		plane := "/" + strings.Join(parts[:3], "/")
+		below := parts[3:]
+		if strings.EqualFold(parts[1], "azure") {
+			// Azure serves only the literal credential routes locally; every
+			// other path below the plane is proxied with the plane's credential.
+			if len(below) < 3 || below[0] != "providers" || below[1] != "System.Azure" || below[2] != "credentials" {
+				// planes.ProxyController rejects paths without a provider
+				// resource before forwarding, so no credential is used.
+				if id, err := resources.Parse(path); err != nil || id.ProviderNamespace() == "" {
+					return RequestMapping{}, fmt.Errorf("Azure proxy route requires a provider resource")
+				}
+				return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", plane)
+			}
+			if !(len(below) == 3 && method == http.MethodGet ||
+				len(below) == 4 && slices.Contains([]string{http.MethodGet, http.MethodPut, http.MethodDelete}, method)) {
+				return RequestMapping{}, fmt.Errorf("unsupported Azure credential route")
+			}
+		}
+		if strings.EqualFold(parts[1], "aws") && strings.EqualFold(below[0], "accounts") {
+			kind, ok := awsProxyRoute(below)
+			if !ok {
+				return RequestMapping{}, fmt.Errorf("unsupported AWS resource route")
+			}
+			if kind == OperationStatusRequest {
+				return RequestMapping{Kind: kind}, nil
+			}
+			return c.mapping(kind, "System.AWS/credentials/use/action", plane)
+		}
+	}
 	for _, action := range []string{"checkaccess", "explainaccess", "effectiveaccess"} {
 		suffix := "/providers/radius.core/" + action
 		if strings.HasSuffix(lower, suffix) {
@@ -92,7 +125,6 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			return RequestMapping{}, fmt.Errorf("unsupported access inspection method")
 		}
 	}
-	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if method == http.MethodGet && lower == "/planes" {
 		return c.mapping(ListRequest, "System.Resources/planes/read", "/")
 	}
@@ -105,31 +137,6 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			return c.mapping(ListRequest, "System."+planeType+"/planes/read", "/")
 		}
 		plane := "/" + strings.Join(parts[:3], "/")
-		// Cloud proxy operations use the plane's credential even for reads.
-		// Never catalog individual cloud resource types.
-		cloudProxy := strings.EqualFold(planeType, "aws") && len(parts) > 3 && strings.EqualFold(parts[3], "accounts") ||
-			strings.EqualFold(planeType, "azure") && len(parts) > 3 && !strings.EqualFold(parts[3], "providers")
-		if cloudProxy {
-			if strings.EqualFold(planeType, "aws") &&
-				(len(parts) < 10 || !strings.EqualFold(parts[5], "regions") || !strings.EqualFold(parts[7], "providers")) {
-				return RequestMapping{}, fmt.Errorf("invalid AWS resource request path")
-			}
-			if strings.EqualFold(planeType, "azure") &&
-				(len(parts) < 5 || !strings.EqualFold(parts[3], "subscriptions")) {
-				return RequestMapping{}, fmt.Errorf("invalid Azure resource request path")
-			}
-			if strings.EqualFold(planeType, "aws") && method == http.MethodGet && len(parts) == 13 &&
-				strings.EqualFold(parts[9], "locations") &&
-				containsFold([]string{"operationStatuses", "operationResults"}, parts[11]) {
-				return RequestMapping{Kind: OperationStatusRequest}, nil
-			}
-			return c.mapping(ResourceRequest, "System."+planeType+"/credentials/use/action", plane)
-		}
-		// UCP-owned namespaces keep their resource permissions on cloud planes.
-		if strings.EqualFold(planeType, "azure") && len(parts) > 5 && strings.EqualFold(parts[3], "providers") &&
-			!containsFold([]string{"System.Azure", "System.Resources", "Radius.Core"}, parts[4]) {
-			return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", plane)
-		}
 		if method == http.MethodGet && len(parts) >= 8 &&
 			strings.EqualFold(parts[len(parts)-4], "locations") &&
 			containsFold([]string{"operationStatuses", "operationResults"}, parts[len(parts)-2]) {
@@ -147,16 +154,22 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 		if len(parts) == 6 && strings.EqualFold(parts[3], "resourcegroups") && strings.EqualFold(parts[5], "resources") && method == http.MethodGet {
 			return c.mapping(MixedResourceListRequest, "System.Resources/resources/read", "/"+strings.Join(parts[:5], "/"))
 		}
-		if len(parts) == 11 && strings.EqualFold(parts[9], "icons") && method == http.MethodGet {
+		// Match the icon route's fixed segments as routed; only the
+		// authorization target is folded.
+		if len(parts) == 11 && strings.EqualFold(planeType, "radius") &&
+			parts[3] == "providers" && parts[4] == "System.Resources" && parts[5] == "resourceproviders" &&
+			parts[7] == "resourcetypes" && parts[9] == "icons" && method == http.MethodGet {
 			return c.mapping(ResourceRequest, "System.Resources/resourceProviders/resourceTypes/read", "/"+strings.Join(parts[:9], "/"))
 		}
 	}
-	// Deployment engine sub-routes, such as the operations rad deploy polls,
-	// read the parent deployment.
+	// Only deployment operation collection/item routes read the parent.
+	// Extension resources must retain their own permission and target.
 	if method == http.MethodGet {
 		for i := 0; i+4 < len(parts); i++ {
 			if strings.EqualFold(parts[i], "providers") && strings.EqualFold(parts[i+1], "Microsoft.Resources") &&
-				strings.EqualFold(parts[i+2], "deployments") {
+				strings.EqualFold(parts[i+2], "deployments") &&
+				((len(parts) == i+5 && strings.EqualFold(parts[i+4], "operations")) ||
+					(len(parts) == i+6 && containsFold([]string{"operations", "operationStatuses"}, parts[i+4]))) {
 				return c.mapping(ResourceRequest, "Microsoft.Resources/deployments/read", "/"+strings.Join(parts[:i+4], "/"))
 			}
 		}
@@ -188,14 +201,30 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 		target = target[:strings.LastIndex(target, "/")]
 		// Removing a collection's type leaves /providers/namespace, not its
 		// containing scope. Nested child collections retain their parent resource.
-		if strings.HasSuffix(strings.ToLower(target), "/providers/"+strings.ToLower(id.ProviderNamespace())) {
-			target = target[:strings.LastIndex(strings.ToLower(target), "/providers/")]
+		parent := strings.ToLower(target)
+		if strings.HasSuffix(parent, "/providers/"+strings.ToLower(id.ProviderNamespace())) {
+			// Unicode case conversion can change byte lengths. The offset and
+			// the sliced string must use the same representation.
+			target = parent[:strings.LastIndex(parent, "/providers/")]
 		}
 		if target == "" {
 			target = "/"
 		}
 	}
 	return c.mapping(kind, typ+"/"+op, target)
+}
+
+// awsProxyRoute classifies a path below /planes/aws/{plane}. AWS resource
+// routes in frontend/aws/routes.go sit under accounts/{id}/regions/{region}/providers
+// and use the plane credential; location operation routes need response context.
+func awsProxyRoute(below []string) (RequestKind, bool) {
+	if len(below) < 7 || below[0] != "accounts" || below[2] != "regions" || below[4] != "providers" {
+		return "", false
+	}
+	if len(below) == 10 && below[6] == "locations" && (below[8] == "operationResults" || below[8] == "operationStatuses") {
+		return OperationStatusRequest, true
+	}
+	return ResourceRequest, true
 }
 
 func validateRequestPath(path string) error {

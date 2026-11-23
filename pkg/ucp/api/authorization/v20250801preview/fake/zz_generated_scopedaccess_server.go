@@ -20,7 +20,7 @@ import (
 type ScopedAccessServer struct {
 	// CheckAccess is the fake for method ScopedAccessClient.CheckAccess
 	// HTTP status codes to indicate success: http.StatusOK
-	CheckAccess func(ctx context.Context, scope string, request v20250801preview.AccessCheckRequest, options *v20250801preview.ScopedAccessClientCheckAccessOptions) (resp azfake.Responder[v20250801preview.ScopedAccessClientCheckAccessResponse], errResp azfake.ErrorResponder)
+	CheckAccess func(ctx context.Context, scope string, request v20250801preview.BoundedAccessCheckRequest, options *v20250801preview.ScopedAccessClientCheckAccessOptions) (resp azfake.Responder[v20250801preview.ScopedAccessClientCheckAccessResponse], errResp azfake.ErrorResponder)
 
 	// EffectiveAccess is the fake for method ScopedAccessClient.EffectiveAccess
 	// HTTP status codes to indicate success: http.StatusOK
@@ -49,7 +49,7 @@ func (s *ScopedAccessServerTransport) Do(req *http.Request) (*http.Response, err
 	rawMethod := req.Context().Value(runtime.CtxAPINameKey{})
 	method, ok := rawMethod.(string)
 	if !ok {
-		return nil, nonRetriableError{errors.New("unable to dispatch request, missing value for CtxAPINameKey")}
+		return nil, &nonRetriableError{errors.New("unable to dispatch request, missing value for CtxAPINameKey")}
 	}
 
 	return s.dispatchToMethodFake(req, method)
@@ -97,7 +97,7 @@ func (s *ScopedAccessServerTransport) dispatchCheckAccess(req *http.Request) (*h
 	if len(matches) < 2 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	body, err := server.UnmarshalRequestAsJSON[v20250801preview.AccessCheckRequest](req)
+	body, err := server.UnmarshalRequestAsJSON[v20250801preview.BoundedAccessCheckRequest](req)
 	if err != nil {
 		return nil, err
 	}
