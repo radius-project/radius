@@ -98,6 +98,11 @@ tests:
           any: true
         template: controller/deployment.yaml
 
+  - it: mounts a SPIFFE server certificate volume in each receiver in enforce mode
+    set:
+      global.rbac.enabled: true
+    asserts: *receivers
+
   - it: does not mount the old mTLS Secrets
     set:
       global.rbac.enabled: true
