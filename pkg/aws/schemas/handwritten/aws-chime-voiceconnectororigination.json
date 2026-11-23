@@ -1,0 +1,101 @@
+{
+  "typeName": "AWS::Chime::VoiceConnectorOrigination",
+  "description": "The origination settings of an Amazon Chime SDK Voice Connector, which let your SIP hosts receive inbound calls: the routes to the hosts, and whether origination is off. Set them with PutVoiceConnectorOrigination. Deleting the resource deletes the settings, which stops inbound calls. AWS rejects the delete while the Voice Connector has an emergency calling configuration.",
+  "additionalProperties": false,
+  "properties": {
+    "VoiceConnectorId": {
+      "type": "string",
+      "description": "The ID of the Voice Connector, such as the VoiceConnectorId of an AWS::Chime::VoiceConnector.",
+      "pattern": ".*\\S.*"
+    },
+    "Origination": {
+      "$ref": "#/definitions/Origination"
+    }
+  },
+  "definitions": {
+    "Origination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Routes": {
+          "type": "array",
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 10,
+          "description": "The routes to your SIP hosts, up to 10.",
+          "items": {
+            "$ref": "#/definitions/OriginationRoute"
+          }
+        },
+        "Disabled": {
+          "type": "boolean",
+          "description": "When true, inbound calls are off."
+        }
+      },
+      "required": ["Routes"]
+    },
+    "OriginationRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Host": {
+          "type": "string",
+          "description": "The FQDN or IP address of the SIP host."
+        },
+        "Port": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "The port of the SIP host. AWS uses 5060 when left out, and reports the port as 0."
+        },
+        "Protocol": {
+          "type": "string",
+          "enum": ["TCP", "UDP"],
+          "description": "The protocol of the route."
+        },
+        "Priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "The priority of the host, with 1 the highest. AWS tries hosts with higher priority first."
+        },
+        "Weight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "The weight of the host. AWS shares calls between hosts of equal priority by weight."
+        }
+      },
+      "required": ["Host", "Priority", "Weight"]
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["VoiceConnectorId", "Origination"],
+  "createOnlyProperties": ["/properties/VoiceConnectorId"],
+  "primaryIdentifier": ["/properties/VoiceConnectorId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "chime:PutVoiceConnectorOrigination",
+        "chime:GetVoiceConnectorOrigination"
+      ]
+    },
+    "read": {
+      "permissions": ["chime:GetVoiceConnectorOrigination"]
+    },
+    "update": {
+      "permissions": [
+        "chime:PutVoiceConnectorOrigination",
+        "chime:GetVoiceConnectorOrigination"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "chime:DeleteVoiceConnectorOrigination",
+        "chime:GetVoiceConnectorOrigination"
+      ]
+    }
+  }
+}

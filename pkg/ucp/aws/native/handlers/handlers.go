@@ -22,6 +22,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
+	chimesdkvoicesdk "github.com/aws/aws-sdk-go-v2/service/chimesdkvoice"
 	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	codebuildsdk "github.com/aws/aws-sdk-go-v2/service/codebuild"
 	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
@@ -49,6 +50,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chime"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
@@ -76,6 +78,7 @@ import (
 // handler can tell a call AWS rejected from a retry an earlier attempt of which may have reached AWS.
 func All(cfg aws.Config) []native.Handler {
 	cfg.APIOptions = append(slices.Clone(cfg.APIOptions), awsapi.RecordAttempts)
+	chimeAPI := chimesdkvoicesdk.NewFromConfig(cfg)
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
@@ -113,6 +116,10 @@ func All(cfg aws.Config) []native.Handler {
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
 		iot.NewThingGroupMembership(iotsdk.NewFromConfig(cfg)),
 		transfer.NewAccess(transfersdk.NewFromConfig(cfg)),
+		chime.NewLoggingConfiguration(chimeAPI),
+		chime.NewStreamingConfiguration(chimeAPI),
+		chime.NewOrigination(chimeAPI),
+		chime.NewTermination(chimeAPI),
 	}
 }
 

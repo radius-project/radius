@@ -1,0 +1,112 @@
+{
+  "typeName": "AWS::Chime::VoiceConnectorStreamingConfiguration",
+  "description": "The media streaming settings of an Amazon Chime SDK Voice Connector: whether it streams call audio to Amazon Kinesis Video Streams, how long Kinesis keeps the data, where it sends streaming notifications, and its call analytics configuration. Set it with PutVoiceConnectorStreamingConfiguration. Deleting the resource deletes the settings, which turns streaming off. With an SNS or SQS notification target, AWS creates an SNS topic or SQS queue whose name starts with ChimeVoiceConnector-Streaming, which a delete leaves in place.",
+  "additionalProperties": false,
+  "properties": {
+    "VoiceConnectorId": {
+      "type": "string",
+      "description": "The ID of the Voice Connector, such as the VoiceConnectorId of an AWS::Chime::VoiceConnector.",
+      "pattern": ".*\\S.*"
+    },
+    "StreamingConfiguration": {
+      "$ref": "#/definitions/StreamingConfiguration"
+    }
+  },
+  "definitions": {
+    "StreamingConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DataRetentionInHours": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How long, in hours, Amazon Kinesis Video Streams keeps the streamed data."
+        },
+        "Disabled": {
+          "type": "boolean",
+          "description": "When true, streaming to Amazon Kinesis Video Streams is off."
+        },
+        "StreamingNotificationTargets": {
+          "type": "array",
+          "insertionOrder": false,
+          "minItems": 1,
+          "maxItems": 3,
+          "description": "Where the Voice Connector sends streaming notifications. AWS sends them to EventBridge when left out.",
+          "items": {
+            "$ref": "#/definitions/StreamingNotificationTarget"
+          }
+        },
+        "MediaInsightsConfiguration": {
+          "$ref": "#/definitions/MediaInsightsConfiguration"
+        }
+      },
+      "required": ["DataRetentionInHours", "Disabled"]
+    },
+    "StreamingNotificationTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "NotificationTarget": {
+          "type": "string",
+          "enum": ["EventBridge", "SNS", "SQS"],
+          "description": "The service that gets streaming notifications."
+        }
+      }
+    },
+    "MediaInsightsConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The call analytics configuration.",
+      "properties": {
+        "ConfigurationArn": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^arn[\\/\\:\\-\\_\\.a-zA-Z0-9]+$",
+          "description": "The ARN of the media insights pipeline configuration."
+        },
+        "Disabled": {
+          "type": "boolean",
+          "description": "When true, call analytics is off. AWS uses false when left out."
+        }
+      }
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["VoiceConnectorId", "StreamingConfiguration"],
+  "createOnlyProperties": ["/properties/VoiceConnectorId"],
+  "primaryIdentifier": ["/properties/VoiceConnectorId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "chime:PutVoiceConnectorStreamingConfiguration",
+        "chime:GetVoiceConnectorStreamingConfiguration",
+        "sns:CreateTopic",
+        "sqs:CreateQueue",
+        "iam:CreateServiceLinkedRole",
+        "chime:GetMediaInsightsPipelineConfiguration"
+      ]
+    },
+    "read": {
+      "permissions": ["chime:GetVoiceConnectorStreamingConfiguration"]
+    },
+    "update": {
+      "permissions": [
+        "chime:PutVoiceConnectorStreamingConfiguration",
+        "chime:GetVoiceConnectorStreamingConfiguration",
+        "sns:CreateTopic",
+        "sqs:CreateQueue",
+        "iam:CreateServiceLinkedRole",
+        "chime:GetMediaInsightsPipelineConfiguration"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "chime:DeleteVoiceConnectorStreamingConfiguration",
+        "chime:GetVoiceConnectorStreamingConfiguration"
+      ]
+    }
+  }
+}

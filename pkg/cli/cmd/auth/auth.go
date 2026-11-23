@@ -1,0 +1,358 @@
+// Copyright 2026 The Radius Authors.
+// Licensed under the Apache License, Version 2.0.
+
+// Package auth provides read-only inspection of the verified Radius caller.
+package auth
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/sdk"
+	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
+	"github.com/spf13/cobra"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// NewCommand creates the read-only auth command group.
+func NewCommand(factory framework.Factory) *cobra.Command {
+	cmd := &cobra.Command{Use: "auth", Short: "Inspect Radius identity and access"}
+	cmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
+	for _, operation := range []string{"whoami", "status"} {
+		child, _ := newCommand(factory, operation)
+		cmd.AddCommand(child)
+	}
+	access := &cobra.Command{Use: "access", Short: "Inspect Radius policy grants"}
+	check, _ := newCommand(factory, "check")
+	access.AddCommand(check)
+	cmd.AddCommand(access)
+	return cmd
+}
+
+func newCommand(factory framework.Factory, operation string) (*cobra.Command, *runner) {
+	r := &runner{config: factory.GetConfigHolder(), output: factory.GetOutput(), operation: operation, connect: connect}
+	cmd := &cobra.Command{
+		Use: operation, Args: cobra.NoArgs, RunE: framework.RunCommand(r),
+	}
+	switch operation {
+	case "whoami":
+		cmd.Short = "Show the verified identity, issuer, and groups Radius sees"
+		cmd.Example = "rad auth whoami --output json"
+	case "status":
+		cmd.Short = "Show current authorization mode, administrator status, and warnings"
+		cmd.Example = "rad auth status"
+	case "check":
+		cmd.Short = "Check policy grants independently of workload enforcement mode"
+		cmd.Long = "Check policy grants independently of workload enforcement mode. Self checks include verified groups. " +
+			"Another group requires checkAccess permission; another user's or workload's memberships cannot be resolved and return an explicit error."
+		cmd.Example = "rad auth access check --action Radius.Core/applications/read --scope /planes/radius/local/resourceGroups/team-a"
+		cmd.Flags().StringVar(&r.scope, "scope", "", "Inspection scope (defaults to the workspace resource group); use / for installation")
+		cmd.Flags().StringArrayVar(&r.actions, "action", nil, "Permission to check (repeat for a batch)")
+		cmd.Flags().StringArrayVar(&r.targets, "target", nil, "Concrete target per action (defaults to scope; repeat in action order)")
+		cmd.Flags().StringVar(&r.principal, "principal", "", "Principal as user:<subject>, group:<subject>, or workload:<subject>; defaults to the caller")
+		cmd.Flags().StringVar(&r.issuer, "issuer", "", "Principal issuer (defaults to the current caller's verified issuer)")
+	}
+	commonflags.AddOutputFlag(cmd)
+	return cmd, r
+}
+
+type inspectionClient interface {
+	whoAmI(context.Context) (api.WhoAmIResult, error)
+	checkAccess(context.Context, string, api.BoundedAccessCheckRequest) (api.CheckAccessResponse, error)
+}
+
+type runner struct {
+	config    *framework.ConfigHolder
+	output    output.Interface
+	operation string
+	workspace *workspaces.Workspace
+	format    string
+	scope     string
+	actions   []string
+	targets   []string
+	principal string
+	issuer    string
+	connect   func(context.Context, workspaces.Workspace) (inspectionClient, error)
+}
+
+func (r *runner) Validate(cmd *cobra.Command, _ []string) error {
+	var err error
+	r.workspace, err = cli.RequireWorkspace(cmd, r.config.Config)
+	if err != nil {
+		return err
+	}
+	r.format, err = cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+	if r.operation != "check" {
+		return nil
+	}
+	if r.scope == "" {
+		r.scope = r.workspace.Scope
+	}
+	if err := authorization.ValidateInspectionScope(r.scope); err != nil {
+		return fmt.Errorf("invalid inspection scope: %w", err)
+	}
+	if len(r.actions) == 0 {
+		return fmt.Errorf("at least one --action is required")
+	}
+	for _, action := range r.actions {
+		if strings.TrimSpace(action) == "" {
+			return fmt.Errorf("action cannot be empty")
+		}
+	}
+	if len(r.targets) != 0 && len(r.targets) != len(r.actions) {
+		return fmt.Errorf("supply one --target per --action, or omit all targets to check at scope")
+	}
+	if r.principal == "" {
+		if cmd.Flags().Changed("principal") {
+			return fmt.Errorf("--principal cannot be empty; omit it to check the caller")
+		}
+		if r.issuer != "" {
+			return fmt.Errorf("--issuer requires --principal")
+		}
+		return nil
+	}
+	_, err = parsePrincipal(r.principal, r.issuer)
+	return err
+}
+
+func parsePrincipal(value, issuer string) (*api.AccessCheckPrincipal, error) {
+	kind, subject, found := strings.Cut(value, ":")
+	typ := api.PrincipalType(kind)
+	if !found || subject == "" || (typ != api.PrincipalTypeUser && typ != api.PrincipalTypeGroup && typ != api.PrincipalTypeWorkload) {
+		return nil, fmt.Errorf("principal must be user:<subject>, group:<subject>, or workload:<subject>")
+	}
+	return &api.AccessCheckPrincipal{Type: &typ, Subject: &subject, Issuer: &issuer}, nil
+}
+
+func (r *runner) Run(ctx context.Context) error {
+	client, err := r.connect(ctx, *r.workspace)
+	if err != nil {
+		return err
+	}
+	if r.operation != "check" {
+		result, err := client.whoAmI(ctx)
+		if err != nil {
+			return err
+		}
+		if err := validateIdentityResponse(result); err != nil {
+			return err
+		}
+		options := output.FormatterOptions{Columns: []output.Column{
+			{Heading: "TYPE", JSONPath: "{ .Principal.Type }"},
+			{Heading: "SUBJECT", JSONPath: "{ .Principal.Subject }"},
+			{Heading: "ISSUER", JSONPath: "{ .Issuer }"},
+			{Heading: "GROUPS", JSONPath: "{ .Groups[*].Subject }"},
+		}}
+		if r.operation == "status" {
+			options.Columns = []output.Column{
+				{Heading: "MODE", JSONPath: "{ .Mode }"},
+				{Heading: "RADIUS ADMINISTRATOR", JSONPath: "{ .IsRadiusAdministrator }"},
+				{Heading: "WARNINGS", JSONPath: "{ .Warnings[*] }"},
+			}
+		}
+		return r.output.WriteFormatted(r.format, result, options)
+	}
+	request := api.BoundedAccessCheckRequest{}
+	if r.principal != "" {
+		issuer := r.issuer
+		if issuer == "" {
+			current, err := client.whoAmI(ctx)
+			if err != nil {
+				return err
+			}
+			if current.Issuer == nil || *current.Issuer == "" {
+				return fmt.Errorf("Radius returned no verified issuer")
+			}
+			if err := validateIdentityResponse(current); err != nil {
+				return err
+			}
+			issuer = *current.Issuer
+		}
+		request.Principal, err = parsePrincipal(r.principal, issuer)
+		if err != nil {
+			return err
+		}
+	}
+	for i, action := range r.actions {
+		target := r.scope
+		if len(r.targets) != 0 {
+			target = r.targets[i]
+		}
+		request.Checks = append(request.Checks, &api.BoundedAccessCheck{Permission: to.Ptr(action), Target: to.Ptr(target)})
+	}
+	result, err := client.checkAccess(ctx, r.scope, request)
+	if err != nil {
+		return err
+	}
+	if err := validateAccessResponse(result, request); err != nil {
+		return err
+	}
+	if r.format == "json" {
+		return r.output.WriteFormatted(r.format, result, output.FormatterOptions{})
+	}
+	type row struct {
+		Principal  *api.Principal
+		Generation *int64
+		Mode       *api.UserAuthorizationMode
+		*api.AccessCheckResult
+	}
+	rows := make([]row, 0, len(result.Checks))
+	for _, check := range result.Checks {
+		rows = append(rows, row{result.Principal, result.Generation, result.Mode, check})
+	}
+	return r.output.WriteFormatted(r.format, rows, output.FormatterOptions{Columns: []output.Column{
+		{Heading: "SUBJECT", JSONPath: "{ .Principal.Subject }"},
+		{Heading: "MODE", JSONPath: "{ .Mode }"},
+		{Heading: "GENERATION", JSONPath: "{ .Generation }"},
+		{Heading: "PERMISSION", JSONPath: "{ .Permission }"},
+		{Heading: "TARGET", JSONPath: "{ .Target }"},
+		{Heading: "ALLOWED", JSONPath: "{ .Allowed }"},
+	}})
+}
+
+func validPrincipal(principal *api.Principal) bool {
+	if principal == nil || principal.Type == nil || principal.Issuer == nil || *principal.Issuer == "" ||
+		principal.Subject == nil || *principal.Subject == "" ||
+		*principal.Subject == "system:anonymous" || *principal.Subject == "system:unauthenticated" {
+		return false
+	}
+	switch *principal.Type {
+	case api.PrincipalTypeUser, api.PrincipalTypeGroup, api.PrincipalTypeWorkload:
+		return true
+	default:
+		return false
+	}
+}
+
+func validCaller(principal *api.Principal) bool {
+	return validPrincipal(principal) && *principal.Type != api.PrincipalTypeGroup
+}
+
+func validMode(mode *api.UserAuthorizationMode) bool {
+	if mode == nil {
+		return false
+	}
+	switch *mode {
+	case api.UserAuthorizationModeDisabled, api.UserAuthorizationModeDryRun, api.UserAuthorizationModeEnforce:
+		return true
+	default:
+		return false
+	}
+}
+
+func validateIdentityResponse(result api.WhoAmIResult) error {
+	if !validCaller(result.Principal) ||
+		result.Issuer == nil || *result.Issuer != *result.Principal.Issuer ||
+		!validMode(result.Mode) || result.IsRadiusAdministrator == nil || result.Groups == nil {
+		return fmt.Errorf("Radius returned an invalid identity response")
+	}
+	for _, group := range result.Groups {
+		if !validPrincipal(group) || *group.Type != api.PrincipalTypeGroup || *group.Issuer != *result.Issuer {
+			return fmt.Errorf("Radius returned an invalid group identity")
+		}
+	}
+	return nil
+}
+
+func validateAccessResponse(result api.CheckAccessResponse, request api.BoundedAccessCheckRequest) error {
+	if !validPrincipal(result.Principal) || !validMode(result.Mode) || result.Generation == nil || *result.Generation < 0 ||
+		len(result.Checks) != len(request.Checks) {
+		return fmt.Errorf("Radius returned an invalid access-check response")
+	}
+	if request.Principal == nil && !validCaller(result.Principal) {
+		return fmt.Errorf("Radius returned an invalid access-check response: principal is not a caller")
+	}
+	if principal := request.Principal; principal != nil &&
+		(*result.Principal.Type != *principal.Type || *result.Principal.Issuer != *principal.Issuer || *result.Principal.Subject != *principal.Subject) {
+		return fmt.Errorf("Radius returned an invalid access-check response: principal does not match the request")
+	}
+	for i, check := range result.Checks {
+		if check == nil || check.Allowed == nil || check.Permission == nil || check.Target == nil ||
+			*check.Permission != *request.Checks[i].Permission || *check.Target != *request.Checks[i].Target {
+			return fmt.Errorf("Radius returned an invalid result for access check %d", i+1)
+		}
+	}
+	return nil
+}
+
+type apiClient struct {
+	installation *api.InstallationAccessClient
+	scoped       *api.ScopedAccessClient
+}
+
+func connect(ctx context.Context, workspace workspaces.Workspace) (inspectionClient, error) {
+	connection, err := workspace.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	options := sdk.NewClientOptions(connection)
+	installation, err := api.NewInstallationAccessClient(&aztoken.AnonymousCredential{}, options)
+	if err != nil {
+		return nil, err
+	}
+	scoped, err := api.NewScopedAccessClient(&aztoken.AnonymousCredential{}, options)
+	if err != nil {
+		return nil, err
+	}
+	return &apiClient{installation, scoped}, nil
+}
+
+func (c *apiClient) whoAmI(ctx context.Context) (api.WhoAmIResult, error) {
+	response, err := c.installation.WhoAmI(ctx, nil)
+	if err != nil {
+		return api.WhoAmIResult{}, inspectionError(err)
+	}
+	return response.WhoAmIResult, nil
+}
+
+func (c *apiClient) checkAccess(ctx context.Context, scope string, request api.BoundedAccessCheckRequest) (api.CheckAccessResponse, error) {
+	var result api.CheckAccessResponse
+	var err error
+	if scope == "/" {
+		response, callErr := c.installation.CheckAccess(ctx, request, nil)
+		result, err = response.CheckAccessResponse, callErr
+	} else {
+		response, callErr := c.scoped.CheckAccess(ctx, strings.TrimPrefix(scope, "/"), request, nil)
+		result, err = response.CheckAccessResponse, callErr
+	}
+	if err != nil {
+		return api.CheckAccessResponse{}, inspectionError(err)
+	}
+	return result, nil
+}
+
+func inspectionError(err error) error {
+	var responseError *azcore.ResponseError
+	if !errors.As(err, &responseError) || responseError.RawResponse == nil {
+		return err
+	}
+	body, readErr := runtime.Payload(responseError.RawResponse)
+	if readErr != nil {
+		return err
+	}
+	var status metav1.Status
+	if json.Unmarshal(body, &status) != nil || status.Kind != "Status" || status.Status != metav1.StatusFailure || status.Message == "" {
+		return err
+	}
+	// Kubernetes gateway errors are Status objects, not ARM error envelopes.
+	// Keep their diagnostic instead of letting the CLI render an empty ARM error.
+	status.Code = int32(responseError.StatusCode)
+	return &apierrors.StatusError{ErrStatus: status}
+}
