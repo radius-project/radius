@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -74,39 +75,77 @@ func ucpAPIServerCASource(radiusNamespace string) string {
 	return radiusNamespace + "/" + ucpAPIServerTrustSecretName
 }
 
-// injectUCPAPIServerCA makes cainjector copy ca.crt of radius-apiserver-ca into the UCP APIService, and sets the
-// caBundle to it now so the API server does not wait for cainjector.
-func injectUCPAPIServerCA(ctx context.Context, dynamicClient dynamic.Interface, radiusNamespace string, caBundle []byte) error {
-	api, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
+// injectUCPAPIServerCA makes cainjector copy ca.crt of radius-apiserver-ca into the UCP APIService with uid, and sets
+// the caBundle to it now so the API server does not wait for cainjector.
+func injectUCPAPIServerCA(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace string, uid types.UID, caBundle []byte) error {
+	err := patchAppliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, uid,
+		map[string]any{injectCAFromSecretAnnotation: ucpAPIServerCASource(radiusNamespace)}, caBundle)
 	if err != nil {
-		return err
-	}
-	metadata := map[string]any{"annotations": map[string]any{injectCAFromSecretAnnotation: ucpAPIServerCASource(radiusNamespace)}}
-	if api.GetUID() != "" {
-		metadata["uid"] = string(api.GetUID())
-	}
-	if api.GetResourceVersion() != "" {
-		metadata["resourceVersion"] = api.GetResourceVersion()
-	}
-	patch, err := json.Marshal(map[string]any{
-		"metadata": metadata,
-		"spec":     map[string]any{"caBundle": base64.StdEncoding.EncodeToString(caBundle)},
-	})
-	if err != nil {
-		return err
-	}
-	// A missing APIService is reported by the wait that follows.
-	if _, err := checkUCPMutation(ctx, "patch", "APIService", api); err != nil {
-		return err
-	}
-	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{})
-	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to point APIService %s at Secret %s: %w", ucpAPIServiceName, ucpAPIServerCASource(radiusNamespace), err)
 	}
 	return nil
+}
+
+// appliedUCPAPIService reads the UCP APIService after Helm applied the Radius release and checks, as
+// releaseUCPAPIService does before Helm, that the release in radiusNamespace still owns it and that it routes to a
+// Service in radiusNamespace. When uid is not empty it also refuses an APIService with another uid, which replaced
+// the one rad checked earlier, even if it has the same Helm metadata. It returns nil when the APIService does not
+// exist.
+func appliedUCPAPIService(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace string, uid types.UID) (*unstructured.Unstructured, error) {
+	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+	}
+	check := kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml")
+	if uid != "" && apiService.GetUID() != uid {
+		return nil, fmt.Errorf("APIService %s was replaced after Helm applied the Radius release, so rad will not change it. "+
+			"Check which installation owns it with %s, then run the command again", ucpAPIServiceName, check)
+	}
+	if problem := foreignUCPAPIServiceProblem(apiService, radiusNamespace, radiusReleaseName); problem != "" {
+		return nil, fmt.Errorf("APIService %s %s, so rad will not change it. Helm has applied the Radius release; "+
+			"check which installation owns the APIService with %s, then run the command again", ucpAPIServiceName, problem, check)
+	}
+	return apiService, nil
+}
+
+// patchAppliedUCPAPIService sets the caBundle of the UCP APIService with uid to caBundle, and sets annotations when not
+// nil. It reads the APIService with appliedUCPAPIService first and sends the uid and resourceVersion it read with the
+// patch, so the API server rejects the patch if the APIService changed in between; it retries such a conflict with a
+// fresh read. It does nothing when the APIService does not exist; the wait that follows reports that.
+func patchAppliedUCPAPIService(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace string, uid types.UID, annotations map[string]any, caBundle []byte) error {
+	var guardErr error
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, uid)
+		if err != nil || apiService == nil {
+			return err
+		}
+		metadata := map[string]any{"uid": apiService.GetUID(), "resourceVersion": apiService.GetResourceVersion()}
+		if annotations != nil {
+			metadata["annotations"] = annotations
+		}
+		patch, err := json.Marshal(map[string]any{
+			"metadata": metadata,
+			"spec":     map[string]any{"caBundle": base64.StdEncoding.EncodeToString(caBundle)},
+		})
+		if err != nil {
+			return err
+		}
+		if _, guardErr = checkUCPMutation(ctx, "patch", "APIService", apiService); guardErr != nil {
+			return nil
+		}
+		_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	})
+	if guardErr != nil {
+		return guardErr
+	}
+	return err
 }
 
 // settleUCPAPIServerCA waits until the APIService caBundle holds ca.crt of radius-apiserver-ca and no other

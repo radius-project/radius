@@ -56,6 +56,10 @@ func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error)
 		backend.NewService(options),
 	}
 
+	if options.UserAuthorization != nil {
+		services = append(services, options.UserAuthorization)
+	}
+
 	if options.Config.Metrics.Enabled {
 		services = append(services, &metricsservice.Service{Options: &options.Config.Metrics, StartupProof: proof, AggregationProof: aggregationProof})
 	}

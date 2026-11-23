@@ -40,7 +40,7 @@ func NewInstallationAccessClient(credential azcore.TokenCredential, options *arm
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - options - InstallationAccessClientCheckAccessOptions contains the optional parameters for the InstallationAccessClient.CheckAccess
 //     method.
-func (client *InstallationAccessClient) CheckAccess(ctx context.Context, request AccessCheckRequest, options *InstallationAccessClientCheckAccessOptions) (InstallationAccessClientCheckAccessResponse, error) {
+func (client *InstallationAccessClient) CheckAccess(ctx context.Context, request BoundedAccessCheckRequest, options *InstallationAccessClientCheckAccessOptions) (InstallationAccessClientCheckAccessResponse, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "InstallationAccessClient.CheckAccess")
 	req, err := client.checkAccessCreateRequest(ctx, request, options)
@@ -55,7 +55,7 @@ func (client *InstallationAccessClient) CheckAccess(ctx context.Context, request
 }
 
 // checkAccessCreateRequest creates the CheckAccess request.
-func (client *InstallationAccessClient) checkAccessCreateRequest(ctx context.Context, request AccessCheckRequest, _ *InstallationAccessClientCheckAccessOptions) (*policy.Request, error) {
+func (client *InstallationAccessClient) checkAccessCreateRequest(ctx context.Context, request BoundedAccessCheckRequest, _ *InstallationAccessClientCheckAccessOptions) (*policy.Request, error) {
 	urlPath := "/providers/Radius.Core/checkAccess"
 	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {

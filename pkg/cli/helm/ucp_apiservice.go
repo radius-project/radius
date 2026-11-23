@@ -376,30 +376,9 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 			}
 		}
 	}
-	render := i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision)
-	if mode != authz.ModeOff && byoCertificateMode(values) != "" {
+	byo := mode != authz.ModeOff && byoCertificateMode(values) != ""
+	if byo {
 		if err := checkSteadyBYOCertificates(latest, values); err != nil {
-			return err
-		}
-		opts := NewDefaultClusterOptions()
-		opts.Radius.Namespace, opts.RadiusInstalled = radiusNamespace, true
-		selected, _, err := i.prepareCertificateTarget(ctx, opts, target.Chart, copyValues(target.Config), kubeContext)
-		if err != nil {
-			return err
-		}
-		render = renderOnce(render)
-		if err := selected.checkProviderRender(ctx, render); err != nil {
-			return err
-		}
-		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
-			return err
-		}
-		return checkRenderedBYO(ctx, render)
-	}
-	if nestedValue(values, "global", "rbac", "tls", "provider") == "external" && mode != authz.ModeOff {
-		render = renderOnce(render)
-		selected := &certificateTarget{Provider: "external", mode: mode}
-		if err := selected.checkProviderRender(ctx, render); err != nil {
 			return err
 		}
 	}
@@ -412,6 +391,30 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	}
 	if mode != authz.ModeOff {
 		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
+			return err
+		}
+	}
+	if err := i.checkRotationGuard(ctx, kubeContext, radiusNamespace, "rollback", nil, true); err != nil {
+		return err
+	}
+	render := i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision)
+	if byo {
+		opts := NewDefaultClusterOptions()
+		opts.Radius.Namespace, opts.RadiusInstalled = radiusNamespace, true
+		selected, _, err := i.prepareCertificateTarget(ctx, opts, target.Chart, copyValues(target.Config), kubeContext)
+		if err != nil {
+			return err
+		}
+		render = renderOnce(render)
+		if err := selected.checkProviderRender(ctx, render); err != nil {
+			return err
+		}
+		return checkRenderedBYO(ctx, render)
+	}
+	if nestedValue(values, "global", "rbac", "tls", "provider") == "external" && mode != authz.ModeOff {
+		render = renderOnce(render)
+		selected := &certificateTarget{Provider: "external", mode: mode}
+		if err := selected.checkProviderRender(ctx, render); err != nil {
 			return err
 		}
 	}

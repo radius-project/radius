@@ -737,7 +737,10 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 // A retried uninstall finds no Radius release when the previous uninstall failed after Helm removed it. It must resume
 // that cleanup rather than report success.
 func Test_Run_NotInstalled_ResumesUninstallCleanup(t *testing.T) {
-	leftovers := []string{"Secret radius-system/radius-apiserver-trust", "Secret radius-system/ucp-apiserver-tls"}
+	leftovers := []helm.UninstallLeftover{
+		{Kind: "Secret", Namespace: "radius-system", Name: "radius-apiserver-trust"},
+		{Kind: "Secret", Namespace: "radius-system", Name: "ucp-apiserver-tls"},
+	}
 	deleteErr := errors.New("delete failed")
 	tests := []struct {
 		name         string
@@ -785,9 +788,7 @@ func Test_Run_NotInstalled_ResumesUninstallCleanup(t *testing.T) {
 				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).Return(tt.promptAnswer, nil)
 			}
 			if tt.wantDelete {
-				options := helm.NewDefaultClusterOptions()
-				options.ConfirmedLeftovers = found
-				helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, options, "test-context").Return(tt.deleteErr)
+				helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, "test-context", leftovers).Return(tt.deleteErr)
 			}
 			if tt.wantCertMgr {
 				helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)

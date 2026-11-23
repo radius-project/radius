@@ -140,9 +140,12 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, name
 	if err != nil {
 		return err
 	}
-	before, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	before, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, namespace, "")
 	if err != nil {
 		return err
+	}
+	if before == nil {
+		return errors.New("Radius APIService is missing")
 	}
 	source, err := aggregationPublicSource(ctx, kube, namespace)
 	if err != nil {
@@ -159,17 +162,17 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, name
 	}
 	// No Secret deletion or signer-source retargeting. Unknown overlap requires
 	// the lifecycle's serving and loaded-trust barriers before retirement.
-	if err := settleUCPAPIServerCA(ctx, kubeContext, kube, dynamicClient, namespace); err != nil {
+	if err := settleUCPAPIServerCA(ctx, kubeContext, kube, dynamicClient, namespace, before.GetUID()); err != nil {
 		return err
 	}
 	if err := observeAggregationServing(ctx, kubeContext, namespace, kube); err != nil {
 		return err
 	}
-	after, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	after, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, namespace, before.GetUID())
 	if err != nil {
 		return err
 	}
-	if after.GetUID() != before.GetUID() || after.GetDeletionTimestamp() != nil ||
+	if after == nil || after.GetUID() != before.GetUID() || after.GetDeletionTimestamp() != nil ||
 		!reflect.DeepEqual(before.Object["spec"], after.Object["spec"]) ||
 		!reflect.DeepEqual(before.GetAnnotations(), after.GetAnnotations()) {
 		return errors.New("APIService changed during exact-pod serving observation")
@@ -179,7 +182,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, name
 
 // settleUCPAPIServerCA observes an exact set, including absence of retired and
 // expired extras. It does not claim to fence future shared-controller writes.
-func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernetes.Interface, client dynamic.Interface, namespace string) error {
+func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernetes.Interface, client dynamic.Interface, namespace string, apiUID types.UID) error {
 	_, selected, _, err := readUCPAPIServerCA(ctx, kube, namespace)
 	if err != nil {
 		return err
@@ -189,7 +192,6 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 		return err
 	}
 	clean := 0
-	var apiUID types.UID
 	return wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
 		live, err := kube.CoreV1().Secrets(namespace).Get(ctx, source.Name, metav1.GetOptions{})
 		if err != nil {
@@ -208,11 +210,11 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 			exactCertificateSet(live.Data[caCertificateKey], selected, time.Now()) != nil {
 			return false, errors.New("aggregation public source changed during convergence")
 		}
-		api, err := client.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+		api, err := appliedUCPAPIService(ctx, kubeContext, client, namespace, apiUID)
 		if err != nil {
 			return false, err
 		}
-		if api.GetUID() == "" || api.GetDeletionTimestamp() != nil ||
+		if api == nil || api.GetUID() == "" || api.GetDeletionTimestamp() != nil ||
 			api.GetLabels()[helmManagedByLabel] != helmManagedByValue ||
 			api.GetAnnotations()[helmReleaseNameAnnotation] != radiusReleaseName ||
 			api.GetAnnotations()[helmReleaseNamespaceAnnotation] != namespace {

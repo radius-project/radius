@@ -41,6 +41,7 @@ import (
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
@@ -108,16 +109,63 @@ func TestPreflightRendersSelfSignedUpgrade(t *testing.T) {
 
 func TestCertificateTargetUsesChartTrustDomain(t *testing.T) {
 	for _, tt := range []struct {
-		value any
-		want  string
-	}{{"", "radius.internal"}, {42, "42"}} {
-		t.Run(tt.want, func(t *testing.T) {
+		name, wantErr string
+		value         any
+	}{
+		{name: "absent"},
+		{name: "empty", value: "", wantErr: "trustDomain must be a SPIFFE trust domain name"},
+		{name: "number", value: 42, wantErr: "trustDomain must be a string"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			current := map[string]any{}
 			setValue(current, true, "global", "rbac", "enabled")
-			setValue(current, tt.value, "global", "rbac", "spiffe", "trustDomain")
+			if tt.value != nil {
+				setValue(current, tt.value, "global", "rbac", "spiffe", "trustDomain")
+			}
 			target, _, err := (&Impl{}).prepareCertificateTarget(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), current, "context")
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, target)
+				return
+			}
 			require.NoError(t, err)
-			require.Equal(t, tt.want, target.TrustDomain)
+			require.Equal(t, "radius.internal", target.TrustDomain)
+		})
+	}
+}
+
+func TestRollbackChecksCertManagerBeforeSigningSecret(t *testing.T) {
+	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	values := caReleaseValues("operator-ca", ca)
+	previous, current := certificateTestChart(t), certificateTestChart(t)
+	previous.Metadata.Version, current.Metadata.Version = "1.0.0", "1.1.0"
+	const manifest = "apiVersion: v1\nkind: Secret\nmetadata: {name: radius-apiserver-trust}"
+	history := []*releasev1.Release{
+		{Version: 1, Chart: previous, Config: values, Manifest: manifest, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: current, Config: values, Manifest: manifest, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+	}
+	for _, revision := range []bool{false, true} {
+		t.Run(fmt.Sprintf("by-revision=%t", revision), func(t *testing.T) {
+			m := NewMockHelmClient(gomock.NewController(t))
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
+			cluster := newStageCluster(t, nil, false)
+			impl := cluster.impl(m)
+			impl.newCertManagerClients = func(k string) (kubernetes.Interface, apiextclient.Interface, error) {
+				require.Equal(t, "selected", k)
+				kube, ext := (&fakeCertManagerCluster{}).clients()
+				return kube, ext, nil
+			}
+			keys := fake.NewClientset()
+			impl.newCertificateClient = func(string) (kubernetes.Interface, error) { return keys, nil }
+			var err error
+			if revision {
+				err = impl.RollbackRadiusToRevision(t.Context(), "selected", 1)
+			} else {
+				err = impl.RollbackRadius(t.Context(), "selected")
+			}
+			require.ErrorContains(t, err, "cert-manager is not installed")
+			require.Empty(t, keys.Actions(), "no signing Secret access or import before readiness")
+			require.Empty(t, cluster.clusterWrites())
 		})
 	}
 }

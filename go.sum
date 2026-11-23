@@ -118,6 +118,8 @@ github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12 h1:uvX2yaL+aMjkmnrLPPlR/zwjoKF
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12/go.mod h1:dicT+2eNhHHqGkxHO7LoXw3QghIUGuzgdmFqaSTopgI=
 github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12 h1:90zEwFRGN9cg8rm3SPQiiz1QtiiLMTseSY9gaU+7Vcg=
 github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12/go.mod h1:r3YwLYWGc74fHcLyP5/L9oPbL3rWlIeLwT4SKzY+X5I=
+github.com/aws/aws-sdk-go-v2/service/chimesdkvoice v1.38.12 h1:/SG9WEuziqQCvwt4vplnMCACbyZuQYNVTJydIq/GVMs=
+github.com/aws/aws-sdk-go-v2/service/chimesdkvoice v1.38.12/go.mod h1:5zF33zdjbA65HGaoA9TaAPxJ+PEVEMOpxF6fuBqoxV4=
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.12 h1:yYR4Yja/z8MmF2BOys5xc/A4B7S0BDP8l8BcfHuZsck=
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.12/go.mod h1:C9ZmYvltZXzDsKv0niSaxxibSdjeVecwT9wTVZQuPbM=
 github.com/aws/aws-sdk-go-v2/service/cloudformation v1.83.0 h1:8ms3yRUlT7YkVXlLliGrXC6dGvHWRKMk6HD1w/FxK+g=
@@ -152,6 +154,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.12 h1:wzAqMZ2O
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.12/go.mod h1:/0TfyruByHsOlphzP26xDTRe2DKD0J1I1Uyy2TyP8EI=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.12 h1:H0IaQayT3TLiGIHiNnleQZTbndDlx7LGZ0NWZ5mDwjA=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.12/go.mod h1:YuJJNxaOjnknLIrscBmkLhIpnmg9LzHd25sQRKUboGU=
+github.com/aws/aws-sdk-go-v2/service/iot v1.84.12 h1:7Ia6qY6RsZXBukL6a0osNcXglgs1kVSkceS9+KEDVcQ=
+github.com/aws/aws-sdk-go-v2/service/iot v1.84.12/go.mod h1:HMP9f3VVFBkLGWfXqyJ2KYdrDB6Cgd7jc0zq6JKZU0k=
 github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12 h1:X7dFutoB5DIS+7qMoKYju4Itqn87qr27TvmXOMQ/x7M=
 github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12/go.mod h1:tHdGXu9YEgMNUqFLkoxVDSPQJ4Y0us8iaoojamrhldI=
 github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0 h1:IDPDfKcJyIhLZNvGnLk4zADq1lhdrUZ3HOe4AoF8WZc=
@@ -162,6 +166,10 @@ github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5 h1:ZoW0j6XRzzzcWEGsPRxZC
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5/go.mod h1:DuktIBGJAIcDVjkXjUYY4jKjLUy3IISIteyikrHqqLI=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10 h1:WBJb2VxRzzKnuN94YWqZPiu5a5zc3IleFqgZnmVCyvU=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10/go.mod h1:8NhAIBVYkVHq0hIbbzujdoou0VkKwMdG+De9e5oX6qI=
+github.com/aws/aws-sdk-go-v2/service/s3control v1.81.0 h1:/bWPP/ruL/TFKghDKZ9FZqOdZ/tfnQ6lWZfvLiGD7tw=
+github.com/aws/aws-sdk-go-v2/service/s3control v1.81.0/go.mod h1:LmnjE/YbYM4Pw2PHc4MaRyaHECyqesGpohXry672KHE=
+github.com/aws/aws-sdk-go-v2/service/s3tables v1.26.0 h1:CH2mah/SVHazEyQNnIeDnp4cdIDqQ7/bcf8s3ccdMxA=
+github.com/aws/aws-sdk-go-v2/service/s3tables v1.26.0/go.mod h1:+t0gzvJtbOZSuchEVVYh46pCmaR/MyCtuQItsfI5T7g=
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1 h1:0TqCogYKHXNpt4NCb3XS1Oeu2QQw1TI1f64uv0FU2o8=
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1/go.mod h1:/dImqp6jl/qhHSRk72jA4GYFvCOjMQvUguHC07Q4jIs=
 github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.50.0 h1:HVu9kMBQj+75TmFyNtJgL2REzbP1HSgg+/SHIyRmKsg=
@@ -174,6 +182,8 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5 h1:uIOBLMhef4N16WguadoHKuBy
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.5/go.mod h1:NwWmkFLtsTVyXQpbzPOlYLwEoANkdCFjJRtrNcbg/vY=
 github.com/aws/aws-sdk-go-v2/service/sts v1.52.0 h1:IaBLmJWiIEtKkjXMgMbYGZk7WKXbYA8148wCMCXq9hU=
 github.com/aws/aws-sdk-go-v2/service/sts v1.52.0/go.mod h1:MG6N8U9+lY4LqchrlHPqCOSr7hyxw70XU0Et2YR3eNA=
+github.com/aws/aws-sdk-go-v2/service/transfer v1.86.8 h1:5eMdPrYV6/koIV+cUE007U+RAGKmvvKxDyW0K5URSng=
+github.com/aws/aws-sdk-go-v2/service/transfer v1.86.8/go.mod h1:/bR/s324oTpf4PRt1kkMhcy8M3nziZWn1PPVFdKTm+4=
 github.com/aws/smithy-go v1.28.9 h1:zkZ058OpNX0iGTK24b+ZUEQSMc11CBA6oO7xtKZfzkY=
 github.com/aws/smithy-go v1.28.9/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/aymanbagabas/go-udiff v0.4.1 h1:OEIrQ8maEeDBXQDoGCbbTTXYJMYRCRO1fnodZ12Gv5o=

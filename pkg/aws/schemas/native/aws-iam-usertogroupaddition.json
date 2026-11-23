@@ -34,7 +34,11 @@
       "permissions": ["iam:AddUserToGroup", "iam:RemoveUserFromGroup"]
     },
     "delete": {
-      "permissions": ["iam:GetGroup", "iam:RemoveUserFromGroup"]
+      "permissions": [
+        "iam:AddUserToGroup",
+        "iam:GetGroup",
+        "iam:RemoveUserFromGroup"
+      ]
     }
   }
 }

@@ -22,14 +22,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContext string, confirmed []string, removed *bool) error {
+func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContext string, confirmed []UninstallLeftover, removed *bool) error {
 	store, err := i.rotationStoreForContext(kubeContext, namespace)
 	if err != nil {
 		return err
@@ -98,12 +97,25 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 				if err := store.excludeCertificateOffTransition(ctx); err != nil {
 					return false, err
 				}
-				if confirmed != nil && !slices.Contains(confirmed, uninstallInventoryEntry(target.Kind, &target)) {
-					return false, errors.New("uninstall inventory changed; confirm the remaining objects")
+				if confirmed != nil && !matchesConfirmed(confirmed, target.Kind, &target) {
+					i.logInfo("Warning: retaining changed %s %s/%s; confirm again", target.Kind, target.Namespace, target.Name)
+					return true, nil
 				}
 				return false, ctx.Err()
 			})
-			return i.deleteUCPAPIServerLeftovers(ctx, kubeContext, store)
+			if confirmed == nil {
+				return i.deleteUCPAPIServerLeftovers(ctx, kubeContext, store)
+			}
+			for _, l := range confirmed {
+				for _, stage := range uninstallStages() {
+					if l.Kind == stage.kind && l.Name == stage.name && l.resource == stage.resource {
+						if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, store.dynamic, stage, namespace, radiusReleaseName); err != nil {
+							return err
+						}
+					}
+				}
+			}
+			return i.deleteUCPOffLeftovers(ctx, kubeContext, store.kube, store.dynamic, namespace, confirmedIssued(ucpOffLeftoverSecrets, confirmed))
 		})
 	}
 	if err != nil {
@@ -112,7 +124,7 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 	if state.Phase != "complete" {
 		return errors.New("finish the initial certificate installation before uninstalling")
 	}
-	if confirmed != nil && !slices.Contains(confirmed, bootstrapUninstallEntry(journal)) {
+	if confirmed != nil && !matchesConfirmed(confirmed, "ConfigMap", journal) {
 		return errors.New("bootstrap uninstall inventory changed; confirm again")
 	}
 	b := &initialCertificateInstaller{impl: i, store: store, journal: journal, state: state}
@@ -128,7 +140,7 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 	})
 }
 
-func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context, confirmed []string) error {
+func (b *initialCertificateInstaller) visitBootstrapPins(ctx context.Context, visit func(string, metav1.Object, func(metav1.DeleteOptions) error) error) error {
 	// Keep the journal until every cleanup succeeds, so an interrupted uninstall
 	// can retry without accepting a foreign object as a new bootstrap.
 	for _, plane := range b.planeNames() {
@@ -156,7 +168,7 @@ func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context, confi
 				if err := validateBootstrapRenewal(secret, b.state.Anchors[plane], b.store.now()); err != nil {
 					return fmt.Errorf("preserving changed or foreign bootstrap signing Secret %s: %w", name, err)
 				}
-				if err := b.deleteBootstrapObject(ctx, secret, func(options metav1.DeleteOptions) error {
+				if err := visit("Secret", secret, func(options metav1.DeleteOptions) error {
 					return client.Delete(ctx, name, options)
 				}); err != nil {
 					return err
@@ -206,20 +218,36 @@ func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context, confi
 			!bytes.Equal(bundle, pin.Bundle) {
 			return fmt.Errorf("preserving changed or foreign bootstrap public source %s", pin.Name)
 		}
-		if err := b.deleteBootstrapObject(ctx, object, remove); err != nil {
+		kind := "Secret"
+		if plane != "aggregation" {
+			kind = "ConfigMap"
+		}
+		if err := visit(kind, object, remove); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context, confirmed []UninstallLeftover) error {
+	if err := b.visitBootstrapPins(ctx, func(kind string, obj metav1.Object, remove func(metav1.DeleteOptions) error) error {
+		if confirmed != nil && !matchesConfirmed(confirmed, kind, obj) {
+			return fmt.Errorf("preserving changed or unconfirmed bootstrap %s %s; confirm again", kind, obj.GetName())
+		}
+		return b.deleteBootstrapObject(ctx, obj, remove)
+	}); err != nil {
+		return err
 	}
 	// The signer and public source have stronger journal-specific checks above.
 	// Never let generic ownership metadata authorize their deletion on retry.
 	orphans := b.bootstrapOrphans()
 	guarded := withUCPMutationGuard(ctx, func(ctx context.Context, _ string, target metav1.PartialObjectMetadata) (bool, error) {
-		if confirmed != nil && !slices.Contains(confirmed, uninstallInventoryEntry(target.Kind, &target)) {
+		if confirmed != nil && !matchesConfirmed(confirmed, target.Kind, &target) {
 			return false, errors.New("bootstrap leaf inventory changed; confirm again")
 		}
 		return false, b.check(ctx)
 	})
-	if err := b.impl.deleteUCPOffLeftovers(guarded, "", b.store.kube, b.store.dynamic, b.store.namespace, orphans); err != nil {
+	if err := b.impl.deleteUCPOffLeftovers(guarded, "", b.store.kube, b.store.dynamic, b.store.namespace, confirmedIssued(orphans, confirmed)); err != nil {
 		return err
 	}
 	// The shared deleter retains replacements on conflict. Keep the recovery journal if eligible leaves remain.

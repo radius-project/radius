@@ -267,8 +267,7 @@ func (r *Runner) resumeRadiusUninstall(ctx context.Context) (bool, error) {
 		r.Output.LogInfo("Uninstall cancelled.")
 		return false, nil
 	}
-	clusterOptions.ConfirmedLeftovers = leftovers
-	if err := r.Helm.DeleteRadiusUninstallLeftovers(ctx, clusterOptions, r.KubeContext); err != nil {
+	if err := r.Helm.DeleteRadiusUninstallLeftovers(ctx, r.KubeContext, leftovers); err != nil {
 		return false, err
 	}
 	r.Output.LogInfo("Finished the previous Radius uninstall.")

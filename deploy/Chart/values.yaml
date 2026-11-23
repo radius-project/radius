@@ -20,9 +20,12 @@ global:
   # Otherwise, Radius containers use the default root CA provided by base OS image.
   rootCA:
     cert: ""
+    # With authorization on, must not be a Secret that holds an authorization private key
+    # (<receiver>-spiffe, radius-ca, radius-apiserver-ca, ucp-apiserver-tls).
     secretName: "root-ca-cert"
     # Must not be a pod volume name the authorization settings add (spiffe, radius-ca, token-<receiver>).
     volumeName: "root-ca-vol"
+    # Must not be an authorization mount path (/var/run/radius/spiffe, /var/run/radius/ca, /var/run/radius/tokens/<receiver>).
     mountPath: "/tmp/sslcerts"
     # SSL_CERT_DIR is used to override the default root CA location.
     # Dotnet runtime and Go use this environment variable to load the root CA.
@@ -70,7 +73,7 @@ global:
     # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
     # pins to that version, so the pre-mounted binary must match or
     # recipes will see behavior differences between cold and warm starts.
-    version: "1.17.1"
+    version: "1.17.2"
     # URL for downloading Terraform binary. Leave empty to download the
     # version specified by `version` from releases.hashicorp.com. Provide
     # a complete direct download URL to override (e.g., for air-gapped or
@@ -97,8 +100,10 @@ global:
   # example a CI workflow that mints and refreshes the kubeconfig.
   targetCluster:
     enabled: false
+    # With authorization on, must not be a Secret that holds an authorization private key (see global.rootCA.secretName).
     secretName: "target-kubeconfig"
     secretKey: "kubeconfig"
+    # Must not be an authorization mount path (see global.rootCA.mountPath).
     mountPath: "/etc/radius/target-kubeconfig"
 
   # Configure internal component authorization. Both settings are disabled by default.

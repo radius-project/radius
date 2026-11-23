@@ -360,7 +360,7 @@ func TestSettleRetainsA8AggregationCopy(t *testing.T) {
 	annotations[injectCAFromSecretAnnotation] = RadiusSystemNamespace + "/" + ucpAPIServerCASecretName
 	api.SetAnnotations(annotations)
 	dynamic := ucpAPIServiceDynamicClient(api)
-	require.NoError(t, settleUCPAPIServerCA(t.Context(), "test-context", client, dynamic, RadiusSystemNamespace))
+	require.NoError(t, settleUCPAPIServerCA(t.Context(), "test-context", client, dynamic, RadiusSystemNamespace, ""))
 	kept, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), pin.Name, metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, pin, kept)

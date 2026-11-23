@@ -400,12 +400,11 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 
 	leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
 	require.NoError(t, err)
-	require.Equal(t, []string{"Secret radius-system/" + ucpAPIServerTLSSecretName + " (UID uid-ucp-apiserver-tls, version 1)"}, leftovers)
+	require.Equal(t, []string{"Secret radius-system/" + ucpAPIServerTLSSecretName}, leftoverNames(leftovers))
 
-	options.ConfirmedLeftovers = leftovers
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	failDelete = false
-	require.NoError(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), options, "test-context"))
+	require.NoError(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), "test-context", leftovers))
 	leftovers, err = impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
 	require.NoError(t, err)
 	require.Empty(t, leftovers)
@@ -418,14 +417,78 @@ func Test_RadiusUninstallLeftovers_ProviderGuard(t *testing.T) {
 	c := newStageCluster(t, nil, false)
 	impl := c.impl(NewMockHelmClient(gomock.NewController(t)))
 	options := NewDefaultClusterOptions()
-	options.ConfirmedLeftovers = []string{"stale confirmation"}
+	confirmed := []UninstallLeftover{{Namespace: RadiusSystemNamespace, Kind: "Secret", Name: "test", uid: "old", resourceVersion: "1"}}
 	_, err := c.kube.CoreV1().ConfigMaps(RadiusSystemNamespace).Create(t.Context(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: identityProviderJournal}}, metav1.CreateOptions{})
 	require.NoError(t, err)
 	c.kube.ClearActions()
 	c.dynamic.ClearActions()
 	_, err = impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
 	require.ErrorContains(t, err, identityProviderJournal)
-	require.ErrorContains(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), options, "test-context"), identityProviderJournal)
+	require.ErrorContains(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), "test-context", confirmed), identityProviderJournal)
 	require.ErrorContains(t, impl.UninstallRadius(t.Context(), options, "test-context"), identityProviderJournal)
 	requireOnlyCertificateGuardReads(t, c)
+}
+
+// A retried uninstall lists the Secret of a staged radius-apiserver-ca Certificate with it, because deleting the
+// Certificate leaves the Secret unused, and deletes only what it listed: a Secret replaced while the user confirms
+// survives.
+func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
+	for _, replaced := range []bool{false, true} {
+		t.Run(fmt.Sprintf("replaced=%t", replaced), func(t *testing.T) {
+			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
+				ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+			kubeClient := kubefake.NewSimpleClientset(secret)
+			kubeClient.PrependReactor("delete", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				live, err := kubeClient.Tracker().Get(secretsResource, RadiusSystemNamespace, ucpAPIServerCASecretName)
+				if err != nil {
+					return false, nil, nil
+				}
+				preconditions := action.(k8stesting.DeleteAction).GetDeleteOptions().Preconditions
+				if preconditions != nil && (preconditions.UID == nil || *preconditions.UID != live.(*corev1.Secret).UID) {
+					return true, nil, apierrors.NewConflict(corev1.Resource("secrets"), ucpAPIServerCASecretName, errors.New("uid precondition failed"))
+				}
+				return false, nil, nil
+			})
+			cert := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, nil)
+			require.NoError(t, unstructured.SetNestedField(cert.Object, ucpAPIServerCASecretName, "spec", "secretName"))
+			dynamicClient := fakeCertManagerDynamicClient(nil, cert)
+			impl := &Impl{
+				logger:                      func(string, ...any) {},
+				newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
+				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
+			}
+
+			setupUninstallStore(t, impl)
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(nil, driver.ErrReleaseNotFound)
+			impl.Helm = client
+			leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), NewDefaultClusterOptions(), "test-context")
+			require.NoError(t, err)
+			require.Equal(t, []string{"Certificate radius-system/" + ucpAPIServerCASecretName, "Secret radius-system/" + ucpAPIServerCASecretName}, leftoverNames(leftovers))
+
+			late := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ucp-spiffe", Namespace: RadiusSystemNamespace, UID: "late", ResourceVersion: "2", Annotations: map[string]string{certificateNameAnnotation: "ucp-spiffe"}}}
+			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), late, metav1.CreateOptions{})
+			require.NoError(t, err)
+			if replaced {
+				require.NoError(t, kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Delete(t.Context(), ucpAPIServerCASecretName, metav1.DeleteOptions{}))
+				secret.UID = "uid-2"
+				_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), secret, metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+			require.NoError(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), "test-context", leftovers))
+			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), late.Name, metav1.GetOptions{})
+			require.NoError(t, err, "a newly eligible object was not confirmed")
+			require.False(t, stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
+			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
+			require.Equal(t, replaced, err == nil, "replaced Secret kept: %v", err)
+		})
+	}
+}
+
+func leftoverNames(leftovers []UninstallLeftover) []string {
+	names := []string{}
+	for _, leftover := range leftovers {
+		names = append(names, leftover.String())
+	}
+	return names
 }

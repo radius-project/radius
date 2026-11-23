@@ -290,6 +290,14 @@ func TestCertificatePublicSourceGuards(t *testing.T) {
 		{name: "managed signing name", change: func(f *certificateChartFixture) {
 			f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"].(map[string]any)["caSecret"] = "radius-apiserver-ca"
 		}, err: "must not name a Radius-managed"},
+		{name: "shared root CA uses signing Secret", change: func(f *certificateChartFixture) {
+			f.values["global"].(map[string]any)["rootCA"] = map[string]any{"cert": "public-ca", "secretName": "operator-ca"}
+		}, err: "that Secret holds the operator's CA signing key"},
+		{name: "external provider mounts signing Secret", change: func(f *certificateChartFixture) {
+			global := f.values["global"].(map[string]any)
+			global["rbac"].(map[string]any)["tls"] = map[string]any{"provider": "external"}
+			global["targetCluster"] = map[string]any{"enabled": true, "secretName": "operator-ca"}
+		}, err: "that Secret holds the operator's CA signing key"},
 		{name: "invalid signing name", change: func(f *certificateChartFixture) {
 			f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"].(map[string]any)["caSecret"] = "invalid/name"
 		}, err: "existing operator-owned TLS Secret"},

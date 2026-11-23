@@ -446,12 +446,12 @@ func TestInitialCertificateUninstallInterruptedCleanup(t *testing.T) {
 			require.NoError(t, err)
 			// Helm already removed Radius. Retry only the inventory that the CLI confirmed.
 			options := NewDefaultClusterOptions()
-			options.ConfirmedLeftovers, err = b.impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
+			confirmed, err := b.impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
 			require.NoError(t, err)
 			client := NewMockHelmClient(gomock.NewController(t))
 			client.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(nil, driver.ErrReleaseNotFound)
 			b.impl.Helm = client
-			require.NoError(t, b.impl.DeleteRadiusUninstallLeftovers(t.Context(), options, "test-context"))
+			require.NoError(t, b.impl.DeleteRadiusUninstallLeftovers(t.Context(), "test-context", confirmed))
 			require.NoError(t, fresh().run(t.Context()))
 		})
 	}
