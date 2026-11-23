@@ -4,6 +4,7 @@ templates:
   - rp/deployment.yaml
   - dynamic-rp/deployment.yaml
   - controller/deployment.yaml
+  - ucp/configmaps.yaml
 release:
   name: radius
   namespace: radius-system
@@ -97,24 +98,32 @@ tests:
           any: true
         template: controller/deployment.yaml
 
-  - it: keeps the existing mTLS Secret volumes alongside the new volumes
+  - it: does not mount the old mTLS Secrets
     set:
       global.rbac.enabled: true
     asserts:
-      - contains:
+      - notContains:
           path: spec.template.spec.volumes
           content:
             name: mtls
-            secret:
-              secretName: ucp-mtls
+          any: true
         template: ucp/deployment.yaml
-      - contains:
+      - notContains:
           path: spec.template.spec.volumes
           content:
             name: mtls
-            secret:
-              secretName: controller-mtls
+          any: true
         template: controller/deployment.yaml
+
+  - it: configures the trust domain
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  trustDomain: "example.org"$'
+        template: ucp/configmaps.yaml
 
   - it: projects one 10-minute token per receiver audience for each caller
     set:
@@ -204,7 +213,7 @@ tests:
       global.rootCA.volumeName: spiffe
     asserts:
       - failedTemplate:
-          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names mtls, spiffe, token-ucp, token-applications-rp, token-dynamic-rp"
+          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
         template: ucp/deployment.yaml
 
   # Helm stops at the first failing template, so the chart-wide render error is reported for ucp.
@@ -215,7 +224,7 @@ tests:
       global.rootCA.volumeName: token-ucp
     asserts:
       - failedTemplate:
-          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names mtls, spiffe, token-ucp, token-applications-rp, token-dynamic-rp"
+          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
         template: ucp/deployment.yaml
 
   - it: allows a reserved global.rootCA.volumeName when authorization is off
@@ -256,6 +265,59 @@ tests:
       global.rootCA.mountPath: /var/run/radius/spiffe
       global.targetCluster.enabled: true
       global.targetCluster.mountPath: /var/run/radius/tokens/ucp
+    asserts:
+      - notFailedTemplate: {}
+        template: ucp/deployment.yaml
+
+  - it: fails when global.rootCA.mountPath is the Radius CA bundle mount path in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.mountPath must not be \"/var/run/radius/ca\": Radius authorization mounts the Radius CA bundle there"
+        template: ucp/deployment.yaml
+
+  - it: fails when global.rootCA.mountPath is the Radius CA bundle mount path in enforce mode
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/ca/
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.mountPath must not be \"/var/run/radius/ca/\": Radius authorization mounts the Radius CA bundle there"
+        template: ucp/deployment.yaml
+
+  - it: keeps caDirectory on the Radius CA bundle when global.rootCA.mountPath is distinct
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /etc/ssl/custom-ca
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: radius-ca
+            mountPath: /var/run/radius/ca
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: root-ca-vol
+            mountPath: /etc/ssl/custom-ca
+            readOnly: true
+        template: ucp/deployment.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'caDirectory: "/var/run/radius/ca"'
+        template: ucp/configmaps.yaml
+
+  - it: allows the Radius CA bundle mount path for global.rootCA.mountPath when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/ca
     asserts:
       - notFailedTemplate: {}
         template: ucp/deployment.yaml

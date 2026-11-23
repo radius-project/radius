@@ -199,7 +199,7 @@ Pod volume names the authorization helpers add, as a JSON list. Values that name
 not reuse them, or Kubernetes rejects the Deployment for duplicate volume names.
 */}}
 {{- define "radius.authz.reservedVolumeNames" -}}
-{{- $names := list "mtls" "spiffe" -}}
+{{- $names := list "spiffe" "radius-ca" -}}
 {{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
 {{- $names = append $names (printf "token-%s" .) -}}
 {{- end -}}
@@ -219,13 +219,13 @@ authorization mode is not off.
 {{- end -}}
 
 {{/*
-Container mount paths the authorization helpers add, as a JSON list: the SPIFFE server certificate
-mount and one projected token mount per receiver. Later layers append their mounts here.
+Container mount paths the authorization helpers add, as a JSON object that maps each path to what is
+mounted there: the SPIFFE server certificate, the Radius CA bundle, and one projected token per receiver.
 */}}
 {{- define "radius.authz.reservedMountPaths" -}}
-{{- $paths := list (include "radius.authz.spiffe.mountPath" .) -}}
+{{- $paths := dict (include "radius.authz.spiffe.mountPath" .) "the SPIFFE server certificate" (include "radius.authz.caBundle.mountPath" .) "the Radius CA bundle" -}}
 {{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
-{{- $paths = append $paths (printf "%s/%s" (include "radius.authz.tokens.mountPath" $) .) -}}
+{{- $_ := set $paths (printf "%s/%s" (include "radius.authz.tokens.mountPath" $) .) "a projected ServiceAccount token" -}}
 {{- end -}}
 {{- $paths | toJson -}}
 {{- end -}}
@@ -237,7 +237,7 @@ Renders nothing. Called by the authorization volume helpers, which render only w
 authorization mode is not off.
 */}}
 {{- define "radius.authz.validateMountPaths" -}}
-{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJsonArray -}}
+{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJson -}}
 {{- $mounts := list -}}
 {{- if .Values.global.rootCA.cert -}}
 {{- $mounts = append $mounts (list "global.rootCA.mountPath" .Values.global.rootCA.mountPath) -}}
@@ -246,8 +246,9 @@ authorization mode is not off.
 {{- $mounts = append $mounts (list "global.targetCluster.mountPath" .Values.global.targetCluster.mountPath) -}}
 {{- end -}}
 {{- range $mounts -}}
-{{- if has (clean (toString (index . 1))) $reserved -}}
-{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (ternary "the SPIFFE server certificate" "a projected ServiceAccount token" (eq (clean (toString (index . 1))) (index $reserved 0)))) -}}
+{{- $path := clean (toString (index . 1)) -}}
+{{- if hasKey $reserved $path -}}
+{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (get $reserved $path)) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -276,10 +277,31 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- end -}}
 
 {{/*
-Path where a component's mTLS Secret (<component>-mtls) is mounted.
+Renders the authorization settings that a component reads only at startup, for its
+checksum/authz-config pod annotation. Clients fix the receiver's expected SPIFFE ID when they
+start, so the trust domain is included and a trust-domain-only upgrade rolls every caller.
+Renders only the mode when authorization is off, so the default checksum is unchanged.
 */}}
-{{- define "radius.authz.mtls.mountPath" -}}
-/var/run/radius/mtls
+{{- define "radius.authz.checksumInput" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if eq $mode "off" -}}
+{{- $mode -}}
+{{- else -}}
+{{- printf "%s:%s" $mode (include "radius.authz.spiffe.trustDomain" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Renders the authorization settings shared by every component's config: where the SPIFFE server
+certificate, the Radius CA bundle, and the projected ServiceAccount tokens are mounted, the trust
+domain, and the release namespace.
+*/}}
+{{- define "radius.authz.identityConfig" -}}
+certificateDirectory: {{ include "radius.authz.spiffe.mountPath" . | quote }}
+caDirectory: {{ include "radius.authz.caBundle.mountPath" . | quote }}
+tokenDirectory: {{ include "radius.authz.tokens.mountPath" . | quote }}
+trustDomain: {{ include "radius.authz.spiffe.trustDomain" . | quote }}
+namespace: {{ .Release.Namespace | quote }}
 {{- end -}}
 
 {{/*
@@ -291,14 +313,13 @@ the authorization mode is off, so a default install is unchanged.
 {{- if ne $mode "off" }}
 authorization:
   mode: {{ $mode | quote }}
-  certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
+  {{- include "radius.authz.identityConfig" . | nindent 2 }}
 {{- end }}
 {{- end -}}
 
 {{/*
 Renders the ucp connection block for a component that calls UCP. When the authorization
-mode is not off, the component calls UCP's internal mTLS port directly instead of going
+mode is not off, the component calls UCP's internal port directly instead of going
 through the Kubernetes API server.
 */}}
 {{- define "radius.authz.ucpConnection" -}}
@@ -314,26 +335,40 @@ ucp:
 {{- end -}}
 
 {{/*
-Renders the mTLS volume mount for a component container when the authorization mode is not off.
+Path where every component mounts the Radius CA bundle (ca.crt). It is separate from the server
+certificate mount, which projects only tls.crt and tls.key, and the controller mounts only this.
 */}}
-{{- define "radius.authz.mtls.volumeMount" -}}
+{{- define "radius.authz.caBundle.mountPath" -}}
+/var/run/radius/ca
+{{- end -}}
+
+{{/*
+Renders the Radius CA bundle volume mount for a component when the authorization mode is not off.
+Servers chain their SPIFFE certificate to it and clients verify servers against it. Kubelet updates
+the file when cert-manager renews radius-ca, and components reload it.
+*/}}
+{{- define "radius.authz.caBundle.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
-- name: mtls
-  mountPath: {{ include "radius.authz.mtls.mountPath" . }}
+- name: radius-ca
+  mountPath: {{ include "radius.authz.caBundle.mountPath" . }}
   readOnly: true
 {{- end }}
 {{- end -}}
 
 {{/*
-Renders the mTLS Secret volume for a component when the authorization mode is not off.
-Call with (dict "root" $ "component" "<component>").
+Renders the Radius CA bundle volume. Only ca.crt is projected; the CA private key in the same
+Secret is not mounted. The Secret is required, so pods wait until cert-manager has issued radius-ca.
 */}}
-{{- define "radius.authz.mtls.volume" -}}
-{{- if ne (include "radius.authz.mode" .root) "off" }}
-{{- include "radius.authz.validateVolumeNames" .root }}
-- name: mtls
+{{- define "radius.authz.caBundle.volume" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+{{- include "radius.authz.validateVolumeNames" . }}
+{{- include "radius.authz.validateMountPaths" . }}
+- name: radius-ca
   secret:
-    secretName: {{ .component }}-mtls
+    secretName: radius-ca
+    items:
+      - key: ca.crt
+        path: ca.crt
 {{- end }}
 {{- end -}}
 

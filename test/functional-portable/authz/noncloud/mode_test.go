@@ -34,6 +34,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/test"
 )
@@ -116,6 +117,28 @@ func Test_ExpectedMode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tt.want, expectedMode(tt.values))
+		})
+	}
+}
+
+func Test_InstalledTrustDomain(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		values map[string]any
+		want   string
+	}{
+		{name: "no global values", values: map[string]any{}, want: mtls.DefaultTrustDomain},
+		{name: "no spiffe values", values: rbacValues(map[string]any{"enabled": true}), want: mtls.DefaultTrustDomain},
+		{name: "empty trust domain", values: rbacValues(map[string]any{"spiffe": map[string]any{"trustDomain": ""}}), want: mtls.DefaultTrustDomain},
+		{name: "custom trust domain", values: rbacValues(map[string]any{"spiffe": map[string]any{"trustDomain": "example.org"}}), want: "example.org"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, installedTrustDomain(tt.values))
 		})
 	}
 }
@@ -216,6 +239,17 @@ func expectedMode(values map[string]any) authz.Mode {
 		return authz.ModeEnforce
 	}
 	return authz.ModeOff
+}
+
+// installedTrustDomain mirrors the chart's radius.authz.spiffe.trustDomain helper.
+func installedTrustDomain(values map[string]any) string {
+	global, _ := values["global"].(map[string]any)
+	rbac, _ := global["rbac"].(map[string]any)
+	spiffe, _ := rbac["spiffe"].(map[string]any)
+	if domain, _ := spiffe["trustDomain"].(string); domain != "" {
+		return domain
+	}
+	return mtls.DefaultTrustDomain
 }
 
 func expectedTestMode(helmMode authz.Mode, expected string) (authz.Mode, error) {
