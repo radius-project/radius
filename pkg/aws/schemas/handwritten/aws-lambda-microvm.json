@@ -188,7 +188,12 @@
       "permissions": ["lambda:GetMicrovm"]
     },
     "delete": {
-      "permissions": ["lambda:TerminateMicrovm", "lambda:GetMicrovm"]
+      "permissions": [
+        "iam:PassRole",
+        "lambda:GetMicrovm",
+        "lambda:RunMicrovm",
+        "lambda:TerminateMicrovm"
+      ]
     },
     "list": {
       "permissions": ["lambda:ListMicrovms"]
