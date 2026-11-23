@@ -268,3 +268,56 @@ tests:
     asserts:
       - notFailedTemplate: {}
         template: ucp/deployment.yaml
+
+  - it: fails when global.rootCA.mountPath is the Radius CA bundle mount path in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.mountPath must not be \"/var/run/radius/ca\": Radius authorization mounts the Radius CA bundle there"
+        template: ucp/deployment.yaml
+
+  - it: fails when global.rootCA.mountPath is the Radius CA bundle mount path in enforce mode
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/ca/
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.mountPath must not be \"/var/run/radius/ca/\": Radius authorization mounts the Radius CA bundle there"
+        template: ucp/deployment.yaml
+
+  - it: keeps caDirectory on the Radius CA bundle when global.rootCA.mountPath is distinct
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /etc/ssl/custom-ca
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: radius-ca
+            mountPath: /var/run/radius/ca
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: root-ca-vol
+            mountPath: /etc/ssl/custom-ca
+            readOnly: true
+        template: ucp/deployment.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'caDirectory: "/var/run/radius/ca"'
+        template: ucp/configmaps.yaml
+
+  - it: allows the Radius CA bundle mount path for global.rootCA.mountPath when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/ca
+    asserts:
+      - notFailedTemplate: {}
+        template: ucp/deployment.yaml

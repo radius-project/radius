@@ -219,13 +219,13 @@ authorization mode is not off.
 {{- end -}}
 
 {{/*
-Container mount paths the authorization helpers add, as a JSON list: the SPIFFE server certificate
-mount and one projected token mount per receiver. Later layers append their mounts here.
+Container mount paths the authorization helpers add, as a JSON object that maps each path to what is
+mounted there: the SPIFFE server certificate, the Radius CA bundle, and one projected token per receiver.
 */}}
 {{- define "radius.authz.reservedMountPaths" -}}
-{{- $paths := list (include "radius.authz.spiffe.mountPath" .) -}}
+{{- $paths := dict (include "radius.authz.spiffe.mountPath" .) "the SPIFFE server certificate" (include "radius.authz.caBundle.mountPath" .) "the Radius CA bundle" -}}
 {{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
-{{- $paths = append $paths (printf "%s/%s" (include "radius.authz.tokens.mountPath" $) .) -}}
+{{- $_ := set $paths (printf "%s/%s" (include "radius.authz.tokens.mountPath" $) .) "a projected ServiceAccount token" -}}
 {{- end -}}
 {{- $paths | toJson -}}
 {{- end -}}
@@ -237,7 +237,7 @@ Renders nothing. Called by the authorization volume helpers, which render only w
 authorization mode is not off.
 */}}
 {{- define "radius.authz.validateMountPaths" -}}
-{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJsonArray -}}
+{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJson -}}
 {{- $mounts := list -}}
 {{- if .Values.global.rootCA.cert -}}
 {{- $mounts = append $mounts (list "global.rootCA.mountPath" .Values.global.rootCA.mountPath) -}}
@@ -246,8 +246,9 @@ authorization mode is not off.
 {{- $mounts = append $mounts (list "global.targetCluster.mountPath" .Values.global.targetCluster.mountPath) -}}
 {{- end -}}
 {{- range $mounts -}}
-{{- if has (clean (toString (index . 1))) $reserved -}}
-{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (ternary "the SPIFFE server certificate" "a projected ServiceAccount token" (eq (clean (toString (index . 1))) (index $reserved 0)))) -}}
+{{- $path := clean (toString (index . 1)) -}}
+{{- if hasKey $reserved $path -}}
+{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (get $reserved $path)) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -361,6 +362,7 @@ Secret is not mounted. The Secret is required, so pods wait until cert-manager h
 {{- define "radius.authz.caBundle.volume" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
 {{- include "radius.authz.validateVolumeNames" . }}
+{{- include "radius.authz.validateMountPaths" . }}
 - name: radius-ca
   secret:
     secretName: radius-ca
