@@ -183,3 +183,25 @@ func Test_CreateKeepsIdentifier(t *testing.T) {
 		})
 	}
 }
+
+// Test_Confirm_Canceled checks that a confirmation never reads AWS once its context is canceled, before the first
+// read or after any read, and reports the cancellation with an unknown outcome.
+func Test_Confirm_Canceled(t *testing.T) {
+	for _, cancelAfter := range []int{0, 1, 3} {
+		ctx, cancel := context.WithCancel(t.Context())
+		if cancelAfter == 0 {
+			cancel()
+		}
+		reads := 0
+		err := confirm(ctx, sleep, func(context.Context, string, string) (map[string]any, error) {
+			reads++
+			if reads == cancelAfter {
+				cancel()
+			}
+			return map[string]any{}, nil
+		}, region, testIP, "the pool of the dedicated IP address", func(map[string]any) bool { return false })
+		cancel()
+		require.Equal(t, cancelAfter, reads, "no read after the context is canceled")
+		requireUnknown(t, err, context.Canceled.Error())
+	}
+}
