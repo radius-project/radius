@@ -812,6 +812,8 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 		sidecar []string
 		// mirrored renames the cainjector container and mirrors its image, so only its command identifies it.
 		mirrored bool
+		// command adds flags after the cainjector executable in the command of the mirrored container.
+		command []string
 		// unidentified renames the cainjector container and mirrors its image without a command that identifies it.
 		unidentified bool
 		// env is the environment of the cainjector container, which Kubernetes expands in $(NAME) references of its
@@ -843,6 +845,10 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 		{name: "unidentified restricted injector beside a sidecar", unidentified: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantWarning: true},
 		// A Deployment with one container runs cainjector in it.
 		{name: "unidentified lone restricted injector", unidentified: true, args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "renamed mirrored injector with APIService injection disabled in its command", mirrored: true, command: []string{"--enable-apiservices-injectable=false"},
+			sidecar: []string{"--v=2"}, wantErr: "sets --enable-apiservices-injectable=false"},
+		{name: "renamed mirrored injector restricted by its command and args", mirrored: true, command: []string{"--namespace"}, args: []string{"security"},
+			wantErr: `is limited to namespace "security" by --namespace`},
 		{name: "renamed mirrored restricted injector beside a sidecar", mirrored: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantErr: `is limited to namespace "security" by --namespace`},
 		// Kubernetes expands $(NAME) references to the container's environment in its args.
 		{name: "namespace from the environment is the Radius namespace", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
@@ -887,7 +893,7 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 				injector := &deployment.Spec.Template.Spec.Containers[0]
 				injector.Name = "injector"
 				injector.Image = "registry.example.com/platform/injector:v1"
-				injector.Command = []string{"/usr/local/bin/cainjector"}
+				injector.Command = append([]string{"/usr/local/bin/cainjector"}, tt.command...)
 			}
 			if tt.unidentified {
 				injector := &deployment.Spec.Template.Spec.Containers[0]

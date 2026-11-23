@@ -250,6 +250,10 @@ func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespa
 		var argv []string
 		var resolved []bool
 		raw := container.Args
+		// A command that runs cainjector passes the flags after the executable before the args.
+		if len(container.Command) > 0 && isCAInjectorName(path.Base(container.Command[0])) {
+			raw = slices.Concat(container.Command[1:], container.Args)
+		}
 		for _, arg := range raw {
 			value, ok := expandContainerReferences(arg, env)
 			argv = append(argv, value)
