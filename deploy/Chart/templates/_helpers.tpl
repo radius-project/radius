@@ -281,8 +281,9 @@ authorization mode is not off.
 
 {{/*
 Fails rendering when an active shared Secret (global.rootCA.secretName or
-global.targetCluster.secretName) is a receiver's <receiver>-spiffe Secret. cert-manager writes the
-receiver's private key to that Secret, and the shared Secrets are mounted whole into several pods.
+global.targetCluster.secretName) is a Secret that cert-manager writes a private key to: a receiver's
+<receiver>-spiffe Secret, a CA Secret, or the UCP API server certificate Secret. The shared Secrets are
+mounted whole into several pods, so reusing one of these names exposes the key.
 Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
 */}}
 {{- define "radius.authz.validateSecretNames" -}}
@@ -292,6 +293,15 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- end -}}
 {{- if .Values.global.targetCluster.enabled -}}
 {{- $shared = append $shared (list "global.targetCluster.secretName" .Values.global.targetCluster.secretName) -}}
+{{- end -}}
+{{- $reserved := dict
+  "radius-ca" "cert-manager writes the Radius CA certificate and signing key to that Secret"
+  "radius-apiserver-ca" "cert-manager writes the UCP API server CA certificate and signing key to that Secret"
+  "ucp-apiserver-tls" "cert-manager writes UCP's API server certificate and key to that Secret" -}}
+{{- range $shared -}}
+{{- if hasKey $reserved (index . 1) -}}
+{{- fail (printf "%s must not be %q: %s" (index . 0) (index . 1) (get $reserved (index . 1))) -}}
+{{- end -}}
 {{- end -}}
 {{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
 {{- range $shared -}}

@@ -373,6 +373,79 @@ tests:
       - failedTemplate:
           errorMessage: "global.targetCluster.secretName must not be \"dynamic-rp-spiffe\": cert-manager writes dynamic-rp's SPIFFE server certificate and key to that Secret"
 
+  - it: fails when global.rootCA.secretName is radius-ca with enabled
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.secretName: radius-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.secretName must not be \"radius-ca\": cert-manager writes the Radius CA certificate and signing key to that Secret"
+
+  - it: fails when global.rootCA.secretName is radius-apiserver-ca with enabled
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.secretName: radius-apiserver-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.secretName must not be \"radius-apiserver-ca\": cert-manager writes the UCP API server CA certificate and signing key to that Secret"
+
+  - it: fails when global.rootCA.secretName is ucp-apiserver-tls with enabled
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.secretName: ucp-apiserver-tls
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.secretName must not be \"ucp-apiserver-tls\": cert-manager writes UCP's API server certificate and key to that Secret"
+
+  - it: fails when global.targetCluster.secretName is radius-ca with enabled
+    set:
+      global.rbac.enabled: true
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: radius-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.secretName must not be \"radius-ca\": cert-manager writes the Radius CA certificate and signing key to that Secret"
+
+  - it: fails when global.targetCluster.secretName is radius-apiserver-ca with enabled
+    set:
+      global.rbac.enabled: true
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: radius-apiserver-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.secretName must not be \"radius-apiserver-ca\": cert-manager writes the UCP API server CA certificate and signing key to that Secret"
+
+  - it: fails when global.targetCluster.secretName is ucp-apiserver-tls with enabled
+    set:
+      global.rbac.enabled: true
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: ucp-apiserver-tls
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.secretName must not be \"ucp-apiserver-tls\": cert-manager writes UCP's API server certificate and key to that Secret"
+
+  - it: ignores inactive shared Secret names that match a reserved authorization Secret
+    set:
+      global.rbac.enabled: true
+      global.rootCA.secretName: radius-apiserver-ca
+      global.targetCluster.secretName: ucp-apiserver-tls
+    asserts:
+      - hasDocuments:
+          count: 8
+
+  - it: does not validate reserved authorization Secret names when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.secretName: radius-apiserver-ca
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: ucp-apiserver-tls
+    asserts:
+      - hasDocuments:
+          count: 0
+
   - it: ignores inactive shared Secret names that match a receiver's SPIFFE Secret
     set:
       global.rbac.enabled: true
