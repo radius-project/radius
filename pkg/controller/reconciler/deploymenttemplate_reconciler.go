@@ -703,7 +703,21 @@ func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context,
 	state.Phase, state.ResourceID, state.Message = coordinatorIdle, "", ""
 	state.RetryAfter = nil
 	owner.Status.Operation = nil
-	return r.saveAndRequeue(ctx, owner)
+	// Persist the accepted outcome before source-gated tracker retirement.
+	if err := r.saveCoordinator(ctx, owner); err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := r.SourcePolicy.checkTemplate(ctx, owner); err != nil {
+		return ctrl.Result{}, err
+	}
+	for i := range children {
+		if sameOutput(children[i].Spec.Id, target) {
+			if err := r.retireTracker(ctx, &children[i]); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
+	return r.again(), nil
 }
 
 func (r *DeploymentTemplateReconciler) clearLegacyToken(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, phrase radappiov1alpha3.DeploymentResourcePhrase) error {

@@ -1262,70 +1262,134 @@ func Test_DeploymentTemplateReconciler_HoldRunningKubernetesDelete(t *testing.T)
 	require.True(t, apierrors.IsNotFound(c.Get(t.Context(), k8sclient.ObjectKeyFromObject(output), output)))
 }
 
-func Test_DeploymentTemplateReconciler_HoldCompletedDelete(t *testing.T) {
+func Test_DeploymentTemplateReconciler_CompletedDelete(t *testing.T) {
 	t.Parallel()
-	source := readyFluxSource()
-	outputID := "/planes/radius/local/resourceGroups/selected/providers/Applications.Core/containers/output"
-	owner := sourceManagedTemplate(t, source)
-	owner.Status.OutputResources = []string{outputID}
-	owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: outputID, State: outputPendingDelete}}
-	mock := sdkclients.NewMockResourceDeploymentsClient()
-	poller, err := mock.Delete(t.Context(), outputID, "test")
-	require.NoError(t, err)
-	token, err := poller.ResumeToken()
-	require.NoError(t, err)
-	mock.CompleteOperation(token, nil)
-	owner.Status.Operation = &radappiov1alpha3.ResourceOperation{OperationKind: radappiov1alpha3.OperationKindDelete, ResumeToken: token}
-	owner.Status.Coordinator.Phase = coordinatorDeleteRunning
-	owner.Status.Coordinator.ResourceID = outputID
-	child := &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: owner.Namespace, UID: "output", Finalizers: []string{DeploymentResourceFinalizer},
-			OwnerReferences: []metav1.OwnerReference{{APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind,
-				Name: owner.Name, UID: owner.UID, Controller: new(true)}}},
-		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: outputID},
-		Status: radappiov1alpha3.DeploymentResourceStatus{
-			Phrase: radappiov1alpha3.DeploymentResourcePhraseDeleting, ProvisionedResourceID: outputID,
-			Operation: owner.Status.Operation.DeepCopy(),
-		},
+	for _, tt := range []struct {
+		name            string
+		selected        bool
+		suspended       bool
+		sourceReadFails bool
+	}{
+		{name: "active selected source", selected: true},
+		{name: "disabled source"},
+		{name: "suspended selected source", selected: true, suspended: true},
+		{name: "source lookup fails", selected: true, sourceReadFails: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			source := readyFluxSource()
+			source.Spec.Suspend = tt.suspended
+			outputID := "/planes/radius/local/resourceGroups/selected/providers/Applications.Core/containers/output"
+			owner := sourceManagedTemplate(t, source)
+			owner.Status.OutputResources = []string{outputID}
+			owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: outputID, State: outputPendingDelete}}
+			mock := sdkclients.NewMockResourceDeploymentsClient()
+			poller, err := mock.Delete(t.Context(), outputID, "test")
+			require.NoError(t, err)
+			token, err := poller.ResumeToken()
+			require.NoError(t, err)
+			mock.CompleteOperation(token, nil)
+			owner.Status.Operation = &radappiov1alpha3.ResourceOperation{OperationKind: radappiov1alpha3.OperationKindDelete, ResumeToken: token}
+			owner.Status.Coordinator.Phase = coordinatorDeleteRunning
+			owner.Status.Coordinator.ResourceID = outputID
+			child := &radappiov1alpha3.DeploymentResource{
+				ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: owner.Namespace, UID: "output", Finalizers: []string{DeploymentResourceFinalizer},
+					OwnerReferences: []metav1.OwnerReference{{APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind,
+						Name: owner.Name, UID: owner.UID, Controller: new(true)}}},
+				Spec: radappiov1alpha3.DeploymentResourceSpec{Id: outputID},
+				Status: radappiov1alpha3.DeploymentResourceStatus{
+					Phrase: radappiov1alpha3.DeploymentResourcePhraseDeleting, ProvisionedResourceID: outputID,
+					Operation: owner.Status.Operation.DeepCopy(),
+				},
+			}
+			c := newSourceTestClient(t, source, owner, child)
+			c.Client = interceptor.NewClient(c.Client.(k8sclient.WithWatch), interceptor.Funcs{
+				Delete: func(ctx context.Context, client k8sclient.WithWatch, obj k8sclient.Object, opts ...k8sclient.DeleteOption) error {
+					if _, ok := obj.(*radappiov1alpha3.DeploymentResource); ok {
+						var completed radappiov1alpha3.DeploymentTemplate
+						require.NoError(t, client.Get(ctx, k8sclient.ObjectKeyFromObject(owner), &completed))
+						require.Nil(t, completed.Status.Operation)
+						require.Empty(t, completed.Status.Coordinator.Outputs, "persist completion before retiring the tracker")
+					}
+					return client.Delete(ctx, obj, opts...)
+				},
+			})
+			reader := c.Client
+			sourceErr := errors.New("source lookup unavailable")
+			if tt.sourceReadFails {
+				reader = interceptor.NewClient(c.Client.(k8sclient.WithWatch), interceptor.Funcs{
+					Get: func(ctx context.Context, client k8sclient.WithWatch, key k8sclient.ObjectKey, obj k8sclient.Object, opts ...k8sclient.GetOption) error {
+						if _, ok := obj.(*sourcev1.GitRepository); ok {
+							return sourceErr
+						}
+						return client.Get(ctx, key, obj, opts...)
+					},
+				})
+			}
+			policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{}, reader)
+			require.NoError(t, err)
+			if tt.selected {
+				policy = selectedSourcePolicy(t, reader, source)
+			}
+			backend := &sourceTestDeployments{ResourceDeploymentsClient: mock}
+			r := &DeploymentTemplateReconciler{Client: c, Scheme: newFluxPolicyTestScheme(t), EventRecorder: record.NewFakeRecorder(5),
+				ResourceDeploymentsClient: backend, SourcePolicy: policy, DeleteRetryInterval: 43 * time.Second}
+			request := ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(owner)}
+
+			_, err = r.Reconcile(t.Context(), request)
+			if tt.sourceReadFails {
+				require.ErrorIs(t, err, sourceErr)
+			} else {
+				require.NoError(t, err)
+			}
+			var completed radappiov1alpha3.DeploymentTemplate
+			require.NoError(t, c.Get(t.Context(), request.NamespacedName, &completed))
+			require.Nil(t, completed.Status.Operation)
+			require.Equal(t, coordinatorIdle, completed.Status.Coordinator.Phase)
+			require.Empty(t, completed.Status.Coordinator.Outputs, "the accepted delete outcome must be durable")
+			require.Zero(t, backend.deletes)
+			require.Zero(t, backend.creates)
+			var tracker radappiov1alpha3.DeploymentResource
+			trackerKey := k8sclient.ObjectKeyFromObject(child)
+			if tt.selected && !tt.suspended && !tt.sourceReadFails {
+				require.True(t, apierrors.IsNotFound(c.Get(t.Context(), trackerKey, &tracker)), "an active source retires its tracker in the completion pass")
+				require.Equal(t, 1, c.deletes)
+				return
+			}
+			require.NoError(t, c.Get(t.Context(), trackerKey, &tracker))
+			require.Equal(t, radappiov1alpha3.DeploymentResourcePhraseDeleted, tracker.Status.Phrase)
+			require.Nil(t, tracker.Status.Operation)
+			require.Nil(t, tracker.DeletionTimestamp)
+			require.Contains(t, tracker.Finalizers, DeploymentResourceFinalizer, "tracker retirement is a source-authorized effect")
+
+			result, err := r.Reconcile(t.Context(), request)
+			if tt.sourceReadFails {
+				require.ErrorIs(t, err, sourceErr)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, r.DeleteRetryInterval, result.RequeueAfter)
+				var held radappiov1alpha3.DeploymentTemplate
+				require.NoError(t, c.Get(t.Context(), request.NamespacedName, &held))
+				require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseHeld, held.Status.Phrase)
+			}
+			require.NoError(t, c.Get(t.Context(), trackerKey, &tracker))
+			require.Contains(t, tracker.Finalizers, DeploymentResourceFinalizer)
+			require.Zero(t, c.deletes)
+
+			if tt.suspended {
+				require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(source), source))
+				source.Spec.Suspend = false
+				require.NoError(t, c.Update(t.Context(), source))
+			}
+			r.SourcePolicy = selectedSourcePolicy(t, c, source)
+			_, err = r.Reconcile(t.Context(), request)
+			require.NoError(t, err)
+			require.Equal(t, 1, c.deletes, "the authorized idle pass retires the completed tracker")
+			require.True(t, apierrors.IsNotFound(c.Get(t.Context(), trackerKey, &tracker)))
+			require.Zero(t, backend.deletes, "a completed backend delete must not be issued again")
+			require.Zero(t, backend.creates)
+		})
 	}
-	c := newSourceTestClient(t, source, owner, child)
-	policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{}, c)
-	require.NoError(t, err)
-	backend := &sourceTestDeployments{ResourceDeploymentsClient: mock}
-	r := &DeploymentTemplateReconciler{Client: c, Scheme: newFluxPolicyTestScheme(t), EventRecorder: record.NewFakeRecorder(5),
-		ResourceDeploymentsClient: backend, SourcePolicy: policy}
-	request := ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(owner)}
-
-	_, err = r.Reconcile(t.Context(), request)
-	require.NoError(t, err)
-	var completed radappiov1alpha3.DeploymentTemplate
-	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &completed))
-	require.Nil(t, completed.Status.Operation)
-	require.Equal(t, coordinatorIdle, completed.Status.Coordinator.Phase)
-	require.Empty(t, completed.Status.Coordinator.Outputs, "the accepted delete outcome must be durable")
-	var tracker radappiov1alpha3.DeploymentResource
-	trackerKey := k8sclient.ObjectKeyFromObject(child)
-	require.NoError(t, c.Get(t.Context(), trackerKey, &tracker))
-	require.Equal(t, radappiov1alpha3.DeploymentResourcePhraseDeleted, tracker.Status.Phrase)
-	require.Nil(t, tracker.Status.Operation)
-	require.Contains(t, tracker.Finalizers, DeploymentResourceFinalizer, "tracker retirement is a source-authorized effect")
-
-	_, err = r.Reconcile(t.Context(), request)
-	require.NoError(t, err)
-	var held radappiov1alpha3.DeploymentTemplate
-	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &held))
-	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseHeld, held.Status.Phrase)
-	require.NoError(t, c.Get(t.Context(), trackerKey, &tracker))
-	require.Contains(t, tracker.Finalizers, DeploymentResourceFinalizer)
-	require.Zero(t, c.deletes)
-
-	r.SourcePolicy = selectedSourcePolicy(t, c, source)
-	_, err = r.Reconcile(t.Context(), request)
-	require.NoError(t, err)
-	require.Equal(t, 1, c.deletes, "the authorized idle pass retires the completed tracker")
-	err = c.Get(t.Context(), trackerKey, &tracker)
-	require.True(t, apierrors.IsNotFound(err))
-	require.Zero(t, backend.deletes, "a completed backend delete must not be issued again")
 }
 
 func Test_DeploymentTemplateReconciler_AttributionOnlyChange(t *testing.T) {
