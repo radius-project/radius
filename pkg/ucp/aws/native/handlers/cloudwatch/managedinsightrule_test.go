@@ -23,7 +23,6 @@ import (
 	"os"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -651,8 +650,7 @@ func Test_ManagedInsightRule_CreateDisabledConfirmed(t *testing.T) {
 }
 
 // Test_ManagedInsightRule_ConfirmReadFails checks that a read that fails while a change is confirmed counts as one that
-// doesn't show it, so the change fails with an unknown outcome that names the read's error, and that a canceled request
-// stops waiting.
+// doesn't show it, so the change fails with an unknown outcome that names the read's error.
 func Test_ManagedInsightRule_ConfirmReadFails(t *testing.T) {
 	h, api := newRuleHandler()
 	id := createRule(t, h, ruleTemplate(newConnections))
@@ -665,11 +663,37 @@ func Test_ManagedInsightRule_ConfirmReadFails(t *testing.T) {
 	err = h.confirm(t.Context(), rule, "tag change", h.showsTags(t.Context(), region, ruleARNOf(newConnections), nil))
 	requireRuleFailure(t, err, native.OutcomeUnknown, "tags down")
 
-	h.confirmEvery = time.Hour
+}
+
+// Test_ManagedInsightRule_ConfirmCanceledBeforeRead checks that a request canceled before confirm starts reads nothing,
+// and fails with an unknown outcome whose cause is the cancellation.
+func Test_ManagedInsightRule_ConfirmCanceledBeforeRead(t *testing.T) {
+	h, _ := newRuleHandler()
+	rule := ruleID{resourceARN: endpointService, template: newConnections}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	reads := 0
-	err = h.confirm(ctx, rule, "disabling", func() (bool, error) { reads++; return false, nil })
-	requireRuleFailure(t, err, native.OutcomeUnknown, "context canceled")
-	require.Equal(t, 1, reads, "a canceled request reads once and stops")
+	err := h.confirm(ctx, rule, "disabling", func() (bool, error) { reads++; return false, nil })
+	requireRuleFailure(t, err, native.OutcomeUnknown, "canceled")
+	require.ErrorIs(t, err, context.Canceled)
+	require.Zero(t, reads, "a canceled request reads nothing")
+}
+
+// Test_ManagedInsightRule_ConfirmCanceledBetweenReads checks that a request canceled after a read stops before the
+// next one, even when the wait between reads is zero, and fails with the cancellation as its cause, not the read's
+// error.
+func Test_ManagedInsightRule_ConfirmCanceledBetweenReads(t *testing.T) {
+	h, _ := newRuleHandler()
+	rule := ruleID{resourceARN: endpointService, template: newConnections}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	reads := 0
+	err := h.confirm(ctx, rule, "disabling", func() (bool, error) {
+		reads++
+		cancel()
+		return false, errors.New("list down")
+	})
+	requireRuleFailure(t, err, native.OutcomeUnknown, "canceled")
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, reads, "no read after the cancellation")
 }

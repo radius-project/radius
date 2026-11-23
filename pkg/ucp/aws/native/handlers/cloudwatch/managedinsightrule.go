@@ -407,19 +407,25 @@ func outcomeRejected(err error) bool {
 
 // confirm reads AWS with shows until it shows a change the create or update made, up to confirmAttempts times. AWS
 // accepted the change, but doesn't say how soon its reads show it, so when they never do, confirm returns a failure
-// whose outcome is unknown, which asks for another deploy. A read that fails counts as one that doesn't show it.
+// whose outcome is unknown, which asks for another deploy. A read that fails counts as one that doesn't show it. confirm
+// checks ctx before every read, so a canceled request reads nothing more, and its failure wraps ctx's error.
 func (h *ManagedInsightRule) confirm(ctx context.Context, id ruleID, what string, shows func() (bool, error)) error {
 	var last error
 	for attempt := range confirmAttempts {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
-				last = ctx.Err()
 			case <-time.After(h.confirmEvery):
 			}
-			if ctx.Err() != nil {
-				break
+		}
+		// The timer can win the select after ctx is done, so ctx is checked here, before every read.
+		if err := ctx.Err(); err != nil {
+			failure := &native.Failure{
+				Message: fmt.Sprintf("AWS accepted the %s of the managed Contributor Insights rule of the template %q for %q, but the request was canceled before a read showed it. Deploy again to check it",
+					what, id.template, id.resourceARN),
+				Outcome: native.OutcomeUnknown,
 			}
+			return fmt.Errorf("%w: %w", failure, err)
 		}
 		ok, err := shows()
 		if err == nil && ok {
