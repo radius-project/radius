@@ -229,3 +229,33 @@ tests:
             name: spiffe
           any: true
         template: ucp/deployment.yaml
+
+  - it: fails when global.rootCA.mountPath is the SPIFFE server certificate mount path
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/spiffe
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.mountPath must not be \"/var/run/radius/spiffe\": Radius authorization mounts the SPIFFE server certificate there"
+        template: ucp/deployment.yaml
+
+  - it: fails when global.targetCluster.mountPath is a projected token mount path in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.targetCluster.enabled: true
+      global.targetCluster.mountPath: /var/run/radius/tokens/ucp
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.mountPath must not be \"/var/run/radius/tokens/ucp\": Radius authorization mounts a projected ServiceAccount token there"
+        template: ucp/deployment.yaml
+
+  - it: allows authorization mount paths for shared settings when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.mountPath: /var/run/radius/spiffe
+      global.targetCluster.enabled: true
+      global.targetCluster.mountPath: /var/run/radius/tokens/ucp
+    asserts:
+      - notFailedTemplate: {}
+        template: ucp/deployment.yaml

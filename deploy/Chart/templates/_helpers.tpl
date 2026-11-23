@@ -219,6 +219,40 @@ authorization mode is not off.
 {{- end -}}
 
 {{/*
+Container mount paths the authorization helpers add, as a JSON list: the SPIFFE server certificate
+mount and one projected token mount per receiver. Later layers append their mounts here.
+*/}}
+{{- define "radius.authz.reservedMountPaths" -}}
+{{- $paths := list (include "radius.authz.spiffe.mountPath" .) -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $paths = append $paths (printf "%s/%s" (include "radius.authz.tokens.mountPath" $) .) -}}
+{{- end -}}
+{{- $paths | toJson -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active global.rootCA.mountPath or global.targetCluster.mountPath is a
+reserved authorization mount path, which Kubernetes rejects as a duplicate container mount.
+Renders nothing. Called by the authorization volume helpers, which render only when the
+authorization mode is not off.
+*/}}
+{{- define "radius.authz.validateMountPaths" -}}
+{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJsonArray -}}
+{{- $mounts := list -}}
+{{- if .Values.global.rootCA.cert -}}
+{{- $mounts = append $mounts (list "global.rootCA.mountPath" .Values.global.rootCA.mountPath) -}}
+{{- end -}}
+{{- if .Values.global.targetCluster.enabled -}}
+{{- $mounts = append $mounts (list "global.targetCluster.mountPath" .Values.global.targetCluster.mountPath) -}}
+{{- end -}}
+{{- range $mounts -}}
+{{- if has (clean (toString (index . 1))) $reserved -}}
+{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (ternary "the SPIFFE server certificate" "a projected ServiceAccount token" (eq (clean (toString (index . 1))) (index $reserved 0)))) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Fails rendering when an active shared Secret (global.rootCA.secretName or
 global.targetCluster.secretName) is a receiver's <receiver>-spiffe Secret. cert-manager writes the
 receiver's private key to that Secret, and the shared Secrets are mounted whole into several pods.
@@ -356,6 +390,7 @@ Call with (dict "root" $ "component" "<receiver>").
 {{- define "radius.authz.spiffe.volume" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
 {{- include "radius.authz.validateVolumeNames" .root }}
+{{- include "radius.authz.validateMountPaths" .root }}
 - name: spiffe
   secret:
     secretName: {{ .component }}-spiffe
@@ -398,6 +433,7 @@ Call with (dict "root" $ "receivers" (list "<receiver>" ...)).
 {{- define "radius.authz.tokens.volumes" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
 {{- include "radius.authz.validateVolumeNames" .root }}
+{{- include "radius.authz.validateMountPaths" .root }}
 {{- range .receivers }}
 - name: token-{{ . }}
   projected:
