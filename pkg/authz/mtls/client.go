@@ -154,10 +154,11 @@ type clientTransport struct {
 	spiffeID string
 	token    *tokenFile
 
-	mu      sync.Mutex
-	current *http.Transport
-	retired map[*http.Transport]struct{}
-	conns   map[*trackedConn]connectionValidity
+	mu           sync.Mutex
+	current      *http.Transport
+	poolMaterial *material
+	retired      map[*http.Transport]struct{}
+	conns        map[*trackedConn]connectionValidity
 }
 
 type connectionValidity struct {
@@ -267,11 +268,15 @@ func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, poo
 	}
 
 	t.mu.Lock()
-	t.conns[tracked] = validity
-	// A request that started before its pool was retired can still dial on it.
-	if pool != nil && pool != t.current {
-		t.retired[pool] = struct{}{}
+	// Verification used only snapshot. Before exposing the connection to
+	// net/http, check that neither its trust nor its destination pool retired.
+	live, err := t.source.loadCurrent()
+	if err != nil || live != snapshot || pool != nil && (pool != t.current || snapshot != t.poolMaterial) {
+		t.mu.Unlock()
+		_ = raw.Close()
+		return nil, errors.New("TLS trust generation retired during dial")
 	}
+	t.conns[tracked] = validity
 	t.mu.Unlock()
 	return conn, nil
 }
@@ -371,7 +376,7 @@ func (t *clientTransport) transportForRequest(material *material) *http.Transpor
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
-	replace := t.current == nil
+	replace := t.current == nil || t.poolMaterial != material
 	for conn, validity := range t.conns {
 		if material == nil || validity.trust != material.trust || validity.epoch != material.epoch ||
 			now.Before(validity.notBefore) || now.After(validity.notAfter) {
@@ -388,6 +393,7 @@ func (t *clientTransport) transportForRequest(material *material) *http.Transpor
 			t.retired[t.current] = struct{}{}
 		}
 		t.current = t.newPool()
+		t.poolMaterial = material
 	}
 	// Close idle connections in retired pools, including connections that finished their
 	// requests since the pool was retired, and forget pools with no connections left.
