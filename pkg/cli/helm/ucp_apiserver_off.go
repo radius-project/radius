@@ -167,9 +167,20 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 // deleteUCPOffLeftovers deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
 // uid and resourceVersion rad read, and warns about each that rad does not own.
 func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) error {
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
+	found, err := i.deleteLeftoverSecrets(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
 	if err != nil {
 		return err
+	}
+	i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, found)
+	return nil
+}
+
+// deleteLeftoverSecrets deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
+// uid and resourceVersion rad read, and returns the state of each.
+func (i *Impl) deleteLeftoverSecrets(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) ([]ucpOffLeftoverFound, error) {
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
+	if err != nil {
+		return nil, err
 	}
 	for n, f := range found {
 		if f.state != ucpOffSecretLeftover {
@@ -181,13 +192,13 @@ func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, ku
 			continue
 		}
 		if !apierrors.IsConflict(err) && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, f.secret, err)
+			return nil, fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, f.secret, err)
 		}
 		// The Secret changed or was deleted since rad read it: decide again from what exists now, but never delete
 		// an object rad has not inspected.
 		again, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, f.ucpOffLeftoverSecret)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		found[n] = again
 		if again.state == ucpOffSecretLeftover {
@@ -195,8 +206,7 @@ func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, ku
 			i.logInfo("Warning: Secret %s/%s changed after rad read it, so rad left it. Run the command again to remove it.", radiusNamespace, f.secret)
 		}
 	}
-	i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, found)
-	return nil
+	return found, nil
 }
 
 // secretPreconditions returns delete preconditions that match only secret as rad read it.

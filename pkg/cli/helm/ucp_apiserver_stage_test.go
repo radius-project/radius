@@ -1245,6 +1245,34 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 	})
 }
 
+// A rollback to a chart with authorization on whose Radius Certificate ucp-cert writes Secret ucp-mtls leaves Secret
+// ucp-apiserver-tls, which holds a private key, unused, so rad deletes it after Helm rolls back.
+func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testing.T) {
+	manifest := renderStageTestManifest(t, authzOnValues)
+	require.Contains(t, manifest, "secretName: "+ucpAPIServerTLSSecretName)
+	parentManifest := strings.ReplaceAll(manifest, "secretName: "+ucpAPIServerTLSSecretName, "secretName: ucp-mtls")
+	shortenUCPAPIServiceWait(t)
+	c := newStageCluster(t, nil, true)
+	c.onUCP(t)
+	m := NewMockHelmClient(gomock.NewController(t))
+	m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
+		{Version: 1, Config: authzOnValues, Manifest: parentManifest, Chart: manifestTestChart(t, parentManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Config: authzOnValues, Manifest: manifest, Chart: manifestTestChart(t, manifest), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+	}, nil)
+	m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
+	m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
+		certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCertificateName, radiusReleaseName, nil)
+		require.NoError(t, unstructured.SetNestedField(certificate.Object, "ucp-mtls", "spec", "secretName"))
+		return c.dynamic.Tracker().Add(certificate)
+	})
+
+	require.NoError(t, c.impl(m).RollbackRadiusToRevision(t.Context(), "test-context", 1))
+	_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
+	require.True(t, apierrors.IsNotFound(err), "rollback must delete Secret %s, which no Certificate writes, got %v", ucpAPIServerTLSSecretName, err)
+	_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+}
+
 // A chart before radius-apiserver-ca, such as v0.62.0, accepts the values of authorization on but serves UCP from the
 // Secret ucp-cert of authorization off. Moving to it from a release with authorization on stages that Secret before
 // Helm, as turning authorization off does; from a release with authorization off, UCP already serves it.
