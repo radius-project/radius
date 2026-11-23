@@ -81,7 +81,8 @@ func SPIFFEID(trustDomain, namespace, serviceAccount string) string {
 
 // checkSPIFFEID checks that leaf's subject alternative names are exactly one URI SAN and that
 // it is expected. Any other SAN, such as a DNS name, IP address, or email address, is rejected.
-// The subject common name is ignored.
+// The subject common name is ignored. The URI is compared as signed, not as crypto/x509
+// reserializes it, because parsing can drop parts of the URI such as an empty fragment.
 func checkSPIFFEID(leaf *x509.Certificate, expected string) error {
 	switch len(leaf.URIs) {
 	case 0:
@@ -90,33 +91,40 @@ func checkSPIFFEID(leaf *x509.Certificate, expected string) error {
 	default:
 		return peerError("server certificate has more than one URI SAN", nil)
 	}
-	if err := checkOnlyURISANs(leaf); err != nil {
+	uris, err := signedURISANs(leaf)
+	if err != nil {
 		return err
 	}
-	if got := leaf.URIs[0].String(); got != expected {
-		return peerError(fmt.Sprintf("server certificate SPIFFE ID %q is not %q", got, expected), nil)
+	if len(uris) != 1 {
+		return peerError("server certificate has more than one URI SAN", nil)
+	}
+	if uris[0] != expected {
+		return peerError(fmt.Sprintf("server certificate SPIFFE ID %q is not %q", uris[0], expected), nil)
 	}
 	return nil
 }
 
-// checkOnlyURISANs reads the raw subjectAltName extension so that SAN types crypto/x509 does
-// not decode, such as otherName and directoryName, are rejected too.
-func checkOnlyURISANs(leaf *x509.Certificate) error {
+// signedURISANs returns the URI SANs exactly as signed. It reads the raw subjectAltName
+// extension so that SAN types crypto/x509 does not decode, such as otherName and
+// directoryName, are rejected too.
+func signedURISANs(leaf *x509.Certificate) ([]string, error) {
+	var uris []string
 	for _, ext := range leaf.Extensions {
 		if !ext.Id.Equal(oidSubjectAltName) {
 			continue
 		}
 		var names []asn1.RawValue
 		if rest, err := asn1.Unmarshal(ext.Value, &names); err != nil || len(rest) != 0 {
-			return peerError("server certificate has a malformed subjectAltName extension", err)
+			return nil, peerError("server certificate has a malformed subjectAltName extension", err)
 		}
 		for _, name := range names {
 			if name.Class != asn1.ClassContextSpecific || name.Tag != sanTagURI {
-				return peerError("server certificate has a SAN other than a URI", nil)
+				return nil, peerError("server certificate has a SAN other than a URI", nil)
 			}
+			uris = append(uris, string(name.Bytes))
 		}
 	}
-	return nil
+	return uris, nil
 }
 
 // checkKey allows only ECDSA P-256 or P-384 and RSA keys of at least 2048 bits.

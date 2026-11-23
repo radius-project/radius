@@ -443,6 +443,35 @@ tests:
       - failedTemplate:
           errorMessage: "global.targetCluster.secretName must not be \"dynamic-rp-spiffe\": cert-manager writes dynamic-rp's SPIFFE server certificate and key to that Secret"
 
+  - it: fails when a global.imagePullSecrets name is a receiver's SPIFFE Secret in enforce mode
+    set:
+      global.rbac.enabled: true
+      global.imagePullSecrets:
+        - name: registry
+        - name: ucp-spiffe
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.imagePullSecrets[1].name must not be \"ucp-spiffe\": cert-manager writes ucp's SPIFFE server certificate and key to that Secret, and cannot add them to an existing registry Secret"
+
+  - it: allows a global.imagePullSecrets name matching a receiver's SPIFFE Secret when authorization is off
+    set:
+      global.imagePullSecrets:
+        - name: registry
+        - name: ucp-spiffe
+    asserts:
+      - notFailedTemplate: {}
+      - hasDocuments:
+          count: 0
+
+  - it: allows global.imagePullSecrets that are not receiver SPIFFE Secrets in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.imagePullSecrets:
+        - name: registry
+        - name: spiffe
+    asserts:
+      - notFailedTemplate: {}
+
   - it: fails when global.rootCA.secretName is radius-ca with enabled
     set:
       global.rbac.enabled: true

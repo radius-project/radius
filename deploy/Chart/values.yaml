@@ -11,6 +11,8 @@ global:
 
   # Configure global.imagePullSecrets for pulling images from private registries.
   # Secrets must be manually created in the namespace.
+  # With authorization on, a name must not be a receiver's SPIFFE Secret (ucp-spiffe,
+  # applications-rp-spiffe, or dynamic-rp-spiffe), which cert-manager writes.
   # Example:
   # imagePullSecrets:
   #   - name: myregistrykey
@@ -103,7 +105,9 @@ global:
     # With authorization on, must not be a Secret that holds an authorization private key (see global.rootCA.secretName).
     secretName: "target-kubeconfig"
     secretKey: "kubeconfig"
-    # Must not be an authorization mount path (see global.rootCA.mountPath).
+    # With authorization on, neither this path nor mountPath/secretKey may be an authorization
+    # mount path in applications-rp or dynamic-rp: /var/run/radius/spiffe, /var/run/radius/ca, or
+    # /var/run/radius/tokens/ucp.
     mountPath: "/etc/radius/target-kubeconfig"
 
   # Configure internal component authorization. Both settings are disabled by default.

@@ -64,10 +64,10 @@ var (
 // radius-apiserver-ca and its cainjector copies the CA into the APIService. With authorization off, the chart sets
 // the CA bundle itself, and this only removes the trust that authorization on left, as
 // ReconcileUCPOffAPIServerTrust describes. declared holds the objects of the applied release, as manifestObjects
-// returns them, which that cleanup keeps.
-func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode, declared manifestObjectSet) error {
+// returns them, which that cleanup keeps. fresh reports that the release is at its first revision.
+func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode, declared manifestObjectSet, fresh bool) error {
 	if mode == authz.ModeOff {
-		return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared)
+		return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared, fresh)
 	}
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 		return err
@@ -87,7 +87,7 @@ func (i *Impl) waitForAppliedUCPAPIService(ctx context.Context, kubeContext, rad
 	if err != nil {
 		return fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
 	}
-	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared)
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared, false)
 }
 
 // waitForAvailableUCPAPIService waits until the UCP APIService has a CA bundle and the API server reports it
@@ -141,7 +141,7 @@ func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, kubeContext, r
 			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
 		}
 	}
-	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared)
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared, applied != nil && applied.Version == 1)
 }
 
 // servingAuthzMode returns the mode in which a manifest whose ucp-cert has kind, as ucpServingCertificateKind returns

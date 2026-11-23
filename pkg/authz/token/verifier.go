@@ -126,10 +126,15 @@ type Verifier struct {
 	// UnknownKeyInterval instead of waiting a full RefreshInterval.
 	noKeys chan struct{}
 
-	// mu guards keys and lastSuccess.
+	// mu guards keys, lastSuccess, fetched, and lastFetchFailed.
 	mu          sync.RWMutex
 	keys        KeySet
 	lastSuccess time.Time
+
+	// fetched is set after the first fetch. lastFetchFailed reports whether the latest
+	// fetch failed or left no usable keys.
+	fetched         bool
+	lastFetchFailed bool
 }
 
 // New returns a Verifier for config. Namespace, Audience, and Keys are required. A zero
@@ -175,15 +180,20 @@ func orDefault(d, def time.Duration) time.Duration {
 }
 
 // Run loads the signing keys and refreshes them every RefreshInterval until ctx is done.
-// When a Refresh already loaded the keys, the first refresh waits a full RefreshInterval.
-// After a failed refresh, or when any fetch leaves no usable keys, it retries every
-// UnknownKeyInterval.
+// If no fetch has run yet, Run fetches immediately. When a Refresh already loaded the
+// keys, the first refresh waits a full RefreshInterval. After a failed fetch, or when any
+// fetch leaves no usable keys, it retries every UnknownKeyInterval.
 func (v *Verifier) Run(ctx context.Context) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	// Run fetches at once unless a fetch already ran. It waits the refresh interval only
+	// when that fetch left usable keys, and the retry interval otherwise.
 	v.mu.RLock()
 	first := time.Duration(0)
-	if !v.lastSuccess.IsZero() {
+	switch {
+	case v.fetched && !v.lastFetchFailed && len(v.keys.Keys) > 0:
 		first = v.refreshInterval
+	case v.fetched:
+		first = v.unknownKeyInterval
 	}
 	v.mu.RUnlock()
 	timer := time.NewTimer(first)
@@ -224,7 +234,13 @@ func (v *Verifier) Refresh(ctx context.Context) error {
 // failed fetch keeps the cached keys. A successful fetch replaces them with the keys
 // Radius accepts. If there are none, it returns an error and Verify rejects every token
 // with AuthorizationUnavailable, so a key the cluster removed is not trusted for longer.
-func (v *Verifier) fetchLocked(ctx context.Context) error {
+func (v *Verifier) fetchLocked(ctx context.Context) (err error) {
+	defer func() {
+		v.mu.Lock()
+		v.fetched = true
+		v.lastFetchFailed = err != nil
+		v.mu.Unlock()
+	}()
 	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
 	defer cancel()
 	keys, err := v.source.Fetch(ctx)
