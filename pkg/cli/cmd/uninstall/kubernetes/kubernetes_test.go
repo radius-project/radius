@@ -806,3 +806,46 @@ func Test_Run_NotInstalled_ResumesUninstallCleanup(t *testing.T) {
 		})
 	}
 }
+
+// When the UCP cleanup fails after Helm removed Radius, --purge still deletes what the user confirmed, because a retry
+// finds no release and resumes only the UCP cleanup, never the purge.
+func Test_Run_Purge_UCPCleanupFailsAfterHelm(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	helmMock := helm.NewMockInterface(ctrl)
+	k8sMock := kubernetes.NewMockInterface(ctrl)
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	ctx := t.Context()
+	newRunner := func() *Runner {
+		return &Runner{
+			Helm:        helmMock,
+			Output:      &output.MockOutput{},
+			Kubernetes:  k8sMock,
+			Connections: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			KubeContext: "test-context",
+			AssumeYes:   true,
+			Purge:       true,
+		}
+	}
+
+	helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{RadiusInstalled: true}, nil)
+	helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)
+	appManagementClient.EXPECT().ListEnvironmentsAll(ctx).Return(nil, nil)
+	helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+		Return(&helm.RadiusRemovedError{Err: errors.New("delete failed")})
+	k8sMock.EXPECT().PerformRadiusCleanup(ctx, "test-context", kubernetes.CleanupPlan{
+		Namespaces:  []string{helm.RadiusSystemNamespace},
+		APIServices: []string{ucpAPIServiceName},
+		CRDs:        radiusCRDs,
+	}).Return(nil)
+
+	require.EqualError(t, newRunner().Run(ctx), "delete failed")
+
+	// The retry resumes only the UCP cleanup; gomock fails the test if it purges again.
+	leftovers := []helm.UninstallLeftover{{Kind: "Secret", Namespace: "radius-system", Name: "ucp-apiserver-tls"}}
+	helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+	helmMock.EXPECT().RadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(leftovers, nil)
+	helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, "test-context", leftovers).Return(nil)
+	helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)
+
+	require.NoError(t, newRunner().Run(ctx))
+}
