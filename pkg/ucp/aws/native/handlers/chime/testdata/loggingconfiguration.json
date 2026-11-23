@@ -1,0 +1,200 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CHIME_VOICE_CONNECTOR_ID": "es0wh9s5lzdhauw5iov0ch"
+  },
+  "interactions": [
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorLoggingConfiguration",
+      "request": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":true}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:09.117Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:35.558Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:35.558Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorLoggingConfiguration",
+      "request": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":true,\"EnableSIPLogs\":true}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":true,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:35.558Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:36.655Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":true,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:36.655Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":true,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorLoggingConfiguration",
+      "request": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":false}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:36.655Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":true,\"EnableSIPLogs\":true}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:37.784Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VoiceConnector\":{\"AwsRegion\":\"us-west-2\",\"CreatedTimestamp\":\"2026-11-20T19:04:51.192Z\",\"Name\":\"radius-rec-chime-2\",\"NetworkType\":\"IPV4_ONLY\",\"OutboundHostName\":\"es0wh9s5lzdhauw5iov0ch.voiceconnector.chime.aws\",\"RequireEncryption\":false,\"UpdatedTimestamp\":\"2026-11-20T19:06:37.784Z\",\"VoiceConnectorArn\":\"arn:aws:chime:us-west-2:123456789012:vc/es0wh9s5lzdhauw5iov0ch\",\"VoiceConnectorId\":\"es0wh9s5lzdhauw5iov0ch\"}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorLoggingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"LoggingConfiguration\":{\"EnableMediaMetricLogs\":false,\"EnableSIPLogs\":false}}"
+    }
+  ]
+}

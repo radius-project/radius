@@ -104,6 +104,76 @@ Automatic edge reference-documentation PRs come only from Radius `main`; manual 
 
 For a final release, run [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) from `main` in `radius-project/resource-types-contrib` with `release_version` set to the version without `v`, such as `0.56.0`. This remains a separate maintainer action: the Radius controller does not dispatch it. Confirm the selected recipe source is intended for the release, wait for publication to succeed, and record its run URL. This publishes release-version recipe-image tags and moves the `latest` tags referenced by recipe packs.
 
+### Bicep extension release contract
+
+The GHCR extension contract is preparatory: checked-in `.github/release-parity/targets.json` and active release workflows still use ACR. No new registry permissions, settings, release policy, or writer cutover is needed to land the contract alone. Later activation must select `expectedOutputs.bicepExtensionsContract: ghcr-v1` in the generated, approved schema-v2 plan and replace its `ociArtifacts` with the canonical AWS/Radius targets exported by `.github/scripts/release-bicep-extensions.mjs`. Prepare Release already copies the complete targets into the plan; never edit an approved plan to opt in. Plans without the selector retain current ACR release verification: full-version references for RC, final, and patch releases, with matching source, revision, and version annotations. Historical non-staged parity collection still records channel references; those baseline inventories are not current publication-verification fixtures. Unknown selectors and GHCR targets without a selector fail closed; neither missing evidence nor historical channel references trigger a registry fallback.
+
+New-format releases require one `bicep-extension-lock.json` release asset, with the following shape (example values, not publication evidence):
+
+```json
+{
+  "schemaVersion": 1,
+  "version": "v0.62.0-rc.1",
+  "releaseSourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifacts": [
+    {
+      "name": "aws-bicep-types",
+      "source": {
+        "repository": "radius-project/bicep-types-aws",
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "version": "0.62.0-rc.1",
+      "reference": "ghcr.io/radius-project/bicep-types-aws:0.62.0-rc.1",
+      "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "generation": {
+        "workflow": ".github/workflows/publish-bicep.yaml",
+        "runId": 123,
+        "runAttempt": 1,
+        "artifactId": 456,
+        "artifactDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    },
+    {
+      "name": "radius-bicep-types",
+      "source": {
+        "repository": "radius-project/radius",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "version": "0.62.0-rc.1",
+      "reference": "ghcr.io/radius-project/bicep-types-radius:0.62.0-rc.1",
+      "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "generation": {
+        "workflow": ".github/workflows/build-release.yaml",
+        "runId": 789,
+        "runAttempt": 1,
+        "artifactId": 987,
+        "artifactDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    }
+  ]
+}
+```
+
+The artifact array has exactly AWS then Radius, at the same full stable or dotted RC version. Radius binds to the controller-resolved metadata-bearing release SHA, not the product parent or current `main`; AWS binds to the plan's one frozen `bicep-types-aws` sibling SHA. Existing plan validation also checks that frozen AWS source's Radius pin against the approved product commit; selecting this output contract does not bypass that check or the frozen release-plan policy. Each manifest must be a non-executable Bicep provider artifact with the provider config and single type layer, `bicep.serialization.format: v1`, and `org.opencontainers.image.source`, `.revision`, and `.version` annotations matching its entry. The generation attempt identifies the original generation, not a later upload retry.
+
+The producer/integration layer must authenticate the recorded run and artifact through GitHub's API in the source repository: trusted workflow, exact source/tag, successful generation attempt, artifact ownership and content digest. Capture generated inputs and outputs once, including AWS schemas. The offline contract validator checks shape and source/digest binding; a self-reported run ID is not authentication. It neither queries registries nor regenerates missing evidence. R2 and the AWS companion supply generation evidence; R3 binds and uploads the pair before verification.
+
+`plannedBicepExtensions(plan, sourceSha)` returns the exact expected identities; `validateBicepExtensionLock(plan, sourceSha, lock)` validates the pair; `verifyBicepExtensionOutputs(plan, sourceSha, lock, observed)` also checks the collected OCI manifests. The collector's optional `--plan-file <approved-plan.json>` is required for GHCR targets. It downloads the lock with existing release assets, fetches manifests by their observed digest, checks the raw bytes against that digest, and stores the lock in `downstream.bicepExtensionLock`. `verify-release-manifest.mjs` includes that evidence in installation approval and post-approval rechecking. Existing release-asset upload/download helpers enforce immutability and reject missing lock evidence, even when a caller requests optional download.
+
+Before activation, complete both producer integrations, source-owned GHCR bootstrap (first push, then administrator makes the package Public), anonymous restore, AWS package access for the Radius finalizer, private-publisher exact-digest release-copy integration, and the superseded Bicep writer handoff. Production Azure credentials and ACR writes remain in private `azure-octo/radius-publisher`, not `radius-project` workflows. The main publisher's copy path depends on [azure-octo/radius-publisher#38](https://github.com/azure-octo/radius-publisher/pull/38): publish and check public GHCR content, dispatch the scoped App copy operation through the correlated monitor, then verify GHCR/ACR digest equality anonymously. Retain the private copy service and legacy release path until coordinated integration; no successful live copy is claimed. The planned GHCR Bicep `latest` alias means newest stable and `edge` means development; legacy ACR Bicep `latest` remains its development alias. This does not exempt dashboard or Deployment Engine images from the newest-stable `latest` and main-only `edge` policy. This preparatory layer changes no aliases, approval, controller ordering, or historical recovery. See the [migration design](../../../eng/design-notes/tools/2026-09-bicep-extension-ghcr-migration.md#parallel-execution-and-queueing). Missing or conflicting evidence blocks publication; recover the original captured evidence rather than replacing a locked release asset.
+
+#### Preparatory Radius producer
+
+[`__publish-release-bicep.yaml`](../../../.github/workflows/__publish-release-bicep.yaml) is a restricted reusable producer, not an active release caller or a dispatch workflow. Only `build-release.yaml` running on an approved full-version Radius tag may call it. It reads the committed schema-v2 GHCR plan, resolves the merged generated release PR, and reruns the existing controller's source/plan validation. A release source need not be current `main`; neither protected-tag requirements nor the main/edge eligibility policy change.
+
+The read-only capture job generates once and retains a native Bicep OCI snapshot for 90 days. A fresh publishing job authenticates the run, original successful capture attempt, artifact ownership, upload timestamp, and downloaded content digest before using ORAS to copy data. It receives only the repository's package-write token: no App key, Azure secret, or OIDC permission is added, and no downloaded scripts or binaries run under publishing credentials. The producer writes only `ghcr.io/radius-project/bicep-types-radius:<full-version>`, such as `0.62.0` or `0.62.0-rc.1`. Its per-tag concurrency group is `radius-bicep-types-release-refs/tags/<version-with-v>`; any future full-version writer must share that serialization. Matching existing content is verified and reused; conflicting content fails without overwrite. Authorization and transport errors do not count as absent tags.
+
+The reusable output `record` is a JSON string containing **one Radius entry** in the R1 artifact shape, with `generation.workflow: .github/workflows/build-release.yaml`. The `manifest-digest` output provides its digest separately. A successful attempt also retains `radius-bicep-extension.json` and `receipt.json` in `radius-bicep-extension-<run-id>-<run-attempt>`. An interrupted upload retains a partial receipt; a completed upload whose package is private retains an uploaded receipt but returns no success record. The existing package bootstrap remains upload first, then administrator makes the package Public and retries with the original evidence. Public visibility is checked through GitHub; anonymous restore remains a separate activation rehearsal gate.
+
+Same-run retries reuse `bicep-types-radius-<run-id>.tar` and preserve its original generation attempt. An initial non-recovery attempt rejects an already-existing snapshot. Recovery verifies that both the capture and upload steps completed successfully on the recorded original generation attempt; a successful job with skipped steps is not proof of generation. For cross-run recovery, the future caller must pass **both** `generation-run-id` and `generation-run-attempt` from the original capture; these are authenticated against the same approved tag/source, not accepted as replacement provenance. Missing, expired, corrupt, unsuccessful, or mismatched capture evidence stops recovery rather than regenerating a published version. Retain the original snapshot before its retention deadline; never use a fresh run without these inputs to recover an existing staged version.
+
+R2 alone does not produce `bicep-extension-lock.json`, fabricate an AWS record, copy to ACR, promote aliases, or change `build-release.yaml`. R3 must merge only after the AWS companion is present in the frozen sibling source, both source-owned packages can be published and restored anonymously, the Radius finalizer has the required AWS package access, and exact-digest release copies through private `azure-octo/radius-publisher` are integrated. The private copy service in [azure-octo/radius-publisher#38](https://github.com/azure-octo/radius-publisher/pull/38) retains production Azure credentials and ACR writes; `radius-project` workflows dispatch it with the existing scoped publisher App and correlated monitor, then verify digest equality anonymously. Retain that service and the legacy release path until the superseded Bicep writers are drained and handed off. R3 then wires this caller with the required read/package permissions, activates the approved `ghcr-v1` targets, authenticates and retains the AWS/Radius pair, and coordinates compatibility copies and promotion with the existing verification/approval/resume stages. Stable ACR channel and full-RC compatibility copies are coordinated by R3 and executed only in the private publisher; ACR development `latest` follows main through the same private copy boundary. Do not add production Azure credentials or direct ACR writes here, dispatch production jobs, or create packages merely to land this preparatory layer.
+
 ### Resume
 
 Run [Resume Release](https://github.com/radius-project/radius/actions/workflows/resume-release.yaml) from `main` with the failed summary's `version` (including `v`, for example `v0.61.0-rc.1`) and `source-commit`. For a frozen first RC, this means the **resolved signed release commit**, not the frozen product SHA and not a later main tip. If failure occurred before resolution, use the merged metadata PR SHA shown in that summary; replaying it adopts the same immutable source ref once created. For legacy first-RC plans the source remains the PR squash; for subsequent RCs, finals, and patches it remains the metadata backport merge commit.

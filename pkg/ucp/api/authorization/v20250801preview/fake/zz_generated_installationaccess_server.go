@@ -19,7 +19,7 @@ import (
 type InstallationAccessServer struct {
 	// CheckAccess is the fake for method InstallationAccessClient.CheckAccess
 	// HTTP status codes to indicate success: http.StatusOK
-	CheckAccess func(ctx context.Context, request v20250801preview.AccessCheckRequest, options *v20250801preview.InstallationAccessClientCheckAccessOptions) (resp azfake.Responder[v20250801preview.InstallationAccessClientCheckAccessResponse], errResp azfake.ErrorResponder)
+	CheckAccess func(ctx context.Context, request v20250801preview.BoundedAccessCheckRequest, options *v20250801preview.InstallationAccessClientCheckAccessOptions) (resp azfake.Responder[v20250801preview.InstallationAccessClientCheckAccessResponse], errResp azfake.ErrorResponder)
 
 	// EffectiveAccess is the fake for method InstallationAccessClient.EffectiveAccess
 	// HTTP status codes to indicate success: http.StatusOK
@@ -52,7 +52,7 @@ func (i *InstallationAccessServerTransport) Do(req *http.Request) (*http.Respons
 	rawMethod := req.Context().Value(runtime.CtxAPINameKey{})
 	method, ok := rawMethod.(string)
 	if !ok {
-		return nil, nonRetriableError{errors.New("unable to dispatch request, missing value for CtxAPINameKey")}
+		return nil, &nonRetriableError{errors.New("unable to dispatch request, missing value for CtxAPINameKey")}
 	}
 
 	return i.dispatchToMethodFake(req, method)
@@ -96,7 +96,7 @@ func (i *InstallationAccessServerTransport) dispatchCheckAccess(req *http.Reques
 	if i.srv.CheckAccess == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CheckAccess not implemented")}
 	}
-	body, err := server.UnmarshalRequestAsJSON[v20250801preview.AccessCheckRequest](req)
+	body, err := server.UnmarshalRequestAsJSON[v20250801preview.BoundedAccessCheckRequest](req)
 	if err != nil {
 		return nil, err
 	}
