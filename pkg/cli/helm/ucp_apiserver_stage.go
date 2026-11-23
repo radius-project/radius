@@ -242,6 +242,9 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return err
 	}
 
+	if err := validateUCPAPIServerAPIAnchors(ca, apiService); err != nil {
+		return err
+	}
 	trusted = unionCertificates(trusted, []*x509.Certificate{ca})
 	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {
 		return err
@@ -305,7 +308,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if !ok {
 		return nil
 	}
-	rendered, err := renderedUCPOffCertificate(manifest)
+	rendered, err := renderedSecret(manifest, ucpOffCertificateSecretName)
 	if err != nil {
 		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
 	}
@@ -499,8 +502,8 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 	return err
 }
 
-// renderedUCPOffCertificate returns Secret ucp-cert in manifest, or nil when manifest has none.
-func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
+// renderedSecret returns the named Secret in manifest, or nil when absent.
+func renderedSecret(manifest, name string) (*corev1.Secret, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
 	for {
 		var document map[string]any
@@ -512,7 +515,7 @@ func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
 			return nil, err
 		}
 		object := &unstructured.Unstructured{Object: document}
-		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != ucpOffCertificateSecretName {
+		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != name {
 			continue
 		}
 		secret := &corev1.Secret{}

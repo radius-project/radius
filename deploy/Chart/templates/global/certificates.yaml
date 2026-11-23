@@ -162,6 +162,9 @@ metadata:
     cert-manager.io/allow-direct-injection: "true"
     helm.sh/resource-policy: keep
     radius.io/certificate-mode: {{ $mode | quote }}
+    {{- if eq $mode "issuerRef" }}
+    radius.io/issuer-ref: {{ $source.issuer | toJson | quote }}
+    {{- end }}
 type: Opaque
 data:
   ca.crt: {{ $source.bundle | b64enc | quote }}
