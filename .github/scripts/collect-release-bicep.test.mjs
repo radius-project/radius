@@ -148,6 +148,9 @@ function fixture() {
   };
   const state = {
     evidence: undefined,
+    verification: { verified: true },
+    author: { type: "Bot" },
+    contentReads: 0,
     parent: sourceSha,
     files: [{ filename: evidencePath, status: "added" }],
     refWrites: 0,
@@ -222,22 +225,83 @@ function fixture() {
           ref.startsWith("refs/tags/") ? { data: { sha: awsSha } }
           : ref === "refs/heads/main" ? { data: { sha: controllerSha } }
           : {
-              data: { parents: [{ sha: state.parent }], files: state.files }
+              data: {
+                parents: [{ sha: state.parent }],
+                files: state.files,
+                commit: { verification: state.verification },
+                author: state.author
+              }
             },
-        getContent: async () => ({
-          data: {
-            type: "file",
-            encoding: "base64",
-            content: Buffer.from(JSON.stringify(state.evidence)).toString(
-              "base64"
-            )
-          }
-        })
+        getContent: async () => {
+          state.contentReads++;
+          return {
+            data: {
+              type: "file",
+              encoding: "base64",
+              content: Buffer.from(JSON.stringify(state.evidence)).toString(
+                "base64"
+              )
+            }
+          };
+        }
       }
     }
   };
   return { github, record, evidence, run, artifact, job, state };
 }
+
+test("stored evidence and request markers require a GitHub-verified Bot commit before content reads", async () => {
+  for (const kind of ["evidence", "request"]) {
+    for (const metadata of [
+      { verification: { verified: false }, author: { type: "Bot" } },
+      { verification: undefined, author: { type: "Bot" } },
+      { verification: { verified: true }, author: { type: "User" } },
+      { verification: { verified: true }, author: undefined }
+    ]) {
+      const f = fixture();
+      const dispatch = dispatcher();
+      if (kind === "evidence") {
+        await persistAwsEvidence(f.github, plan, sourceSha, f.evidence);
+      } else {
+        await requestAwsPublication(f.github, dispatch, plan, sourceSha);
+      }
+      Object.assign(f.state, metadata);
+      const reads = f.state.contentReads;
+      const writes = f.state.refWrites;
+      const calls = dispatch.calls.length;
+      await assert.rejects(
+        kind === "evidence" ?
+          readAwsEvidence(f.github, plan, sourceSha)
+        : requestAwsPublication(f.github, dispatch, plan, sourceSha),
+        /GitHub-verified App commit/
+      );
+      assert.equal(f.state.contentReads, reads);
+      assert.equal(f.state.refWrites, writes);
+      assert.equal(dispatch.calls.length, calls);
+    }
+  }
+});
+
+test("unverified marker readback and uncertain evidence creation fail closed", async () => {
+  for (const kind of ["evidence", "request"]) {
+    const f = fixture();
+    const dispatch = dispatcher();
+    const create = f.github.rest.git.createRef;
+    f.github.rest.git.createRef = async (args) => {
+      await create(args);
+      f.state.verification = { verified: false };
+      if (kind === "evidence") throw new Error("uncertain write");
+    };
+    await assert.rejects(
+      kind === "evidence" ?
+        persistAwsEvidence(f.github, plan, sourceSha, f.evidence)
+      : requestAwsPublication(f.github, dispatch, plan, sourceSha),
+      /GitHub-verified App commit/
+    );
+    assert.equal(f.state.contentReads, 0);
+    assert.equal(dispatch.calls.length, 0);
+  }
+});
 
 test("trusted-main A1 authenticates distinct publication and original capture attempts", async () => {
   const f = fixture();

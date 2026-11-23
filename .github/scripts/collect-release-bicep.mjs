@@ -465,6 +465,11 @@ async function readState(github, sourceSha, branch, path) {
     [sourceSha],
     "Bicep evidence ref has unexpected history"
   );
+  assert.ok(
+    commit.commit?.verification?.verified === true &&
+      commit.author?.type === "Bot",
+    `Bicep state commit ${ref.object.sha} on ${branch} is not a GitHub-verified App commit`
+  );
   assert.equal(
     commit.files?.length,
     1,
