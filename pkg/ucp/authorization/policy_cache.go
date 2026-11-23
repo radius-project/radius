@@ -166,12 +166,13 @@ type PolicySource interface {
 // PolicyCache has no background goroutines until its owner calls Run. Refresh
 // also supplies the immediate refresh hook for the common local write path.
 type PolicyCache struct {
-	source PolicySource
-	clock  clock.WithTicker
-	gate   chan struct{}
-	mu     sync.RWMutex
-	value  *PolicySnapshot
-	asOf   time.Time
+	source    PolicySource
+	clock     clock.WithTicker
+	gate      chan struct{}
+	mu        sync.RWMutex
+	value     *PolicySnapshot
+	asOf      time.Time
+	lastError error
 }
 
 // NewPolicyCache creates an initially unavailable cache. A nil clock uses real
@@ -187,13 +188,43 @@ func NewPolicyCache(source PolicySource, clk clock.WithTicker) (*PolicyCache, er
 }
 
 // Refresh serializes local reloads without preventing cancellation while waiting.
+// Waiting for the gate is bounded by the five-second poll interval. The whole
+// attempt is bounded by PolicyMaxAge, since a later result is unusable; a full
+// load slower than one poll interval can still complete instead of restarting.
 // The timestamp is from before I/O: a slow read cannot extend the stale window.
-func (c *PolicyCache) Refresh(ctx context.Context) error {
+// Deadline failures, including gate waits, record only the standard context
+// error. Caller cancellation leaves the shared diagnostic unchanged; a source
+// error wrapping cancellation while the attempt is live is still published.
+func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
+	ctx, cancel := context.WithTimeout(ctx, PolicyMaxAge)
+	defer cancel()
+	acquired := false
+	defer func() {
+		if acquired {
+			// Publish diagnostics before allowing the next refresh to run.
+			defer func() { <-c.gate }()
+		}
+		diagnostic := ctx.Err()
+		if errors.Is(diagnostic, context.Canceled) {
+			return
+		}
+		if diagnostic == nil {
+			diagnostic = err
+		}
+		if errors.Is(diagnostic, context.DeadlineExceeded) {
+			diagnostic = context.DeadlineExceeded
+		}
+		c.mu.Lock()
+		c.lastError = diagnostic
+		c.mu.Unlock()
+	}()
+	wait, stopWaiting := context.WithTimeout(ctx, PolicyRefreshInterval)
+	defer stopWaiting()
 	select {
 	case c.gate <- struct{}{}:
-		defer func() { <-c.gate }()
-	case <-ctx.Done():
-		return ctx.Err()
+		acquired = true
+	case <-wait.Done():
+		return wait.Err()
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -247,8 +278,9 @@ func (c *PolicyCache) Evaluate(identity Identity, checks []Check) ([]Decision, e
 	return value.Evaluate(identity, checks)
 }
 
-// Run refreshes every five seconds until cancelled. The owner must join this
-// call at shutdown. Failures are delivered to report, never silently discarded.
+// Run refreshes every five seconds until cancelled. Refresh bounds each attempt
+// as documented there. The owner must join this call at shutdown. Failures are
+// delivered to report, never silently discarded.
 func (c *PolicyCache) Run(ctx context.Context, report func(error)) error {
 	if report == nil {
 		return fmt.Errorf("policy refresh error reporter is required")
@@ -256,7 +288,8 @@ func (c *PolicyCache) Run(ctx context.Context, report func(error)) error {
 	ticker := c.clock.NewTicker(PolicyRefreshInterval)
 	defer ticker.Stop()
 	for {
-		if err := c.Refresh(ctx); err != nil {
+		err := c.Refresh(ctx)
+		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}

@@ -122,8 +122,8 @@ func TestAccessInspectionDoesNotAssertGroups(t *testing.T) {
 	t.Parallel()
 	client, err := NewInstallationAccessClient(nil, nil)
 	require.NoError(t, err)
-	request, err := client.checkAccessCreateRequest(t.Context(), AccessCheckRequest{
-		Checks: []*AccessCheck{{
+	request, err := client.checkAccessCreateRequest(t.Context(), BoundedAccessCheckRequest{
+		Checks: []*BoundedAccessCheck{{
 			Permission: to.Ptr("Radius.Core/environments/use/action"),
 			Target:     to.Ptr("/planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging"),
 		}},
