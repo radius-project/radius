@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"time"
 
@@ -315,7 +316,7 @@ func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, 
 // stageRolledBackUCPAPIServerCA stages UCP's API server certificate for revision of history before rad rolls Radius
 // back to it, from what that rollback renders. When that revision serves UCP with authorization on, it first checks
 // that cert-manager can issue and inject radius-apiserver-ca, as an install or upgrade does.
-func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
+func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, conf *helm.Configuration, history []*releasev1.Release, revision int) error {
 	target := releaseRevision(history, revision)
 	if target == nil {
 		return nil
@@ -333,8 +334,12 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	}
 	values := resolveEffectiveChartValues(target.Chart.Values, nil, target.Config)
 	latest := latestRevision(history)
-	if latest != nil && latest.Chart != nil {
-		previous := resolveEffectiveChartValues(latest.Chart.Values, nil, latest.Config)
+	deployed := lastDeployedRevision(history)
+	for _, observed := range []*releasev1.Release{latest, deployed} {
+		if observed == nil || observed.Chart == nil {
+			continue
+		}
+		previous := resolveEffectiveChartValues(observed.Chart.Values, nil, observed.Config)
 		if byoCertificateMode(previous) != "" {
 			if err := unchangedCertificateSelection(previous, values); err != nil {
 				return err
@@ -356,28 +361,48 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 		}
 	}
 	render := i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision)
+	var plan *certificatePlan
 	if byo {
 		opts := NewDefaultClusterOptions()
 		opts.Radius.Namespace, opts.RadiusInstalled = radiusNamespace, true
-		selected, _, err := i.prepareCertificateTarget(ctx, opts, target.Chart, copyValues(target.Config), kubeContext)
+		var selected *certificateTarget
+		selected, plan, err = i.prepareCertificateTarget(ctx, opts, target.Chart, copyValues(target.Config), kubeContext)
 		if err != nil {
 			return err
 		}
 		render = renderOnce(render)
-		if err := selected.checkProviderRender(ctx, render); err != nil {
+		if err := selected.checkActionRender(ctx, render); err != nil {
 			return err
 		}
-		return checkRenderedBYO(ctx, render)
-	}
-	if nestedValue(values, "global", "rbac", "tls", "provider") == "external" && mode != authz.ModeOff {
+	} else {
 		render = renderOnce(render)
-		selected := &certificateTarget{Provider: "external", mode: mode}
+		selected := &certificateTarget{Provider: stringValue(nestedValue(values, "global", "rbac", "tls", "provider")), mode: mode}
 		if err := selected.checkProviderRender(ctx, render); err != nil {
 			return err
 		}
+		from := func() (authz.Mode, error) { return deployedAuthzMode(history) }
+		if err := i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, from, mode, render); err != nil {
+			return err
+		}
 	}
-	deployed := func() (authz.Mode, error) { return deployedAuthzMode(history) }
-	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, deployed, mode, render)
+	current, err := i.Helm.RunHelmHistory(conf, radiusReleaseName)
+	if err != nil {
+		return fmt.Errorf("recheck Radius rollback history: %w", err)
+	}
+	if !reflect.DeepEqual(latest, latestRevision(current)) || !reflect.DeepEqual(deployed, lastDeployedRevision(current)) || !reflect.DeepEqual(target, releaseRevision(current, revision)) {
+		return fmt.Errorf("Radius history changed since rollback preflight; retry the operation")
+	}
+	return plan.recheckSigningSecret(ctx)
+}
+
+func lastDeployedRevision(history []*releasev1.Release) *releasev1.Release {
+	var deployed *releasev1.Release
+	for _, r := range history {
+		if r != nil && revisionStatus(r) == releasecommon.StatusDeployed && (deployed == nil || r.Version > deployed.Version) {
+			deployed = r
+		}
+	}
+	return deployed
 }
 
 // deployedAuthzMode returns the mode in which the newest revision of history serves UCP's API server, which is the

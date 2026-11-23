@@ -238,7 +238,7 @@ type RevisionInfo struct {
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
-	CheckRadiusCertificates(context.Context, ClusterOptions, string) error
+	CheckRadiusCertificates(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
@@ -382,7 +382,8 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall); err != nil {
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if err := i.ensureSelectedCertManager(ctx, target, clusterOptions, kubeContext, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall, render); err != nil {
 		return err
 	}
 
@@ -418,7 +419,6 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 		}
 	}
-	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
 	if err := i.stageOrdinaryCertificates(ctx, clusterOptions, kubeContext, radiusHelmConf, target, plan, reinstall, render); err != nil {
 		return err
 	}
@@ -610,7 +610,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, storedValues, radiusValues, true); err != nil {
+	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	if err := i.ensureSelectedCertManager(ctx, target, clusterOptions, kubeContext, radiusHelmChart.Values, storedValues, radiusValues, true, render); err != nil {
 		return err
 	}
 	if err := plan.recheck(); err != nil {
@@ -619,7 +620,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
 		return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 	}
-	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
 	if err := i.stageOrdinaryCertificates(ctx, clusterOptions, kubeContext, radiusHelmConf, target, plan, true, render); err != nil {
 		return err
 	}
@@ -800,7 +800,7 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 		}
 	}
 
-	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, helmConf, history, targetRevision); err != nil {
 		return err
 	}
 
@@ -856,7 +856,7 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 		return fmt.Errorf("revision %d not found in release history", revision)
 	}
 
-	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, helmConf, history, revision); err != nil {
 		return err
 	}
 

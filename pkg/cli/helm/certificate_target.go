@@ -139,7 +139,7 @@ func usesInternalSource(source map[string]any, secretField string) bool {
 }
 
 func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, deployed map[string]any) (*certificateTarget, *certificatePlan, error) {
-	target, plan, err := i.prepareCertificateTarget(ctx, options, selected, current, kubeContext)
+	target, plan, err := i.prepareCertificateTargetForBaseline(ctx, options, selected, current, kubeContext, deployed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,7 +157,11 @@ func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterO
 // prepareCertificateTarget runs before the ordinary anti-switch guard so the lifecycle
 // can compare a validated target with its journal. The import handle never enters target.
 func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string) (*certificateTarget, *certificatePlan, error) {
-	plan, err := i.prepareCertificateSelection(ctx, options, selected, current, kubeContext)
+	return i.prepareCertificateTargetForBaseline(ctx, options, selected, current, kubeContext, nil)
+}
+
+func (i *Impl) prepareCertificateTargetForBaseline(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, deployed map[string]any) (*certificateTarget, *certificatePlan, error) {
+	plan, err := i.prepareCertificateSelection(ctx, options, selected, current, kubeContext, deployed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -211,7 +215,8 @@ func certificateProfilePlan(selected *chart.Chart, effective map[string]any, nam
 		Mode: certificateMode(effective), Values: copyValues(effective),
 		Planes: map[string]certificatePlaneTarget{},
 	}
-	if mode == authz.ModeOff {
+	if mode == authz.ModeOff || selfSignedOnly(selected.Values) {
+		target.Provider = stringValue(nestedValue(effective, "global", "rbac", "tls", "provider"))
 		return target, nil
 	}
 	if selected.Metadata == nil {

@@ -529,7 +529,7 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, chart.Values, stored, prepared, false, nil)
 					case "rollback":
 						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
-						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
+						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, nil, history, 1)
 					}
 
 					require.ErrorContains(t, err, "requires the certificate lifecycle")
@@ -566,7 +566,7 @@ func TestRollbackCertificateModeBeforeStaging(t *testing.T) {
 				called = true
 				return nil, fmt.Errorf("stage attempted trust client")
 			}
-			err := impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
+			err := impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, nil, history, 1)
 			if tt.refusedMode == "" {
 				require.True(t, called)
 				require.ErrorContains(t, err, "stage attempted trust client")
