@@ -702,7 +702,9 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 }
 
 func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
-	t.Parallel()
+	k8sutil.WriteKubeconfig(t, k8sutil.IsolateKubeconfig(t), "prod west", map[string]string{
+		"prod west": "https://prod.example.test",
+	})
 
 	for _, status := range []releasecommon.Status{
 		releasecommon.StatusPendingInstall, releasecommon.StatusPendingUpgrade, releasecommon.StatusPendingRollback,
@@ -756,17 +758,9 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 						} {
 							require.ErrorContains(t, err, part)
 						}
-						helmPrefix := "helm"
-						kubectlPrefix := "kubectl"
-						if kubeContext != "" {
-							helmPrefix += ` --kube-context "prod west"`
-							kubectlPrefix += ` --context "prod west"`
-							require.ErrorContains(t, err, `context "prod west"`)
-						} else {
-							require.ErrorContains(t, err, "current kubeconfig context")
-							require.NotContains(t, err.Error(), "--kube-context")
-							require.NotContains(t, err.Error(), "--context")
-						}
+						helmPrefix := `helm --kube-context "prod west"`
+						kubectlPrefix := `kubectl --context "prod west"`
+						require.ErrorContains(t, err, `context "prod west"`)
 						require.ErrorContains(t, err, helmPrefix+" -n security status shared-cert-manager")
 						require.ErrorContains(t, err, helmPrefix+" -n security history shared-cert-manager")
 						require.ErrorContains(t, err, kubectlPrefix+" -n security get deployments,jobs,pods")
@@ -788,6 +782,57 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func Test_CertManagerPendingRelease_PinsImplicitContext(t *testing.T) {
+	configPath := k8sutil.IsolateKubeconfig(t)
+	servers := map[string]string{
+		"prod west": "https://prod.example.test",
+		"decoy":     "https://decoy.example.test",
+	}
+	k8sutil.WriteKubeconfig(t, configPath, "prod west", servers)
+	client := NewMockHelmClient(gomock.NewController(t))
+	client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).
+		DoAndReturn(func(config *helm.Configuration, _ string) (*releasev1.Release, error) {
+			checked, err := config.RESTClientGetter.ToRESTConfig()
+			require.NoError(t, err)
+			require.Equal(t, servers["prod west"], checked.Host)
+			k8sutil.WriteKubeconfig(t, configPath, "decoy", servers)
+			return &releasev1.Release{Version: 2, Info: &releasev1.Info{Status: releasecommon.StatusPendingUpgrade}}, nil
+		})
+	options := NewDefaultClusterOptions()
+	options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+	err := (&Impl{Helm: client}).ensureCertManager(t.Context(), options, "", nil, nil, cliUserValues(t, options), true)
+	require.ErrorContains(t, err, `helm --kube-context "prod west" -n cert-manager rollback cert-manager REVISION --wait`)
+	require.ErrorContains(t, err, `kubectl --context "prod west"`)
+	require.NotContains(t, err.Error(), "decoy")
+	require.Equal(t, servers["decoy"], helmRESTConfig(t, "").Host, "ambient context really changed")
+	require.Equal(t, servers["prod west"], helmRESTConfig(t, "prod west").Host, "suggested context still selects the inspected cluster")
+}
+
+func Test_CertManagerPendingRelease_ContextResolution(t *testing.T) {
+	for _, invalid := range []bool{false, true} {
+		t.Run(fmt.Sprintf("invalid=%t", invalid), func(t *testing.T) {
+			configPath := k8sutil.IsolateKubeconfig(t)
+			client := NewMockHelmClient(gomock.NewController(t))
+			if invalid {
+				require.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0700))
+				require.NoError(t, os.WriteFile(configPath, []byte("invalid: ["), 0600))
+			} else {
+				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).
+					Return(&releasev1.Release{Info: &releasev1.Info{Status: releasecommon.StatusPendingUpgrade}}, nil)
+			}
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+			err := (&Impl{Helm: client}).ensureCertManager(t.Context(), options, "", nil, nil, cliUserValues(t, options), true)
+			if invalid {
+				require.ErrorContains(t, err, "failed to resolve cert-manager kubeconfig context")
+			} else {
+				require.ErrorContains(t, err, "No named kubeconfig context was selected")
+				require.ErrorContains(t, err, "explicitly select and verify the cluster that rad inspected")
+			}
+		})
 	}
 }
 
