@@ -1,0 +1,65 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_S3_BUCKET": "radius-rec-example-requester-pays",
+    "RADIUS_REC_S3_MRAP_ARN": "arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap",
+    "RADIUS_REC_S3_MRAP_BUCKET_US_WEST_2": "radius-rec-example-mrap-usw2",
+    "RADIUS_REC_S3_MRAP_BUCKET_US_EAST_1": "radius-rec-example-mrap-use1"
+  },
+  "interactions": [
+    {
+      "service": "S3",
+      "operation": "PutBucketRequestPayment",
+      "status": 403,
+      "headers": {
+        "Content-Type": "application/xml"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Error><Code>AccessDenied</Code><Message>Access Denied</Message><RequestId>EXAMPLE0000000001</RequestId><HostId>EXAMPLEHOSTID</HostId></Error>"
+    },
+    {
+      "service": "S3",
+      "operation": "GetBucketRequestPayment",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/xml"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Error><Code>NoSuchBucket</Code><Message>The specified bucket does not exist</Message><RequestId>EXAMPLE0000000001</RequestId><HostId>EXAMPLEHOSTID</HostId></Error>"
+    },
+    {
+      "service": "S3",
+      "operation": "PutBucketRequestPayment",
+      "status": 500,
+      "headers": {
+        "Content-Type": "application/xml"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Error><Code>InternalError</Code><Message>We encountered an internal error. Please try again.</Message><RequestId>EXAMPLE0000000001</RequestId><HostId>EXAMPLEHOSTID</HostId></Error>"
+    },
+    {
+      "service": "S3 Control",
+      "operation": "GetMultiRegionAccessPointRoutes",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/xml"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<GetMultiRegionAccessPointRoutesResult><Mrap>arn:aws:s3::123456789012:accesspoint/mfzwi23gnjvgw.mrap</Mrap><Routes><Route><Bucket>radius-rec-example-mrap-usw2</Bucket><Region>us-west-2</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route><Route><Bucket>radius-rec-example-mrap-use1</Bucket><Region>us-east-1</Region><TrafficDialPercentage>100</TrafficDialPercentage></Route></Routes></GetMultiRegionAccessPointRoutesResult>"
+    },
+    {
+      "service": "S3 Control",
+      "operation": "SubmitMultiRegionAccessPointRoutes",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/xml"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<ErrorResponse><Error><Code>InvalidRequest</Code><Message>At least one Region must be active</Message></Error><RequestId>EXAMPLE0000000002</RequestId><HostId>EXAMPLEHOSTID</HostId></ErrorResponse>"
+    },
+    {
+      "service": "S3 Control",
+      "operation": "GetMultiRegionAccessPointRoutes",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/xml"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<ErrorResponse><Error><Code>NoSuchMultiRegionAccessPoint</Code><Message>The specified Multi-Region Access Point does not exist.</Message></Error><RequestId>EXAMPLE0000000002</RequestId><HostId>EXAMPLEHOSTID</HostId></ErrorResponse>"
+    }
+  ]
+}

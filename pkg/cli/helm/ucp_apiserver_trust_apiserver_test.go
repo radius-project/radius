@@ -163,7 +163,7 @@ func TestUCPOffTrustPatch_APIServer(t *testing.T) {
 	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
 	require.True(t, apierrors.IsInvalid(err), "a stale resourceVersion test must fail as Invalid, which settleUCPOffTrust retries; got %v", err)
 
-	require.NoError(t, settleUCPOffTrust(ctx, "test-context", dynamicClient, testCACertificates(t, ucpCA.pem)))
+	require.NoError(t, settleUCPOffTrust(ctx, "test-context", dynamicClient, RadiusSystemNamespace, "", testCACertificates(t, ucpCA.pem)))
 	settled, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	require.NoError(t, err)
 	require.NotContains(t, settled.GetAnnotations(), injectCAFromSecretAnnotation)
@@ -201,6 +201,13 @@ func renderUCPAPIServerTrustObjects(t *testing.T, helmBinary string) (*unstructu
 	}
 	require.NotNil(t, caCertificate, "the chart must render the radius-apiserver-ca Certificate")
 	require.NotNil(t, apiService, "the chart must render the UCP APIService")
+	// helm template omits the ownership metadata that a Helm install adds, which rad checks after Helm.
+	apiService.SetLabels(map[string]string{helmManagedByLabel: helmManagedByValue})
+	apiService.SetAnnotations(map[string]string{
+		helmReleaseNameAnnotation:      radiusReleaseName,
+		helmReleaseNamespaceAnnotation: RadiusSystemNamespace,
+		injectCAFromSecretAnnotation:   apiService.GetAnnotations()[injectCAFromSecretAnnotation],
+	})
 	return caCertificate, apiService
 }
 
