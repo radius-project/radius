@@ -404,6 +404,7 @@ tests:
     set:
       global.rbac.enabled: true
       de.internalAuth.enabled: true
+      de.tag: source-test-only
     documentSelector:
       path: metadata.name
       value: bicep-de-spiffe
@@ -436,6 +437,35 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: "global.rootCA.secretName must not be \"ucp-spiffe\": cert-manager writes ucp's SPIFFE server certificate and key to that Secret"
+
+  - it: rejects an active external shared CA alias for the aggregation signer
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+      global.rootCA.cert: test-ca
+      global.rootCA.secretName: radius-apiserver-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.secretName must not be \"radius-apiserver-ca\": cert-manager writes the UCP API server CA certificate and signing key to that Secret"
+
+  - it: rejects an external target-cluster alias for the aggregation serving key
+    set:
+      global.rbac.dryRun: true
+      global.rbac.tls.provider: external
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: ucp-apiserver-tls
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.secretName must not be \"ucp-apiserver-tls\": cert-manager writes UCP's API server certificate and key to that Secret"
+
+  - it: reserves the engine serving key after the engine gate is disabled
+    set:
+      global.rbac.enabled: true
+      global.targetCluster.enabled: true
+      global.targetCluster.secretName: bicep-de-spiffe
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.secretName must not be \"bicep-de-spiffe\": cert-manager writes bicep-de's SPIFFE server certificate and key to that Secret"
 
   - it: fails when global.targetCluster.secretName names a receiver's SPIFFE Secret in dryRun
     set:
@@ -538,15 +568,15 @@ tests:
       - hasDocuments:
           count: 8
 
-  - it: does not validate reserved authorization Secret names when authorization is off
+  - it: does not expose a prior aggregation signer when authorization is off
     set:
       global.rootCA.cert: test-ca
       global.rootCA.secretName: radius-apiserver-ca
       global.targetCluster.enabled: true
       global.targetCluster.secretName: ucp-apiserver-tls
     asserts:
-      - hasDocuments:
-          count: 0
+      - failedTemplate:
+          errorMessage: "global.rootCA.secretName must not be \"radius-apiserver-ca\": cert-manager writes the UCP API server CA certificate and signing key to that Secret"
 
   - it: ignores inactive shared Secret names that match a receiver's SPIFFE Secret
     set:
@@ -557,12 +587,12 @@ tests:
       - hasDocuments:
           count: 8
 
-  - it: renders no receiver Certificate and does not validate shared Secret names when authorization is off
+  - it: does not expose the active legacy serving key when authorization is off
     set:
       global.rootCA.cert: test-ca
-      global.rootCA.secretName: ucp-spiffe
+      global.rootCA.secretName: ucp-cert
       global.targetCluster.enabled: true
       global.targetCluster.secretName: ucp-spiffe
     asserts:
-      - hasDocuments:
-          count: 0
+      - failedTemplate:
+          errorMessage: "global.rootCA.secretName must not be \"ucp-cert\": the chart writes UCP's legacy API server certificate and key to that Secret"

@@ -145,8 +145,8 @@ func ucpDeployment(rolledOut bool) *appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta{Name: "ucp", Namespace: RadiusSystemNamespace, Generation: 2, UID: "ucp-uid",
 			Labels:      map[string]string{helmManagedByLabel: helmManagedByValue},
 			Annotations: map[string]string{helmReleaseNameAnnotation: radiusReleaseName, helmReleaseNamespaceAnnotation: RadiusSystemNamespace}},
-		Spec:       appsv1.DeploymentSpec{Replicas: &replicas},
-		Status:     appsv1.DeploymentStatus{ObservedGeneration: 2, Replicas: 2, UpdatedReplicas: 1, AvailableReplicas: 1},
+		Spec:   appsv1.DeploymentSpec{Replicas: &replicas},
+		Status: appsv1.DeploymentStatus{ObservedGeneration: 2, Replicas: 2, UpdatedReplicas: 1, AvailableReplicas: 1},
 	}
 	if rolledOut {
 		deployment.Status.Replicas = 1

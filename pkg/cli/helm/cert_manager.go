@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -449,6 +450,15 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		return nil
 	}
 
+	// Pin both the lookup and its recovery commands before current-context can change.
+	if kubeContext == "" {
+		config, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+		if err != nil {
+			return fmt.Errorf("failed to resolve cert-manager kubeconfig context: %w", err)
+		}
+		kubeContext = config.CurrentContext
+	}
+
 	i.logInfo("Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed. Do not rely on it for production access control.")
 
 	helmAction := NewHelmAction(i.Helm)
@@ -588,6 +598,9 @@ func pendingCertManagerReleaseError(rel *releasev1.Release, options ChartOptions
 	}
 	if !radOwnsCertManagerRelease(rel) {
 		recovery += " This release is not owned by rad; coordinate recovery with the installation's operator rather than taking ownership."
+	}
+	if kubeContext == "" {
+		recovery += " No named kubeconfig context was selected; before running any suggested command, explicitly select and verify the cluster that rad inspected."
 	}
 
 	return clierrors.Message("cert-manager Helm release %q in namespace %q (%s), revision %d is %s. "+
