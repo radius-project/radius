@@ -257,7 +257,7 @@ func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespa
 		var namespace, apiServices *string
 		namespaceResolved := true
 		for idx, arg := range argv {
-			if !strings.HasPrefix(raw[idx], "-") {
+			if !strings.HasPrefix(arg, "-") {
 				continue
 			}
 			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")

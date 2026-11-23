@@ -830,6 +830,8 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: RadiusSystemNamespace}}, wantErr: `is limited to namespace "$(WATCH_NAMESPACE)" by --namespace`},
 		{name: "ignored namespaces from the environment", args: []string{"--ignore-namespaces=$(IGNORED)"},
 			env: []corev1.EnvVar{{Name: "IGNORED", Value: "kube-system," + RadiusSystemNamespace}}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
+		{name: "APIService injection disabled by a flag from the environment", args: []string{"$(INJECTABLE)"},
+			env: []corev1.EnvVar{{Name: "INJECTABLE", Value: "--enable-apiservices-injectable=false"}}, wantErr: "sets --enable-apiservices-injectable=false"},
 		// A value that only the kubelet can resolve leaves the namespace unknown, so rad warns rather than refusing.
 		{name: "namespace from a Secret", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
 			env:                  []corev1.EnvVar{{Name: "WATCH_NAMESPACE", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{Key: "namespace"}}}},
