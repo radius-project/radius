@@ -587,6 +587,39 @@ func TestRun_RetriesAfterFailure(t *testing.T) {
 	}, 5*time.Second, 5*time.Millisecond)
 }
 
+func TestRun_RetriesAfterUnknownKeyRefreshLeavesNoKeys(t *testing.T) {
+	clock := &fakeClock{now: start}
+	source := newFakeSource(defaultKeys())
+	v, err := New(Config{
+		Namespace:          testNamespace,
+		Audience:           testAudience,
+		Keys:               source,
+		Now:                clock.Now,
+		RefreshInterval:    time.Hour,
+		UnknownKeyInterval: 10 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.NoError(t, v.Refresh(t.Context()))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	go v.Run(ctx)
+
+	// A token with an unknown key ID triggers a refetch while the cluster publishes no keys.
+	source.set(map[string]crypto.PublicKey{}, nil)
+	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "missing", rsaKey, claimsFor("ucp", start)))
+	requireCode(t, err, v1.CodeAuthorizationUnavailable)
+
+	// The cluster restores its keys. The fake clock rate limits unknown-key refetches, so
+	// only Run can reload them, and it must not wait the full RefreshInterval.
+	source.set(defaultKeys(), nil)
+	token := sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start))
+	require.Eventually(t, func() bool {
+		_, err := v.Verify(t.Context(), token)
+		return err == nil
+	}, 5*time.Second, 5*time.Millisecond)
+}
+
 func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {
 	clock := &fakeClock{now: start}
 	source := newFakeSource(defaultKeys())
