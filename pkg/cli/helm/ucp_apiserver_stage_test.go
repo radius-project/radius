@@ -1277,17 +1277,32 @@ func Test_RollbackRadius_ChecksCertManager(t *testing.T) {
 		{Version: 1, Config: authzOnValues, Manifest: manifest, Chart: manifestTestChart(t, manifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 		{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-	c := newStageCluster(t, nil, true)
-	c.addOffAPIService(t, offAPIServiceVariants[0])
-	m := NewMockHelmClient(gomock.NewController(t))
-	m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
-	impl := c.impl(m)
-	impl.newCertManagerClients = func(string) (kubernetes.Interface, apiextclient.Interface, error) {
-		kubeClient, apiextClient := fakeCertManagerCluster{}.clients()
-		return kubeClient, apiextClient, nil
+	tests := []struct {
+		name    string
+		cluster fakeCertManagerCluster
+		wantErr string
+	}{
+		{name: "not installed", wantErr: "cert-manager is not installed"},
+		{name: "older than the minimum version", cluster: fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "v1.19.0", "")},
+			wantErr: `cert-manager v1.19.0 in namespace "cert-manager" is older than the minimum supported version v` + CertManagerMinimumVersion},
 	}
-	require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), "cert-manager is not installed")
-	c.requireNotStaged(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newStageCluster(t, nil, true)
+			c.addOffAPIService(t, offAPIServiceVariants[0])
+			writes := len(c.clusterWrites())
+			m := NewMockHelmClient(gomock.NewController(t))
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
+			impl := c.impl(m)
+			impl.newCertManagerClients = func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+				kubeClient, apiextClient := tt.cluster.clients()
+				return kubeClient, apiextClient, nil
+			}
+			require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), tt.wantErr)
+			require.Empty(t, c.clusterWrites()[writes:], "rad must not write to the cluster before it checks cert-manager")
+			c.requireNotStaged(t)
+		})
+	}
 }
 
 // trustUCPAPIServerCAs stops without patching when the APIService it checked was replaced.
