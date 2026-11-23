@@ -30,9 +30,10 @@ import (
 )
 
 // Test_Replay_Retries checks how a handler from All reports an error the SDK got after retrying a call, against RDS's
-// error responses: a 4xx after an attempt AWS didn't answer with a 4xx, such as a 5xx whose create AWS may have
-// applied, leaves the outcome unknown, and a 4xx on every attempt is a call AWS rejected, which is not the request's
-// fault when AWS throttled it. A failed read before the create sends nothing, so it applied none of it.
+// error responses: a 4xx after an attempt AWS didn't answer with a 4xx, such as a 5xx whose stop AWS may have applied,
+// leaves the outcome unknown, and a 4xx on every attempt is a call AWS rejected, which is not the request's fault when
+// AWS throttled it. A tenant database create is sent again only after throttling, so a 5xx leaves its outcome
+// unknown. A failed read before the create sends nothing, so it applied none of it.
 func Test_Replay_Retries(t *testing.T) {
 	if awsreplay.Recording() {
 		t.Skip("the cassette is written by hand from RDS's error responses; recording it needs AWS to fail on purpose")
@@ -45,13 +46,17 @@ func Test_Replay_Retries(t *testing.T) {
 			o.Backoff = retry.BackoffDelayerFunc(func(int, error) (time.Duration, error) { return 0, nil })
 		})
 	}
-	var tenants native.Handler
+	var tenants, streams native.Handler
 	for _, h := range All(cfg) {
-		if h.TypeName() == "AWS::RDS::TenantDatabase" {
+		switch h.TypeName() {
+		case "AWS::RDS::TenantDatabase":
 			tenants = h
+		case "AWS::RDS::DBClusterActivityStream":
+			streams = h
 		}
 	}
 	require.NotNil(t, tenants)
+	require.NotNil(t, streams)
 	create := func() error {
 		_, err := tenants.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{
 			"DBInstanceIdentifier": s.Input("RADIUS_REC_ORACLE_CDB_INSTANCE"),
@@ -62,15 +67,17 @@ func Test_Replay_Retries(t *testing.T) {
 		return err
 	}
 
-	requireUnknown(t, create(), "TenantDatabaseAlreadyExists", "an earlier attempt may have reached AWS")
+	err := create()
 	var failure *native.Failure
+	require.Error(t, err)
+	require.False(t, errors.As(err, &failure), "RDS sends a create once after a 5xx, which leaves the outcome unknown: %v", err)
+	require.Contains(t, err.Error(), "ServiceUnavailable")
+
 	require.ErrorAs(t, create(), &failure)
 	require.False(t, failure.ClientError, "throttling isn't the request's fault")
 	require.True(t, failure.Throttled)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome, "AWS throttled every attempt, so none applied")
 	require.Contains(t, failure.Message, "AWS limited the rate of calls, so it changed nothing. Deploy again later")
-
-	requireUnknown(t, create(), "InvalidDBInstanceState", "an earlier attempt may have reached AWS")
 
 	require.ErrorAs(t, create(), &failure)
 	require.True(t, failure.ClientError, "AWS answered every attempt with a 4xx, so none applied")
@@ -83,6 +90,9 @@ func Test_Replay_Retries(t *testing.T) {
 	require.Equal(t, native.OutcomeRejected, failure.Outcome, "a failed read of the instance sends no create, however the SDK retried it")
 	require.Contains(t, failure.Message, "Throttling")
 	require.NotContains(t, failure.Message, "earlier attempt", "the read before the create changed nothing")
+
+	requireUnknown(t, streams.(native.Resetter).Reset(t.Context(), awsreplay.Region, s.Input("RADIUS_REC_AURORA_CLUSTER_ARN")),
+		"InvalidDBClusterStateFault", "an earlier attempt may have reached AWS")
 }
 
 // requireUnknown requires err to be a failure whose outcome is unknown, which UCP answers with 500 and whose values it

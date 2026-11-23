@@ -24,6 +24,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -57,4 +59,23 @@ func unconfirmed(what string, changeErr error, readErr error) error {
 			"started the %s failed: %s. Deploy again later.", what, changeErr.Error(), what, readErr.Error()),
 		Throttled: throttled,
 	}
+}
+
+// sendOnce makes the SDK send a call again only when AWS throttled it, which AWS refuses before acting on. A change
+// that takes no idempotency token, such as CreateTenantDatabase, can't be sent again after any other error: when the
+// first attempt reached AWS, the retry gets an error such as TenantDatabaseAlreadyExists, which UCP would read as
+// rejected, and it would drop the record of a change AWS has. Sent once, an error AWS answers with a 5xx leaves the
+// outcome unknown, and the next deploy reads what AWS has.
+func sendOnce(o *rds.Options) {
+	o.Retryer = throttleRetryer{o.Retryer}
+}
+
+// throttleRetryer is retryer, but retries only throttled calls.
+type throttleRetryer struct {
+	aws.Retryer
+}
+
+// IsErrorRetryable reports whether err is a throttle.
+func (r throttleRetryer) IsErrorRetryable(err error) bool {
+	return retry.IsErrorThrottles(retry.DefaultThrottles).IsErrorThrottle(err) == aws.TrueTernary
 }

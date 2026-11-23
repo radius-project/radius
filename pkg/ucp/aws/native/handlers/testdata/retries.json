@@ -1,7 +1,8 @@
 {
   "source": "api-reference",
   "inputs": {
-    "RADIUS_REC_ORACLE_CDB_INSTANCE": "radius-rec-cdb"
+    "RADIUS_REC_ORACLE_CDB_INSTANCE": "radius-rec-cdb",
+    "RADIUS_REC_AURORA_CLUSTER_ARN": "arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das"
   },
   "interactions": [
     {
@@ -23,16 +24,6 @@
         "Content-Type": "text/xml"
       },
       "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Receiver</Type>\n    <Code>ServiceUnavailable</Code>\n    <Message>Service unavailable.</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf002</RequestId>\n</ErrorResponse>\n"
-    },
-    {
-      "service": "RDS",
-      "operation": "CreateTenantDatabase",
-      "request": "Action=CreateTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&MasterUserPassword=xxxxxxxxxxxx&MasterUsername=admin&TenantDBName=pdbrec&Version=2014-10-31",
-      "status": 400,
-      "headers": {
-        "Content-Type": "text/xml"
-      },
-      "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Sender</Type>\n    <Code>TenantDatabaseAlreadyExists</Code>\n    <Message>The tenant database pdbrec already exists in the DB instance radius-rec-cdb.</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf003</RequestId>\n</ErrorResponse>\n"
     },
     {
       "service": "RDS",
@@ -73,36 +64,6 @@
         "Content-Type": "text/xml"
       },
       "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Sender</Type>\n    <Code>Throttling</Code>\n    <Message>Rate exceeded</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf007</RequestId>\n</ErrorResponse>\n"
-    },
-    {
-      "service": "RDS",
-      "operation": "DescribeDBInstances",
-      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
-      "status": 200,
-      "headers": {
-        "Content-Type": "text/xml"
-      },
-      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>available</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf008</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
-    },
-    {
-      "service": "RDS",
-      "operation": "CreateTenantDatabase",
-      "request": "Action=CreateTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&MasterUserPassword=xxxxxxxxxxxx&MasterUsername=admin&TenantDBName=pdbrec&Version=2014-10-31",
-      "status": 503,
-      "headers": {
-        "Content-Type": "text/xml"
-      },
-      "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Receiver</Type>\n    <Code>ServiceUnavailable</Code>\n    <Message>Service unavailable.</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf009</RequestId>\n</ErrorResponse>\n"
-    },
-    {
-      "service": "RDS",
-      "operation": "CreateTenantDatabase",
-      "request": "Action=CreateTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&MasterUserPassword=xxxxxxxxxxxx&MasterUsername=admin&TenantDBName=pdbrec&Version=2014-10-31",
-      "status": 400,
-      "headers": {
-        "Content-Type": "text/xml"
-      },
-      "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Sender</Type>\n    <Code>InvalidDBInstanceState</Code>\n    <Message>The DB instance radius-rec-cdb is not in the available state.</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf010</RequestId>\n</ErrorResponse>\n"
     },
     {
       "service": "RDS",
@@ -163,6 +124,46 @@
         "Content-Type": "text/xml"
       },
       "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Sender</Type>\n    <Code>Throttling</Code>\n    <Message>Rate exceeded</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf103</RequestId>\n</ErrorResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>started</ActivityStreamStatus>\n        <ActivityStreamMode>async</ActivityStreamMode>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf201</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "StopActivityStream",
+      "request": "Action=StopActivityStream&ApplyImmediately=true&ResourceArn=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 503,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Receiver</Type>\n    <Code>ServiceUnavailable</Code>\n    <Message>Service unavailable.</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf202</RequestId>\n</ErrorResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "StopActivityStream",
+      "request": "Action=StopActivityStream&ApplyImmediately=true&ResourceArn=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<ErrorResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <Error>\n    <Type>Sender</Type>\n    <Code>InvalidDBClusterStateFault</Code>\n    <Message>The DB cluster radius-rec-das is not in a valid state.</Message>\n  </Error>\n  <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf203</RequestId>\n</ErrorResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>started</ActivityStreamStatus>\n        <ActivityStreamMode>async</ActivityStreamMode>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bf204</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
     }
   ]
 }

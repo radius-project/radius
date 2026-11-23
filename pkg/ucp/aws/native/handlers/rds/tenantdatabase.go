@@ -198,6 +198,9 @@ func tenantProperties(t *types.TenantDatabase) map[string]any {
 		setString(secret, "KmsKeyId", t.MasterUserSecret.KmsKeyId)
 		p["MasterUserSecret"] = secret
 	}
+	// RDS leaves TagList out of a tenant database with no tags, so Read returns an empty list, which a template that
+	// sets Tags to one matches.
+	p["Tags"] = []any{}
 	if tags := awsapi.TagListOf(t.TagList); tags != nil {
 		p["Tags"] = tags
 	}
@@ -228,7 +231,7 @@ func (h *TenantDatabase) Create(ctx context.Context, request native.CreateReques
 		input.Tags = awsapi.SDKTags[types.Tag](tags)
 	}
 	err := h.whenInstanceFree(ctx, request.Region, aws.ToString(input.DBInstanceIdentifier), func() error {
-		_, err := h.api.CreateTenantDatabase(ctx, input, inRegion(request.Region))
+		_, err := h.api.CreateTenantDatabase(ctx, input, inRegion(request.Region), sendOnce)
 		return err
 	})
 	if err != nil {
@@ -268,7 +271,7 @@ func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateReques
 		input.DBInstanceIdentifier, input.TenantDBName = tenant.DBInstanceIdentifier, tenant.TenantDBName
 		calls = append(calls, func() error {
 			return h.whenInstanceFree(ctx, request.Region, aws.ToString(tenant.DBInstanceIdentifier), func() error {
-				_, err := h.api.ModifyTenantDatabase(ctx, input, opt)
+				_, err := h.api.ModifyTenantDatabase(ctx, input, opt, sendOnce)
 				return err
 			})
 		})
@@ -397,7 +400,7 @@ func (h *TenantDatabase) DeleteWithToken(ctx context.Context, region string, ide
 			DBInstanceIdentifier:      tenant.DBInstanceIdentifier,
 			TenantDBName:              tenant.TenantDBName,
 			FinalDBSnapshotIdentifier: aws.String(token),
-		}, inRegion(region))
+		}, inRegion(region), sendOnce)
 		if !awsapi.HasCode(err, "InvalidDBInstanceState") {
 			return err
 		}
