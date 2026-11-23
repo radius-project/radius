@@ -37,7 +37,8 @@ import (
 
 // Test_Replay_DataShareAuthorization authorizes a data share for a consumer account, allows writes, and removes the
 // authorization, against AWS's responses. The create is done once AWS reports the data share AUTHORIZED, without the
-// consumer.
+// consumer. The cassette has the consumer's account ID as 444455556666 in place of the x characters the recording
+// scrubbed it to, because ConsumerIdentifier must be 12 digits.
 func Test_Replay_DataShareAuthorization(t *testing.T) {
 	s := awsreplay.New(t, "testdata/datashareauthorization.json")
 	consumer := s.Input("RADIUS_REC_CONSUMER_ACCOUNT")
@@ -58,23 +59,21 @@ func Test_Replay_DataShareAuthorization(t *testing.T) {
 	}.Run(t)
 }
 
-// Test_Replay_DataShareAuthorizationRejected authorizes a data share for an account it isn't granted to, and for a
-// consumer that isn't one. AWS answers 400 with InvalidDataShareFault, which the handler reports with how to grant the
-// data share, and with InvalidParameterValue, which the SDK doesn't model. Both are rejected client failures, so UCP
-// answers 400 and drops the record.
+// Test_Replay_DataShareAuthorizationRejected authorizes a data share for an account it isn't granted to. AWS answers
+// 400 with InvalidDataShareFault, which the handler reports, with how to grant the data share, as a rejected client
+// failure, so UCP answers 400 and drops the record.
 func Test_Replay_DataShareAuthorizationRejected(t *testing.T) {
 	s := awsreplay.New(t, "testdata/datashareauthorizationrejected.json")
 	api := redshift.NewFromConfig(s.Config(t.Context()))
 	h := NewDataShareAuthorization(api)
 	arn := s.Input("RADIUS_REC_DATASHARE_ARN")
-	for _, tt := range []struct{ consumer, code string }{{"111122223333", dataShareFault}, {"not-an-account", dataShareParameterFault}} {
-		_, err := h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{"DataShareArn": arn, "ConsumerIdentifier": tt.consumer}})
-		var failure *native.Failure
-		require.ErrorAs(t, err, &failure, tt.consumer)
-		require.True(t, failure.ClientError)
-		require.Equal(t, native.OutcomeRejected, failure.Outcome)
-		require.Contains(t, failure.Message, tt.code)
-	}
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{"DataShareArn": arn, "ConsumerIdentifier": "111122223333"}})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, dataShareFault)
+	require.Contains(t, failure.Message, "GRANT USAGE ON DATASHARE")
 }
 
 // Test_Replay_DataShareConsumerAssociation associates a data share another account authorized with a namespace of

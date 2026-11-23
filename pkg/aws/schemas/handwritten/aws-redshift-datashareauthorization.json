@@ -9,9 +9,10 @@
     },
     "ConsumerIdentifier": {
       "type": "string",
-      "description": "The consumer to authorize: an AWS account ID, or a keyword such as ADX or DataCatalog/<account ID>.",
-      "minLength": 1,
-      "maxLength": 2048
+      "description": "The AWS account ID of the consumer to authorize.",
+      "minLength": 12,
+      "maxLength": 12,
+      "pattern": "^[0-9]{12}$"
     },
     "AllowWrites": {
       "type": "boolean",

@@ -88,6 +88,8 @@ func Test_Suite_DataShareAuthorization(t *testing.T) {
 			dataShareWith(dataShareAuthorization, map[string]any{"DataShareArn": dataShareSales + "|x"}),
 			dataShareWith(dataShareAuthorization, map[string]any{"DataShareArn": 5}),
 			dataShareWith(dataShareAuthorization, map[string]any{"ConsumerIdentifier": "444455556666 ADX"}),
+			dataShareWith(dataShareAuthorization, map[string]any{"ConsumerIdentifier": "ADX"}),
+			dataShareWith(dataShareAuthorization, map[string]any{"ConsumerIdentifier": "DataCatalog/" + dataShareConsumerAccount}),
 			dataShareWith(dataShareAuthorization, map[string]any{"ConsumerIdentifier": ""}),
 			dataShareWith(dataShareAuthorization, map[string]any{"AllowWrites": "true"}),
 		},

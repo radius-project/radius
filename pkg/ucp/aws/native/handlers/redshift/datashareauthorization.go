@@ -38,9 +38,11 @@ var (
 	_ native.Handler           = (*DataShareAuthorization)(nil)
 	_ native.IdentifierEncoder = (*DataShareAuthorization)(nil)
 
-	// dataShareConsumerIdentifier is the form of a consumer AWS takes, such as an account ID, ADX, or
-	// DataCatalog/<account ID>. It checks only that the identifier is one word, and leaves the rest to AWS.
-	dataShareConsumerIdentifier = regexp.MustCompile(`^[^|\s]+$`)
+	// dataShareConsumerIdentifier is the form of consumer the handler takes: a 12-digit AWS account ID. AWS also takes
+	// keywords such as ADX and DataCatalog/<account ID>, but no run showed that AWS reports them back as sent, which
+	// Read relies on to find the authorization. DataCatalog/<account ID> is also the consumer of the INTERNAL data
+	// share a namespace registration makes.
+	dataShareConsumerIdentifier = regexp.MustCompile(`^[0-9]{12}$`)
 
 	// dataShareAuthorizedStatuses are the statuses of a consumer's association that mean the producer has authorized the data
 	// share for it: AUTHORIZED until the consumer associates it, and ACTIVE once it has. Every other status means the
@@ -81,7 +83,7 @@ func (h *DataShareAuthorization) Identifier(properties map[string]any) (string, 
 	}
 	if value, ok := properties["ConsumerIdentifier"]; ok && value != nil {
 		if s, ok := value.(string); !ok || !dataShareConsumerIdentifier.MatchString(s) {
-			return "", dataShareInvalid(dataShareAuthorizationType, "ConsumerIdentifier", "an AWS account ID, or a keyword such as ADX")
+			return "", dataShareInvalid(dataShareAuthorizationType, "ConsumerIdentifier", "a 12-digit AWS account ID")
 		}
 	}
 	if err := dataShareCheckBools(dataShareAuthorizationType, properties, "AllowWrites"); err != nil {

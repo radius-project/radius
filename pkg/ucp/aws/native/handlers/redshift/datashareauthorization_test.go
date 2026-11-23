@@ -89,9 +89,10 @@ func Test_DataShareAuthorization_Identifier(t *testing.T) {
 	id, err = h.Identifier(map[string]any{"DataShareArn": dataShareSales})
 	require.NoError(t, err)
 	require.Empty(t, id, "a template without the consumer doesn't give the identifier")
-	for _, consumer := range []string{"ADX", "DataCatalog/" + dataShareConsumerAccount, "xxxxxxxxxxxx"} {
+	// Only an account ID is verified to read back as sent, so the keywords AWS also takes are rejected before any call.
+	for _, consumer := range []string{"ADX", "DataCatalog/" + dataShareConsumerAccount, "xxxxxxxxxxxx", "12345678901", "1234567890123"} {
 		_, err := h.Identifier(dataShareWith(dataShareAuthorization, map[string]any{"ConsumerIdentifier": consumer}))
-		require.NoError(t, err, "AWS decides whether %s is a consumer it takes", consumer)
+		require.Contains(t, dataShareRequireFailure(t, err, native.OutcomeRejected), "a 12-digit AWS account ID", consumer)
 	}
 
 	for _, bad := range []string{"", dataShareSales, "|" + dataShareConsumerAccount, dataShareSales + "|", "arn|" + dataShareConsumerAccount} {
