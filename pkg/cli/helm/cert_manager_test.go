@@ -340,6 +340,17 @@ func Test_detectCertManager(t *testing.T) {
 			wantErr: "could not determine the cert-manager version",
 		},
 		{
+			name: "renamed mirrored controller identified by its command beside a sidecar",
+			cluster: fakeCertManagerCluster{crd: true, controller: func() *appsv1.Deployment {
+				d := certManagerController("cert-manager", "", "registry.example.com/platform/cm:v1.21.2")
+				d.Spec.Template.Spec.Containers[0].Name = "manager"
+				d.Spec.Template.Spec.Containers[0].Command = []string{"/usr/local/bin/cert-manager-controller"}
+				d.Spec.Template.Spec.Containers = append(d.Spec.Template.Spec.Containers, corev1.Container{Name: "istio-proxy", Image: "docker.io/istio/proxyv2:1.19.0"})
+				return d
+			}()},
+			wantInstalled: true, wantVersion: "1.21.2", wantNamespace: "cert-manager",
+		},
+		{
 			name:    "CRD without controller",
 			cluster: fakeCertManagerCluster{crd: true},
 			wantErr: "no cert-manager controller",

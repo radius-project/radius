@@ -404,7 +404,7 @@ func caInjectorContainers(deployment *appsv1.Deployment) []corev1.Container {
 }
 
 // certManagerControllerContainer returns the container of deployment that runs the cert-manager controller: the one
-// named, or running an image named, cert-manager-controller. When it identifies none, it returns the only container,
+// named, running an image named, or running an executable named cert-manager-controller. When it identifies none, it returns the only container,
 // or nil when there are several, so rad never reads the version from a sidecar's image, such as an injected
 // service-mesh proxy.
 func certManagerControllerContainer(deployment *appsv1.Deployment) *corev1.Container {
@@ -412,7 +412,11 @@ func certManagerControllerContainer(deployment *appsv1.Deployment) *corev1.Conta
 	for idx := range containers {
 		image, _, _ := strings.Cut(containers[idx].Image, "@")
 		image, _, _ = strings.Cut(path.Base(image), ":")
-		if containers[idx].Name == "cert-manager-controller" || image == "cert-manager-controller" {
+		command := ""
+		if len(containers[idx].Command) > 0 {
+			command = path.Base(containers[idx].Command[0])
+		}
+		if slices.Contains([]string{containers[idx].Name, image, command}, "cert-manager-controller") {
 			return &containers[idx]
 		}
 	}
