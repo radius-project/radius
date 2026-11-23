@@ -354,6 +354,14 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		require.ErrorIs(t, l.cleanup(ctx, "app", false, ""), context.Canceled)
 	})
 
+	t.Run("a cleanup whose bound ends while it waits past the settle time says so", func(t *testing.T) {
+		l, _, _ := newRun(t, true)
+		l.Poll = 100 * time.Millisecond
+		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
+		defer cancel()
+		require.ErrorIs(t, l.cleanup(ctx, "missing", false, ""), context.DeadlineExceeded)
+	})
+
 	t.Run("SkipDelete leaves the resource", func(t *testing.T) {
 		l, h, store := newRun(t, true)
 		l.SkipDelete = true

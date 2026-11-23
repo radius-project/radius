@@ -182,10 +182,10 @@ func (l Lifecycle) cleanup(ctx context.Context, identifier string, deleting bool
 			return l.waitDeleted(ctx, identifier)
 		case !errors.Is(err, native.ErrNotFound):
 			return err
-		case time.Since(start) >= l.settleTime():
-			return nil
 		case ctx.Err() != nil:
 			return ctx.Err()
+		case time.Since(start) >= l.settleTime():
+			return nil
 		}
 		l.Session.Wait(l.poll())
 	}
