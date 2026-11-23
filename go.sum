@@ -116,6 +116,8 @@ github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12 h1:uvX2yaL+aMjkmnrLPPlR/zwjoKF
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12/go.mod h1:dicT+2eNhHHqGkxHO7LoXw3QghIUGuzgdmFqaSTopgI=
 github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12 h1:90zEwFRGN9cg8rm3SPQiiz1QtiiLMTseSY9gaU+7Vcg=
 github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12/go.mod h1:r3YwLYWGc74fHcLyP5/L9oPbL3rWlIeLwT4SKzY+X5I=
+github.com/aws/aws-sdk-go-v2/service/chimesdkvoice v1.38.12 h1:/SG9WEuziqQCvwt4vplnMCACbyZuQYNVTJydIq/GVMs=
+github.com/aws/aws-sdk-go-v2/service/chimesdkvoice v1.38.12/go.mod h1:5zF33zdjbA65HGaoA9TaAPxJ+PEVEMOpxF6fuBqoxV4=
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.12 h1:yYR4Yja/z8MmF2BOys5xc/A4B7S0BDP8l8BcfHuZsck=
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.12/go.mod h1:C9ZmYvltZXzDsKv0niSaxxibSdjeVecwT9wTVZQuPbM=
 github.com/aws/aws-sdk-go-v2/service/cloudformation v1.83.0 h1:8ms3yRUlT7YkVXlLliGrXC6dGvHWRKMk6HD1w/FxK+g=

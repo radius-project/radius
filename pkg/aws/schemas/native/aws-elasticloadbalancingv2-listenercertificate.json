@@ -50,7 +50,8 @@
     "delete": {
       "permissions": [
         "elasticloadbalancing:DescribeListenerCertificates",
-        "elasticloadbalancing:RemoveListenerCertificates"
+        "elasticloadbalancing:RemoveListenerCertificates",
+        "elasticloadbalancing:AddListenerCertificates"
       ]
     }
   }
