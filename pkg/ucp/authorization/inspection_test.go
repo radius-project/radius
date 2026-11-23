@@ -299,6 +299,28 @@ func TestInspectionBatchGeneration(t *testing.T) {
 		}
 		writer.Wait()
 		require.Equal(t, int64(20), runtime.State().Generation)
+
+		// The stress loop can pass without reading a granted state, so also
+		// check each state before the next mutation.
+		requireBatch := func(generation int64, allowed bool) {
+			t.Helper()
+			result, err := runtime.CheckAccess(bob, "/", request)
+			require.NoError(t, err)
+			require.Equal(t, generation, *result.Generation)
+			require.Len(t, result.Checks, 2)
+			for _, check := range result.Checks {
+				require.Equal(t, allowed, *check.Allowed, "generation %d", generation)
+			}
+		}
+		requireBatch(20, false)
+		for generation := int64(21); generation < 25; generation += 2 {
+			mutation := readerMutation()
+			require.NoError(t, runtime.Mutate(t.Context(), policyActor(), mutation))
+			requireBatch(generation, true)
+			mutation.Delete, mutation.Assignment = true, nil
+			require.NoError(t, runtime.Mutate(t.Context(), policyActor(), mutation))
+			requireBatch(generation+1, false)
+		}
 	})
 }
 

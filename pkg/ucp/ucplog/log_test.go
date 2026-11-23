@@ -17,6 +17,10 @@ limitations under the License.
 package ucplog
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/zapr"
@@ -113,4 +117,39 @@ func (c *testCore) Write(entry zapcore.Entry, _ []zapcore.Field) error {
 
 func (c *testCore) Sync() error {
 	return nil
+}
+
+func Test_BuildLoggerDoesNotSampleAuthorizationRequests(t *testing.T) {
+	cfg := zap.NewProductionConfig()
+	require.NotNil(t, cfg.Sampling)
+	path := filepath.Join(t.TempDir(), "log.json")
+	cfg.OutputPaths = []string{path}
+	logger, err := buildLogger(cfg)
+	require.NoError(t, err)
+
+	const burst = 200
+	for range burst {
+		logger.Info("Other message")
+	}
+	for range burst {
+		logger.Info(AuthorizationRequestMessage, zap.String("result", "allow"))
+	}
+	logger.Info(AuthorizationRequestMessage, zap.String("result", "wouldDeny"))
+	require.NoError(t, logger.Sync())
+
+	data, err := os.ReadFile(path)
+	require.NoError(t, err)
+	counts := map[string]int{}
+	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+		var entry struct {
+			Message string `json:"msg"`
+			Result  string `json:"result"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(line), &entry))
+		counts[entry.Message+"/"+entry.Result]++
+	}
+	// Production sampling still applies to other messages in the same second.
+	require.Less(t, counts["Other message/"], burst)
+	require.Equal(t, burst, counts[AuthorizationRequestMessage+"/allow"])
+	require.Equal(t, 1, counts[AuthorizationRequestMessage+"/wouldDeny"])
 }
