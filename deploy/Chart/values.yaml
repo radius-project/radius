@@ -20,6 +20,8 @@ global:
   # Otherwise, Radius containers use the default root CA provided by base OS image.
   rootCA:
     cert: ""
+    # With authorization on, must not be a Secret that holds an authorization private key
+    # (<receiver>-spiffe, radius-ca, radius-apiserver-ca, ucp-apiserver-tls).
     secretName: "root-ca-cert"
     # Must not be a pod volume name the authorization settings add (spiffe, radius-ca, token-<receiver>).
     volumeName: "root-ca-vol"
@@ -98,6 +100,7 @@ global:
   # example a CI workflow that mints and refreshes the kubeconfig.
   targetCluster:
     enabled: false
+    # With authorization on, must not be a Secret that holds an authorization private key (see global.rootCA.secretName).
     secretName: "target-kubeconfig"
     secretKey: "kubeconfig"
     # Must not be an authorization mount path (see global.rootCA.mountPath).
