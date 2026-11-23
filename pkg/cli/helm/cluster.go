@@ -193,6 +193,10 @@ type InstallState struct {
 	// RadiusInstalled denotes whether the Radius helm chart is installed on the cluster.
 	RadiusInstalled bool
 
+	// RadiusBootstrapPending means Helm has a release but certificate bootstrap
+	// has not yet finished verification. The release is not an install no-op.
+	RadiusBootstrapPending bool
+
 	// RadiusVersion is the version of the Radius helm chart installed on the cluster. Will be blank if Radius is not installed.
 	RadiusVersion string
 
@@ -384,7 +388,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
-	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", radiusHelmChart); err != nil {
+	operation := "install"
+	if installed && !clusterOptions.Radius.Reinstall {
+		operation = "skip installed release"
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, operation, radiusHelmChart); err != nil {
 		return err
 	}
 	if (clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil) && !clusterOptions.Radius.Reinstall {
@@ -630,6 +638,20 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	}
 	if baseline != nil {
 		state.RadiusValues, state.RadiusChart = baseline.Config, baseline.Chart
+		if baseline.Labels[initialCertificateIntent] != "" {
+			store, err := i.rotationStoreForContext(kubeContext, clusterOptions.Radius.Namespace)
+			if err != nil {
+				return InstallState{}, err
+			}
+			_, initial, err := readInitialCertificateJournal(context.Background(), store)
+			if err != nil {
+				return InstallState{}, fmt.Errorf("cannot verify the installed bootstrap checkpoint: %w", err)
+			}
+			if initial.ID != baseline.Labels[initialCertificateIntent] {
+				return InstallState{}, errors.New("bootstrap checkpoint does not belong to the installed Helm release")
+			}
+			state.RadiusBootstrapPending = initial.Phase != "complete"
+		}
 	}
 	if contourRelease != nil {
 		state.ContourInstalled = true

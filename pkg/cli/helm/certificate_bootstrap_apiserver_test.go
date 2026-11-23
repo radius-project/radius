@@ -118,7 +118,12 @@ func TestBootstrapNativeInstallPublishesBeforeServingVerification(t *testing.T) 
 	require.NoError(t, err)
 	recorded, err := impl.Helm.RunHelmGet(configuration, s.release)
 	require.NoError(t, err)
-	options.RadiusInstalled, options.Radius.Reinstall, options.RadiusReleaseValues = true, true, recorded.Config
+	installed, err := impl.CheckRadiusInstall("test")
+	require.NoError(t, err)
+	require.True(t, installed.RadiusBootstrapPending)
+	options.RadiusInstalled, options.Radius.Reinstall, options.RadiusReleaseValues = true, false, recorded.Config
+	require.ErrorContains(t, impl.InstallRadius(ctx, options, "test"), "--reinstall")
+	options.Radius.Reinstall = true
 	require.ErrorContains(t, impl.InstallRadius(ctx, options, "test"), "aggregation deployment has not converged")
 	retriedSource, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, source.Name, metav1.GetOptions{})
 	require.NoError(t, err)

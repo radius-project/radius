@@ -105,6 +105,13 @@ func Test_Run_CertificateFlags(t *testing.T) {
 	}
 }
 
+func Test_Run_PendingBootstrapIsNotInstalledSuccess(t *testing.T) {
+	mock := helm.NewMockInterface(gomock.NewController(t))
+	mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true, RadiusBootstrapPending: true}, nil)
+	runner := &Runner{Helm: mock, Output: &output.MockOutput{}}
+	require.ErrorContains(t, runner.Run(t.Context()), "retry the identical install with --reinstall")
+}
+
 func Test_Run_CertificateFlagsInstalledRequiresReinstall(t *testing.T) {
 	t.Parallel()
 	mock := helm.NewMockInterface(gomock.NewController(t))

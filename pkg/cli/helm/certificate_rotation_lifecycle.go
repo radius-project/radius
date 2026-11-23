@@ -92,6 +92,9 @@ func (i *Impl) checkRotationGuard(ctx context.Context, kubeContext, namespace, o
 		return initialErr
 	}
 	if initialErr == nil && initial.Phase != "complete" && operation != "install" {
+		if operation == "skip installed release" {
+			return errors.New("certificate bootstrap is unfinished; retry the identical install with --reinstall")
+		}
 		return errors.New("finish the initial certificate installation before changing the release")
 	}
 	if apierrors.IsNotFound(initialErr) {
