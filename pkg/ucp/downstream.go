@@ -30,10 +30,10 @@ import (
 var authenticatedDownstreams = []string{"applications-rp", "dynamic-rp"}
 
 // NewDownstreamTransport returns the transport UCP uses to forward requests to resource
-// providers. When the authorization mode is not off, requests to applications-rp and
-// dynamic-rp use https, verify the provider's SPIFFE server certificate, and send UCP's
-// projected ServiceAccount token for that provider, even when the registered location is
-// an http URL. Other downstreams are unchanged.
+// providers. When authorization is not off, applications-rp, dynamic-rp, and the opted-in
+// deployment engine receive UCP's projected token for that receiver. The radius provider uses
+// HTTPS and verifies the receiver's SPIFFE certificate; external uses HTTP and relies on
+// operator-managed transport security. Other downstreams are unchanged.
 func NewDownstreamTransport(config *Config) (http.RoundTripper, error) {
 	components := append([]string(nil), authenticatedDownstreams...)
 	if config.Routing.AuthenticateDeploymentEngine {
