@@ -54,6 +54,42 @@ metadata:
 spec:
   ca:
     secretName: radius-ca
+{{- $trustDomain := include "radius.authz.spiffe.trustDomain" . }}
+{{- include "radius.authz.validateSecretNames" . }}
+{{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray }}
+---
+# Server certificate for internal calls to {{ $receiver }}. Its only SAN is the SPIFFE ID of the
+# {{ $receiver }} ServiceAccount, which callers verify. The pod mounts Secret {{ $receiver }}-spiffe
+# read-only. cert-manager requests these certificates; the earlier receiver CertificateRequest
+# grant is removed. Existing privileges (bicep-de's cluster-admin and UCP/RP Secret access)
+# remain until the control-plane isolation work.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $receiver }}-spiffe
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: {{ $receiver }}
+    app.kubernetes.io/part-of: radius
+spec:
+  secretName: {{ $receiver }}-spiffe
+  # 24 hours, renewed at two-thirds of its lifetime.
+  duration: 24h
+  renewBefore: 8h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - server auth
+  uris:
+    - spiffe://{{ $trustDomain }}/ns/{{ $ns }}/sa/{{ $receiver }}
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: radius-ca-issuer
+{{- end }}
 {{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
 ---
 apiVersion: cert-manager.io/v1

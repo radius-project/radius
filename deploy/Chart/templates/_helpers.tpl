@@ -177,7 +177,11 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- end -}}
 
 {{- define "radius.authz.controlPlaneSecrets" -}}
-{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- $spiffe := list -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $spiffe = append $spiffe (printf "%s-spiffe" .) -}}
+{{- end -}}
+{{- concat (list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
 {{- end -}}
 
 {{/*
@@ -188,6 +192,87 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- $admission := (.Values.global.rbac | default dict).admission | default dict -}}
 {{- $identities := $admission.applicationIdentities | default (list (printf "system:serviceaccount:%s:applications-rp" .Release.Namespace)) -}}
 {{- $identities | toJson -}}
+{{- end -}}
+
+{{/*
+Pod volume names the authorization helpers add, as a JSON list. Values that name pod volumes must
+not reuse them, or Kubernetes rejects the Deployment for duplicate volume names.
+*/}}
+{{- define "radius.authz.reservedVolumeNames" -}}
+{{- $names := list "mtls" "spiffe" -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $names = append $names (printf "token-%s" .) -}}
+{{- end -}}
+{{- $names | toJson -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active global.rootCA.volumeName is a reserved authorization volume name.
+Renders nothing. Called by the authorization volume helpers, which render only when the
+authorization mode is not off.
+*/}}
+{{- define "radius.authz.validateVolumeNames" -}}
+{{- $reserved := include "radius.authz.reservedVolumeNames" . | fromJsonArray -}}
+{{- if and .Values.global.rootCA.cert (has .Values.global.rootCA.volumeName $reserved) -}}
+{{- fail (printf "global.rootCA.volumeName must not be %q: Radius authorization reserves the pod volume names %s" .Values.global.rootCA.volumeName (join ", " $reserved)) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Container mount paths the authorization helpers add, as a JSON list: the SPIFFE server certificate
+mount and one projected token mount per receiver. Later layers append their mounts here.
+*/}}
+{{- define "radius.authz.reservedMountPaths" -}}
+{{- $paths := list (include "radius.authz.spiffe.mountPath" .) -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $paths = append $paths (printf "%s/%s" (include "radius.authz.tokens.mountPath" $) .) -}}
+{{- end -}}
+{{- $paths | toJson -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active global.rootCA.mountPath or global.targetCluster.mountPath is a
+reserved authorization mount path, which Kubernetes rejects as a duplicate container mount.
+Renders nothing. Called by the authorization volume helpers, which render only when the
+authorization mode is not off.
+*/}}
+{{- define "radius.authz.validateMountPaths" -}}
+{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJsonArray -}}
+{{- $mounts := list -}}
+{{- if .Values.global.rootCA.cert -}}
+{{- $mounts = append $mounts (list "global.rootCA.mountPath" .Values.global.rootCA.mountPath) -}}
+{{- end -}}
+{{- if .Values.global.targetCluster.enabled -}}
+{{- $mounts = append $mounts (list "global.targetCluster.mountPath" .Values.global.targetCluster.mountPath) -}}
+{{- end -}}
+{{- range $mounts -}}
+{{- if has (clean (toString (index . 1))) $reserved -}}
+{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (ternary "the SPIFFE server certificate" "a projected ServiceAccount token" (eq (clean (toString (index . 1))) (index $reserved 0)))) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active shared Secret (global.rootCA.secretName or
+global.targetCluster.secretName) is a receiver's <receiver>-spiffe Secret. cert-manager writes the
+receiver's private key to that Secret, and the shared Secrets are mounted whole into several pods.
+Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
+*/}}
+{{- define "radius.authz.validateSecretNames" -}}
+{{- $shared := list -}}
+{{- if .Values.global.rootCA.cert -}}
+{{- $shared = append $shared (list "global.rootCA.secretName" .Values.global.rootCA.secretName) -}}
+{{- end -}}
+{{- if .Values.global.targetCluster.enabled -}}
+{{- $shared = append $shared (list "global.targetCluster.secretName" .Values.global.targetCluster.secretName) -}}
+{{- end -}}
+{{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- range $shared -}}
+{{- if eq (index . 1) (printf "%s-spiffe" $receiver) -}}
+{{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -245,8 +330,118 @@ Call with (dict "root" $ "component" "<component>").
 */}}
 {{- define "radius.authz.mtls.volume" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- include "radius.authz.validateVolumeNames" .root }}
 - name: mtls
   secret:
     secretName: {{ .component }}-mtls
+{{- end }}
+{{- end -}}
+
+{{/*
+Path where a receiver's server certificate Secret (<receiver>-spiffe: tls.crt, tls.key) is mounted.
+*/}}
+{{- define "radius.authz.spiffe.mountPath" -}}
+/var/run/radius/spiffe
+{{- end -}}
+
+{{/*
+SPIFFE trust domain of the Radius server certificates.
+*/}}
+{{- define "radius.authz.spiffe.trustDomain" -}}
+{{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
+{{- $trustDomain := "radius.internal" -}}
+{{- if hasKey $spiffe "trustDomain" -}}
+{{- $trustDomain = $spiffe.trustDomain -}}
+{{- if not (kindIs "string" $trustDomain) -}}
+{{- fail (printf "global.rbac.spiffe.trustDomain must be a string, got %s" (kindOf $trustDomain)) -}}
+{{- end -}}
+{{- end -}}
+{{- if or (gt (len $trustDomain) 255) (not (regexMatch "^[a-z0-9._-]+$" $trustDomain)) -}}
+{{- fail (printf "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got %q" $trustDomain) -}}
+{{- end -}}
+{{- $trustDomain -}}
+{{- end -}}
+
+{{/*
+Components that receive internal calls and get a SPIFFE server certificate, as a JSON list.
+*/}}
+{{- define "radius.authz.spiffe.receivers" -}}
+{{- list "ucp" "applications-rp" "dynamic-rp" | toJson -}}
+{{- end -}}
+
+{{/*
+Renders the server certificate volume mount for a receiver container when the authorization mode
+is not off.
+*/}}
+{{- define "radius.authz.spiffe.volumeMount" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+- name: spiffe
+  mountPath: {{ include "radius.authz.spiffe.mountPath" . }}
+  readOnly: true
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the server certificate Secret volume for a receiver when the authorization mode is not off.
+cert-manager issues Secret <receiver>-spiffe from Certificate <receiver>-spiffe (certificates.yaml).
+Only tls.crt and tls.key are projected; the CA bundle comes from radius-ca.
+Call with (dict "root" $ "component" "<receiver>").
+*/}}
+{{- define "radius.authz.spiffe.volume" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- include "radius.authz.validateVolumeNames" .root }}
+{{- include "radius.authz.validateMountPaths" .root }}
+- name: spiffe
+  secret:
+    secretName: {{ .component }}-spiffe
+    items:
+      - key: tls.crt
+        path: tls.crt
+      - key: tls.key
+        path: tls.key
+{{- end }}
+{{- end -}}
+
+{{/*
+Directory under which a caller's projected ServiceAccount tokens are mounted, one subdirectory per
+receiver: <mountPath>/<receiver>/token.
+*/}}
+{{- define "radius.authz.tokens.mountPath" -}}
+/var/run/radius/tokens
+{{- end -}}
+
+{{/*
+Renders the projected ServiceAccount token volume mounts for a caller container when the
+authorization mode is not off. Call with (dict "root" $ "receivers" (list "<receiver>" ...)).
+*/}}
+{{- define "radius.authz.tokens.volumeMounts" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- range .receivers }}
+- name: token-{{ . }}
+  mountPath: {{ include "radius.authz.tokens.mountPath" $.root }}/{{ . }}
+  readOnly: true
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders one projected ServiceAccount token volume per receiver a caller calls, when the
+authorization mode is not off. Each token's audience is the receiver's name, which the receiver's
+token verifier requires; the kubelet refreshes the 10-minute token before it expires.
+Call with (dict "root" $ "receivers" (list "<receiver>" ...)).
+*/}}
+{{- define "radius.authz.tokens.volumes" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- include "radius.authz.validateVolumeNames" .root }}
+{{- include "radius.authz.validateMountPaths" .root }}
+{{- range .receivers }}
+- name: token-{{ . }}
+  projected:
+    sources:
+      - serviceAccountToken:
+          audience: {{ . | quote }}
+          expirationSeconds: 600
+          path: token
+{{- end }}
 {{- end }}
 {{- end -}}
