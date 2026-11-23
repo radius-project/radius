@@ -16,8 +16,8 @@ import {
 } from "./release-bicep-extensions.mjs";
 import {
   approvedRelease,
-  existingManifest,
   generationSource,
+  proveFirstCapture,
   verifyGeneration
 } from "./publish-release-bicep.mjs";
 
@@ -39,22 +39,6 @@ export async function recoveryInputs(
 ) {
   const selected = generationSource(source, runId, attempt);
   if (runId) return { runId, attempt };
-  const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
-    ...repo,
-    workflow_id: "build-release.yaml",
-    head_sha: source.commit,
-    per_page: 100
-  });
-  assert.ok(
-    !runs.some(
-      (entry) =>
-        entry.id !== context.runId &&
-        entry.head_sha === source.commit &&
-        entry.head_branch === context.ref.slice("refs/tags/".length) &&
-        ["push", "workflow_dispatch"].includes(entry.event)
-    ),
-    "A prior release run exists; resume it or supply its original generation run and attempt"
-  );
   const snapshots = await github.paginate(
     github.rest.actions.listWorkflowRunArtifacts,
     {
@@ -68,11 +52,7 @@ export async function recoveryInputs(
       (artifact) => artifact.name === `bicep-types-radius-${selected.runId}.tar`
     )
   ) {
-    assert.equal(
-      await existingManifest(record.reference, run),
-      null,
-      "Staged Radius version lacks its original snapshot; never regenerate it"
-    );
+    await proveFirstCapture(github, source, record, run);
   }
   return { runId: "", attempt: "" };
 }

@@ -225,6 +225,13 @@ verify_attestation_gate() {
 verify_bicep_contract() {
     local targets=".github/release-parity/targets.json"
     local ghcr=false
+    if [[ -n "${EXPECTED_TARGETS:-}" ]]; then
+        git cat-file -e "${COMMIT}:${targets}" 2>/dev/null ||
+            reject "has no source targets for the intended release contract"
+        git show "${COMMIT}:${targets}" | jq -e --slurpfile expected "${EXPECTED_TARGETS}" \
+            '. == $expected[0]' >/dev/null ||
+            reject "source targets differ from the intended release contract"
+    fi
     # Older release pipelines need no GHCR selector, but an explicit selector
     # must be known and must name the complete canonical target pair.
     if git cat-file -e "${COMMIT}:${targets}" 2>/dev/null; then
@@ -245,6 +252,8 @@ verify_bicep_contract() {
     fi
     if yq_true "${BUILD_WORKFLOW}" '.jobs | has("publish-radius-bicep-extension")'; then
         BICEP_DUAL_PIPELINE=true
+        git cat-file -e "${COMMIT}:.github/workflows/__publish-release-bicep.yaml" 2>/dev/null ||
+            reject "has no reusable Radius Bicep producer workflow"
     elif [[ "${ghcr}" == true ]]; then
         reject "does not enforce the publication gate for GHCR Bicep outputs"
     else
@@ -291,6 +300,7 @@ verify_bicep_contract() {
             .env.INPUT_LOCK_FILE == "dist/verification/assets/bicep-extension-lock.json" and
             .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
             .env.INPUT_PLAN_FILE == "dist/verification/plan.json" and
+            .env.INPUT_JOB_DEADLINE == "${{ env.BICEP_JOB_DEADLINE }}" and
             .env.INPUT_PROMOTE_CHANNEL == "${{ steps.alias-policy.outputs.promote_channel }}" and
             .env.INPUT_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")) and
         ($jobs."publish-legacy-bicep-types" | exact_if(
@@ -322,6 +332,8 @@ verify_bicep_contract() {
             .with."permission-actions" == "read" and .with."permission-contents" == "write")) and
         $staging.permissions."id-token" == null and
         $staging.permissions.packages == "read" and
+        ($staging.steps[0].name == "Record Bicep job deadline" and
+            $finalize.steps[0].name == "Record Bicep job deadline") and
         ($staging | tojson | test("BICEPTYPES_|azure/login|azure-oidc-login|az acr|oras cp") | not) and
         ($stageSteps | index("Authenticate and retain immutable extension pair")) <
             ($stageSteps | index("Get immutable Bicep mirror token")) and
@@ -331,6 +343,7 @@ verify_bicep_contract() {
             (.with.script | contains("stageMirrors({github, core, context,")) and
             (.with.script | contains("publisherGithub: getOctokit(process.env.PUBLISHER_TOKEN)")) and
             .env.PUBLISHER_TOKEN == "${{ steps.mirror-token.outputs.token }}" and
+            .env.INPUT_JOB_DEADLINE == "${{ env.BICEP_JOB_DEADLINE }}" and
             .env.INPUT_DIRECTORY == "${{ runner.temp }}/bicep-mirror-staging"))
     ' >/dev/null || reject "does not enforce the publication gate for both Bicep contracts"
 }
@@ -338,13 +351,23 @@ verify_bicep_contract() {
 main() {
     local job name
 
-    [[ $# -eq 1 || ($# -eq 2 && "$2" == --require-sibling-releases) ]] \
-                                                                       || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases]"
-    [[ $# -eq 1 ]] || REQUIRE_SIBLING_RELEASES=true
+    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>]"
+    local revision="$1"
+    shift
+    EXPECTED_TARGETS=""
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true; shift ;;
+            --expected-targets)
+                [[ $# -ge 2 && -f "$2" ]] || fail "expected targets JSON is required"
+                EXPECTED_TARGETS="$2"; shift 2 ;;
+            *) fail "unknown argument: $1" ;;
+        esac
+    done
     command -v yq > /dev/null || fail "required command not found: yq"
     command -v jq > /dev/null || fail "required command not found: jq"
-    COMMIT="$(git rev-parse --verify --quiet "$1^{commit}")" \
-                                                             || fail "release commit does not exist: $1"
+    COMMIT="$(git rev-parse --verify --quiet "${revision}^{commit}")" \
+                                                             || fail "release commit does not exist: ${revision}"
 
     git cat-file -e "${COMMIT}:.goreleaser.yaml" 2> /dev/null \
                                                              || reject "has no .goreleaser.yaml"

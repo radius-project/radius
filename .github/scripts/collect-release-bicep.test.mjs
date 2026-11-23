@@ -92,6 +92,27 @@ test("legacy plans make no AWS calls or state writes; changed snapshot bytes can
   );
   assert.equal(f.state.refWrites, 0);
 });
+
+test("controller rejects a differently configured App before reading state", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "configured-release-app-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const planFile = join(directory, "plan.json");
+  await writeFile(planFile, JSON.stringify(plan));
+  const inputs = {
+    directory,
+    plan_file: planFile,
+    source_sha: sourceSha,
+    operation: "read",
+    release_app_slug: "another-app"
+  };
+  await assert.rejects(
+    collect({
+      github: undefined,
+      core: { getInput: (name) => inputs[name], setOutput() {} }
+    }),
+    /Configured release App identity mismatch/
+  );
+});
 function fixture() {
   const record = {
     ...plannedBicepExtensions(plan, sourceSha)[0],
@@ -149,7 +170,7 @@ function fixture() {
   const state = {
     evidence: undefined,
     verification: { verified: true },
-    author: { type: "Bot" },
+    author: { type: "Bot", login: "radius-release[bot]", id: 294554884 },
     contentReads: 0,
     parent: sourceSha,
     files: [{ filename: evidencePath, status: "added" }],
@@ -160,7 +181,7 @@ function fixture() {
     throw Object.assign(new Error("not found"), { status: 404 });
   };
   const github = {
-    paginate: async (method) => method(),
+    paginate: async (method, args) => method(args),
     rest: {
       actions: {
         getWorkflowRunAttempt: async ({ run_id, attempt_number }) => {
@@ -169,7 +190,16 @@ function fixture() {
           return { data: run };
         },
         getArtifact: async () => ({ data: artifact }),
-        listJobsForWorkflowRunAttempt: async () => [job],
+        listJobsForWorkflowRunAttempt: async ({ run_id } = {}) =>
+          run_id === 11 ?
+            [
+              {
+                ...job,
+                name: "Publish full AWS Bicep version",
+                steps: [{ ...job, name: "Retain the single R3 record" }]
+              }
+            ]
+          : [job],
         listWorkflowRuns: async () => [{ ...run, id: 11, run_attempt: 2 }],
         listWorkflowRunArtifacts: async () => [
           {
@@ -301,6 +331,102 @@ test("unverified marker readback and uncertain evidence creation fail closed", a
     assert.equal(f.state.contentReads, 0);
     assert.equal(dispatch.calls.length, 0);
   }
+});
+
+test("both state kinds reject a verified unrelated bot or renamed identity before reading content", async () => {
+  for (const kind of ["evidence", "request"]) {
+    for (const author of [
+      { type: "Bot", login: "other-app[bot]", id: 1 },
+      { type: "Bot", login: "radius-release[bot]", id: 1 }
+    ]) {
+      const f = fixture();
+      const dispatch = dispatcher();
+      if (kind === "evidence")
+        await persistAwsEvidence(f.github, plan, sourceSha, f.evidence);
+      else await requestAwsPublication(f.github, dispatch, plan, sourceSha);
+      f.state.author = author;
+      const before = f.state.contentReads;
+      await assert.rejects(
+        kind === "evidence" ?
+          readAwsEvidence(f.github, plan, sourceSha)
+        : requestAwsPublication(f.github, dispatch, plan, sourceSha),
+        /release App/
+      );
+      assert.equal(f.state.contentReads, before);
+    }
+  }
+});
+
+test("publication requires its successful publisher upload step and timestamp", async () => {
+  for (const mode of [
+    "capture-only",
+    "skipped-job",
+    "skipped-upload",
+    "missing-upload",
+    "wrong-time"
+  ]) {
+    const f = fixture();
+    const publisher = {
+      ...f.job,
+      name: "Publish full AWS Bicep version",
+      steps: [{ ...f.job, name: "Retain the single R3 record" }]
+    };
+    if (mode === "skipped-job") publisher.conclusion = "skipped";
+    if (mode === "skipped-upload") publisher.steps[0].conclusion = "skipped";
+    if (mode === "missing-upload") publisher.steps = [];
+    if (mode === "wrong-time")
+      publisher.steps[0].started_at = "2026-10-01T10:01:30Z";
+    f.github.rest.actions.listJobsForWorkflowRunAttempt = async () =>
+      mode === "capture-only" ? [f.job] : [publisher];
+    await assert.rejects(selectAwsPublication(f.github, plan, sourceSha));
+  }
+});
+
+test("discovery waits for active matches before choosing an unambiguous publisher", async () => {
+  for (const conclusion of ["failure", "success"]) {
+    const f = fixture();
+    const list = f.github.rest.actions.listWorkflowRuns;
+    let active = true;
+    let waits = 0;
+    f.github.rest.actions.listWorkflowRuns = async () => [
+      ...(await list()),
+      {
+        ...f.run,
+        id: 12,
+        status: active ? "in_progress" : "completed",
+        conclusion: active ? null : conclusion
+      }
+    ];
+    const promise = selectAwsPublication(f.github, plan, sourceSha, {
+      sleep: async () => {
+        active = false;
+        waits++;
+      }
+    });
+    if (conclusion === "success") await assert.rejects(promise, /Ambiguous/);
+    else assert.equal((await promise).runId, 11);
+    assert.equal(waits, 1);
+  }
+});
+
+test("unfiltered history finds matching work beyond the event-search cap", async () => {
+  const f = fixture();
+  const list = f.github.rest.actions.listWorkflowRuns;
+  f.github.rest.actions.listWorkflowRuns = async (args) => {
+    assert.equal(args.event, undefined);
+    assert.equal(args.branch, undefined);
+    return [
+      ...Array.from({ length: 1001 }, (_, id) => ({
+        id: id + 100,
+        event: "push",
+        display_title: "unrelated"
+      })),
+      ...(await list())
+    ];
+  };
+  await selectAwsPublication(f.github, plan, sourceSha, {
+    dispatch: async () => assert.fail("older success must prevent dispatch")
+  });
 });
 
 test("trusted-main A1 authenticates distinct publication and original capture attempts", async () => {
@@ -505,9 +631,6 @@ test("publishing and original generation authenticate independent main controlle
 
 test("run title never authorizes a wrong publishing origin or planned tag", async () => {
   for (const mutate of [
-    (f) => {
-      f.run.event = "push";
-    },
     (f) => {
       f.run.head_branch = plan.version;
     },

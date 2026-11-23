@@ -41,6 +41,7 @@ write_pipeline() {
     mkdir -p "${WORKFLOWS}"
     cp "${ROOT}/.goreleaser.yaml" "${REPO}/.goreleaser.yaml"
     cp "${ROOT}/.github/workflows/build-release.yaml" "${WORKFLOWS}/build-release.yaml"
+    cp "${ROOT}/.github/workflows/__publish-release-bicep.yaml" "${WORKFLOWS}/__publish-release-bicep.yaml"
     mkdir -p "${REPO}/.github/release-parity"
     cp "${ROOT}/.github/release-parity/targets.json" "${REPO}/.github/release-parity/targets.json"
     # Both run on tag pushes without publishing a release.
@@ -66,6 +67,7 @@ expect() {
     local status=0
     local -a args=("${revision}")
     [[ -z "${option}" ]] || args+=("${option}")
+    [[ -z "${TEST_EXPECTED_TARGETS:-}" ]] || args+=(--expected-targets "${TEST_EXPECTED_TARGETS}")
 
     git -C "${REPO}" add -A
     git -C "${REPO}" commit -q --allow-empty -m "${description}"
@@ -94,6 +96,17 @@ main() {
 
     write_pipeline
     expect pass "current release pipeline beside non-publishing push workflows"
+    local intended="${REPO}/intended-targets.json"
+    cp "${ROOT}/.github/release-parity/targets.json" "${intended}"
+    TEST_EXPECTED_TARGETS="${intended}" expect pass "matching intended targets"
+    use_legacy_contract
+    TEST_EXPECTED_TARGETS="${intended}" expect "source targets differ" "legacy source rejects intended GHCR plan"
+    cp "${REPO}/.github/release-parity/targets.json" "${intended}"
+    TEST_EXPECTED_TARGETS="${intended}" expect pass "same legacy source accepts matching legacy plan"
+    write_pipeline
+    rm "${WORKFLOWS}/__publish-release-bicep.yaml"
+    expect "has no reusable Radius Bicep producer workflow" "missing reusable workflow rejects partial backport"
+    write_pipeline
     expect pass "new preparations require sibling publication" HEAD --require-sibling-releases
 
     write_pipeline
@@ -240,6 +253,8 @@ main() {
         '.jobs."build-and-push-bicep-types".steps |= reverse' \
         '.jobs."build-and-push-bicep-types".permissions."id-token" = "write"' \
         '.jobs."build-and-push-bicep-types".permissions.packages = "write"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions")).env.INPUT_JOB_DEADLINE = ""' \
+        '.jobs."finalize-release".steps |= map(select(.name != "Record Bicep job deadline"))' \
         '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Stage immutable ACR mirrors before verification")).with.script = "await finalize({github,core,context})"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Recheck RC prerequisites after approval")).if = "false"' \
         '.jobs."coordinate-release".if = "false"'; do

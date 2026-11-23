@@ -118,7 +118,12 @@ export function verifySnapshot(artifact, source) {
   );
 }
 
-export function selectSnapshot(artifacts, source, reuseRequested = false) {
+export function selectSnapshot(
+  artifacts,
+  source,
+  reuseRequested = false,
+  firstCaptureProven = false
+) {
   const matches = artifacts.filter(
     (artifact) => artifact.name === snapshotName(source)
   );
@@ -132,10 +137,114 @@ export function selectSnapshot(artifacts, source, reuseRequested = false) {
     return matches[0].id;
   }
   assert.ok(
-    source.generationAttempt === 1 && !reuseRequested,
+    !reuseRequested && (source.generationAttempt === 1 || firstCaptureProven),
     "Retry snapshot missing; recover the original run artifact, never regenerate"
   );
   return "";
+}
+
+export async function proveFirstCapture(github, source, expected, run = tool) {
+  const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+    ...repo,
+    workflow_id: "build-release.yaml",
+    per_page: 100,
+    request: request()
+  });
+  const matching = runs.filter(
+    (entry) =>
+      entry.head_sha === source.commit &&
+      entry.head_branch === source.ref.slice("refs/tags/".length) &&
+      ["push", "workflow_dispatch"].includes(entry.event)
+  );
+  const histories = matching.filter((entry) => entry.id !== source.runId);
+  histories.push({ id: source.runId, run_attempt: source.generationAttempt });
+  for (const history of histories) {
+    assert.ok(
+      positive(history.id) && positive(history.run_attempt),
+      "Unknown prior generation history"
+    );
+    const artifacts = await github.paginate(
+      github.rest.actions.listWorkflowRunArtifacts,
+      {
+        ...repo,
+        run_id: history.id,
+        per_page: 100,
+        request: request()
+      }
+    );
+    assert.ok(
+      !artifacts.some(
+        (artifact) => artifact.name === `bicep-types-radius-${history.id}.tar`
+      ),
+      "Original snapshot exists; reuse it rather than capture again"
+    );
+    const lastAttempt =
+      history.id === source.runId ?
+        source.generationAttempt - 1
+      : history.run_attempt;
+    for (let attempt = 1; attempt <= lastAttempt; attempt++) {
+      const { data: prior } = await github.rest.actions.getWorkflowRunAttempt({
+        ...repo,
+        run_id: history.id,
+        attempt_number: attempt,
+        request: request()
+      });
+      await verifyRun(github, { ...source, runId: history.id }, attempt);
+      assert.equal(
+        prior.status,
+        "completed",
+        "Earlier matching run is still active"
+      );
+      const jobs = await github.paginate(
+        github.rest.actions.listJobsForWorkflowRunAttempt,
+        {
+          ...repo,
+          run_id: history.id,
+          attempt_number: attempt,
+          per_page: 100,
+          request: request()
+        }
+      );
+      const captures = jobs.filter(
+        (job) =>
+          job.name === "Capture versioned Radius Bicep types" ||
+          job.name.endsWith(" / Capture versioned Radius Bicep types") ||
+          job.name === "Stage full-version Radius Bicep extension"
+      );
+      assert.equal(
+        captures.length,
+        1,
+        "Cannot prove prior generation never started"
+      );
+      const job = captures[0];
+      assert.equal(job.status, "completed", "Prior capture state is unknown");
+      if (job.conclusion !== "skipped") {
+        for (const name of [
+          "Generate types once for the full release version",
+          "Capture native Bicep OCI snapshot",
+          "Retain original native snapshot"
+        ]) {
+          const steps = job.steps?.filter((step) => step.name === name);
+          assert.equal(
+            steps?.length,
+            1,
+            "Cannot prove prior generation step was skipped"
+          );
+          assert.equal(steps[0].status, "completed");
+          assert.equal(
+            steps[0].conclusion,
+            "skipped",
+            "Prior generation may have started"
+          );
+        }
+      }
+    }
+  }
+  assert.equal(
+    await existingManifest(expected.reference, run),
+    null,
+    "Immutable full version exists; never regenerate"
+  );
 }
 
 export async function prepareRelease(
@@ -386,14 +495,24 @@ export default async function script({ github, context, core }) {
           request: request()
         }
       );
-      const id = selectSnapshot(artifacts, generation, Boolean(runId));
+      const hasSnapshot = artifacts.some(
+        (artifact) => artifact.name === snapshotName(generation)
+      );
+      if (!hasSnapshot && !runId)
+        await proveFirstCapture(github, source, expected);
+      const id = selectSnapshot(
+        artifacts,
+        generation,
+        Boolean(runId),
+        !hasSnapshot && !runId
+      );
       core.setOutput("artifact_id", id);
       core.setOutput("generation_run_id", generation.runId);
       core.setOutput("reuse", id !== "");
       core.setOutput("version", expected.version);
     } else if (operation === "capture") {
       assert.equal(runId, "", "An explicit generation run may only be reused");
-      assert.equal(source.generationAttempt, 1, "Never regenerate on retry");
+      await proveFirstCapture(github, source, expected);
       await capture(
         source,
         directory,

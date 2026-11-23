@@ -885,12 +885,12 @@ main() {
 
     # Default inspection follows the release's committed contract, not main.
     # Explicit historical fixtures remain available through RELEASE_PARITY_TARGETS.
-    if [[ -z "${PLAN_FILE}" && -z "${RELEASE_PARITY_TARGETS:-}" ]]; then
+    if [[ -z "${RELEASE_PARITY_TARGETS:-}" ]]; then
         resolve_source_targets "${repository}" "${source_commit}" "${tag}"
         jq -e --arg repository "${repository}" \
             '.repository == $repository' "${TARGETS_FILE}" >/dev/null ||
             fail "source targets have an unexpected repository"
-        if jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
+        if [[ -z "${PLAN_FILE}" ]] && jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
             PLAN_FILE="${TEMP_DIR}/source-plan.json"
             gh api -H 'Accept: application/vnd.github.raw+json' \
                 "/repos/${repository}/contents/.github/release-plans/${tag}.yaml?ref=${source_commit}" |

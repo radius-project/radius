@@ -473,6 +473,11 @@ rm "${FIXTURES}/plan.json"
 
 run_collector
 cp "${OUTPUT}" "${FIRST_OUTPUT}"
+printf '{"schemaVersion":2,"version":"v0.60.0","expectedOutputs":%s}\n' \
+    "$(cat "${TARGETS}")" >"${FIXTURES}/legacy-plan.json"
+TARGET_OVERRIDE="" run_collector --plan-file "${FIXTURES}/legacy-plan.json"
+cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
+    fail "explicit legacy plan did not resolve its source targets"
 TARGET_OVERRIDE="" run_collector
 cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
     fail "historical source contract was replaced by current main targets"

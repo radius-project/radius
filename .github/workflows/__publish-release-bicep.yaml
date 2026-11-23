@@ -57,7 +57,7 @@ jobs:
           persist-credentials: false
 
       - name: Install release validation tools
-        run: make install-yq install-jq
+        run: make install-yq install-jq install-oras
 
       - name: Validate approved source and select immutable snapshot
         id: select

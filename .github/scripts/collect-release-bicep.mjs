@@ -30,6 +30,8 @@ export const awsCaptureJob = "Capture versioned AWS Bicep types";
 export const evidencePath = ".github/release-state/bicep-extensions.json";
 export const requestPath = ".github/release-state/aws-bicep-request.json";
 export const awsEvent = "aws-bicep-release";
+export const releaseAppSlug = "radius-release";
+const releaseBotId = 294554884;
 const aws = { owner: "radius-project", repo: "bicep-types-aws" };
 const radius = { owner: "radius-project", repo: "radius" };
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -209,7 +211,6 @@ export async function selectAwsPublication(
       {
         ...aws,
         workflow_id: awsWorkflow.split("/").at(-1),
-        event: "repository_dispatch",
         per_page: 100,
         request: request()
       },
@@ -220,8 +221,9 @@ export async function selectAwsPublication(
     );
     const matching = runs.filter(
       (run) =>
+        run.event === "repository_dispatch" &&
         run.display_title ===
-        `Publish AWS ${plan.version} at ${expected.source.commit}`
+          `Publish AWS ${plan.version} at ${expected.source.commit}`
     );
     const main = await mainCommit(github);
     for (const run of matching)
@@ -229,11 +231,15 @@ export async function selectAwsPublication(
     const successful = matching.filter(
       (run) => run.status === "completed" && run.conclusion === "success"
     );
-    assert.ok(
-      successful.length <= 1,
-      "Ambiguous AWS publishing runs; reconcile original evidence before resuming"
-    );
-    if (successful.length) {
+    if (matching.every((run) => run.status === "completed"))
+      assert.ok(
+        successful.length <= 1,
+        "Ambiguous AWS publishing runs; reconcile original evidence before resuming"
+      );
+    if (
+      successful.length &&
+      matching.every((run) => run.status === "completed")
+    ) {
       const run = successful[0];
       const artifacts = await github.paginate(
         github.rest.actions.listWorkflowRunArtifacts,
@@ -263,14 +269,30 @@ export async function selectAwsPublication(
           request: request()
         }
       );
+      const publishers = jobs.filter(
+        (job) => job.name === "Publish full AWS Bicep version"
+      );
+      assert.equal(
+        publishers.length,
+        1,
+        "Missing or ambiguous AWS publisher job"
+      );
+      assert.equal(publishers[0].status, "completed");
+      assert.equal(publishers[0].conclusion, "success");
+      const uploads = publishers[0].steps?.filter(
+        (step) => step.name === "Retain the single R3 record"
+      );
+      assert.equal(
+        uploads?.length,
+        1,
+        "Missing or ambiguous AWS record upload step"
+      );
+      assert.equal(uploads[0].status, "completed");
+      assert.equal(uploads[0].conclusion, "success");
       assert.ok(
-        jobs.some(
-          (job) =>
-            job.conclusion === "success" &&
-            created >= Date.parse(job.started_at) &&
-            created <= Date.parse(job.completed_at)
-        ),
-        "AWS record was not uploaded by the successful publishing attempt"
+        created >= Date.parse(uploads[0].started_at) &&
+          created <= Date.parse(uploads[0].completed_at),
+        "AWS record was not uploaded during its successful publisher upload step"
       );
       return {
         workflow: awsWorkflow,
@@ -471,6 +493,16 @@ async function readState(github, sourceSha, branch, path) {
     `Bicep state commit ${ref.object.sha} on ${branch} is not a GitHub-verified App commit`
   );
   assert.equal(
+    commit.author.login,
+    `${releaseAppSlug}[bot]`,
+    "State commit was not authored by the release App"
+  );
+  assert.equal(
+    commit.author.id,
+    releaseBotId,
+    "State commit release App ID mismatch"
+  );
+  assert.equal(
     commit.files?.length,
     1,
     "Bicep evidence commit changed unexpected files"
@@ -638,6 +670,13 @@ export default async function collect({
   plannedBicepExtensions(plan, sourceSha);
   await mkdir(directory, { recursive: true });
   const operation = core.getInput("operation", { required: true });
+  if (stateGithub || ["read", "persist"].includes(operation)) {
+    assert.equal(
+      core.getInput("release_app_slug"),
+      releaseAppSlug,
+      "Configured release App identity mismatch"
+    );
+  }
   if (operation === "read") {
     const evidence = await readAwsEvidence(github, plan, sourceSha);
     core.setOutput("exists", String(Boolean(evidence)));

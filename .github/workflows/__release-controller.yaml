@@ -170,6 +170,9 @@ jobs:
           RELEASE_COMMIT: ${{ inputs.source-commit }}
         run: |
           args=("${RELEASE_COMMIT}")
+          yq -o=json '.expectedOutputs' "${RUNNER_TEMP}/release-plan.yaml" \
+            >"${RUNNER_TEMP}/approved-targets.json"
+          args+=(--expected-targets "${RUNNER_TEMP}/approved-targets.json")
           if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
             args+=(--require-sibling-releases)
           fi
@@ -779,6 +782,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_OPERATION: read
+          INPUT_RELEASE_APP_SLUG: ${{ steps.release-token.outputs.app-slug }}
           INPUT_PLAN_FILE: ${{ runner.temp }}/bicep-plan.json
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-evidence
@@ -818,6 +822,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_OPERATION: select
+          INPUT_RELEASE_APP_SLUG: ${{ steps.release-token.outputs.app-slug }}
           INPUT_PLAN_FILE: ${{ runner.temp }}/bicep-plan.json
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-evidence
@@ -890,6 +895,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_OPERATION: persist
+          INPUT_RELEASE_APP_SLUG: ${{ steps.bicep-state-token.outputs.app-slug }}
           INPUT_PLAN_FILE: ${{ runner.temp }}/bicep-plan.json
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-evidence

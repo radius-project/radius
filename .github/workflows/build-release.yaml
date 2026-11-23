@@ -989,6 +989,9 @@ jobs:
       pull-requests: read
       packages: read
     steps:
+      - name: Record Bicep job deadline
+        run: echo "BICEP_JOB_DEADLINE=$(( ($(date +%s) + 1800) * 1000 ))" >>"${GITHUB_ENV}"
+
       - name: Checkout approved release source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1028,6 +1031,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-mirror-staging
+          INPUT_JOB_DEADLINE: ${{ env.BICEP_JOB_DEADLINE }}
           PUBLISHER_TOKEN: ${{ steps.mirror-token.outputs.token }}
         with:
           script: |
@@ -1192,6 +1196,9 @@ jobs:
       deployments: read # Required to recheck the previous RC's coordination receipts
       attestations: read # Required to recheck the release provenance
     steps:
+      - name: Record Bicep job deadline
+        run: echo "BICEP_JOB_DEADLINE=$(( ($(date +%s) + 1800) * 1000 ))" >>"${GITHUB_ENV}"
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1351,6 +1358,7 @@ jobs:
           INPUT_PROMOTE_CHANNEL: ${{ steps.alias-policy.outputs.promote_channel }}
           INPUT_PROMOTE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-finalization
+          INPUT_JOB_DEADLINE: ${{ env.BICEP_JOB_DEADLINE }}
 
       - name: Retain partial Bicep promotion and mirror receipt
         if: always() && needs.release-preflight.outputs.ghcr-bicep == 'true'

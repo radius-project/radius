@@ -346,6 +346,15 @@ test_release_build_contract() {
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \
         'verify-release-build-contract.sh' \
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
+    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
+        '--expected-targets .github/release-parity/targets.json' \
+        "preparation must bind intended targets to the source contract"
+    assert_contains "${CONTROLLER}" \
+        "args+=(--expected-targets \"\${RUNNER_TEMP}/approved-targets.json\")" \
+        "controller must bind approved targets before mutation"
+    assert_contains "${CONTROLLER}" \
+        "yq -o=json '.expectedOutputs'" \
+        "controller targets must come from the approved plan"
 }
 
 publish_step_index() {
@@ -595,6 +604,17 @@ test_controller_checks_radius_pin() {
 }
 
 test_bicep_evidence_boundary() {
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION == "read" or .env.INPUT_OPERATION == "select") |
+            .env.INPUT_RELEASE_APP_SLUG)' \
+        "[\"\${{ steps.release-token.outputs.app-slug }}\",\"\${{ steps.release-token.outputs.app-slug }}\"]" \
+        "state readers must bind the configured release App identity"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.env.INPUT_OPERATION == "persist") | .env.INPUT_RELEASE_APP_SLUG' \
+        "\"\${{ steps.bicep-state-token.outputs.app-slug }}\"" \
+        "state writer readback must bind its configured App identity"
     assert_json "${CONTROLLER}" \
         '.jobs."reconcile-siblings".steps[] |
         select(.id == "aws-read") |

@@ -611,6 +611,37 @@ test("finalization budget exhaustion retains partial copies without further disp
   assert.equal(f.copies.length, 0);
 });
 
+test("late helper entry respects job deadline and leaves time to upload receipts", async (t) => {
+  const f = await fixture(t);
+  const r = remoteFixture(f);
+  await assert.rejects(
+    r.finalize("true", "true", {
+      now: () => 28 * 60_000,
+      jobDeadline: 30 * 60_000,
+      monitor: async () => assert.fail("no late dispatch")
+    }),
+    /budget exhausted/
+  );
+  const receipt = JSON.parse(await readFile(join(r.directory, "receipt.json")));
+  assert.notEqual(receipt.status, "complete");
+  assert.equal(receipt.copies.length, 0);
+  const workflow = JSON.parse(
+    await tool(["yq", "-o=json", ".", ".github/workflows/build-release.yaml"])
+  );
+  for (const name of ["finalize-release", "build-and-push-bicep-types"]) {
+    assert.equal(
+      workflow.jobs[name].steps[0].name,
+      "Record Bicep job deadline"
+    );
+    assert.ok(
+      workflow.jobs[name].steps.some(
+        (step) =>
+          step.env?.INPUT_JOB_DEADLINE === "${{ env.BICEP_JOB_DEADLINE }}"
+      )
+    );
+  }
+});
+
 test("local stable promotion writes GHCR aliases only, never production ACR", async (t) => {
   const f = await fixture(t);
   const receipt = await f.promote();
@@ -759,7 +790,12 @@ test("post-approval pair verification rejects modified immutable tags", async (t
 
 test("cross-run recovery requires paired explicit provenance and never regenerates staged version", async () => {
   const context = { runId: 10, ref: "refs/tags/v0.62.1" };
-  const source = { runId: 10, generationAttempt: 1, commit: sourceSha };
+  const source = {
+    runId: 10,
+    generationAttempt: 1,
+    commit: sourceSha,
+    ref: context.ref
+  };
   const record = {
     reference: "ghcr.io/radius-project/bicep-types-radius:0.62.1"
   };
@@ -784,7 +820,7 @@ test("cross-run recovery requires paired explicit provenance and never regenerat
   };
   await assert.rejects(
     recoveryInputs(github, context, source, record, "", ""),
-    /prior release run/
+    /Unknown prior generation history/
   );
   await assert.rejects(
     recoveryInputs(github, context, source, record, "9", ""),

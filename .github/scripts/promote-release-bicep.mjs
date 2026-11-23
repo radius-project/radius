@@ -240,11 +240,15 @@ async function publishExtensions(
     directory,
     monitor = monitorRemoteWorkflow,
     run = tool,
-    now = Date.now
+    now = Date.now,
+    jobDeadline
   },
   finalize
 ) {
-  const deadline = now() + 24 * 60_000;
+  const deadline = Math.min(
+    now() + 24 * 60_000,
+    jobDeadline === undefined ? Infinity : jobDeadline - 180_000
+  );
   const remaining = () => {
     const milliseconds = deadline - now();
     assert.ok(
@@ -469,8 +473,18 @@ export async function stageMirrors({
     sourceSha: source.commit,
     lock,
     directory,
+    jobDeadline: readJobDeadline(core),
     run
   });
+}
+
+function readJobDeadline(core) {
+  const deadline = Number(core.getInput("JOB_DEADLINE", { required: true }));
+  assert.ok(
+    Number.isSafeInteger(deadline) && deadline > 0,
+    "Invalid Bicep job deadline"
+  );
+  return deadline;
 }
 
 export default async function finalize({ github, core, context }) {
@@ -489,6 +503,7 @@ export default async function finalize({ github, core, context }) {
     manifest: await load("MANIFEST_FILE"),
     channel: core.getInput("PROMOTE_CHANNEL", { required: true }),
     latest: core.getInput("PROMOTE_LATEST", { required: true }),
-    directory: core.getInput("DIRECTORY", { required: true })
+    directory: core.getInput("DIRECTORY", { required: true }),
+    jobDeadline: readJobDeadline(core)
   });
 }
