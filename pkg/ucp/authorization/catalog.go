@@ -1,9 +1,9 @@
 // Copyright 2026 The Radius Authors.
 // Licensed under the Apache License, Version 2.0.
 
-// Package authorization implements pure user-facing Radius RBAC decisions.
-// It does not authenticate callers, load policy, or enforce HTTP requests.
-// Internal component authorization remains a separate trust boundary.
+// Package authorization implements user-facing Radius RBAC policy, verified
+// caller identity, and policy runtime lifecycle. Request enforcement and internal
+// component authorization remain separate boundaries.
 package authorization
 
 import (

@@ -32,6 +32,15 @@ model Principal {
   displayName?: string;
 }
 
+@doc("An explicitly supplied access-check principal. Input limits do not truncate verified identities returned by inspection or used by omitted-principal self checks.")
+model AccessCheckPrincipal {
+  ...Principal;
+}
+
+@@maxLength(AccessCheckPrincipal.issuer, 256);
+@@maxLength(AccessCheckPrincipal.subject, 512);
+@@maxLength(AccessCheckPrincipal.displayName, 128);
+
 @doc("User-facing principal kinds, distinct from internal component identities.")
 enum PrincipalType {
   user: "user",
@@ -50,7 +59,7 @@ scalar RoleDefinitionScope extends AuthorizationScope;
 @pattern("^[^/\\s*]+(/[^/\\s*]+)*$")
 scalar AuthorizationScopePath extends string;
 
-@doc("An explicit catalog permission such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
+@doc("An explicit catalog permission, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
 @pattern("^[^*/\\s]+(/[^*/\\s]+){2,}$")
 scalar PermissionName extends string;
 
@@ -77,6 +86,15 @@ model AuthorizationScopeParameter {
   @path
   @extension("x-ms-skip-url-encoding", true)
   @doc("The plane, resource-group, or supported-resource ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging. Use the installation operations for scope /.")
+  scope: AuthorizationScopePath;
+}
+
+@doc("The bounded non-installation scope of an access check.")
+model AccessCheckScopeParameter {
+  @path
+  @extension("x-ms-skip-url-encoding", true)
+  @doc("The plane, resource-group, or supported-resource ID without a leading or trailing slash, up to 2047 characters. Use the installation operation for scope /.")
+  @maxLength(2047)
   scope: AuthorizationScopePath;
 }
 
@@ -328,6 +346,9 @@ model WhoAmIResult {
 
   @doc("Whether the caller has Radius Administrator access.")
   isRadiusAdministrator: boolean;
+
+  @doc("Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.")
+  warnings?: string[];
 }
 
 @doc("A permission and concrete target to evaluate. A reference never implies access to its target.")
@@ -339,6 +360,14 @@ model AccessCheck {
   target: string;
 }
 
+@doc("A bounded permission and concrete target for checkAccess input.")
+model BoundedAccessCheck {
+  ...AccessCheck;
+}
+
+@@maxLength(BoundedAccessCheck.permission, 256);
+@@maxLength(BoundedAccessCheck.target, 2048);
+
 @doc("Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.")
 model AccessCheckRequest {
   @doc("The principal to check, or the authenticated caller when omitted.")
@@ -347,6 +376,17 @@ model AccessCheckRequest {
   @doc("The checks to evaluate.")
   @minItems(1)
   checks: AccessCheck[];
+}
+
+@doc("Bounded checkAccess input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.")
+model BoundedAccessCheckRequest {
+  @doc("The principal to check, or the authenticated caller when omitted.")
+  principal?: AccessCheckPrincipal;
+
+  @doc("The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.")
+  @minItems(1)
+  @maxItems(100)
+  checks: BoundedAccessCheck[];
 }
 
 @doc("The policy evaluation, independent of whether the current mode blocks requests.")
@@ -707,9 +747,10 @@ interface InstallationAccess {
 
   @post
   @route("/checkAccess")
-  checkAccess(...AuthorizationParameters, @body request: AccessCheckRequest):
-    | ArmResponse<CheckAccessResponse>
-    | ErrorResponse;
+  checkAccess(
+    ...AuthorizationParameters,
+    @body request: BoundedAccessCheckRequest,
+  ): ArmResponse<CheckAccessResponse> | ErrorResponse;
 
   @post
   @route("/explainAccess")
@@ -731,8 +772,8 @@ interface ScopedAccess {
   @route("/checkAccess")
   checkAccess(
     ...AuthorizationParameters,
-    ...AuthorizationScopeParameter,
-    @body request: AccessCheckRequest,
+    ...AccessCheckScopeParameter,
+    @body request: BoundedAccessCheckRequest,
   ): ArmResponse<CheckAccessResponse> | ErrorResponse;
 
   @post

@@ -673,3 +673,93 @@ func Test_writeUCPAPIServerTrust_RetriesConflict(t *testing.T) {
 	require.Equal(t, 1, conflicts)
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, c.kube))
 }
+
+// postHelmTrustPaths run the step after Helm that changes the trust of the UCP APIService, with authorization on and
+// off, against a cluster whose APIService prepare may change before rad reads it.
+var postHelmTrustPaths = map[string]func(t *testing.T, prepare func(*unstructured.Unstructured)) (*dynamicfake.FakeDynamicClient, func() error){
+	"on": func(t *testing.T, prepare func(*unstructured.Unstructured)) (*dynamicfake.FakeDynamicClient, func() error) {
+		ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
+		apiService := ucpAPIService(base64.StdEncoding.EncodeToString(ucpCA.pem), "True", "Passed")
+		apiService.SetUID("original")
+		prepare(apiService)
+		kubeClient := kubefake.NewSimpleClientset(apiServerCASecret(apiServerCA))
+		dynamicClient := ucpAPIServiceDynamicClient(apiService).(*dynamicfake.FakeDynamicClient)
+		return dynamicClient, func() error {
+			return trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+		}
+	},
+	"off": func(t *testing.T, prepare func(*unstructured.Unstructured)) (*dynamicfake.FakeDynamicClient, func() error) {
+		c := newOffAfterOnCluster(t)
+		current, err := c.dynamic.Tracker().Get(apiServicesResource, "", ucpAPIServiceName)
+		require.NoError(t, err)
+		apiService := current.(*unstructured.Unstructured).DeepCopy()
+		apiService.SetUID("original")
+		prepare(apiService)
+		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, apiService, ""))
+		return c.dynamic, func() error {
+			return c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil)
+		}
+	},
+}
+
+// The APIService is cluster-scoped, so after Helm another installation may own it. rad must not change its trust.
+func Test_UCPAPIServerTrust_PostHelmForeignAPIService(t *testing.T) {
+	foreign := map[string]func(*unstructured.Unstructured){
+		"another release namespace": func(apiService *unstructured.Unstructured) {
+			setAnnotation(apiService, helmReleaseNamespaceAnnotation, "other")
+		},
+		"Service in another namespace": func(apiService *unstructured.Unstructured) {
+			require.NoError(t, unstructured.SetNestedField(apiService.Object, "other", "spec", "service", "namespace"))
+		},
+	}
+	for path, run := range postHelmTrustPaths {
+		for name, prepare := range foreign {
+			t.Run(path+"/"+name, func(t *testing.T) {
+				shortenUCPAPIServiceWait(t)
+				dynamicClient, reconcile := run(t, prepare)
+				dynamicClient.ClearActions()
+
+				err := reconcile()
+				require.ErrorContains(t, err, "so rad will not change it")
+				for _, action := range dynamicClient.Actions() {
+					require.NotEqual(t, "patch", action.GetVerb(), "rad must not change an APIService that the Radius release does not own")
+				}
+			})
+		}
+	}
+}
+
+// An APIService replaced after rad checked it, even by one with the same Helm metadata, may belong to another
+// installation. rad must refuse it rather than adopt it, and pin each write to the APIService it read.
+func Test_UCPAPIServerTrust_PostHelmReplacedAPIService(t *testing.T) {
+	for path, run := range postHelmTrustPaths {
+		t.Run(path, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			dynamicClient, reconcile := run(t, func(*unstructured.Unstructured) {})
+			gets, replaced := 0, false
+			dynamicClient.PrependReactor("get", "apiservices", func(clienttesting.Action) (bool, runtime.Object, error) {
+				if gets++; gets == 2 {
+					current, err := dynamicClient.Tracker().Get(apiServicesResource, "", ucpAPIServiceName)
+					require.NoError(t, err)
+					replacement := current.(*unstructured.Unstructured).DeepCopy()
+					replacement.SetUID("replacement")
+					require.NoError(t, dynamicClient.Tracker().Update(apiServicesResource, replacement, ""))
+					replaced = true
+				}
+				return false, nil, nil
+			})
+			patches := []clienttesting.PatchAction{}
+			dynamicClient.PrependReactor("patch", "apiservices", func(action clienttesting.Action) (bool, runtime.Object, error) {
+				patches = append(patches, action.(clienttesting.PatchAction))
+				require.False(t, replaced, "rad must not change an APIService that replaced the one it checked")
+				return false, nil, nil
+			})
+
+			require.ErrorContains(t, reconcile(), "was replaced")
+			for _, patch := range patches {
+				require.Contains(t, string(patch.GetPatch()), `"original"`, "each patch must carry the uid rad read")
+				require.Contains(t, string(patch.GetPatch()), "resourceVersion", "each patch must carry the resourceVersion rad read")
+			}
+		})
+	}
+}

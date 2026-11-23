@@ -252,6 +252,9 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
+	if req.Header == nil {
+		req.Header = make(http.Header)
+	}
 	// Header.Set touches only the canonical key, and the transport sends non-canonical keys
 	// as written, so drop every case variant first.
 	for k := range req.Header {

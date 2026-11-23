@@ -1,0 +1,65 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_IOT_THING_GROUP": "radius-rec-fleet",
+    "RADIUS_REC_IOT_THING": "radius-rec-sensor"
+  },
+  "interactions": [
+    {
+      "service": "IoT",
+      "operation": "AddThingToThingGroup",
+      "request": "{\"thingGroupName\":\"radius-rec-fleet\",\"thingName\":\"radius-rec-sensor\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "IoT",
+      "operation": "ListThingGroupsForThing",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"thingGroups\":[{\"groupName\":\"radius-rec-fleet\",\"groupArn\":\"arn:aws:iot:us-west-2:123456789012:thinggroup/radius-rec-fleet\"}]}"
+    },
+    {
+      "service": "IoT",
+      "operation": "ListThingGroupsForThing",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"thingGroups\":[{\"groupName\":\"radius-rec-fleet\",\"groupArn\":\"arn:aws:iot:us-west-2:123456789012:thinggroup/radius-rec-fleet\"}]}"
+    },
+    {
+      "service": "IoT",
+      "operation": "ListThingGroupsForThing",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"thingGroups\":[{\"groupName\":\"radius-rec-fleet\",\"groupArn\":\"arn:aws:iot:us-west-2:123456789012:thinggroup/radius-rec-fleet\"}]}"
+    },
+    {
+      "service": "IoT",
+      "operation": "RemoveThingFromThingGroup",
+      "request": "{\"thingGroupName\":\"radius-rec-fleet\",\"thingName\":\"radius-rec-sensor\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "IoT",
+      "operation": "ListThingGroupsForThing",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"thingGroups\":[]}"
+    }
+  ]
+}

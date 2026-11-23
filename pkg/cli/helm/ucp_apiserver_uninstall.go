@@ -19,6 +19,7 @@ package helm
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -35,7 +38,9 @@ const helmResourcePolicyAnnotation = "helm.sh/resource-policy"
 // ucpOffCertificateStageObject is Secret ucp-cert, which stageUCPOffCertificate applies with the release's Helm metadata
 // before the Helm upgrade to authorization off adopts it. A release with authorization on renders a Certificate of
 // that name instead, so Helm does not delete the Secret when it uninstalls that release.
-var ucpOffCertificateStageObject = stageInventoryObject{kind: "Secret", name: ucpOffCertificateSecretName, resource: corev1.SchemeGroupVersion.WithResource("secrets")}
+var ucpOffCertificateStageObject = stageInventoryObject{kind: "Secret", name: ucpOffCertificateSecretName, resource: secretsResource}
+
+var secretsResource = corev1.SchemeGroupVersion.WithResource("secrets")
 
 // ucpUninstallLeftoverSecrets are the Secrets that cert-manager issues for Certificates of the Radius release. They have
 // no owner reference, so neither Helm nor Kubernetes deletes them with the release.
@@ -66,17 +71,42 @@ func (i *Impl) deleteUCPAPIServerLeftovers(ctx context.Context, kubeContext, rad
 	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, ucpUninstallLeftoverSecrets)
 }
 
+// UninstallLeftover is an object that a previous Radius uninstall left after Helm removed the release, as rad read it.
+type UninstallLeftover struct {
+	Kind, Namespace, Name string
+	resource              schema.GroupVersionResource
+	uid                   types.UID
+	resourceVersion       string
+}
+
+func (l UninstallLeftover) String() string {
+	return fmt.Sprintf("%s %s/%s", l.Kind, l.Namespace, l.Name)
+}
+
 // RadiusUninstallLeftovers lists the objects of UCP's API server that deleteUCPAPIServerLeftovers would delete. Helm
 // uninstalls Radius before rad deletes them, so when that cleanup failed, the release is gone but they remain; a later
-// uninstall finds no Radius and resumes the cleanup with DeleteRadiusUninstallLeftovers. It only reads the cluster.
-func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]string, error) {
+// uninstall finds no Radius, shows this list, and passes it to DeleteRadiusUninstallLeftovers. It includes the Secret
+// that cert-manager issued for each listed Certificate, because deleting the Certificate leaves that Secret unused. It
+// only reads the cluster.
+func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]UninstallLeftover, error) {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return nil, err
 	}
 	radiusNamespace := clusterOptions.Radius.Namespace
-	leftovers := []string{}
-	for _, staged := range append(append([]stageInventoryObject{}, ucpAPIServerCAStageObjects...), ucpOffCertificateStageObject) {
+	leftovers := []UninstallLeftover{}
+	planned := func(kind, name string) bool {
+		return slices.ContainsFunc(leftovers, func(l UninstallLeftover) bool { return l.Kind == kind && l.Name == name })
+	}
+	add := func(kind string, resource schema.GroupVersionResource, object metav1.Object) {
+		leftovers = append(leftovers, UninstallLeftover{Kind: kind, Namespace: radiusNamespace, Name: object.GetName(), resource: resource,
+			uid: object.GetUID(), resourceVersion: object.GetResourceVersion()})
+	}
+	for index := len(ucpAPIServerCAStageObjects) - 1; index >= -1; index-- {
+		staged := ucpOffCertificateStageObject
+		if index >= 0 {
+			staged = ucpAPIServerCAStageObjects[index]
+		}
 		object, err := dynamicClient.Resource(staged.resource).Namespace(radiusNamespace).Get(ctx, staged.name, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 			continue
@@ -85,7 +115,7 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 			return nil, fmt.Errorf("failed to read %s %s/%s: %w", staged.kind, radiusNamespace, staged.name, err)
 		}
 		if object.GetDeletionTimestamp() == nil && stagedForRelease(object, radiusNamespace, radiusReleaseName) {
-			leftovers = append(leftovers, fmt.Sprintf("%s %s/%s", staged.kind, radiusNamespace, staged.name))
+			add(staged.kind, staged.resource, object)
 		}
 	}
 	_, trust, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
@@ -93,25 +123,47 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 		return nil, err
 	}
 	if trust != nil && ownsUCPAPIServerTrust(trust) {
-		leftovers = append(leftovers, fmt.Sprintf("Secret %s/%s", radiusNamespace, ucpAPIServerTrustSecretName))
+		add("Secret", secretsResource, trust)
 	}
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, ucpUninstallLeftoverSecrets)
-	if err != nil {
-		return nil, err
-	}
-	for _, f := range found {
-		if f.state == ucpOffSecretLeftover {
-			leftovers = append(leftovers, fmt.Sprintf("Secret %s/%s", radiusNamespace, f.secret))
+	for _, leftover := range ucpUninstallLeftoverSecrets {
+		found, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover)
+		if err != nil {
+			return nil, err
+		}
+		// A Secret whose Certificate rad deletes with this list is a leftover once that delete succeeds.
+		if found.object != nil && found.object.DeletionTimestamp == nil && (found.state == ucpOffSecretLeftover ||
+			(found.state == ucpOffSecretKeep && planned("Certificate", leftover.certificate) && ownsUCPOffSecret(found.object, leftover))) {
+			add("Secret", secretsResource, found.object)
 		}
 	}
 	return leftovers, nil
 }
 
 // DeleteRadiusUninstallLeftovers resumes the cleanup that UninstallRadius runs after Helm uninstalls Radius, for a
-// cluster where the Radius release is already gone. Like UninstallRadius, it deletes only what rad or cert-manager
-// wrote for the release.
-func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	return i.deleteUCPAPIServerLeftovers(ctx, kubeContext, clusterOptions.Radius.Namespace)
+// cluster where the Radius release is already gone. It deletes only leftovers, which RadiusUninstallLeftovers listed
+// and the user confirmed, each pinned to the uid and resourceVersion rad read for the list, so an object that changed
+// or was replaced since survives.
+func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext string, leftovers []UninstallLeftover) error {
+	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
+	if err != nil {
+		return err
+	}
+	for _, leftover := range leftovers {
+		options := metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &leftover.uid, ResourceVersion: &leftover.resourceVersion}}
+		if leftover.Kind == "Secret" {
+			err = kubeClient.CoreV1().Secrets(leftover.Namespace).Delete(ctx, leftover.Name, options)
+		} else {
+			err = dynamicClient.Resource(leftover.resource).Namespace(leftover.Namespace).Delete(ctx, leftover.Name, options)
+		}
+		switch {
+		case err == nil, apierrors.IsNotFound(err), meta.IsNoMatchError(err):
+		case apierrors.IsConflict(err):
+			i.logInfo("Warning: rad did not delete %s, which changed after rad listed it. Run the command again to review it", leftover)
+		default:
+			return fmt.Errorf("failed to delete %s: %w", leftover, err)
+		}
+	}
+	return nil
 }
 
 // deleteUnadoptedUCPAPIServerStage deletes, after Helm uninstalls Radius or applies a release, each object of ucpAPIServerCAStageObjects
