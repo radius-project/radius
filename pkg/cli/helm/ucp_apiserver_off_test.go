@@ -198,11 +198,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			switch name {
 			case ucpAPIServerCASecretName:
 				// A concurrent rad upgrade to authorization on issues a new radius-apiserver-ca from a new Certificate.
-				require.NoError(t, c.dynamic.Tracker().Add(&unstructured.Unstructured{Object: map[string]any{
-					"apiVersion": "cert-manager.io/v1",
-					"kind":       "Certificate",
-					"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
-				}}))
+				require.NoError(t, c.dynamic.Tracker().Add(ucpOffTestCertificate(ucpAPIServerCASecretName, ucpAPIServerCASecretName)))
 				secret.UID = types.UID(name + "-2")
 			case ucpAPIServerTLSSecretName:
 				secret.ResourceVersion = "2"
@@ -353,7 +349,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		union, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
 		clean := union.DeepCopy()
-		clean.SetAnnotations(nil)
+		removeInjectAnnotations(clean)
 		require.NoError(t, unstructured.SetNestedField(clean.Object, base64.StdEncoding.EncodeToString(c.ucpCA.pem), "spec", "caBundle"))
 		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, clean, ""))
 		restored := false
@@ -377,7 +373,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		c := newOffAfterOnCluster(t)
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
-		apiService.SetAnnotations(nil)
+		removeInjectAnnotations(apiService)
 		withLeaf := append(append([]byte{}, c.ucpCA.pem...), issueUCPCertificate(t, c.ucpCA)...)
 		require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(withLeaf), "spec", "caBundle"))
 		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, apiService, ""))
@@ -394,12 +390,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 
 	t.Run("keeps Secrets whose Certificate exists", func(t *testing.T) {
 		c := newOffAfterOnCluster(t)
-		certificate := &unstructured.Unstructured{Object: map[string]any{
-			"apiVersion": "cert-manager.io/v1",
-			"kind":       "Certificate",
-			"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
-		}}
-		require.NoError(t, c.dynamic.Tracker().Add(certificate))
+		require.NoError(t, c.dynamic.Tracker().Add(ucpOffTestCertificate(ucpAPIServerCASecretName, ucpAPIServerCASecretName)))
 
 		require.NoError(t, c.impl(nil).reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
@@ -411,6 +402,39 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
 		require.True(t, apierrors.IsNotFound(err), "Secret %s has no Certificate, got %v", ucpAPIServerTLSSecretName, err)
 	})
+
+	// A rollback to a chart before radius-apiserver-ca with authorization on renders Certificate ucp-cert, which writes
+	// ucp-mtls; only a ucp-cert Certificate that still writes ucp-apiserver-tls keeps it.
+	for _, tt := range []struct {
+		secretName string
+		keep       bool
+	}{
+		{secretName: "ucp-mtls", keep: false},
+		{secretName: ucpAPIServerTLSSecretName, keep: true},
+	} {
+		t.Run("Certificate ucp-cert writes "+tt.secretName, func(t *testing.T) {
+			c := newOffAfterOnCluster(t)
+			require.NoError(t, c.dynamic.Tracker().Add(ucpOffTestCertificate(ucpAPIServerCertificateName, tt.secretName)))
+
+			require.NoError(t, c.impl(nil).reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			c.requireOffAPIService(t)
+			if tt.keep {
+				require.NotNil(t, c.secret(t, ucpAPIServerTLSSecretName), "Certificate ucp-cert still writes Secret %s", ucpAPIServerTLSSecretName)
+			} else {
+				require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName), "no Certificate writes Secret %s", ucpAPIServerTLSSecretName)
+			}
+		})
+	}
+}
+
+// ucpOffTestCertificate returns a cert-manager Certificate named name that writes Secret secretName.
+func ucpOffTestCertificate(name, secretName string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "cert-manager.io/v1",
+		"kind":       "Certificate",
+		"metadata":   map[string]any{"name": name, "namespace": RadiusSystemNamespace},
+		"spec":       map[string]any{"secretName": secretName},
+	}}
 }
 
 func Test_ucpOffTrustClean(t *testing.T) {
@@ -502,7 +526,7 @@ func Test_ReconcileUCPOffAPIServerTrust_DeletesInterruptedStage(t *testing.T) {
 	}
 }
 
-// A live Certificate protects its old Secret even if a changed target is still reconciling.
+// A live Certificate retains only its current target.
 func Test_ucpOffLeftover_CertificateSecretName(t *testing.T) {
 	leftover := ucpOffLeftoverSecret{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}
 	certificate := func(secretName string) *unstructured.Unstructured {
@@ -521,7 +545,7 @@ func Test_ucpOffLeftover_CertificateSecretName(t *testing.T) {
 		want       ucpOffSecretState
 	}{
 		{name: "Certificate writes the Secret", secretName: ucpAPIServerTLSSecretName, want: ucpOffSecretKeep},
-		{name: "Certificate writes another Secret", secretName: "ucp-mtls", want: ucpOffSecretKeep},
+		{name: "Certificate writes another Secret", secretName: "ucp-mtls", want: ucpOffSecretLeftover},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -609,4 +633,13 @@ spec: {secretName: ucp-mtls}`
 	require.NoError(t, err)
 	_, err = secrets.Get(t.Context(), "ucp-spiffe", metav1.GetOptions{})
 	require.True(t, apierrors.IsNotFound(err))
+}
+
+// removeInjectAnnotations removes the cert-manager inject annotations from apiService and keeps Helm's.
+func removeInjectAnnotations(apiService *unstructured.Unstructured) {
+	annotations := apiService.GetAnnotations()
+	for _, annotation := range ucpInjectAnnotations {
+		delete(annotations, annotation)
+	}
+	apiService.SetAnnotations(annotations)
 }

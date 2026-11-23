@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 
 import releaseAssets from "./release-assets.mjs";
+import { bicepExtensionLockName } from "./release-bicep-extensions.mjs";
 
 function fixture({
   draft = true,
@@ -232,6 +233,35 @@ test("optional staging downloads recover locks from a previous attempt", async (
   }
 });
 
+test("Bicep release evidence cannot be optional or overwritten on a draft", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bicep-release-lock-"));
+  try {
+    const state = fixture();
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "download",
+      NAMES: JSON.stringify([bicepExtensionLockName]),
+      OUTPUT_DIR: root,
+      OPTIONAL: "true"
+    });
+    await assert.rejects(() => releaseAssets(state), /missing assets/);
+    const file = path.join(root, bicepExtensionLockName);
+    await writeFile(file, "original");
+    Object.assign(state.inputs, { MODE: "upload", FILE: file });
+    await releaseAssets(state);
+    await releaseAssets(state);
+    assert.equal(state.outputs.reused, "true");
+    await writeFile(file, "replacement");
+    await assert.rejects(() => releaseAssets(state), /Immutable release asset/);
+    assert.deepEqual(state.calls.deleted, []);
+    assert.deepEqual(state.calls.uploaded, [bicepExtensionLockName]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("reuses an identical release asset", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
   try {
@@ -251,6 +281,36 @@ test("reuses an identical release asset", async () => {
     assert.equal(state.outputs.reused, "true");
     assert.deepEqual(state.calls.deleted, []);
     assert.deepEqual(state.calls.uploaded, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Bicep release evidence recovers an incomplete upload without replacing completed content", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bicep-release-lock-"));
+  try {
+    const file = path.join(root, bicepExtensionLockName);
+    await writeFile(file, "complete");
+    const state = fixture({ starterFailures: 1 });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "upload",
+      FILE: file
+    });
+    await releaseAssets(state);
+    assert.deepEqual(state.calls.deleted, [100]);
+    assert.deepEqual(state.calls.uploaded, [
+      bicepExtensionLockName,
+      bicepExtensionLockName
+    ]);
+    await releaseAssets(state);
+    assert.equal(state.outputs.reused, "true");
+    await writeFile(file, "replacement");
+    await assert.rejects(() => releaseAssets(state), /Immutable release asset/);
+    assert.deepEqual(state.calls.deleted, [100]);
+    assert.equal(state.calls.uploaded.length, 2);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

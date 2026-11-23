@@ -89,7 +89,7 @@ func TestCertificateOffOperationLeaseAndMutationGuards(t *testing.T) {
 				}
 				ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation).postHelm = true
 				return impl.withCertificateOffOperation(ctx, "", store.namespace, authz.ModeOff, func(ctx context.Context) error {
-					return settleUCPOffTrust(ctx, "", store.dynamic, testCACertificates(t, next.pem))
+					return settleUCPOffTrust(ctx, "", store.dynamic, store.namespace, api.GetUID(), testCACertificates(t, next.pem))
 				})
 			})
 			live, readErr := store.dynamic.Resource(apiServicesResource).Get(t.Context(), api.GetName(), metav1.GetOptions{})
@@ -146,9 +146,9 @@ func TestUCPMutationGuardErrorsAreNotRetried(t *testing.T) {
 			case "pre-Helm APIService":
 				err = trustUCPAPIServerCAs(ctx, "", store.dynamic, api.GetUID(), testCACertificates(t, next.pem))
 			case "post-Helm APIService":
-				err = settleUCPOffTrust(ctx, "", store.dynamic, testCACertificates(t, next.pem))
+				err = settleUCPOffTrust(ctx, "", store.dynamic, store.namespace, api.GetUID(), testCACertificates(t, next.pem))
 			case "on APIService":
-				err = injectUCPAPIServerCA(ctx, store.dynamic, store.namespace, next.pem)
+				err = injectUCPAPIServerCA(ctx, "", store.dynamic, store.namespace, api.GetUID(), next.pem)
 			case "public source create", "public source update":
 				_, err = writeUCPAPIServerTrust(ctx, store.kube, store.namespace, testCACertificates(t, next.pem))
 			case "shared source delete":

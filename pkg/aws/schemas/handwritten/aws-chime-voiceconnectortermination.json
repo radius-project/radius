@@ -1,0 +1,86 @@
+{
+  "typeName": "AWS::Chime::VoiceConnectorTermination",
+  "description": "The termination settings of an Amazon Chime SDK Voice Connector, which let your SIP hosts make outbound calls: the countries they can call, the IP addresses allowed to call, the calls per second limit, and the default outbound calling number. Set them with PutVoiceConnectorTermination. Deleting the resource deletes the settings, which stops outbound calls. AWS rejects the delete while the Voice Connector has an emergency calling configuration. SIP credentials are a separate resource.",
+  "additionalProperties": false,
+  "properties": {
+    "VoiceConnectorId": {
+      "type": "string",
+      "description": "The ID of the Voice Connector, such as the VoiceConnectorId of an AWS::Chime::VoiceConnector.",
+      "pattern": ".*\\S.*"
+    },
+    "Termination": {
+      "$ref": "#/definitions/Termination"
+    }
+  },
+  "definitions": {
+    "Termination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "CallingRegions": {
+          "type": "array",
+          "insertionOrder": false,
+          "uniqueItems": true,
+          "description": "The countries your SIP hosts can call, in ISO 3166-1 alpha-2 format, such as US.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "CidrAllowedList": {
+          "type": "array",
+          "insertionOrder": false,
+          "uniqueItems": true,
+          "description": "The IP addresses allowed to make calls, in CIDR notation.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "CpsLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The limit on calls per second, up to the account's service quota. AWS uses 1 when left out."
+        },
+        "DefaultPhoneNumber": {
+          "type": "string",
+          "pattern": "^\\+?[1-9]\\d{1,14}$",
+          "description": "The default outbound calling number, in E.164 format, which must be a phone number of the Voice Connector. UCP never returns it, and compares it by fingerprint."
+        },
+        "Disabled": {
+          "type": "boolean",
+          "description": "When true, outbound calls are off."
+        }
+      },
+      "required": ["CallingRegions", "CidrAllowedList"]
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["VoiceConnectorId", "Termination"],
+  "createOnlyProperties": ["/properties/VoiceConnectorId"],
+  "primaryIdentifier": ["/properties/VoiceConnectorId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "chime:PutVoiceConnectorTermination",
+        "chime:GetVoiceConnectorTermination"
+      ]
+    },
+    "read": {
+      "permissions": ["chime:GetVoiceConnectorTermination"]
+    },
+    "update": {
+      "permissions": [
+        "chime:PutVoiceConnectorTermination",
+        "chime:GetVoiceConnectorTermination"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "chime:DeleteVoiceConnectorTermination",
+        "chime:GetVoiceConnectorTermination"
+      ]
+    }
+  },
+  "writeOnlyProperties": ["/properties/Termination/DefaultPhoneNumber"]
+}

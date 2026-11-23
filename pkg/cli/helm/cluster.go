@@ -53,9 +53,7 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	TLS TLSProviderOptions
-	// ConfirmedLeftovers limits an absent-release retry to the inventory the operator approved.
-	ConfirmedLeftovers []string
+	TLS                TLSProviderOptions
 	Certificates       CertificateOptions
 	RadiusInstalled    bool
 	RadiusReleaseChart *chart.Chart
@@ -274,10 +272,10 @@ type Interface interface {
 
 	// RadiusUninstallLeftovers lists the objects that UninstallRadius deletes after Helm uninstalls Radius and that
 	// remain, for example because that cleanup failed. It only reads the cluster.
-	RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]string, error)
+	RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]UninstallLeftover, error)
 
-	// DeleteRadiusUninstallLeftovers deletes the objects that RadiusUninstallLeftovers lists.
-	DeleteRadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+	// DeleteRadiusUninstallLeftovers deletes the leftovers that RadiusUninstallLeftovers listed, unless they changed since.
+	DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext string, leftovers []UninstallLeftover) error
 
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error

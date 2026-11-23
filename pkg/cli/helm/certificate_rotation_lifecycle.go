@@ -78,6 +78,11 @@ func (s *rotationStore) checkOrphanedCertificateSources(ctx context.Context) err
 }
 
 func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namespace, operation string, target *chart.Chart) error {
+	return i.checkRotationGuard(ctx, kubeContext, namespace, operation, target, operation != "rollback")
+}
+
+// Rollback defers private bootstrap snapshots until after its target and dependency vetoes.
+func (i *Impl) checkRotationGuard(ctx context.Context, kubeContext, namespace, operation string, target *chart.Chart, checkMaterial bool) error {
 	store, err := i.rotationStoreForContext(kubeContext, namespace)
 	if err != nil {
 		return fmt.Errorf("cannot check Radius CA rotation before %s: %w", operation, err)
@@ -117,7 +122,7 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 		if api != nil && (api.GetAnnotations()[rotationRevision] != "" || api.GetAnnotations()[rotationJournalUID] != "") {
 			return errors.New("managed Radius trust is missing its public journal; restore the journal before changing the release")
 		}
-		if initialErr == nil && initial.Phase == "complete" && operation != "uninstall" {
+		if initialErr == nil && initial.Phase == "complete" && operation != "uninstall" && checkMaterial {
 			bootstrap := &initialCertificateInstaller{store: store, state: initial, journal: initialJournal}
 			if err := bootstrap.checkObservedMaterial(ctx); err != nil {
 				return err
@@ -142,11 +147,11 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if state.APIServiceUID != "" && (api == nil || api.GetUID() != state.APIServiceUID) {
 		return errors.New("completed CA rotation belongs to a missing or replaced APIService; do not adopt it into a new installation")
 	}
-	if err := store.checkCertificateLifecycleRecovery(ctx, journal); err != nil {
-		return err
-	}
 	if operation == "rollback" {
 		return errors.New("rollback is disabled after managed CA rotation: deploy a guarded forward upgrade that preserves current trust instead")
+	}
+	if err := store.checkCertificateLifecycleRecovery(ctx, journal); err != nil {
+		return err
 	}
 	if target != nil && (target.Metadata == nil || target.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "4") {
 		return errors.New("the target chart lacks the managed CA rotation protocol and could restore retired trust")

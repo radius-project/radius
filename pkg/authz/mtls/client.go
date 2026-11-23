@@ -138,12 +138,7 @@ func (t *externalTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		return rejectRequest(req, err)
 	}
 	req = req.WithContext(req.Context())
-	req.Header = req.Header.Clone()
-	// Unlike the managed transport, the external provider also accepts a nil header map.
-	if req.Header == nil {
-		req.Header = make(http.Header)
-	}
-	setBearer(req.Header, value)
+	req.Header = bearerHeader(req.Header, value)
 	return t.Transport.RoundTrip(req)
 }
 
@@ -324,12 +319,15 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	req = req.WithContext(req.Context())
-	req.Header = req.Header.Clone()
-	setBearer(req.Header, token)
+	req.Header = bearerHeader(req.Header, token)
 	return pool.RoundTrip(req)
 }
 
-func setBearer(header http.Header, token string) {
+func bearerHeader(original http.Header, token string) http.Header {
+	header := original.Clone()
+	if header == nil {
+		header = make(http.Header)
+	}
 	// Header.Set touches only the canonical key, and the transport sends non-canonical keys
 	// as written, so drop every case variant first.
 	for k := range header {
@@ -338,6 +336,7 @@ func setBearer(header http.Header, token string) {
 		}
 	}
 	header.Set("Authorization", "Bearer "+token)
+	return header
 }
 
 // closeBody closes req's body, if any, for a request that will not be sent.

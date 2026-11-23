@@ -114,7 +114,7 @@ func TestSettleAggregationRetainsExactPermanentSource(t *testing.T) {
 	source, api := permanentPublicTrustSecret(ca), permanentTrustAPIService(ca)
 	kube := kubefake.NewClientset(source)
 	client := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), api)
-	require.NoError(t, settleUCPAPIServerCA(t.Context(), "", kube, client, RadiusSystemNamespace))
+	require.NoError(t, settleUCPAPIServerCA(t.Context(), "", kube, client, RadiusSystemNamespace, ""))
 	live, err := kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), source.Name, metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, source, live)

@@ -365,6 +365,27 @@ func TestUpgradeTransport_ReplacesCaseVariantAuthorization(t *testing.T) {
 	require.Equal(t, before, req.Header)
 }
 
+// TestUpgradeTransport_NilHeader calls RoundTrip directly with a request that has no
+// Header, which http.Client would otherwise allocate, and checks that the token is sent.
+func TestUpgradeTransport_NilHeader(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	rt, err := NewUpgradeTransport(callerOptions(t, ca.pem, authz.ModeEnforce, "ucp"), http.DefaultTransport, []string{"applications-rp"})
+	require.NoError(t, err)
+	dialTo(t, rt, "applications-rp.radius-system.svc", srv.url)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://applications-rp.radius-system.svc:5443/", nil)
+	require.NoError(t, err)
+	req.Header = nil
+
+	resp, err := rt.RoundTrip(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+	require.Nil(t, req.Header)
+}
+
 // TestUpgradeTransport_RejectsWrongServer sends a request for dynamic-rp to applications-rp.
 // The client must reject the server's SPIFFE ID during the handshake and send no token.
 func TestUpgradeTransport_RejectsWrongServer(t *testing.T) {
@@ -973,14 +994,9 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				require.Error(t, <-pending, "closing the expired connection must interrupt its request")
 			}
 			require.Same(t, current, transport.pool(), "a connection in a retired pool must not replace the current pool")
-			if expireB {
-				// The expired connection is closed before the request is sent.
-				require.Equal(t, 1, transport.openConns())
-			} else {
-				// The retired pool refuses B's connection when it goes idle, so net/http closes it
-				// from the connection's read loop after returning B's response. Wait for that close.
-				require.Eventually(t, func() bool { return transport.openConns() == 1 }, 10*time.Second, 10*time.Millisecond)
-			}
+			// The retired pool already had CloseIdleConnections called, so net/http's read loop
+			// closes B's connection after it delivers B's response rather than pooling it.
+			require.Eventually(t, func() bool { return transport.openConns() == 1 }, 5*time.Second, 10*time.Millisecond)
 
 			_, err = get(client, urlA)
 			require.NoError(t, err)

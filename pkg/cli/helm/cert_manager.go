@@ -220,8 +220,8 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 	return nil
 }
 
-// checkInstalledCertManagerReady fails unless cert-manager is installed and ready to issue and inject the CA
-// certificate in Secret radius-apiserver-ca, as checkCertManagerReady decides. rad calls it before a command that does
+// checkInstalledCertManagerReady fails unless cert-manager is installed, at least CertManagerMinimumVersion, and ready
+// to issue and inject the CA certificate in Secret radius-apiserver-ca, as checkCertManagerReady decides. rad calls it before a command that does
 // not install cert-manager itself, such as a rollback, applies a release that serves UCP from that CA.
 func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, radiusNamespace string) error {
 	newClients := i.newCertManagerClients
@@ -238,6 +238,10 @@ func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, 
 	}
 	if !existing.Installed {
 		return fmt.Errorf("cert-manager is not installed, and the Radius release serves UCP's API server from a certificate that cert-manager issues. Install cert-manager, for example with rad upgrade kubernetes, and retry")
+	}
+	minimum := semver.MustParse(CertManagerMinimumVersion)
+	if semver.MustParse(existing.Version).LessThan(minimum) {
+		return fmt.Errorf("cert-manager v%s in namespace %q is older than the minimum supported version v%s. Upgrade cert-manager to v%s or later and retry", existing.Version, existing.Namespace, minimum, minimum)
 	}
 	return checkCertManagerReady(ctx, kubeClient, existing.Namespace, radiusNamespace, i.logInfo)
 }
@@ -261,7 +265,7 @@ func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespa
 		var namespace, apiServices *string
 		namespaceResolved := true
 		for idx, arg := range argv {
-			if !strings.HasPrefix(raw[idx], "-") {
+			if !strings.HasPrefix(arg, "-") {
 				continue
 			}
 			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")

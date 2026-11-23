@@ -1,0 +1,87 @@
+{
+  "typeName": "AWS::Chime::VoiceConnectorLoggingConfiguration",
+  "description": "Whether an Amazon Chime SDK Voice Connector sends SIP message logs and media metric logs to Amazon CloudWatch Logs. Set it with PutVoiceConnectorLoggingConfiguration. Every Voice Connector has the setting, with both logs off by default. Deleting the resource turns both logs off again.",
+  "additionalProperties": false,
+  "properties": {
+    "VoiceConnectorId": {
+      "type": "string",
+      "description": "The ID of the Voice Connector, such as the VoiceConnectorId of an AWS::Chime::VoiceConnector.",
+      "pattern": ".*\\S.*"
+    },
+    "LoggingConfiguration": {
+      "$ref": "#/definitions/LoggingConfiguration"
+    }
+  },
+  "definitions": {
+    "LoggingConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "EnableSIPLogs": {
+          "type": "boolean",
+          "description": "Whether the Voice Connector sends SIP message logs to Amazon CloudWatch Logs. Off when left out."
+        },
+        "EnableMediaMetricLogs": {
+          "type": "boolean",
+          "description": "Whether the Voice Connector sends media metric logs to Amazon CloudWatch Logs. Off when left out."
+        }
+      }
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["VoiceConnectorId", "LoggingConfiguration"],
+  "createOnlyProperties": ["/properties/VoiceConnectorId"],
+  "primaryIdentifier": ["/properties/VoiceConnectorId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "chime:GetVoiceConnector",
+        "chime:PutVoiceConnectorLoggingConfiguration",
+        "chime:GetVoiceConnectorLoggingConfiguration",
+        "logs:ListLogDeliveries",
+        "logs:DescribeLogGroups",
+        "logs:CreateLogGroup",
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:GetLogDelivery",
+        "logs:DeleteLogDelivery"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "chime:GetVoiceConnector",
+        "chime:GetVoiceConnectorLoggingConfiguration"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "chime:GetVoiceConnector",
+        "chime:PutVoiceConnectorLoggingConfiguration",
+        "chime:GetVoiceConnectorLoggingConfiguration",
+        "logs:ListLogDeliveries",
+        "logs:DescribeLogGroups",
+        "logs:CreateLogGroup",
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:GetLogDelivery",
+        "logs:DeleteLogDelivery"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "chime:GetVoiceConnector",
+        "chime:PutVoiceConnectorLoggingConfiguration",
+        "chime:GetVoiceConnectorLoggingConfiguration",
+        "logs:ListLogDeliveries",
+        "logs:DescribeLogGroups",
+        "logs:CreateLogGroup",
+        "logs:CreateLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:GetLogDelivery",
+        "logs:DeleteLogDelivery"
+      ]
+    }
+  }
+}

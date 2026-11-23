@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/authz/token"
 	"github.com/radius-project/radius/pkg/ucp"
+	authapi "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/authorization"
 	"github.com/stretchr/testify/require"
 )
@@ -145,7 +146,7 @@ func TestAggregationComponentTrustSeparation(t *testing.T) {
 				},
 				Server: hostoptions.ServerOptions{TLSCertificateDirectory: t.TempDir(), PathBase: "/apis/api.ucp.dev/v1alpha3"},
 			}
-			service := NewService(identityTestOptions(t, config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			options := identityTestOptions(t, config, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if _, err := io.Copy(io.Discard, r.Body); err != nil {
 					t.Errorf("read request: %v", err)
 				}
@@ -160,7 +161,11 @@ func TestAggregationComponentTrustSeparation(t *testing.T) {
 				} else {
 					w.WriteHeader(http.StatusNoContent)
 				}
-			})))
+			}))
+			db, err := options.DatabaseProvider.GetClient(t.Context())
+			require.NoError(t, err)
+			_, options.UserAuthorization = frontendRequestPolicy(t, db, authapi.UserAuthorizationModeDryRun)
+			service := NewService(options)
 			aggregation, err := service.Initialize(t.Context())
 			require.NoError(t, err)
 			public := httptest.NewUnstartedServer(aggregation.Handler)
@@ -235,6 +240,21 @@ func TestAggregationComponentTrustSeparation(t *testing.T) {
 								}
 							}
 						})
+					}
+					// A verified component is not a user, even with the user runtime loaded.
+					for _, forgedUser := range []string{"", "alice"} {
+						request, err := http.NewRequest(http.MethodGet, baseURL+config.Server.PathBase+"/providers/Radius.Core/whoami?api-version=2025-08-01-preview", nil)
+						require.NoError(t, err)
+						if forgedUser != "" {
+							request.Header.Set("X-Remote-User", forgedUser)
+						}
+						response, err := client.Do(request)
+						require.NoError(t, err)
+						body, err := io.ReadAll(response.Body)
+						require.NoError(t, err)
+						require.NoError(t, response.Body.Close())
+						require.Equal(t, http.StatusUnauthorized, response.StatusCode, string(body))
+						require.Contains(t, string(body), "InvalidAuthenticationInfo")
 					}
 				})
 			}
@@ -311,6 +331,17 @@ func TestAggregationComponentTrustSeparation(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, response.Body.Close())
 			require.Equal(t, http.StatusOK, response.StatusCode, "dedicated proxy trust still establishes identity")
+
+			request, err = http.NewRequest(http.MethodGet, public.URL+config.Server.PathBase+"/providers/Radius.Core/whoami?api-version=2025-08-01-preview", nil)
+			require.NoError(t, err)
+			request.Header.Set("X-Remote-User", "alice")
+			response, err = (&http.Client{Transport: transport, Timeout: 5 * time.Second}).Do(request)
+			require.NoError(t, err)
+			body, err := io.ReadAll(response.Body)
+			require.NoError(t, err)
+			require.NoError(t, response.Body.Close())
+			require.Equal(t, http.StatusOK, response.StatusCode, string(body))
+			require.Contains(t, string(body), `"subject":"alice"`, "inspection must see the authenticated user")
 		})
 	}
 }
