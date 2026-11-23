@@ -10,6 +10,10 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
+  # No leader election: stop the old dispatcher before starting its replacement.
+  strategy:
+    type: Recreate
+    rollingUpdate: null
   selector:
     matchLabels:
       app.kubernetes.io/name: controller

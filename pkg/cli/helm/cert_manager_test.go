@@ -50,6 +50,7 @@ import (
 	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/test/k8sutil"
 )
 
 func certManagerCRD() *apiextensionsv1.CustomResourceDefinition {
@@ -95,6 +96,91 @@ func (c fakeCertManagerCluster) clients() (kubernetes.Interface, apiextclient.In
 	}
 
 	return k8sfake.NewClientset(kubeObjects...), apiextfake.NewClientset(apiextObjects...)
+}
+
+func TestCertManagerClientsKubeconfigLoading(t *testing.T) {
+	tests := []struct {
+		name        string
+		kubeconfig  []string
+		contextName string
+		wantServer  string
+		wantErr     string
+	}{
+		{name: "default kubeconfig", wantServer: "home"},
+		{name: "KUBECONFIG current context", kubeconfig: []string{"env"}, wantServer: "env"},
+		{name: "KUBECONFIG replaces matching home context", kubeconfig: []string{"env"}, contextName: "shared", wantServer: "env"},
+		{name: "explicit context in later merged file", kubeconfig: []string{"env", "extra"}, contextName: "extra-context", wantServer: "extra"},
+		{name: "unknown context", kubeconfig: []string{"env"}, contextName: "missing-context", wantErr: "missing-context"},
+		{name: "missing KUBECONFIG does not fall back home", kubeconfig: []string{"missing"}, wantErr: "no usable kubeconfig found"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			servers := map[string]*k8sutil.ForbiddenAPIServer{
+				"home":  k8sutil.NewForbiddenAPIServer(t),
+				"env":   k8sutil.NewForbiddenAPIServer(t),
+				"extra": k8sutil.NewForbiddenAPIServer(t),
+			}
+			paths := map[string]string{
+				"home":    k8sutil.IsolateKubeconfig(t),
+				"env":     filepath.Join(t.TempDir(), "env"),
+				"extra":   filepath.Join(t.TempDir(), "extra"),
+				"missing": filepath.Join(t.TempDir(), "missing"),
+			}
+			k8sutil.WriteKubeconfig(t, paths["home"], "home-context", map[string]string{
+				"home-context": servers["home"].URL,
+				"shared":       servers["home"].URL,
+			})
+			k8sutil.WriteKubeconfig(t, paths["env"], "env-context", map[string]string{
+				"env-context": servers["env"].URL,
+				"shared":      servers["env"].URL,
+			})
+			k8sutil.WriteKubeconfig(t, paths["extra"], "extra-context", map[string]string{
+				"extra-context": servers["extra"].URL,
+			})
+			if tt.kubeconfig != nil {
+				var files []string
+				for _, name := range tt.kubeconfig {
+					files = append(files, paths[name])
+				}
+				t.Setenv("KUBECONFIG", strings.Join(files, string(os.PathListSeparator)))
+			}
+
+			kubeClient, apiextClient, err := newCertManagerClients(tt.contextName)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, kubeClient)
+				require.Nil(t, apiextClient)
+			} else {
+				require.NoError(t, err)
+				_, err = kubeClient.CoreV1().Namespaces().List(t.Context(), metav1.ListOptions{})
+				require.True(t, apierrors.IsForbidden(err), "expected fixture rejection, got %v", err)
+				_, err = apiextClient.ApiextensionsV1().CustomResourceDefinitions().List(t.Context(), metav1.ListOptions{})
+				require.True(t, apierrors.IsForbidden(err), "expected fixture rejection, got %v", err)
+			}
+
+			dynamicClient, err := newCertManagerDynamicClient(tt.contextName)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, dynamicClient)
+			} else {
+				require.NoError(t, err)
+				_, err = dynamicClient.Resource(certManagerResources[0]).List(t.Context(), metav1.ListOptions{})
+				require.True(t, apierrors.IsForbidden(err), "expected fixture rejection, got %v", err)
+			}
+			for name, server := range servers {
+				if name == tt.wantServer {
+					require.Equal(t, []string{
+						"GET /api/v1/namespaces",
+						"GET /apis/apiextensions.k8s.io/v1/customresourcedefinitions",
+						"GET /apis/cert-manager.io/v1/certificates",
+					}, server.Requests())
+				} else {
+					require.Empty(t, server.Requests(), "must not contact the %s cluster", name)
+				}
+			}
+		})
+	}
 }
 
 func Test_resolveAuthzMode(t *testing.T) {
@@ -427,6 +513,67 @@ func Test_ensureCertManager(t *testing.T) {
 			} else {
 				require.Zero(t, detectCalls)
 			}
+		})
+	}
+}
+
+func Test_ensureCertManager_RBACWarning(t *testing.T) {
+	t.Parallel()
+
+	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+	enabledFile := filepath.Join(t.TempDir(), "enabled")
+	require.NoError(t, os.WriteFile(enabledFile, []byte("true\n"), 0o600))
+
+	for _, tt := range []struct {
+		name        string
+		setArgs     []string
+		setFileArgs []string
+		stored      map[string]any
+		upgrade     bool
+		wantWarning bool
+	}{
+		{name: "off by default"},
+		{name: "explicitly off", setArgs: []string{"global.rbac.enabled=false,global.rbac.dryRun=false"}},
+		{name: "unrelated setting", setArgs: []string{"global.imageTag=edge"}},
+		{name: "dry run", setArgs: []string{"global.rbac.dryRun=true"}, wantWarning: true},
+		{name: "enforce", setArgs: []string{"global.rbac.enabled=true"}, wantWarning: true},
+		{name: "file override", setFileArgs: []string{"global.rbac.enabled=" + enabledFile}, wantWarning: true},
+		{name: "stored on reinstall", stored: storedDryRun, wantWarning: true},
+		{name: "stored on upgrade", stored: storedDryRun, upgrade: true, wantWarning: true},
+		{name: "disable stored dry run", stored: storedDryRun, setArgs: []string{"global.rbac.dryRun=false"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			stop := errors.New("stop before managing cert-manager")
+			var logs []string
+			if tt.wantWarning {
+				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).
+					DoAndReturn(func(*helm.Configuration, string) (*releasev1.Release, error) {
+						require.Len(t, logs, 1, "warn before contacting cert-manager")
+						return nil, stop
+					})
+			}
+			impl := &Impl{
+				Helm: client,
+				logger: func(format string, args ...any) {
+					logs = append(logs, fmt.Sprintf(format, args...))
+				},
+			}
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = tt.setArgs
+			options.Radius.SetFileArgs = tt.setFileArgs
+			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			if !tt.wantWarning {
+				require.NoError(t, err)
+				require.Empty(t, logs)
+				return
+			}
+			require.ErrorIs(t, err, stop)
+			require.Equal(t, []string{
+				"Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed. Do not rely on it for production access control.",
+			}, logs)
 		})
 	}
 }

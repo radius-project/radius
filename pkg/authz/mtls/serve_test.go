@@ -446,7 +446,8 @@ func TestServe_Off(t *testing.T) {
 
 func TestServe_NilHandlerUsesDefaultServeMux(t *testing.T) {
 	t.Parallel()
-	const path = "/mtls-test/default-serve-mux"
+	// Repeated runs share DefaultServeMux, so each invocation needs its own route.
+	path := "/mtls-test/default-serve-mux/" + rand.Text()
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTeapot)
 	})

@@ -427,11 +427,15 @@ For Azure resources, the [resource client](../../pkg/portableresources/processor
 
 Before each DELETE, Radius sends a read-only GET with the candidate version to the exact resource ID. This uses the target resource's ARM route, not the cluster or control-plane region. It also works for global resources and child resources that do not return their own location. The provider's separate `apiVersions` and `locations` lists do not prove version-specific regional support. A successful GET checks the read route; it does not guarantee that DELETE will accept the same version. If the initial GET or DELETE returns HTTP 400 with ARM code `NoRegisteredProviderFound` or `InvalidApiVersionParameter`, Radius tries the next candidate. It never changes versions after Azure accepts a deletion operation. If all candidates fail, Radius returns the last rejection with resource context.
 
-This check requires resource read permission as well as delete permission. Permission errors, network errors, unknown routes, and other failures stop the operation instead of selecting another version. A GET with HTTP 404 and code `ResourceNotFound`, `ResourceGroupNotFound`, `ParentResourceNotFound`, or `RoleAssignmentNotFound` means cleanup is already complete. Other GET errors are not treated as proof of absence. DELETE and deletion polling retain their existing HTTP 404 cleanup behavior.
+This check requires resource read permission as well as delete permission. Permission errors, network errors, unknown routes, and other failures stop the operation instead of selecting another version. A GET or initial DELETE with HTTP 404 and code `ResourceNotFound`, `ResourceGroupNotFound`, `ParentResourceNotFound`, or `RoleAssignmentNotFound` means cleanup is already complete. For `Microsoft.Network` resources, HTTP 404 with code `NotFound` also confirms absence. Other errors do not prove absence.
 
-The Bicep driver deletes output resources in parallel without dependency ordering, so it retries most deletion failures. Dependency failures can have many HTTP statuses, for example `400 InUseSubnetCannotBeDeleted` from Azure, or `200` from a long-running operation that ends in the `Failed` state. Only permanent authentication and authorization failures stop retries at once with `RecipeDeletionFailed`: HTTP 401 and 403 responses from Azure or Kubernetes, and the ARM error codes `AuthenticationFailed`, `AuthorizationFailed`, `InvalidAuthenticationToken`, `InvalidAuthenticationTokenTenant`, and `LinkedAuthorizationFailed`. Context cancellation and deadline errors also stop retries. `deleteRetryCount` limits retries after the first attempt, and `deleteRetryDelaySeconds` sets the delay between attempts. The driver does not wait after the last attempt, and cancellation interrupts a pending delay. Retry logs include the resource ID, attempt number, delay, and last error. Each output resource retries on its own, so a failure on one resource does not stop the deletion of the others. When any deletion fails, the `RecipeDeletionFailed` error lists every failed resource with its attempt count and last error.
+If deletion polling returns HTTP 404, or an HTTP 200 operation result with code `Canceled` or `CanceledAndSupersededDueToAnotherOperation`, Radius checks the target resource with the same API version. A missing or superseded operation does not prove that the target is gone. Cleanup succeeds only if that GET confirms resource absence. If the resource remains, Radius returns the polling error. If the GET fails for another reason, Radius retains both errors. This check does not send another DELETE or switch API versions.
 
-The Bicep driver deletes tracked recipe resources on resource deletion and removes obsolete resources after an update. For Azure Key Vault, ARM does not support direct deletion of `Microsoft.KeyVault/vaults/secrets`. When the same deletion batch contains both a secret and its Radius-managed parent vault, the driver deletes the vault instead of sending a separate secret DELETE. The batch waits for vault deletion to finish and reports a failure if vault deletion fails. Azure soft-delete retention still applies; this operation does not purge the vault or its secrets.
+The Bicep driver starts one delete worker per distinct managed output resource. Explicit recipe outputs and deployment inventory can list the same resource; duplicate entries must not start overlapping deletes. The driver removes duplicates at deletion time, so this also covers saved state and redeploy garbage collection. Azure IDs match without case and with or without an Azure plane prefix. Other resource IDs retain case-sensitive matching.
+
+The workers run in parallel without dependency ordering, so the driver retries most deletion failures. Dependency failures can have many HTTP statuses, for example `400 InUseSubnetCannotBeDeleted` from Azure, or `200` from a long-running operation that ends in the `Failed` state. Only permanent authentication and authorization failures stop retries at once with `RecipeDeletionFailed`: HTTP 401 and 403 responses from Azure or Kubernetes, and the ARM error codes `AuthenticationFailed`, `AuthorizationFailed`, `InvalidAuthenticationToken`, `InvalidAuthenticationTokenTenant`, and `LinkedAuthorizationFailed`. Context cancellation and deadline errors also stop retries. `deleteRetryCount` limits retries after the first attempt, and `deleteRetryDelaySeconds` sets the delay between attempts. The driver does not wait after the last attempt, and cancellation interrupts a pending delay. Retry logs include the resource ID, attempt number, delay, and last error. Each output resource retries on its own, so a failure on one resource does not stop the deletion of the others. When any deletion fails, the `RecipeDeletionFailed` error lists every failed resource with its attempt count and last error.
+
+The Bicep driver deletes tracked recipe resources on resource deletion and removes obsolete resources after an update. If removing obsolete resources fails after a successful update, the driver still returns the deployment output with a `RecipeGarbageCollectionFailed` error. The driver also reports which previous output resources it failed to delete. The resource controller saves the new output resources together with only those, then fails the operation, so the next deployment or delete retries the deletion without touching resources that were already deleted. For Azure Key Vault, ARM does not support direct deletion of `Microsoft.KeyVault/vaults/secrets`. When the same deletion batch contains both a secret and its Radius-managed parent vault, the driver deletes the vault instead of sending a separate secret DELETE. The batch waits for vault deletion to finish and reports a failure if vault deletion fails. Azure soft-delete retention still applies; this operation does not purge the vault or its secrets.
 
 The parent match uses ARM-form paths, so a plain ARM ID can match an Azure UCP-qualified ID for the same resource. Only Azure plane prefixes are removed; subscription and resource group scopes remain part of the match. This rule does not apply if the vault remains in the current recipe output, is unmanaged, or is absent from the deletion batch. It does not ignore HTTP 405 errors, change secret values, or transfer resource ownership. Removing a tracked secret while retaining its vault still uses the existing direct deletion path.
 
@@ -511,6 +515,8 @@ the recipe config loader split the nested `secrets` object back out via
 `v20250801preview.SplitRecipeOutputs`, and `pkg/recipes/util.ApplyOutputsMapping`
 applies the resulting mappings.
 
+The dynamic processor preserves string secret outputs unchanged and skips nil outputs. It encodes non-string outputs as JSON before passing them to the managed secret. Consumers of object and array outputs must parse JSON rather than Go-formatted text. If JSON encoding fails, processing stops with an error before secret materialization.
+
 A consuming Recipe receives each connection as `context.resource.connections.<name>`. Normal resource properties remain under `properties`, while managed output references are exposed separately under `secrets.<key>.source` and `secrets.<key>.key`. When building this context, Radius follows the producer's `properties.secrets.name` reference, reads the managed `Radius.Security/secrets` resource from the database, and derives one `{ source, key }` reference from each `properties.data` key. The managed Secret remains the source of truth; Radius does not persist a duplicate reference map or decrypt its values. This lets Container Recipes generate normal and secret-backed connection variables from a single connection to the producer without reading plaintext from owner state. Older Recipes safely ignore the additional `secrets` map.
 
 The public resource contract remains unchanged: `properties.secrets.name` is the managed Secret name for an explicitly authored custom `secretKeyRef`, and the declared secret-key properties remain read-only schema metadata. There is no `properties.secrets.id`; Radius derives the full source ID while constructing Recipe connection context. For example:
@@ -582,17 +588,20 @@ sequenceDiagram
   else default (recipe-backed)
     DynCtrl->>DeleteCtrl: NewRecipeDeleteController
     DeleteCtrl->>DB: load stored resource and output resources
-    DeleteCtrl->>Eng: Delete(ResourceMetadata, OutputResources)
+    DeleteCtrl->>Eng: Delete(ResourceMetadata, OutputResources, PendingDeployments)
     Eng->>Drv: driver.Delete
+    opt Pending Bicep deployments
+      Drv->>Drv: recover final owned-resource inventory
+      Drv->>DeleteCtrl: PersistCleanup
+      DeleteCtrl->>DB: save recovered IDs and remaining pending entries
+    end
+    Drv->>Drv: delete stored output resources
     Drv-->>Eng: deletion complete
     DeleteCtrl->>DB: delete resource record
   end
 ```
 
-`DeleteResource` skips driver deletion when the recipe deployment failed during
-setup, because no output resources were created. Otherwise it passes the stored
-output resources to the driver so recipe-created infrastructure can be cleaned
-up before the Radius resource record is removed.
+`DeleteResource` skips driver deletion after a recipe setup failure only when no stored output resources or pending deployments remain. Otherwise it passes both cleanup fields to the driver. Before deleting infrastructure, the Bicep driver must recover final, explicit inventory for pending deployments and save the recovered IDs through the controller. Unknown inventory blocks deletion; a missing list is not an empty inventory. The Radius resource record is removed only after cleanup succeeds.
 
 ## Invariants
 

@@ -101,6 +101,9 @@ type ResourceStatus struct {
 	// OutputResources represents the output resources associated with the radius resource.
 	OutputResources []OutputResource `json:"outputResources,omitempty"`
 	Recipe          *RecipeStatus    `json:"recipe,omitempty"`
+
+	// PendingRecipeDeployments identifies Bicep deployments whose cleanup inventory must be recovered before deletion.
+	PendingRecipeDeployments []string `json:"pendingRecipeDeployments,omitempty"`
 }
 
 // DeepCopyRecipeStatus creates a copy of ResourceStatus.

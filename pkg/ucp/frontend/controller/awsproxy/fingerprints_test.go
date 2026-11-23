@@ -170,6 +170,48 @@ func Test_WriteOnly_UnchangedValueIsNotSent(t *testing.T) {
 	require.Equal(t, newPassword, h.cc.Resource(dbType, "db")["Password"])
 }
 
+// Test_WriteOnly_DefaultInListItem redeploys write-only values inside array items after AWS filled a default into the
+// same item. The unchanged value and AWS's default send nothing, and a changed value sends only itself.
+func Test_WriteOnly_DefaultInListItem(t *testing.T) {
+	h := newHarness(t)
+	require.Equal(t, http.StatusCreated, h.put(dbPath, dbProperties(password)).status)
+	h.finish()
+	require.NoError(t, h.cc.Patch(dbType, "db", []map[string]any{{"op": "add", "path": "/Users/0/Role", "value": "reader"}}))
+	h.cc.Calls()
+
+	resp := h.put(dbPath, dbProperties(password))
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+
+	properties := dbProperties(password)
+	properties["Users"] = []any{map[string]any{"Name": "u", "Secret": newPassword}}
+	resp = h.put(dbPath, properties)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls := h.cc.Calls()
+	require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls))
+	require.Equal(t, []string{"add /Users/0/Secret"}, patchOps(t, calls[1].Document))
+}
+
+// Test_WriteOnly_DefaultInAnotherListItem redeploys a list whose items hold write-only values, where the last deploy set
+// a field in one item and AWS filled the same field into another. The record has no write-only values, so the list
+// still counts as unchanged, and AWS's default stays.
+func Test_WriteOnly_DefaultInAnotherListItem(t *testing.T) {
+	h := newHarness(t)
+	properties := map[string]any{"Name": "db", "Users": []any{
+		map[string]any{"Name": "a", "Role": "admin", "Secret": password},
+		map[string]any{"Name": "b", "Secret": password},
+	}}
+	require.Equal(t, http.StatusCreated, h.put(dbPath, properties).status)
+	h.finish()
+	require.NoError(t, h.cc.Patch(dbType, "db", []map[string]any{{"op": "add", "path": "/Users/1/Role", "value": "reader"}}))
+	h.cc.Calls()
+
+	resp := h.put(dbPath, properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+	h.requireNotStored()
+}
+
 // Test_WriteOnly_EncodingIsStable sends the same write-only value with its keys in another order and its numbers in
 // another form. It is unchanged.
 func Test_WriteOnly_EncodingIsStable(t *testing.T) {
@@ -426,12 +468,19 @@ func Test_WriteOnly_PendingFingerprints(t *testing.T) {
 		require.Equal(t, http.StatusCreated, h.put(dbPath, changed).status)
 		results := h.finish()
 		require.NotNil(t, results[0].Error)
+		// AWS may have applied the new password before the update failed, so neither fingerprint describes what AWS
+		// has, and the password's is dropped. The others stay.
 		rec := h.record(dbPath)
-		require.Equal(t, previous, rec.Properties.Fingerprints)
+		require.NotContains(t, rec.Properties.Fingerprints.Digests, "Password")
+		for path, digest := range previous.Digests {
+			if path != "Password" {
+				require.Equal(t, digest, rec.Properties.Fingerprints.Digests[path], path)
+			}
+		}
 		require.Nil(t, rec.Properties.PendingFingerprints)
 		h.cc.Calls()
 
-		// AWS did not apply the new password, so the next deploy sends it again.
+		// UCP can't tell whether AWS has the new password, so the next deploy sends it again.
 		resp := h.put(dbPath, changed)
 		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
 		require.Equal(t, []string{"add /Password"}, patchOps(t, h.cc.Calls()[1].Document))

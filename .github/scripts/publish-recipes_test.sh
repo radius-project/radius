@@ -89,6 +89,16 @@ grep -q 'intentional publish failure' "${MOCK_STATE}/output"
 export MOCK_FAILURE="" MOCK_SIGNAL_RECIPE=recipe-1.bicep
 run_case 143
 export MOCK_SIGNAL_RECIPE=""
+# Interrupt the publisher after it starts a worker but before it records the
+# worker's process ID. The publisher must still wait for that worker.
+cat >"${work_dir}/signal-before-record.sh" <<'EOF'
+trap 'if [[ "${BASH_COMMAND}" == "publish_pids+=("* && ! -e "${MOCK_STATE}/signaled" ]]; then touch "${MOCK_STATE}/signaled"; kill -TERM "$$"; fi' DEBUG
+EOF
+export BASH_ENV="${work_dir}/signal-before-record.sh"
+run_case 143
+unset BASH_ENV
+[[ -e "${MOCK_STATE}/signaled" ]]
+[[ "$(wc -l <"${MOCK_STATE}/finished")" -eq 1 ]]
 for parallelism in 0 5 invalid; do
     export BICEP_RECIPE_PUBLISH_PARALLELISM="${parallelism}"
     run_case 2

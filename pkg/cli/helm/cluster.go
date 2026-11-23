@@ -318,7 +318,7 @@ func (i *Impl) cluster() contourClusterReader {
 	return i.contourCluster
 }
 
-// logInfo logs a message of the Contour checks for the user.
+// logInfo logs a message for the user.
 func (i *Impl) logInfo(format string, v ...any) {
 	if i.logger == nil {
 		output.LogInfo(format, v...)
@@ -380,6 +380,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
+	if clusterOptions.Radius.Reinstall {
+		if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true); err != nil {
+			return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
+		}
+	}
 	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
@@ -533,6 +538,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
 		return err
+	}
+
+	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
+		return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 	}
 
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)

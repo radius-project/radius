@@ -154,6 +154,7 @@ ExecHealthProbeProperties
 ExtenderListSecretResponse
 ExtenderProperties
 ExtenderResource
+FIPS
 Fairfax
 Fargate
 FindSecretIDs
@@ -618,6 +619,8 @@ crd
 createdAt
 createdBy
 createdByType
+crradfunctest
+crradfunctestl
 crypto
 cryptographic
 cryptographically
@@ -821,6 +824,7 @@ jsonResponse
 jsondiff
 judgement
 jwt
+keyid
 keyspace
 keyvault
 kube
@@ -985,6 +989,7 @@ persistentVolumes
 pfx
 pgvector
 pgvector's
+pg_trgm
 pkgs
 plaidResource
 plainHTTP
@@ -1120,6 +1125,7 @@ roleARN
 rollout
 rollouts
 rootca
+rootfs
 roundtrips
 rp
 rpc

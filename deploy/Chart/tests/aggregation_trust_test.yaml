@@ -1,0 +1,110 @@
+suite: aggregation request-header trust
+templates:
+  - ucp/configmaps.yaml
+  - ucp/deployment.yaml
+  - ucp/rbac.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: loads Kubernetes proxy trust even when component authorization is off
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^kubernetesCallerAuthentication:\n  kubernetesIssuer: "kubernetes:local"$'
+        template: ucp/configmaps.yaml
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^callerAuthentication:'
+        template: ucp/configmaps.yaml
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  internalPort:'
+        template: ucp/configmaps.yaml
+
+  - it: keeps proxy authentication separate from dryRun component authentication
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^kubernetesCallerAuthentication:\n  kubernetesIssuer: "kubernetes:local"$'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  internalPort: 9444$'
+        template: ucp/configmaps.yaml
+
+  - it: keeps proxy authentication separate from enforce component authentication
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^kubernetesCallerAuthentication:\n  kubernetesIssuer: "kubernetes:local"$'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  internalPort: 9444$'
+        template: ucp/configmaps.yaml
+
+  - it: renders a configured trust-domain issuer and rolls UCP when it changes
+    set:
+      ucp.kubernetesIssuer: kubernetes:cluster-a
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  kubernetesIssuer: "kubernetes:cluster-a"$'
+        template: ucp/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/caller-authentication"]
+          value: 2647cf743d7c660af9d8248770547874de3faafc6abf61a435f3d2eb9f721ed6
+        template: ucp/deployment.yaml
+
+  - it: grants only GET on the published trust ConfigMap
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: kube-system
+        documentIndex: 2
+        template: ucp/rbac.yaml
+      - equal:
+          path: rules
+          value:
+            - apiGroups: [""]
+              resources: ["configmaps"]
+              resourceNames: ["extension-apiserver-authentication"]
+              verbs: ["get"]
+        documentIndex: 2
+        template: ucp/rbac.yaml
+      - equal:
+          path: roleRef
+          value:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: radius-ucp-authentication-reader-radius-system
+        documentIndex: 3
+        template: ucp/rbac.yaml
+      - equal:
+          path: subjects
+          value:
+            - kind: ServiceAccount
+              name: ucp
+              namespace: radius-system
+        documentIndex: 3
+        template: ucp/rbac.yaml
+
+  - it: binds only the selected installation namespace
+    release:
+      namespace: radius-test
+    asserts:
+      - equal:
+          path: metadata.name
+          value: radius-ucp-authentication-reader-radius-test
+        documentIndex: 2
+        template: ucp/rbac.yaml
+      - equal:
+          path: subjects[0].namespace
+          value: radius-test
+        documentIndex: 3
+        template: ucp/rbac.yaml

@@ -1,0 +1,63 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_SHARED_PORTFOLIO_ID": "port-rrecexample01"
+  },
+  "interactions": [
+    {
+      "service": "Service Catalog",
+      "operation": "AcceptPortfolioShare",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v/8=",
+      "binary": true
+    },
+    {
+      "service": "Service Catalog",
+      "operation": "ListAcceptedPortfolioShares",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BQb3J0Zm9saW9EZXRhaWxzn79jQVJOeENhcm46YXdzOmNhdGFsb2c6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwb3J0Zm9saW8vcG9ydC1ycmVjZXhhbXBsZTAxa0NyZWF0ZWRUaW1lwftB2rf6YAAAAGtEZXNjcmlwdGlvbng7UG9ydGZvbGlvIGFub3RoZXIgYWNjb3VudCBzaGFyZXMgd2l0aCB0aGUgcmVjb3JkaW5nIGFjY291bnRrRGlzcGxheU5hbWV4HHJhZGl1cy1yZWMtZXhhbXBsZS1wb3J0Zm9saW9iSWRycG9ydC1ycmVjZXhhbXBsZTAxbFByb3ZpZGVyTmFtZXJyYWRpdXMtcmVjLWV4YW1wbGX///8=",
+      "binary": true
+    },
+    {
+      "service": "Service Catalog",
+      "operation": "ListAcceptedPortfolioShares",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BQb3J0Zm9saW9EZXRhaWxzn79jQVJOeENhcm46YXdzOmNhdGFsb2c6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwb3J0Zm9saW8vcG9ydC1ycmVjZXhhbXBsZTAxa0NyZWF0ZWRUaW1lwftB2rf6YAAAAGtEZXNjcmlwdGlvbng7UG9ydGZvbGlvIGFub3RoZXIgYWNjb3VudCBzaGFyZXMgd2l0aCB0aGUgcmVjb3JkaW5nIGFjY291bnRrRGlzcGxheU5hbWV4HHJhZGl1cy1yZWMtZXhhbXBsZS1wb3J0Zm9saW9iSWRycG9ydC1ycmVjZXhhbXBsZTAxbFByb3ZpZGVyTmFtZXJyYWRpdXMtcmVjLWV4YW1wbGX///8=",
+      "binary": true
+    },
+    {
+      "service": "Service Catalog",
+      "operation": "RejectPortfolioShare",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v/8=",
+      "binary": true
+    },
+    {
+      "service": "Service Catalog",
+      "operation": "ListAcceptedPortfolioShares",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BQb3J0Zm9saW9EZXRhaWxzn///",
+      "binary": true
+    }
+  ]
+}

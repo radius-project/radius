@@ -104,21 +104,12 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 		return nil, RadiusExtensionPin{}, fmt.Errorf("the provided file %q must be a .json or .bicep file", displayPath)
 	}
 
-	ok, err := IsBicepInstalled()
-	if err != nil {
-		return nil, RadiusExtensionPin{}, fmt.Errorf("failed to find bicep: %w", err)
-	}
-
-	if !ok {
-		i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
-		err = DownloadBicep()
-		if err != nil {
-			return nil, RadiusExtensionPin{}, fmt.Errorf("failed to download bicep: %w", err)
-		}
+	if err := i.ensureBicepInstalled(); err != nil {
+		return nil, RadiusExtensionPin{}, err
 	}
 
 	// Check the file manually so we can control the error message.
-	_, err = i.FileSystem.Stat(filePath)
+	_, err := i.FileSystem.Stat(filePath)
 	if err != nil {
 		return nil, RadiusExtensionPin{}, fmt.Errorf("could not find file: %w", err)
 	}
@@ -447,8 +438,31 @@ func findBicepConfig(fs filesystem.FileSystem, startDir string) string {
 	}
 }
 
-// Call runs `bicep` with the given arguments.
+func (i *Impl) ensureBicepInstalled() error {
+	ok, err := IsBicepInstalled()
+	if err != nil {
+		return fmt.Errorf("failed to find bicep: %w", err)
+	}
+
+	if !ok {
+		if i.Output != nil {
+			i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
+		}
+		err = DownloadBicep()
+		if err != nil {
+			return fmt.Errorf("failed to download bicep: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Call runs `bicep` with the given arguments, downloading Bicep first if it is not installed.
 func (i *Impl) Call(args ...string) ([]byte, error) {
+	if err := i.ensureBicepInstalled(); err != nil {
+		return nil, err
+	}
+
 	return runBicepRaw(args...)
 }
 

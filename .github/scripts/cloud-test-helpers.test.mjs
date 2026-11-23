@@ -3,7 +3,14 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -28,9 +35,9 @@ const env = {
   CHECKOUT_REF: "b".repeat(40),
   UNIQUE_ID: "func0123456789",
   REL_VERSION: "test-func0123456789-101-1",
-  CONTAINER_REGISTRY: bundle.registries.images,
-  BICEP_RECIPE_REGISTRY: bundle.registries.recipes,
-  TEST_BICEP_TYPES_REGISTRY: bundle.registries.types
+  CONTAINER_REGISTRY: "ghcr.io/radius-project/dev",
+  BICEP_RECIPE_REGISTRY: "ghcr.io/radius-project/dev",
+  TEST_BICEP_TYPES_REGISTRY: "crradfunctestl83v.azurecr.io"
 };
 const source = bundle.sourceIdentity(context, env, 1);
 const hash = (data) =>
@@ -52,6 +59,7 @@ const save = (file, value) => writeFile(file, JSON.stringify(value));
 const core = (inputs) => ({
   getInput: (name) => inputs[name] ?? "",
   setOutput() {},
+  info() {},
   summary: {
     addCodeBlock() {
       return this;
@@ -244,6 +252,267 @@ test("merge-group setup keeps candidate and trusted-base revisions distinct", as
   await assert.rejects(setup(args), /protected main/);
 });
 
+function prSetupFixture({ stacked = true, baseRef = "main" } = {}) {
+  const repository = { full_name: "radius-project/radius" };
+  const pr = {
+    number: 123,
+    state: "open",
+    head: { repo: repository, ref: "candidate", sha: "b".repeat(40) },
+    base: {
+      repo: repository,
+      ref: stacked ? "previous-layer" : baseRef,
+      sha: "c".repeat(40)
+    },
+    ...(stacked && {
+      stack: {
+        number: 456,
+        position: 4,
+        size: 4,
+        base: { ref: baseRef, sha: "d".repeat(40) }
+      }
+    })
+  };
+  const outputs = {};
+  const branches = [];
+  const pulls = [];
+  const fixture = {
+    live: structuredClone(pr),
+    outputs,
+    branches,
+    pulls,
+    args: {
+      context: {
+        ...context,
+        ref: `refs/heads/${baseRef}`,
+        payload: { repository, pull_request: pr }
+      },
+      github: {
+        rest: {
+          repos: {
+            getBranch: async ({ branch }) => {
+              branches.push(branch);
+              return {
+                data: {
+                  protected: branch === "main" || branch === baseRef,
+                  commit: { sha: context.sha }
+                }
+              };
+            }
+          },
+          pulls: {
+            get: async (request) => {
+              pulls.push(request);
+              return { data: fixture.live };
+            }
+          }
+        }
+      },
+      core: {
+        setOutput: (name, value) => {
+          outputs[name] = value;
+        }
+      }
+    }
+  };
+  return fixture;
+}
+
+test("native stacks protect the ultimate controller but retain the layer diff and candidate SHAs", async () => {
+  for (const baseRef of ["main", "features/platform", "release/0.61"]) {
+    for (const position of [4, 2, 1]) {
+      const fixture = prSetupFixture({ baseRef });
+      const pr = fixture.args.context.payload.pull_request;
+      pr.stack.position = position;
+      if (position === 1) pr.base.ref = baseRef;
+      fixture.live = structuredClone(pr);
+      await setup(fixture.args);
+      assert.deepEqual(fixture.branches, ["main", baseRef]);
+      assert.deepEqual(fixture.pulls, [
+        { owner: "radius-project", repo: "radius", pull_number: 123 }
+      ]);
+      assert.equal(fixture.outputs.CHECKOUT_REPO, pr.head.repo.full_name);
+      assert.equal(fixture.outputs.CHECKOUT_REF, pr.head.sha);
+      assert.equal(fixture.outputs.BASE_SHA, pr.base.sha);
+      assert.notEqual(fixture.outputs.BASE_SHA, pr.stack.base.sha);
+      assert.equal(fixture.outputs.TRUSTED_SHA, context.sha);
+      assert.equal(fixture.outputs.PR_NUMBER, "123");
+    }
+  }
+});
+
+test("ordinary same-repo and fork PRs retain protected direct-base behavior", async () => {
+  for (const baseRef of ["main", "features/platform", "release/0.61"]) {
+    for (const headRepo of ["radius-project/radius", "fork/radius"]) {
+      const fixture = prSetupFixture({ stacked: false, baseRef });
+      const pr = fixture.args.context.payload.pull_request;
+      pr.head.repo = { full_name: headRepo };
+      pr.stack = null;
+      await setup(fixture.args);
+      assert.equal(fixture.outputs.CHECKOUT_REPO, headRepo);
+      assert.equal(fixture.outputs.CHECKOUT_REF, pr.head.sha);
+      assert.equal(fixture.outputs.BASE_SHA, pr.base.sha);
+      assert.deepEqual(fixture.pulls, []);
+      assert.deepEqual(fixture.branches, ["main", baseRef]);
+    }
+  }
+});
+
+test("invalid native stack claims fail closed before emitting any outputs", async (t) => {
+  const mutations = {
+    "no stack on an intermediate base": (pr) => delete pr.stack,
+    "non-object stack": (pr) => {
+      pr.stack = false;
+    },
+    "missing stack base": (pr) => delete pr.stack.base,
+    "invalid stack base SHA": (pr) => {
+      pr.stack.base.sha = "not-a-sha";
+    },
+    "non-string stack base SHA": (pr) => {
+      pr.stack.base.sha = ["d".repeat(40)];
+    },
+    "non-string stack base ref": (pr) => {
+      pr.stack.base.ref = ["main"];
+    },
+    "unlisted ultimate base": (pr) => {
+      pr.stack.base.ref = "candidate";
+    },
+    "missing stack number": (pr) => delete pr.stack.number,
+    "non-integer stack number": (pr) => {
+      pr.stack.number = "456";
+    },
+    "invalid stack number": (pr) => {
+      pr.stack.number = 0;
+    },
+    "invalid stack size": (pr) => {
+      pr.stack.size = -1;
+    },
+    "unsafe stack size": (pr) => {
+      pr.stack.size = Number.MAX_SAFE_INTEGER + 1;
+    },
+    "invalid stack position": (pr) => {
+      pr.stack.position = 0;
+    },
+    "fractional stack position": (pr) => {
+      pr.stack.position = 1.5;
+    },
+    "out-of-range position": (pr) => {
+      pr.stack.position = 5;
+    },
+    "cross-fork stack": (pr) => {
+      pr.head.repo = { full_name: "fork/radius" };
+    },
+    "foreign base repository": (pr) => {
+      pr.base.repo = { full_name: "fork/radius" };
+    },
+    "invalid PR number": (pr) => {
+      pr.number = -1;
+    },
+    "invalid diff base": (pr) => {
+      pr.base.sha = "";
+    },
+    "invalid candidate": (pr) => {
+      pr.head.sha = "";
+    }
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, async () => {
+      const fixture = prSetupFixture();
+      mutate(fixture.args.context.payload.pull_request);
+      fixture.live = structuredClone(fixture.args.context.payload.pull_request);
+      await assert.rejects(setup(fixture.args));
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+});
+
+test("native stack verification rejects stale or spoofed event metadata and API failures", async (t) => {
+  const mutations = {
+    "stack removed": (pr) => delete pr.stack,
+    "stack replaced": (pr) => {
+      pr.stack.number++;
+    },
+    "stack reordered": (pr) => {
+      pr.stack.position--;
+    },
+    "stack resized": (pr) => {
+      pr.stack.size++;
+    },
+    "stack retargeted": (pr) => {
+      pr.stack.base.ref = "release/0.61";
+    },
+    "stack base changed": (pr) => {
+      pr.stack.base.sha = "e".repeat(40);
+    },
+    "PR replaced": (pr) => {
+      pr.number++;
+    },
+    "PR closed": (pr) => {
+      pr.state = "closed";
+    },
+    "PR retargeted": (pr) => {
+      pr.base.ref = "another-layer";
+    },
+    "PR base changed": (pr) => {
+      pr.base.sha = "e".repeat(40);
+    },
+    "base repository changed": (pr) => {
+      pr.base.repo.full_name = "fork/radius";
+    },
+    "head repository changed": (pr) => {
+      pr.head.repo.full_name = "fork/radius";
+    },
+    "head branch changed": (pr) => {
+      pr.head.ref = "another-candidate";
+    },
+    "head commit changed": (pr) => {
+      pr.head.sha = "e".repeat(40);
+    }
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, async () => {
+      const fixture = prSetupFixture();
+      mutate(fixture.live);
+      await assert.rejects(setup(fixture.args), /stack.*changed|stack.*match/i);
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+  for (const status of [403, 404, 500]) {
+    await t.test(`API ${status}`, async () => {
+      const fixture = prSetupFixture();
+      const error = Object.assign(new Error(`GitHub API ${status}`), {
+        status
+      });
+      fixture.args.github.rest.pulls.get = async () => {
+        throw error;
+      };
+      await assert.rejects(setup(fixture.args), (actual) => actual === error);
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+});
+
+test("PR controllers still require the matching ref and protected main and ultimate base", async () => {
+  for (const stacked of [true, false]) {
+    for (const ref of ["refs/heads/previous-layer", "refs/heads/candidate"]) {
+      const fixture = prSetupFixture({ stacked });
+      fixture.args.context.ref = ref;
+      await assert.rejects(setup(fixture.args), /Unexpected PR base/);
+      assert.deepEqual(fixture.outputs, {});
+    }
+    for (const unprotected of ["main", "release/0.61"]) {
+      const fixture = prSetupFixture({ stacked, baseRef: "release/0.61" });
+      fixture.args.github.rest.repos.getBranch = async ({ branch }) => ({
+        data: {
+          protected: branch !== unprotected,
+          commit: { sha: context.sha }
+        }
+      });
+      await assert.rejects(setup(fixture.args), /protected/);
+      assert.deepEqual(fixture.outputs, {});
+    }
+  }
+});
+
 test("producer tags bind the unique ID, run and producing attempt", () => {
   assert.equal(bundle.producerTag(env.UNIQUE_ID, source), env.REL_VERSION);
   assert.equal(
@@ -359,9 +628,390 @@ function payload() {
   return { roots, manifests };
 }
 
+async function importManifests(directory, manifests) {
+  const blobs = join(directory, "layout", "blobs", "sha256");
+  await mkdir(blobs, { recursive: true });
+  for (const [digest, raw] of manifests)
+    await writeFile(join(blobs, digest.slice(7)), raw);
+}
+
+function httpTrace(events) {
+  return events
+    .map(
+      ({ method, url, status }, id) => `
+[2026-11-16T00:00:00Z][DEBUG]: --> Request #${id}
+> Request URL: ${JSON.stringify(url)}
+> Request method: ${JSON.stringify(method)}
+> Request headers:
+   "Authorization": ${JSON.stringify(["Bearer", "private-fixture-value"].join(" "))}
+
+[2026-11-16T00:00:00Z][DEBUG]: <-- Response #${id}
+< Response Status: "${status} Fixture"
+< Response headers:
+   "X-Github-Request-Id": "ABCD:1234:5678:9ABC"
+   "X-Ms-Request-Id": "12345678-1234-1234-1234-123456789abc"
+   "X-Ms-Correlation-Request-Id": "private-fixture-value"
+   "Location": "https://signed.invalid/private-fixture-value?signature=private-fixture-value"
+< Response body:
+{"token":"private-fixture-value"}
+`
+    )
+    .join("\n");
+}
+
+async function publisherFixture(t, eventName = context.eventName) {
+  const directory = await temporary(t);
+  const { roots, manifests } = payload();
+  await importManifests(directory, manifests);
+  const current = { ...context, eventName };
+  const receiptPath = join(directory, "receipt.json");
+  await save(receiptPath, {
+    source: bundle.sourceIdentity(current, env, 1),
+    tag: env.REL_VERSION,
+    roots,
+    published: []
+  });
+  const messages = [],
+    delays = [];
+  const api = core({ directory, destination: "ghcr" });
+  api.info = (message) => messages.push(message);
+  const args = {
+    context: current,
+    core: api,
+    sleep: async (delay) => {
+      delays.push(delay);
+    }
+  };
+  const targets = bundle
+    .destinations(roots, env.REL_VERSION, env)
+    .filter((entry) => entry.kind !== "types");
+  const first = targets[0];
+  const manifestURL = "https://ghcr.io/v2/radius-project/dev/ucpd/manifests";
+  const tagURL = `${manifestURL}/${env.REL_VERSION}`;
+  const digestURL = `${manifestURL}/${first.digest}`;
+  const put = { method: "PUT", url: tagURL, status: 201 };
+  const missing = { method: "GET", url: digestURL, status: 404 };
+  const fail = (options, events, overrides = {}) => {
+    const stderr = httpTrace(events);
+    options.onStderr(stderr);
+    throw Object.assign(new Error(`private-fixture-value ${stderr}`), {
+      code: 1,
+      stderr,
+      ...overrides
+    });
+  };
+  return {
+    directory,
+    receiptPath,
+    roots,
+    manifests,
+    messages,
+    delays,
+    args,
+    targets,
+    first,
+    put,
+    missing,
+    tagURL,
+    digestURL,
+    fail
+  };
+}
+
+test("registry diagnostics redact credentials, bodies, signed URLs and untrusted paths", () => {
+  const entry = bundle.destinations(payload().roots, env.REL_VERSION, env)[0];
+  const path = `/v2/radius-project/dev/ucpd/manifests/${entry.digest}`;
+  const credentialURL = new URL(`https://ghcr.io${path}`);
+  credentialURL.username = "fixture";
+  credentialURL.password = "private-fixture-value";
+  const responses = bundle.registryResponses(
+    httpTrace([
+      {
+        method: "GET",
+        url: `https://ghcr.io${path}?signature=private-fixture-value`,
+        status: 404
+      },
+      {
+        method: "PUT",
+        url: "https://ghcr.io/v2/radius-project/dev/ucpd/blobs/uploads/private-fixture-value?signature=private-fixture-value",
+        status: 201
+      },
+      {
+        method: "GET",
+        url: `https://signed.invalid/private-fixture-value`,
+        status: 403
+      },
+      { method: "GET", url: credentialURL.href, status: 401 },
+      { method: "GET", url: `http://ghcr.io${path}`, status: 404 }
+    ]),
+    entry
+  );
+  assert.deepEqual(responses[0], {
+    method: "GET",
+    path,
+    status: 404,
+    requestIDs: {
+      "x-github-request-id": "ABCD:1234:5678:9ABC",
+      "x-ms-request-id": "12345678-1234-1234-1234-123456789abc"
+    }
+  });
+  assert.equal(
+    responses[1].path,
+    "/v2/radius-project/dev/ucpd/blobs/uploads/[redacted]"
+  );
+  for (const response of responses.slice(2)) {
+    assert.equal(response.path, "[redacted]");
+    assert.deepEqual(response.requestIDs, {});
+  }
+  assert.doesNotMatch(
+    JSON.stringify(responses),
+    /private-fixture-value|signed.invalid|Authorization|signature|token|Location/
+  );
+  assert.deepEqual(
+    bundle.registryResponses("unrecognized trace private-fixture-value", entry),
+    []
+  );
+  const unfinished = bundle.registryResponses(
+    httpTrace([
+      {
+        method: "PUT",
+        url: `https://ghcr.io/v2/radius-project/dev/ucpd/manifests/${env.REL_VERSION}`,
+        status: 201
+      },
+      { method: "GET", url: `https://ghcr.io${path}`, status: 404 }
+    ]) +
+      `
+[2026-11-16T00:00:00Z][DEBUG]: --> Request #2
+> Request URL: "https://signed.invalid/private-fixture-value"
+> Request method: "GET"
+`,
+    entry
+  );
+  assert.deepEqual(unfinished.at(-1), {
+    method: "GET",
+    path: "[redacted]",
+    status: null,
+    requestIDs: {}
+  });
+});
+
+for (const mutation of [
+  "missing",
+  "corrupt",
+  "size",
+  "media type",
+  "symlink"
+]) {
+  test(`publisher rejects ${mutation} imported roots before network access`, async (t) => {
+    const state = await publisherFixture(t);
+    const file = join(
+      state.directory,
+      "layout/blobs/sha256",
+      state.first.digest.slice(7)
+    );
+    if (mutation === "missing" || mutation === "symlink") {
+      await rm(file);
+      if (mutation === "symlink") {
+        const other = join(state.directory, "other-manifest");
+        await writeFile(other, state.manifests.get(state.first.digest));
+        await symlink(other, file);
+      }
+    } else if (mutation === "corrupt") {
+      await writeFile(
+        file,
+        state.manifests
+          .get(state.first.digest)
+          .replace('"schemaVersion":2', '"schemaVersion":3')
+      );
+    } else {
+      const receipt = JSON.parse(await readFile(state.receiptPath));
+      if (mutation === "size") receipt.roots[0].size++;
+      else
+        receipt.roots[0].mediaType =
+          "application/vnd.docker.distribution.manifest.v2+json";
+      await save(state.receiptPath, receipt);
+    }
+    let calls = 0;
+    await assert.rejects(
+      bundle.publish(state.args, env, async () => {
+        calls++;
+      }),
+      /ENOENT|Imported root|Manifest digest mismatch/
+    );
+    assert.equal(calls, 0);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      []
+    );
+  });
+}
+
+for (const event of [
+  "pull_request_target",
+  "merge_group",
+  "repository_dispatch"
+]) {
+  test(`${event} recovers only proven post-copy visibility without uploading again`, async (t) => {
+    const state = await publisherFixture(t, event);
+    const copies = [],
+      reads = [];
+    let hidden = 2;
+    await bundle.publish(state.args, env, async (command, options) => {
+      const reference = command.at(-1);
+      if (command[1] === "cp") {
+        copies.push(reference);
+        if (reference === state.first.reference)
+          state.fail(options, [state.put, state.missing]);
+        return "";
+      }
+      assert.equal(options.timeout, 10_000);
+      reads.push(reference);
+      if (reference.endsWith(`@${state.first.digest}`) && hidden-- > 0)
+        state.fail(options, [state.missing]);
+      return state.manifests.get(
+        state.targets.find((entry) => entry.reference === reference)?.digest ??
+          reference.split("@")[1]
+      );
+    });
+    assert.deepEqual(
+      copies,
+      state.targets.map(({ reference }) => reference)
+    );
+    assert.equal(reads.length, state.targets.length * 2 + 2);
+    assert.deepEqual(state.delays, [1000, 2000]);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      copies
+    );
+    assert.ok(
+      state.messages.some((message) =>
+        message.includes("ORAS post-copy destination read failed")
+      )
+    );
+    assert.doesNotMatch(state.messages.join("\n"), /private-fixture-value/);
+  });
+}
+
+for (const failure of [
+  "no successful PUT",
+  "rejected PUT",
+  "wrong PUT",
+  "wrong GET",
+  "forbidden GET",
+  "intervening failed upload",
+  "intervening authorization failure",
+  "intervening unrelated read",
+  "unknown trace",
+  "timeout"
+]) {
+  test(`publisher does not recover copy failure with ${failure}`, async (t) => {
+    const state = await publisherFixture(t);
+    let events = [state.put, state.missing],
+      overrides = {};
+    if (failure === "no successful PUT") events = [state.missing];
+    if (failure === "rejected PUT") events[0] = { ...state.put, status: 403 };
+    if (failure === "wrong PUT")
+      events[0] = { ...state.put, url: state.digestURL };
+    if (failure === "wrong GET")
+      events[1] = { ...state.missing, url: state.tagURL };
+    if (failure === "forbidden GET")
+      events[1] = { ...state.missing, status: 403 };
+    if (failure === "intervening failed upload")
+      events.splice(1, 0, { ...state.put, status: 400 });
+    if (failure === "intervening authorization failure")
+      events.splice(1, 0, { ...state.missing, status: 403 });
+    if (failure === "intervening unrelated read")
+      events.splice(1, 0, { ...state.missing, url: state.tagURL });
+    if (failure === "unknown trace") events = [];
+    if (failure === "timeout") overrides = { killed: true, signal: "SIGTERM" };
+    let copies = 0;
+    await assert.rejects(
+      bundle.publish(state.args, env, async (command, options) => {
+        assert.equal(command[1], "cp");
+        copies++;
+        state.fail(options, events, overrides);
+      }),
+      (error) => {
+        assert.match(error.message, /Registry copy failed/);
+        assert.doesNotMatch(
+          `${error.stack}\n${JSON.stringify(error)}`,
+          /private-fixture-value|Authorization|signature/
+        );
+        return true;
+      }
+    );
+    assert.equal(copies, 1);
+    assert.deepEqual(state.delays, []);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      []
+    );
+  });
+}
+
+for (const phase of ["digest", "tag"]) {
+  for (const status of [
+    401,
+    403,
+    404,
+    429,
+    500,
+    "mismatch",
+    "untraced",
+    "wrong path",
+    "timeout"
+  ]) {
+    test(`publisher fails closed on ${phase} readback ${status}`, async (t) => {
+      const state = await publisherFixture(t);
+      let copies = 0,
+        failures = 0;
+      await assert.rejects(
+        bundle.publish(state.args, env, async (command, options) => {
+          if (command[1] === "cp") {
+            copies++;
+            return "";
+          }
+          const byDigest = command.at(-1).includes("@");
+          if (byDigest !== (phase === "digest"))
+            return state.manifests.get(state.first.digest);
+          failures++;
+          if (status === "mismatch") return "{}";
+          const event = {
+            method: "GET",
+            url:
+              status === "wrong path" ? "https://ghcr.io/unrelated"
+              : phase === "digest" ? state.digestURL
+              : state.tagURL,
+            status: typeof status === "number" ? status : 404
+          };
+          state.fail(
+            options,
+            status === "untraced" ? [] : [event],
+            status === "timeout" ? { killed: true } : {}
+          );
+        }),
+        status === "mismatch" ? /Published digest changed/
+        : status === 404 ? /not visible after 5 attempts/
+        : /Registry .*readback failed/
+      );
+      assert.equal(copies, 1);
+      assert.equal(failures, status === 404 ? 5 : 1);
+      assert.deepEqual(
+        state.delays,
+        status === 404 ? [1000, 2000, 4000, 8000] : []
+      );
+      assert.deepEqual(
+        JSON.parse(await readFile(state.receiptPath)).published,
+        []
+      );
+      assert.doesNotMatch(state.messages.join("\n"), /private-fixture-value/);
+    });
+  }
+}
+
 test("closed targets/media types preserve images and underscore recipes, excluding foreign/executable data", () => {
   const { roots, manifests } = payload();
-  const targets = bundle.destinations(roots, env.REL_VERSION);
+  const targets = bundle.destinations(roots, env.REL_VERSION, env);
   assert.equal(targets.filter((item) => item.kind === "images").length, 8);
   assert.match(
     targets.at(-1).reference,
@@ -370,22 +1020,26 @@ test("closed targets/media types preserve images and underscore recipes, excludi
   for (const name of [
     "images-unknown",
     "types-aws",
+    "types-unknown.azurecr.io",
+    "types-unknown.azurecr.io/test/radius",
     "recipes-../escape",
     "production-radius"
   ]) {
     const changed = structuredClone(roots);
     changed[0].annotations["org.opencontainers.image.ref.name"] = name;
-    assert.throws(() => bundle.destinations(changed, env.REL_VERSION));
+    assert.throws(() => bundle.destinations(changed, env.REL_VERSION, env));
   }
-  assert.throws(() => bundle.destinations(roots, "latest"));
+  assert.throws(() => bundle.destinations(roots, "latest", env));
   for (const tag of [
     "edge",
     "pr-func0123456789",
     "test-local",
     "test-func0123456789-0-1"
   ])
-    assert.throws(() => bundle.destinations(roots, tag));
-  assert.throws(() => bundle.destinations(roots.slice(1), env.REL_VERSION));
+    assert.throws(() => bundle.destinations(roots, tag, env));
+  assert.throws(() =>
+    bundle.destinations(roots.slice(1), env.REL_VERSION, env)
+  );
   for (const entry of targets)
     bundle.validateManifest(manifests.get(entry.digest), entry);
   const entry = targets.find((item) => item.kind === "types");
@@ -488,7 +1142,7 @@ test("preparation rejects mismatched sources before writes and publication recor
         : { schemaVersion: 2, manifests: roots }
       );
     const target = bundle
-      .destinations(roots, env.REL_VERSION)
+      .destinations(roots, env.REL_VERSION, env)
       .find((item) => item.reference === args.at(-1));
     return args[2] === "fetch" ?
         manifests.get(target?.digest ?? args.at(-1).split("@")[1])
@@ -525,6 +1179,7 @@ test("preparation rejects mismatched sources before writes and publication recor
   );
   assert.equal(calls.filter((cmd) => cmd[1] === "cp").length, 0);
   await bundle.prepare(args, env, run);
+  await importManifests(directory, manifests);
   assert.ok(
     calls
       .filter((cmd) => cmd[1] === "cp")
@@ -565,6 +1220,174 @@ test("preparation rejects mismatched sources before writes and publication recor
     /digest changed/
   );
 });
+
+test("Test ACR configuration accepts minimum and maximum registry name lengths", () => {
+  for (const name of ["abc12", "a".repeat(50)]) {
+    const registry = `${name}.azurecr.io`;
+    assert.equal(
+      bundle.testTypesRegistry({ TEST_BICEP_TYPES_REGISTRY: registry }),
+      registry
+    );
+  }
+});
+
+for (const destination of ["ghcr", "acr"]) {
+  for (const [registry, typesPath] of [
+    [
+      "crradfunctestl83v.azurecr.io",
+      "crradfunctestl83v.azurecr.io/test/radius"
+    ],
+    [
+      "crradfunctest1b2s.azurecr.io",
+      "crradfunctest1b2s.azurecr.io/test/radius"
+    ],
+    ["unknown.azurecr.io", "unknown.azurecr.io/test/radius"]
+  ]) {
+    test(`${destination} publication uses configured ${registry} and verifies readback`, async (t) => {
+      const settings = { ...env, TEST_BICEP_TYPES_REGISTRY: registry };
+      const paths =
+        destination === "acr" ?
+          [typesPath]
+        : [
+            "ghcr.io/radius-project/dev/ucpd",
+            "ghcr.io/radius-project/dev/applications-rp",
+            "ghcr.io/radius-project/dev/dynamic-rp",
+            "ghcr.io/radius-project/dev/controller",
+            "ghcr.io/radius-project/dev/testrp",
+            "ghcr.io/radius-project/dev/magpiego",
+            "ghcr.io/radius-project/dev/bicep",
+            "ghcr.io/radius-project/dev/pre-upgrade",
+            "ghcr.io/radius-project/dev/test/testrecipes/test-bicep-recipes/dynamicrp_recipe"
+          ];
+      const directory = await temporary(t);
+      const { roots, manifests } = payload();
+      await importManifests(directory, manifests);
+      const receiptPath = join(directory, "receipt.json");
+      const receipt = {
+        source,
+        artifact: { id: artifact.id, digest: artifact.digest },
+        tag: env.REL_VERSION,
+        roots,
+        published: []
+      };
+      await save(receiptPath, receipt);
+      const targets = paths.map((path) => `${path}:test-func0123456789-101-1`);
+      const selected = roots.filter(
+        (root) =>
+          root.annotations["org.opencontainers.image.ref.name"].startsWith(
+            "types-"
+          ) ===
+          (destination === "acr")
+      );
+      const calls = [];
+      const args = { context, core: core({ directory, destination }) };
+      await bundle.publish(args, settings, async (command) => {
+        calls.push(command);
+        if (command[1] === "cp") return "";
+        const index = targets.findIndex((reference, index) =>
+          [reference, `${paths[index]}@${selected[index].digest}`].includes(
+            command.at(-1)
+          )
+        );
+        assert.notEqual(
+          index,
+          -1,
+          "Readback must use an expected fixed target"
+        );
+        return manifests.get(selected[index].digest);
+      });
+      assert.deepEqual(
+        calls,
+        targets.flatMap((reference, index) => [
+          [
+            "oras",
+            "cp",
+            "--from-oci-layout",
+            `${join(directory, "layout")}@${selected[index].digest}`,
+            "--debug",
+            reference
+          ],
+          [
+            "oras",
+            "manifest",
+            "fetch",
+            "--debug",
+            `${paths[index]}@${selected[index].digest}`
+          ],
+          ["oras", "manifest", "fetch", "--debug", reference]
+        ])
+      );
+      assert.deepEqual(JSON.parse(await readFile(receiptPath)), {
+        ...receipt,
+        published: targets
+      });
+      await save(receiptPath, receipt);
+      await assert.rejects(
+        bundle.publish(args, settings, async () => "{}"),
+        /Published digest changed/
+      );
+      assert.deepEqual(JSON.parse(await readFile(receiptPath)), receipt);
+    });
+  }
+
+  for (const [setting, registry] of [
+    ...[
+      undefined,
+      null,
+      12345,
+      "",
+      "abcd.azurecr.io",
+      `${"a".repeat(51)}.azurecr.io`,
+      "UPPERCASE.azurecr.io",
+      "https://validregistry.azurecr.io",
+      "user:password@validregistry.azurecr.io",
+      "validregistry.azurecr.io:443",
+      "validregistry.azurecr.io/test/radius",
+      "validregistry.azurecr.io/",
+      "validregistry.azurecr.io?query=value",
+      "validregistry.azurecr.io#fragment",
+      "validregistry.azurecr.io.evil.invalid",
+      "valid-registry.azurecr.io",
+      "validregistry.example.com",
+      "validregistry.azurecr.cn",
+      "validregistry.azurecr.io;echo injected",
+      "$(echo injected).azurecr.io",
+      " validregistry.azurecr.io",
+      "validregistry.azurecr.io ",
+      "validregistry.azurecr.io\n",
+      "validregistry.azurecr.io\r\n",
+      "validregistry.azurecr.io\u2028"
+    ].map((registry) => ["TEST_BICEP_TYPES_REGISTRY", registry]),
+    ["CONTAINER_REGISTRY", "ghcr.io/unknown/dev"],
+    ["BICEP_RECIPE_REGISTRY", "ghcr.io/unknown/dev"]
+  ]) {
+    test(`${destination} rejects ${setting}=${JSON.stringify(registry)} before any copy`, async (t) => {
+      const directory = await temporary(t);
+      await save(join(directory, "receipt.json"), {
+        source,
+        artifact: { id: artifact.id, digest: artifact.digest },
+        tag: env.REL_VERSION,
+        roots: payload().roots,
+        published: []
+      });
+      const calls = [];
+      await assert.rejects(
+        bundle.publish(
+          { context, core: core({ directory, destination }) },
+          { ...env, [setting]: registry },
+          async (command) => {
+            calls.push(command);
+            assert.fail("Unexpected registry copy");
+          }
+        ),
+        setting === "TEST_BICEP_TYPES_REGISTRY" ?
+          /Invalid TEST_BICEP_TYPES_REGISTRY/
+        : /Test registry allowlist mismatch/
+      );
+      assert.deepEqual(calls, []);
+    });
+  }
+}
 
 test("uploads retain the authenticated producer tag across full and downstream-only reruns", async (t) => {
   for (const [producingAttempt, retryAttempt] of [
@@ -621,7 +1444,7 @@ test("uploads retain the authenticated producer tag across full and downstream-o
         );
         const { roots, manifests } = payload();
         const copies = [];
-        const targets = bundle.destinations(roots, tag);
+        const targets = bundle.destinations(roots, tag, settings);
         const run = async (cmd) => {
           if (cmd[0] === "tar")
             return JSON.stringify(
@@ -637,6 +1460,7 @@ test("uploads retain the authenticated producer tag across full and downstream-o
           return manifests.get(target?.digest ?? cmd.at(-1).split("@")[1]);
         };
         await bundle.prepare(args, settings, run);
+        await importManifests(directory, manifests);
         for (const destination of ["ghcr", "acr"]) {
           args.core = core({ directory, destination });
           await bundle.publish(args, settings, run);
