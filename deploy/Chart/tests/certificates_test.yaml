@@ -401,6 +401,7 @@ tests:
     set:
       global.rbac.enabled: true
       de.internalAuth.enabled: true
+      de.tag: source-test-only
     documentSelector:
       path: metadata.name
       value: bicep-de-spiffe

@@ -193,6 +193,9 @@ off
 {{- if and $enabled (eq (include "radius.authz.mode" .) "off") -}}
 {{- fail "de.internalAuth.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" -}}
 {{- end -}}
+{{- if and $enabled (eq (.Values.de.image | default "deployment-engine") "deployment-engine") (empty .Values.de.tag) -}}
+{{- fail "de.internalAuth.enabled requires an explicitly selected compatible engine image via de.image or de.tag" -}}
+{{- end -}}
 {{- $enabled -}}
 {{- end -}}
 
