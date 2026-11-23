@@ -185,13 +185,15 @@ func orDefault(d, def time.Duration) time.Duration {
 // fetch leaves no usable keys, it retries every UnknownKeyInterval.
 func (v *Verifier) Run(ctx context.Context) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	// Run fetches at once unless a fetch already ran. It waits the refresh interval only
+	// when that fetch left usable keys, and the retry interval otherwise.
 	v.mu.RLock()
 	first := time.Duration(0)
 	switch {
-	case v.lastFetchFailed:
-		first = v.unknownKeyInterval
-	case v.fetched:
+	case v.fetched && !v.lastFetchFailed && len(v.keys.Keys) > 0:
 		first = v.refreshInterval
+	case v.fetched:
+		first = v.unknownKeyInterval
 	}
 	v.mu.RUnlock()
 	timer := time.NewTimer(first)
