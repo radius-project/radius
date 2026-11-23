@@ -1,0 +1,50 @@
+suite: test narrowly scoped user inspection access
+templates:
+  - ucp/inspection-rbac.yaml
+tests:
+  - it: creates only a role without a default binding or aggregated user grants
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: kind
+          value: ClusterRole
+      - equal:
+          path: metadata.name
+          value: ucp-inspection
+      - equal:
+          path: metadata.labels
+          value:
+            app.kubernetes.io/name: ucp
+            app.kubernetes.io/part-of: radius
+      - equal:
+          path: rules
+          value:
+            - apiGroups:
+                - api.ucp.dev
+              resources:
+                - providers/whoAmI
+              resourceNames:
+                - Radius.Core
+              verbs:
+                - get
+            - apiGroups:
+                - api.ucp.dev
+              resources:
+                - providers/checkAccess
+              resourceNames:
+                - Radius.Core
+              verbs:
+                - create
+
+  - it: remains available independently of the internal authorization mode
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - equal:
+          path: metadata.name
+          value: ucp-inspection
+      - equal:
+          path: rules[0].verbs
+          value:
+            - get
