@@ -22,7 +22,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/ucp"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 )
 
@@ -42,4 +44,49 @@ func Test_NewServer(t *testing.T) {
 		_, err := NewServer(t.Context(), &ucp.Options{Config: &ucp.Config{}})
 		require.Error(t, err)
 	})
+}
+
+func TestNewServerPolicyRuntime(t *testing.T) {
+	t.Setenv("AWS_PROFILE", "radius-test-profile-that-does-not-exist")
+	catalog, err := authorization.NewCatalog(nil)
+	require.NoError(t, err)
+	store, err := authorization.NewPolicyStore(inmemory.NewClient(), catalog, nil, nil)
+	require.NoError(t, err)
+	runtime, err := authorization.NewPolicyRuntime(store, nil)
+	require.NoError(t, err)
+
+	for _, tt := range []struct {
+		name    string
+		enabled bool
+		runtime *authorization.PolicyRuntime
+	}{
+		{name: "unconfigured"},
+		{name: "configured", enabled: true, runtime: runtime},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			options := &ucp.Options{
+				Config:            &ucp.Config{UserAuthorization: authorization.RuntimeOptions{Enabled: tt.enabled}},
+				UserAuthorization: tt.runtime,
+				AWSClients: ucp_aws.Clients{
+					CloudControl:   ucp_aws.NewMockAWSCloudControlClient(gomock.NewController(t)),
+					CloudFormation: ucp_aws.NewMockAWSCloudFormationClient(gomock.NewController(t)),
+					Kafka:          ucp_aws.NewMockAWSKafkaClient(gomock.NewController(t)),
+				},
+			}
+			host, err := NewServer(t.Context(), options)
+			require.NoError(t, err)
+			count := 0
+			for _, service := range host.Services {
+				if service.Name() == runtime.Name() {
+					require.Same(t, tt.runtime, service)
+					count++
+				}
+			}
+			if tt.enabled {
+				require.Equal(t, 1, count)
+			} else {
+				require.Zero(t, count)
+			}
+		})
+	}
 }
