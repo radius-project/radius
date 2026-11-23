@@ -423,3 +423,28 @@ func Test_DataShareAuthorization_ConfirmStops(t *testing.T) {
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "a deploy that stops waiting can't tell whether AWS applied the change")
 	require.Contains(t, failure.Message, context.Canceled.Error())
 }
+
+// Test_DataShareConfirm_Canceled checks that a confirmation never reads AWS once its context is canceled, before the
+// first read or after any read, and reports the cancellation with an unknown outcome.
+func Test_DataShareConfirm_Canceled(t *testing.T) {
+	for _, cancelAfter := range []int{0, 1, 3} {
+		ctx, cancel := context.WithCancel(t.Context())
+		reads := 0
+		if cancelAfter == 0 {
+			cancel()
+		}
+		err := dataShareConfirm(ctx, "the authorization", func() (bool, error) {
+			reads++
+			if reads == cancelAfter {
+				cancel()
+			}
+			return false, nil
+		})
+		cancel()
+		require.Equal(t, cancelAfter, reads, "no read after the context is canceled")
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+		require.Contains(t, failure.Message, context.Canceled.Error())
+	}
+}

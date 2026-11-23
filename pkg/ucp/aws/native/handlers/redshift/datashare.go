@@ -131,16 +131,22 @@ var dataShareConfirmWait = 2 * time.Second
 // dataShareConfirm calls shown until it reports that a read shows a change AWS accepted, up to dataShareConfirmReads
 // times. When no read shows it, it returns a failure of unknown outcome, because AWS may have applied the change, so
 // UCP keeps the values as possibly applied and the next deploy reads AWS again. A failed read is never reported as
-// rejected: AWS already accepted the change.
+// rejected: AWS already accepted the change. Once ctx is canceled, it reads no more and reports the cancellation.
 func dataShareConfirm(ctx context.Context, what string, shown func() (bool, error)) error {
 	var last error
 	for i := range dataShareConfirmReads {
 		if i > 0 {
+			timer := time.NewTimer(dataShareConfirmWait)
 			select {
 			case <-ctx.Done():
-				return dataShareUnconfirmed(what, ctx.Err())
-			case <-time.After(dataShareConfirmWait):
+			case <-timer.C:
 			}
+			timer.Stop()
+		}
+		// Both cases of the select can be ready at once, and Go picks either, so check the context before every
+		// read, including the first.
+		if err := ctx.Err(); err != nil {
+			return dataShareUnconfirmed(what, err)
 		}
 		ok, err := shown()
 		if err == nil && ok {
