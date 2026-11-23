@@ -287,8 +287,8 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 	return found, nil
 }
 
-// ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate of its
-// name writes it, by spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
+// ucpOffLeftover reads the Secret of leftover and returns its state. A private Secret is a leftover when no Certificate
+// targets it and rad owns it: cert-manager issued it for the recorded Certificate, or, for radius-apiserver-trust, it holds
 // only ca.crt and the allow-direct-injection annotation, which is what rad and the chart README's plain-Helm steps
 // write.
 func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
@@ -302,22 +302,9 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 	}
 	found.object = secret
 	if leftover.certificate != "" {
-		// NotFound also covers a cluster without the cert-manager CRDs.
-		certificate, err := dynamicClient.Resource(certManagerCertificatesResource).Namespace(radiusNamespace).Get(ctx, leftover.certificate, metav1.GetOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
-			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
-		}
-		// A Certificate of the same name that writes another Secret, such as the ucp-cert Certificate of a chart
-		// before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one.
-		if err == nil {
-			secretName, _, fieldErr := unstructured.NestedString(certificate.Object, "spec", "secretName")
-			if fieldErr != nil || secretName == "" {
-				found.state = ucpOffSecretForeign
-				return found, nil
-			}
-			if secretName == leftover.secret {
-				return found, nil
-			}
+		targeted, err := liveCertificateTargets(ctx, dynamicClient, radiusNamespace, leftover.secret)
+		if err != nil || targeted {
+			return found, err
 		}
 	}
 	found.state = ucpOffSecretForeign
@@ -325,6 +312,28 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 		found.state = ucpOffSecretLeftover
 	}
 	return found, nil
+}
+
+// A Certificate need not share its target's name. Listing can veto a
+// confirmed delete, but cannot nominate any other object for deletion.
+func liveCertificateTargets(ctx context.Context, client dynamic.Interface, namespace, name string) (bool, error) {
+	objects, err := client.Resource(certManagerCertificatesResource).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	if apierrors.IsNotFound(err) { // cert-manager CRD not installed
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("cannot check Certificate targets in %s: %w", namespace, err)
+	}
+	for _, item := range objects.Items {
+		target, _, err := unstructured.NestedString(item.Object, "spec", "secretName")
+		if err != nil || target == "" {
+			return false, fmt.Errorf("cannot determine target of Certificate %s/%s", namespace, item.GetName())
+		}
+		if target == name {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // ownsUCPOffSecret reports whether rad's contract owns secret, the Secret of leftover.

@@ -165,6 +165,13 @@ func (b *initialCertificateInstaller) visitBootstrapPins(ctx context.Context, vi
 				return err
 			}
 			if err == nil {
+				targeted, err := liveCertificateTargets(ctx, b.store.dynamic, b.store.namespace, name)
+				if err != nil {
+					return err
+				}
+				if targeted {
+					return fmt.Errorf("preserving bootstrap signer %s: a live Certificate still targets it", name)
+				}
 				if err := validateBootstrapRenewal(secret, b.state.Anchors[plane], b.store.now()); err != nil {
 					return fmt.Errorf("preserving changed or foreign bootstrap signing Secret %s: %w", name, err)
 				}

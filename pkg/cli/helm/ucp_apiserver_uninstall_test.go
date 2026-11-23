@@ -379,6 +379,7 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	})
 	staged := stagedUCPAPIServerObject("Issuer", radiusAPIServerIssuerName, radiusReleaseName, nil)
 	foreign := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, "", nil)
+	require.NoError(t, unstructured.SetNestedField(foreign.Object, ucpAPIServerCASecretName, "spec", "secretName"))
 	dynamicClient := fakeCertManagerDynamicClient(nil, staged, foreign)
 	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
 	options := NewDefaultClusterOptions()

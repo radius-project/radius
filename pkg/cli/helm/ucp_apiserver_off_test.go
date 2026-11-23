@@ -546,6 +546,7 @@ func Test_ucpOffLeftover_CertificateSecretName(t *testing.T) {
 	}{
 		{name: "Certificate writes the Secret", secretName: ucpAPIServerTLSSecretName, want: ucpOffSecretKeep},
 		{name: "Certificate writes another Secret", secretName: "ucp-mtls", want: ucpOffSecretLeftover},
+		{name: "renamed Certificate still writes the Secret", secretName: ucpAPIServerTLSSecretName, want: ucpOffSecretKeep},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -553,7 +554,11 @@ func Test_ucpOffLeftover_CertificateSecretName(t *testing.T) {
 				Name: ucpAPIServerTLSSecretName, Namespace: RadiusSystemNamespace, UID: "issued", ResourceVersion: "3",
 				Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCertificateName},
 			}})
-			found, err := ucpOffLeftover(t.Context(), kubeClient, fakeCertManagerDynamicClient(nil, certificate(tt.secretName)), RadiusSystemNamespace, leftover)
+			live := certificate(tt.secretName)
+			if strings.HasPrefix(tt.name, "renamed") {
+				live.SetName("replacement")
+			}
+			found, err := ucpOffLeftover(t.Context(), kubeClient, fakeCertManagerDynamicClient(nil, live), RadiusSystemNamespace, leftover)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, found.state)
 		})
