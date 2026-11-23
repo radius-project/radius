@@ -86,7 +86,13 @@ Follow the exact downstream run and PR links in the release summary:
 
 RC upmerges affect only `edge`, not the docs/samples default release branches. Only a final publishes their new `vX.Y` branches and switches their defaults; patches only run sample tests.
 
-**Final only:** follow the `bicep-recipes / vX.Y.0-<full Radius release commit>` run from the release summary. It publishes the version tags and eligible `latest` aliases from the approved recipe inventory. If the receipt has no run URL, [reconcile the unknown dispatch](./README.md#lost-dispatch-response); do not launch a second publisher. Already approved plans without `recipeSourceCommit` retain their original release procedure.
+**Finals with `recipeSourceCommit`:** follow the `bicep-recipes / vX.Y.0-<full Radius release commit>` run from the release summary. It publishes the version tags and eligible `latest` aliases from the approved recipe inventory. If the receipt has no run URL, [reconcile the unknown dispatch](./README.md#lost-dispatch-response); do not launch a second publisher.
+
+**Legacy finals approved without `recipeSourceCommit`:** Radius does not dispatch the publisher. Once the stable Radius release is public, confirm that contrib `main` contains the intended recipes and that no publication for this version is running or has succeeded. Run the command below with the final version **without `v`** (replace `0.62.0`), then record the successful run URL. Do not use this command to recover a pinned final.
+
+```bash
+gh workflow run publish-bicep-recipes.yaml --repo radius-project/resource-types-contrib --ref main -f release_version=0.62.0
+```
 
 ## Verification
 
