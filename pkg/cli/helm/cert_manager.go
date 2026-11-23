@@ -150,11 +150,8 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	controller := deployments.Items[0]
 	raw := controller.Labels[certManagerVersionLabel]
 	if raw == "" {
-		for _, c := range controller.Spec.Template.Spec.Containers {
-			if tag := imageTag(c.Image); tag != "" {
-				raw = tag
-				break
-			}
+		if container := certManagerControllerContainer(&controller); container != nil {
+			raw = imageTag(container.Image)
 		}
 	}
 
@@ -400,6 +397,25 @@ func caInjectorContainers(deployment *appsv1.Deployment) []corev1.Container {
 		return containers
 	}
 	return injectors
+}
+
+// certManagerControllerContainer returns the container of deployment that runs the cert-manager controller: the one
+// named, or running an image named, cert-manager-controller. When it identifies none, it returns the only container,
+// or nil when there are several, so rad never reads the version from a sidecar's image, such as an injected
+// service-mesh proxy.
+func certManagerControllerContainer(deployment *appsv1.Deployment) *corev1.Container {
+	containers := deployment.Spec.Template.Spec.Containers
+	for idx := range containers {
+		image, _, _ := strings.Cut(containers[idx].Image, "@")
+		image, _, _ = strings.Cut(path.Base(image), ":")
+		if containers[idx].Name == "cert-manager-controller" || image == "cert-manager-controller" {
+			return &containers[idx]
+		}
+	}
+	if len(containers) == 1 {
+		return &containers[0]
+	}
+	return nil
 }
 
 func isCAInjectorName(name string) bool {

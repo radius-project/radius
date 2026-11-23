@@ -76,6 +76,13 @@ func certManagerController(namespace, versionLabel, image string) *appsv1.Deploy
 	}
 }
 
+// withSidecar puts an istio-proxy container running image before the containers of deployment.
+func withSidecar(deployment *appsv1.Deployment, image string) *appsv1.Deployment {
+	containers := deployment.Spec.Template.Spec.Containers
+	deployment.Spec.Template.Spec.Containers = append([]corev1.Container{{Name: "istio-proxy", Image: image}}, containers...)
+	return deployment
+}
+
 type fakeCertManagerCluster struct {
 	crd        bool
 	controller *appsv1.Deployment
@@ -312,6 +319,25 @@ func Test_detectCertManager(t *testing.T) {
 			name:          "version from image tag with digest",
 			cluster:       fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "", "registry:5000/cert-manager-controller:v1.21.0@sha256:abc")},
 			wantInstalled: true, wantVersion: "1.21.0", wantNamespace: "cert-manager",
+		},
+		{
+			name:          "version from controller image after a sidecar",
+			cluster:       fakeCertManagerCluster{crd: true, controller: withSidecar(certManagerController("cert-manager", "", "quay.io/jetstack/cert-manager-controller:v1.21.2"), "docker.io/istio/proxyv2:1.19.0")},
+			wantInstalled: true, wantVersion: "1.21.2", wantNamespace: "cert-manager",
+		},
+		{
+			name:          "old controller image after a newer sidecar",
+			cluster:       fakeCertManagerCluster{crd: true, controller: withSidecar(certManagerController("cert-manager", "", "quay.io/jetstack/cert-manager-controller:v1.19.0"), "docker.io/istio/proxyv2:1.21.2")},
+			wantInstalled: true, wantVersion: "1.19.0", wantNamespace: "cert-manager",
+		},
+		{
+			name: "controller container not identified",
+			cluster: fakeCertManagerCluster{crd: true, controller: func() *appsv1.Deployment {
+				d := withSidecar(certManagerController("cert-manager", "", "registry.example.com/controller:v1.21.2"), "docker.io/istio/proxyv2:1.21.2")
+				d.Spec.Template.Spec.Containers[1].Name = "manager"
+				return d
+			}()},
+			wantErr: "could not determine the cert-manager version",
 		},
 		{
 			name:    "CRD without controller",
