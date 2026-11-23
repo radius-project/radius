@@ -592,8 +592,25 @@ func Test_UninstallRadius_KeepsSecretOfForeignCertificate(t *testing.T) {
 
 // A retried uninstall lists the Secret of a staged radius-apiserver-ca Certificate with it, because deleting the
 // Certificate leaves the Secret unused, and deletes only what it listed: a Secret replaced while the user confirms
-// survives.
+// survives. A Certificate that Helm keeps still writes the Secret, so neither is listed.
 func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
+	t.Run("Certificate kept", func(t *testing.T) {
+		secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
+			ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+		kubeClient := kubefake.NewSimpleClientset(secret)
+		certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, map[string]string{helmResourcePolicyAnnotation: "keep"})
+		require.NoError(t, unstructured.SetNestedField(certificate.Object, ucpAPIServerCASecretName, "spec", "secretName"))
+		dynamicClient := fakeCertManagerDynamicClient(nil, certificate)
+		impl := &Impl{
+			logger:                      func(string, ...any) {},
+			newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
+			newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
+		}
+
+		leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), NewDefaultClusterOptions(), "test-context")
+		require.NoError(t, err)
+		require.Empty(t, leftovers)
+	})
 	for _, changed := range []string{"", "Secret", "Certificate"} {
 		t.Run("changed="+changed, func(t *testing.T) {
 			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
@@ -610,7 +627,9 @@ func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
 				}
 				return false, nil, nil
 			})
-			dynamicClient := fakeCertManagerDynamicClient(nil, stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, nil))
+			certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, nil)
+			require.NoError(t, unstructured.SetNestedField(certificate.Object, ucpAPIServerCASecretName, "spec", "secretName"))
+			dynamicClient := fakeCertManagerDynamicClient(nil, certificate)
 			dynamicClient.PrependReactor("delete", "certificates", func(action k8stesting.Action) (bool, runtime.Object, error) {
 				live, err := dynamicClient.Tracker().Get(certManagerCertificatesResource, RadiusSystemNamespace, ucpAPIServerCASecretName)
 				if err != nil {
