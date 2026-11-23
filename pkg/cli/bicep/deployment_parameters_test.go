@@ -120,6 +120,20 @@ func Test_ParseParameters_File(t *testing.T) {
 	require.Equal(t, expected, parameters)
 }
 
+func TestDeploymentParametersRejectUnresolvedExternalInputs(t *testing.T) {
+	parser := ParameterParser{FileSystem: filesystem.NewMemMapFileSystem()}
+	for _, contents := range []string{
+		`{"parameters":{"password":{"expression":"[externalInputs('opaque')]"}}}`,
+		`{"parameters":{},"externalInputDefinitions":{"opaque":{"kind":"radius.secretKeyRef","config":{"name":"credentials","key":"password"}}}}`,
+		`{"parametersJson":"{\"parameters\":{\"password\":{\"expression\":\"[externalInputs('opaque')]\"}}}"}`,
+		`{"parametersJson":"{\"parameters\":{},\"externalInputDefinitions\":{\"opaque\":{\"kind\":\"radius.secretKeyRef\",\"config\":{\"name\":\"credentials\",\"key\":\"password\"}}}}"}`,
+	} {
+		require.NoError(t, parser.FileSystem.WriteFile("parameters.json", []byte(contents), 0600))
+		_, err := parser.Parse("@parameters.json")
+		require.ErrorContains(t, err, "generate-kubernetes-manifest")
+	}
+}
+
 func Test_ParseParameters_BicepParam(t *testing.T) {
 	t.Parallel()
 

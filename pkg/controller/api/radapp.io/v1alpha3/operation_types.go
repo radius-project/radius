@@ -23,6 +23,10 @@ type ResourceOperation struct {
 	// ResumeToken is a token that can be used to resume an in-progress provisioning operation.
 	ResumeToken string `json:"resumeToken,omitempty"`
 
+	// DeploymentID tracks reference-bound PUTs through value-free resource GETs,
+	// including recovery when the submission acknowledgement could not be saved.
+	DeploymentID string `json:"deploymentId,omitempty"`
+
 	// OperationKind describes the type of operation being performed.
 	OperationKind OperationKind `json:"operationKind,omitempty"`
 }
