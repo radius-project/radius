@@ -526,6 +526,33 @@ func TestInitialCertificateControllerFixtureRecovery(t *testing.T) {
 	}
 }
 
+func TestCompletedOperatorCertificateMetadataUpdate(t *testing.T) {
+	for _, mode := range []string{"caSecret", "issuerRef"} {
+		t.Run(mode, func(t *testing.T) {
+			b, _ := initialControllerFixture(t, mode, "external")
+			ctx := t.Context()
+			require.NoError(t, b.run(ctx))
+			if mode == "caSecret" {
+				secrets := b.store.kube.CoreV1().Secrets(b.store.namespace)
+				obj, err := secrets.Get(ctx, "operator-ca", metav1.GetOptions{})
+				require.NoError(t, err)
+				obj.Labels = map[string]string{"operator": "updated"}
+				_, err = secrets.Update(ctx, obj, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			} else {
+				issuers := b.store.dynamic.Resource(rotationIssuerResource).Namespace(b.store.namespace)
+				obj, err := issuers.Get(ctx, "operator-issuer", metav1.GetOptions{})
+				require.NoError(t, err)
+				obj.SetResourceVersion("2")
+				obj.SetLabels(map[string]string{"operator": "updated"})
+				_, err = issuers.Update(ctx, obj, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+			require.NoError(t, b.checkObservedMaterial(ctx))
+		})
+	}
+}
+
 func TestInitialCertificateRecoveryRejectsChangedMaterial(t *testing.T) {
 	for _, change := range []string{"source bytes", "source mode", "signer revision", "namespace UID", "journal unknown field"} {
 		t.Run(change, func(t *testing.T) {

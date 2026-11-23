@@ -31,11 +31,14 @@ import (
 
 func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
 	t.Parallel()
-	for _, raw := range []string{"", "unresolved-intent"} {
-		t.Run(raw, func(t *testing.T) {
+	for _, intent := range []struct{ key, value string }{
+		{bootstrapNamespaceIntent, ""}, {bootstrapNamespaceIntent, "unresolved-intent"},
+		{initialCertificateIntent, "unresolved-intent"},
+	} {
+		t.Run(intent.key+"/"+intent.value, func(t *testing.T) {
 			t.Parallel()
 			fixture := newCertificateChartFixture(t)
-			fixture.objects[0].SetAnnotations(map[string]string{bootstrapNamespaceIntent: raw})
+			fixture.objects[0].SetAnnotations(map[string]string{intent.key: intent.value})
 			selected, err := loader.Load("../../../deploy/Chart")
 			require.NoError(t, err)
 			server := fixture.server(t)

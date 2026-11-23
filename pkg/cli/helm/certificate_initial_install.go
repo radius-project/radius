@@ -486,8 +486,12 @@ func (b *initialCertificateInstaller) checkObservedMaterial(ctx context.Context)
 			return errors.New("bootstrap root resource identity, configuration or ownership changed")
 		}
 	}
+	phase := rotationPublish
+	if b.state.Phase == "complete" {
+		phase = rotationComplete
+	}
 	for _, pin := range b.state.Issuers {
-		if err := b.store.checkCertificateIssuerSnapshot(ctx, pin, rotationPublish); err != nil {
+		if err := b.store.checkCertificateIssuerSnapshot(ctx, pin, phase); err != nil {
 			return err
 		}
 	}
@@ -505,7 +509,7 @@ func (b *initialCertificateInstaller) checkObservedMaterial(ctx context.Context)
 		if _, err := validatePublicCA(anchor.CA, b.store.now()); err != nil {
 			return err
 		}
-		if err := b.store.checkCertificateSignerSnapshot(ctx, anchor.Signer, rotationPublish); err != nil {
+		if err := b.store.checkCertificateSignerSnapshot(ctx, anchor.Signer, phase); err != nil {
 			return err
 		}
 	}

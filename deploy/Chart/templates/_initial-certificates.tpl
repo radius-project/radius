@@ -5,6 +5,10 @@ not an override of a subsequent CA lifecycle.
 */}}
 {{- define "radius.initialCertificateGuard" -}}
 {{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-certificate-bootstrap" -}}
+{{- $namespace := lookup "v1" "Namespace" "" .Release.Namespace -}}
+{{- if and (not $journal) (hasKey (dig "metadata" "annotations" (dict) $namespace) "radius.io/certificate-bootstrap") -}}
+{{- fail "Initial certificate bootstrap intent without its journal: retry the matching rad install before applying the chart." -}}
+{{- end -}}
 {{- if $journal -}}
 {{- if or (empty $journal.metadata.uid) (empty $journal.metadata.resourceVersion)
     $journal.metadata.deletionTimestamp (not (empty $journal.metadata.ownerReferences))
@@ -28,7 +32,6 @@ not an override of a subsequent CA lifecycle.
 {{- if and (eq (int $state.version) 2) (or (ne $state.phase "complete") (ne $state.mode "selfSigned")) -}}
 {{- fail "Renewable bootstrap schema requires completed selfSigned state." -}}
 {{- end -}}
-{{- $namespace := lookup "v1" "Namespace" "" .Release.Namespace -}}
 {{- if or (empty $namespace) (ne $namespace.metadata.uid $state.namespaceUID) -}}
 {{- fail "Initial certificate namespace identity changed." -}}
 {{- end -}}
