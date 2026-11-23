@@ -47,6 +47,7 @@ type ServingCertificateTarget struct {
 	ServiceAccountUID  types.UID
 	CA                 []byte
 	DNSName            string
+	offServing         bool
 	SPIFFEID           string
 	Driver             string
 	DriverUID          types.UID
@@ -136,7 +137,14 @@ func ObserveServingCertificate(ctx context.Context, config *rest.Config, target 
 			return errors.New("aggregation server chain is unverified")
 		}
 		leaf := connection.PeerCertificates[0]
-		if len(leaf.DNSNames) != 1 || leaf.DNSNames[0] != target.DNSName ||
+		validDNS := slices.Equal(leaf.DNSNames, []string{target.DNSName})
+		if target.offServing && !validDNS {
+			names := slices.Clone(leaf.DNSNames)
+			slices.Sort(names)
+			validDNS = slices.Equal(names, []string{"ucp." + target.Namespace, target.DNSName,
+				target.DNSName + ".cluster", target.DNSName + ".cluster.local"})
+		}
+		if !validDNS ||
 			len(leaf.URIs) != 0 || len(leaf.IPAddresses) != 0 || len(leaf.EmailAddresses) != 0 {
 			return errors.New("aggregation serving certificate has an unexpected identity")
 		}

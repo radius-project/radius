@@ -153,7 +153,7 @@ func readAggregationServingInventoryFromSource(ctx context.Context, kube kuberne
 			TLSProofTarget: TLSProofTarget{Namespace: namespace, PodName: pod.Name, PodUID: pod.UID, ContainerName: "ucp", Port: uint16(port)},
 			WorkloadUID:    deployment.UID, WorkloadGeneration: deployment.Generation,
 			ServiceAccount: account.Name, ServiceAccountUID: account.UID,
-			CA: servingCA, DNSName: "ucp." + namespace + ".svc",
+			CA: servingCA, DNSName: "ucp." + namespace + ".svc", offServing: source.Name == ucpOffCertificateSecretName,
 		})
 	}
 	endpoints, err := kube.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{
