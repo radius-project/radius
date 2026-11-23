@@ -164,10 +164,32 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	}
 
 	output.LogInfo("Moving UCP to the certificate in Secret %s before authorization turns off...", ucpOffCertificateSecretName)
-	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, releaseName, radiusNamespace); err != nil {
+	overlap := unionCertificates(live, target)
+	for _, key := range ucpInjectAnnotations {
+		if _, injected := apiService.GetAnnotations()[key]; !injected {
+			continue
+		}
+		// A replacing injector writes the source verbatim. Make its desired
+		// bundle safe before changing either the serving Secret or the mount.
+		bundle, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, overlap)
+		if err != nil {
+			return err
+		}
+		source := radiusNamespace + "/" + ucpAPIServerTrustSecretName
+		annotations := map[string]any{injectCAFromSecretAnnotation: source,
+			"cert-manager.io/inject-ca-from": nil, "cert-manager.io/inject-apiserver-ca": nil}
+		if apiService.GetAnnotations()[injectCAFromSecretAnnotation] != source ||
+			apiService.GetAnnotations()["cert-manager.io/inject-ca-from"] != "" || apiService.GetAnnotations()["cert-manager.io/inject-apiserver-ca"] != "" {
+			if err := patchAppliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, apiService.GetUID(), annotations, bundle); err != nil {
+				return err
+			}
+		}
+		break
+	}
+	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), overlap); err != nil {
 		return err
 	}
-	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), unionCertificates(live, target)); err != nil {
+	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, releaseName, radiusNamespace); err != nil {
 		return err
 	}
 	if mounted != ucpOffCertificateSecretName {

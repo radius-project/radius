@@ -801,6 +801,18 @@ func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 	require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
 	require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
 	require.Equal(t, []string{"radius-apiserver-ca", "ucp-ca"}, apiServiceCABundle(t, c.dynamic), "the API server must trust both CAs while pods move")
+	// A non-merging cainjector reconciles again after the installer stops.
+	api, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	if ref := api.GetAnnotations()[injectCAFromSecretAnnotation]; ref != "" {
+		ns, name, _ := strings.Cut(ref, "/")
+		source, err := c.kube.CoreV1().Secrets(ns).Get(t.Context(), name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NoError(t, unstructured.SetNestedField(api.Object, base64.StdEncoding.EncodeToString(source.Data[caCertificateKey]), "spec", "caBundle"))
+		_, err = c.dynamic.Resource(apiServicesResource).Update(t.Context(), api, metav1.UpdateOptions{})
+		require.NoError(t, err)
+	}
+	c.requireTrusts(t, c.servedLeaf(t), "the Off leaf after a replacing injector reconciles")
 	deployed, err := u.helmClient.RunHelmGet(u.configuration, "radius")
 	require.NoError(t, err)
 	require.Equal(t, 1, deployed.Version, "rad must not call Helm")
