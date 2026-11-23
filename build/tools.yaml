@@ -146,7 +146,7 @@ tools:
 
   - name: helm
     makePrefix: HELM
-    version: v4.3.1
+    version: v4.3.2
     source:
       type: github-release
       repository: helm/helm
@@ -155,16 +155,16 @@ tools:
     platforms:
       linux_amd64:
         asset: helm-{version}-linux-amd64.tar.gz
-        checksum: 0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
+        checksum: d1c0278d46beab79582d7e50f5b3dc206944ba8e577cde618513fd07daa53983
       linux_arm64:
         asset: helm-{version}-linux-arm64.tar.gz
-        checksum: 8cf8f66ecbc252ac8f7f06cca68aba88508ddfde3a6a34feb1678ad1694b4f88
+        checksum: df31cb61680ef728f82c770e5280dd565617bee6b039d37e85c677288be4bbb0
       darwin_amd64:
         asset: helm-{version}-darwin-amd64.tar.gz
-        checksum: 34bec4eba761ba5c16d1965ee6b8f5b0abe5993974a802274e2a4f0418893d89
+        checksum: 9e0068e9ae18c441d27388190ee7f53ae65eba44bfe910b40bdac44c4b51fa71
       darwin_arm64:
         asset: helm-{version}-darwin-arm64.tar.gz
-        checksum: 6b4e61c8cd27d99e5a801e63ff25dd5c70b36875c2cd659d3e9ce6b76fc23198
+        checksum: 6f3421de3a8cc2ac578c8cfb33b8edde290dde2871bc1bab12e24f2e5caeaa90
     checksumSource:
       type: url-file
       urlTemplate: https://get.helm.sh/{asset}.sha256sum
@@ -300,7 +300,7 @@ tools:
 
   - name: terraform
     makePrefix: TERRAFORM
-    version: 1.17.1
+    version: 1.17.2
     source:
       type: hashicorp-checkpoint
       repository: hashicorp/terraform
@@ -309,16 +309,16 @@ tools:
     platforms:
       linux_amd64:
         asset: terraform_{version}_linux_amd64.zip
-        checksum: 4638628058e71a55212b1c563712eac03b902128f40740f3dc8174df12135061
+        checksum: e6f16b2f0b137ee5729caa8c4e79a3bae4ee261acd198a1fcfa8584a6296605b
       linux_arm64:
         asset: terraform_{version}_linux_arm64.zip
-        checksum: 988e950a1c23058093b0e66ab2d5fb53fc18345ecfbd5871acf51dbac9325edd
+        checksum: 858e08c181a76b6b223e8c767a8e983922eebe2d062db949a2de66ce040c368c
       darwin_amd64:
         asset: terraform_{version}_darwin_amd64.zip
-        checksum: fde92387cf9c0de74255003c85291f8fbede54585c10d0635ca7a43633d4d171
+        checksum: 66b472dcc36cf770d83757ed4d002c476174842c05c68637b40a7e99519cf3e1
       darwin_arm64:
         asset: terraform_{version}_darwin_arm64.zip
-        checksum: b1ecb3fe0d0a0290c1ab6f83d967d43f25da05d0b671ee0fb355252268dce95a
+        checksum: da0c7ef278a911347862758e7573a5907365e66485c2637cf5c217c5e227992e
     checksumSource:
       type: url-file
       urlTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS

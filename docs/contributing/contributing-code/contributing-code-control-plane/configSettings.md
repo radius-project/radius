@@ -149,6 +149,8 @@ UCP requests a TLS client certificate and independently validates its chain, val
 
 Identity assertions in request trailers are never accepted. An announced `X-Remote-*` trailer is rejected with HTTP 401 `InvalidAuthenticationInfo` before body consumption or proxying, including HTTP/1.1 chunked and HTTP/2 requests from verified peers in every mode. Trailer names are checked case-insensitively; they are never used to authenticate a caller. Unrelated trailers remain supported.
 
+Both trust loaders require at least one valid X.509 `CERTIFICATE` PEM block, no PEM headers, and only whitespace outside the blocks. Each closing `-----END CERTIFICATE-----` delimiter must end its line, so adjacent blocks on one line are rejected. Each `-----BEGIN CERTIFICATE-----` line must start at the beginning of its line; an indented block is rejected because Go's certificate pool would ignore it. Multiple valid certificates are supported for rotation. A malformed block, a different block type, or other data rejects the entire bundle even if another certificate is valid.
+
 Trust is a startup snapshot. **Restart every UCP replica after rotating the CA bundle or changing allowed names or issuer.** A ConfigMap or projected file update alone does not replace the active trust snapshot. Invalid trust configuration or configured authentication without server TLS fails startup. This slice establishes identity only; it does not add policy endpoints, authorization enforcement, or internal component TLS.
 
 ### 3. Configure supported environment overrides
