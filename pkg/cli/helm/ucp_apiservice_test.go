@@ -29,6 +29,7 @@ import (
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -236,19 +237,20 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 func Test_waitForInstalledUCPAPIService_FreshOffSkipsStageCleanup(t *testing.T) {
 	for _, version := range []int{1, 2} {
 		t.Run(fmt.Sprintf("revision=%d", version), func(t *testing.T) {
-			client := ucpAPIServiceDynamicClient(ucpAPIService("", "", "")).(*dynamicfake.FakeDynamicClient)
+			cluster := newStageCluster(t, nil, false)
+			_, err := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(),
+				tlsSecret(ucpOffCertificateSecretName, issueUCPCertificate(t, cluster.ucpCA), cluster.ucpCA.pem), metav1.CreateOptions{})
+			require.NoError(t, err)
+			client := cluster.dynamic
 			for _, resource := range []string{"issuers", "certificates"} {
 				client.PrependReactor("*", resource, func(action k8stesting.Action) (bool, runtime.Object, error) {
 					return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("not allowed"))
 				})
 			}
-			impl := &Impl{
-				newUCPAPIServerTrustClient:  uninstallTrustClient,
-				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return client, nil },
-			}
+			impl := cluster.impl(nil)
 			applied := &releasev1.Release{Version: version, Manifest: "apiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n"}
 
-			err := impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil)
+			err = impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil)
 			if version == 1 {
 				require.NoError(t, err)
 			} else {

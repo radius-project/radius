@@ -447,6 +447,7 @@ func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
 			newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
 		}
 
+		setupUninstallStore(t, impl)
 		leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), NewDefaultClusterOptions(), "test-context")
 		require.NoError(t, err)
 		require.Empty(t, leftovers)
@@ -494,7 +495,7 @@ func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
 				_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), secret, metav1.CreateOptions{})
 				require.NoError(t, err)
 			case "Certificate":
-				certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, nil)
+				certificate := cert.DeepCopy()
 				certificate.SetResourceVersion("2")
 				require.NoError(t, unstructured.SetNestedField(certificate.Object, int64(2), "status", "revision"))
 				require.NoError(t, dynamicClient.Tracker().Update(certManagerCertificatesResource, certificate, RadiusSystemNamespace))
@@ -502,7 +503,7 @@ func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
 			require.NoError(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), "test-context", leftovers))
 			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), late.Name, metav1.GetOptions{})
 			require.NoError(t, err, "a newly eligible object was not confirmed")
-			require.False(t, stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
+			require.Equal(t, changed == "Certificate", stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
 			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
 			require.Equal(t, changed != "", err == nil, "changed Secret or Secret behind a changed Certificate kept: %v", err)
 		})
