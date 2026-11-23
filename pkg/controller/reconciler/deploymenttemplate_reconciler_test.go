@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
@@ -972,4 +974,395 @@ func Test_DeploymentTemplateReconciler_SelfContainingNamespaceCleanup(t *testing
 	require.NoError(t, f.client.Get(t.Context(), types.NamespacedName{Name: "test"}, ns))
 	require.NotNil(t, ns.DeletionTimestamp, "template must not wait for its own namespace content deletion")
 	require.Empty(t, f.deployments.DeletedResourceIDs())
+}
+
+type sourceTestDeployments struct {
+	sdkclients.ResourceDeploymentsClient
+	creates int
+	deletes int
+}
+
+func (c *sourceTestDeployments) CreateOrUpdate(ctx context.Context, deployment sdkclients.Deployment, id, version string) (sdkclients.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
+	c.creates++
+	return c.ResourceDeploymentsClient.CreateOrUpdate(ctx, deployment, id, version)
+}
+
+func (c *sourceTestDeployments) Delete(ctx context.Context, id, version string) (sdkclients.Poller[sdkclients.ClientDeleteResponse], error) {
+	c.deletes++
+	return c.ResourceDeploymentsClient.Delete(ctx, id, version)
+}
+
+type sourceTestRadius struct {
+	RadiusClient
+	groupCalls int
+}
+
+func (c *sourceTestRadius) Groups(scope string) ResourceGroupClient {
+	c.groupCalls++
+	return c.RadiusClient.Groups(scope)
+}
+
+func selectedSourcePolicy(t *testing.T, c k8sclient.Reader, source *sourcev1.GitRepository) *FluxSourcePolicy {
+	t.Helper()
+	policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{Enabled: true, Sources: []hostoptions.FluxSourceSelection{{
+		Namespace: source.Namespace, Name: source.Name, UID: string(source.UID),
+	}}}, c)
+	require.NoError(t, err)
+	return policy
+}
+
+// sourceManagedTemplate returns an adopted, idle template generated from source.
+func sourceManagedTemplate(t *testing.T, source *sourcev1.GitRepository) *radappiov1alpha3.DeploymentTemplate {
+	t.Helper()
+	provider, err := sdkclients.NewDefaultProviderConfig("selected").String()
+	require.NoError(t, err)
+	return &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{Name: "application", Namespace: "target", UID: "template", Finalizers: []string{DeploymentTemplateFinalizer}},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template: `{"resources":[]}`, ProviderConfig: provider, Repository: source.Name, SourceRef: sourceReference(source),
+		},
+		Status: radappiov1alpha3.DeploymentTemplateStatus{
+			Phrase:      radappiov1alpha3.DeploymentTemplatePhraseReady,
+			Coordinator: &radappiov1alpha3.DeploymentCoordinatorStatus{Phase: coordinatorIdle},
+		},
+	}
+}
+
+func newSourceTestClient(t *testing.T, objects ...k8sclient.Object) *fluxWriteCounter {
+	t.Helper()
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion})
+	mapper.Add(corev1.SchemeGroupVersion.WithKind("ConfigMap"), meta.RESTScopeNamespace)
+	mapper.Add(corev1.SchemeGroupVersion.WithKind("Namespace"), meta.RESTScopeRoot)
+	objects = append(objects, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "target"}})
+	return &fluxWriteCounter{Client: fake.NewClientBuilder().WithScheme(newFluxPolicyTestScheme(t)).WithRESTMapper(mapper).
+		WithStatusSubresource(&radappiov1alpha3.DeploymentTemplate{}, &radappiov1alpha3.DeploymentResource{}).
+		WithObjects(objects...).Build()}
+}
+
+func Test_DeploymentTemplateReconciler_SourceState(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name      string
+		enabled   bool
+		unadopted bool
+		change    func(*radappiov1alpha3.DeploymentTemplate, *sourcev1.GitRepository)
+		reason    string
+	}{
+		{name: "selected", enabled: true},
+		{name: "disabled", reason: "SourceNotSelected"},
+		{name: "legacy", change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) { dt.Spec.SourceRef = nil }, reason: "TemplateSourceRequired"},
+		{name: "unadopted legacy", unadopted: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.SourceRef = nil
+		}, reason: "TemplateSourceRequired"},
+		{name: "stale generation", enabled: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.SourceRef.Generation++
+		}, reason: "SourceIdentityChanged"},
+		{name: "suspended", enabled: true, change: func(_ *radappiov1alpha3.DeploymentTemplate, s *sourcev1.GitRepository) { s.Spec.Suspend = true }, reason: "SourceNotReady"},
+		{name: "inconsistent", enabled: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.Repository = "different"
+		}, reason: "TemplateSourceRequired"},
+		{name: "unsupported kind", enabled: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.SourceRef.Kind = "OCIRepository"
+		}, reason: "TemplateSourceRequired"},
+		{name: "omitted kind", enabled: true, change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.SourceRef.Kind = ""
+		}},
+		{name: "trusted direct", change: func(dt *radappiov1alpha3.DeploymentTemplate, _ *sourcev1.GitRepository) {
+			dt.Spec.Repository = ""
+			dt.Spec.SourceRef = nil
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			source := readyFluxSource()
+			dt := sourceManagedTemplate(t, source)
+			dt.Spec.Parameters = map[string]string{"secret": "never-log-this-value"}
+			if tt.unadopted {
+				dt.Finalizers, dt.Status = nil, radappiov1alpha3.DeploymentTemplateStatus{}
+			}
+			if tt.change != nil {
+				tt.change(dt, source)
+			}
+			c := newSourceTestClient(t, source, dt)
+			backend := &sourceTestDeployments{ResourceDeploymentsClient: sdkclients.NewMockResourceDeploymentsClient()}
+			radius := &sourceTestRadius{RadiusClient: NewMockRadiusClient()}
+			events := record.NewFakeRecorder(10)
+			retryDelay := 43 * time.Second
+			r := &DeploymentTemplateReconciler{Client: c, Scheme: newFluxPolicyTestScheme(t), EventRecorder: events, Radius: radius,
+				ResourceDeploymentsClient: backend, DeleteRetryInterval: retryDelay}
+			if tt.enabled {
+				r.SourcePolicy = selectedSourcePolicy(t, c, source)
+			}
+			request := ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(dt)}
+			result, err := r.Reconcile(t.Context(), request)
+			require.NoError(t, err)
+			require.Positive(t, result.RequeueAfter)
+			var got radappiov1alpha3.DeploymentTemplate
+			require.NoError(t, c.Get(t.Context(), request.NamespacedName, &got))
+			require.Equal(t, dt.Spec, got.Spec)
+			require.Equal(t, dt.Finalizers, got.Finalizers)
+			if tt.reason == "" {
+				require.Equal(t, 1, backend.creates)
+				require.Positive(t, radius.groupCalls)
+				require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseUpdating, got.Status.Phrase)
+				require.Equal(t, coordinatorPutRunning, got.Status.Coordinator.Phase)
+				require.NotEmpty(t, got.Status.Coordinator.SubmittedHash)
+				return
+			}
+			require.Equal(t, retryDelay, result.RequeueAfter)
+			require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseHeld, got.Status.Phrase)
+			require.Equal(t, dt.Status.Coordinator, got.Status.Coordinator, "a hold must not change lifecycle state")
+			require.Zero(t, backend.creates)
+			require.Zero(t, backend.deletes)
+			require.Zero(t, radius.groupCalls)
+			require.Zero(t, c.creates)
+			require.Zero(t, c.updates, "a held template must not be adopted or changed")
+			require.Zero(t, c.deletes)
+			select {
+			case event := <-events.Events:
+				require.Contains(t, event, tt.reason)
+				require.NotContains(t, event, "never-log-this-value")
+			default:
+				t.Fatal("missing hold diagnostic")
+			}
+			updated := &radappiov1alpha3.DeploymentTemplate{}
+			require.NoError(t, c.Get(t.Context(), request.NamespacedName, updated))
+			updated.Spec.SourceRef = nil
+			require.NoError(t, c.Update(t.Context(), updated))
+			result, err = r.Reconcile(t.Context(), request)
+			require.NoError(t, err)
+			require.Equal(t, retryDelay, result.RequeueAfter)
+			select {
+			case event := <-events.Events:
+				require.Contains(t, event, "TemplateSourceRequired", "a repeated hold must refresh its current reason")
+			default:
+				t.Fatal("missing updated hold diagnostic")
+			}
+		})
+	}
+}
+
+func Test_DeploymentTemplateReconciler_HoldRecordsAcceptedOperation(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	dt := sourceManagedTemplate(t, source)
+	submittedHash, err := computeHash(dt)
+	require.NoError(t, err)
+	mock := sdkclients.NewMockResourceDeploymentsClient()
+	deploymentID := "/planes/radius/local/resourceGroups/selected/providers/Microsoft.Resources/deployments/accepted"
+	poller, err := mock.CreateOrUpdate(t.Context(), sdkclients.Deployment{}, deploymentID, "test")
+	require.NoError(t, err)
+	token, err := poller.ResumeToken()
+	require.NoError(t, err)
+	outputID := "/planes/radius/local/resourceGroups/selected/providers/Applications.Core/containers/output"
+	mock.CompleteOperation(token, func(state *sdkclients.OperationState) {
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+			OutputResources: []*armdeployments.ResourceReference{{ID: new(outputID)}},
+		}}
+	})
+	dt.Status.Operation = &radappiov1alpha3.ResourceOperation{OperationKind: radappiov1alpha3.OperationKindPut, ResumeToken: token}
+	dt.Status.Coordinator = &radappiov1alpha3.DeploymentCoordinatorStatus{Phase: coordinatorPutRunning, ResourceID: deploymentID, SubmittedHash: submittedHash}
+	dt.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
+	c := newSourceTestClient(t, source, dt)
+	backend := &sourceTestDeployments{ResourceDeploymentsClient: mock}
+	r := &DeploymentTemplateReconciler{Client: c, Scheme: newFluxPolicyTestScheme(t), EventRecorder: record.NewFakeRecorder(10),
+		Radius: NewMockRadiusClient(), ResourceDeploymentsClient: backend}
+	request := ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(dt)}
+	for range 3 {
+		_, err = r.Reconcile(t.Context(), request)
+		require.NoError(t, err)
+	}
+	var held radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &held))
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseHeld, held.Status.Phrase)
+	require.Nil(t, held.Status.Operation, "a hold must not discard an accepted operation's outcome")
+	require.Equal(t, submittedHash, held.Status.StatusHash)
+	require.Equal(t, []radappiov1alpha3.DeploymentOutputStatus{{ID: outputID, State: outputCurrent}}, held.Status.Coordinator.Outputs)
+	require.Zero(t, c.creates, "a held template must not project trackers")
+	require.Zero(t, c.deletes)
+	require.Zero(t, backend.creates)
+	require.Zero(t, backend.deletes)
+
+	r.SourcePolicy = selectedSourcePolicy(t, c, source)
+	for range 3 {
+		_, err = r.Reconcile(t.Context(), request)
+		require.NoError(t, err)
+	}
+	var resumed radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &resumed))
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, resumed.Status.Phrase)
+	require.Equal(t, 1, c.creates, "an active source projects the recorded output")
+	require.Zero(t, backend.creates, "an unchanged template must not redeploy")
+	name, err := generateDeploymentResourceName(outputID)
+	require.NoError(t, err)
+	tracker := &radappiov1alpha3.DeploymentResource{}
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKey{Namespace: dt.Namespace, Name: name}, tracker))
+	require.Equal(t, outputID, tracker.Status.ProvisionedResourceID)
+}
+
+func Test_DeploymentTemplateReconciler_HoldDeletion(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	outputID := "/planes/radius/local/resourceGroups/selected/providers/Applications.Core/containers/output"
+	owner := sourceManagedTemplate(t, source)
+	owner.DeletionTimestamp = new(metav1.Now())
+	owner.Status.OutputResources = []string{outputID}
+	owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: outputID, State: outputCurrent}}
+	child := &radappiov1alpha3.DeploymentResource{
+		ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: owner.Namespace, UID: "output", Finalizers: []string{DeploymentResourceFinalizer},
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind,
+				Name: owner.Name, UID: owner.UID, Controller: new(true)}}},
+		Spec:   radappiov1alpha3.DeploymentResourceSpec{Id: outputID},
+		Status: radappiov1alpha3.DeploymentResourceStatus{ProvisionedResourceID: outputID},
+	}
+	c := newSourceTestClient(t, source, owner, child)
+	backend := &sourceTestDeployments{ResourceDeploymentsClient: sdkclients.NewMockResourceDeploymentsClient()}
+	r := &DeploymentTemplateReconciler{Client: c, EventRecorder: record.NewFakeRecorder(5), ResourceDeploymentsClient: backend}
+	_, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(owner)})
+	require.NoError(t, err)
+	require.Zero(t, c.deletes)
+	require.Zero(t, c.updates)
+	require.Zero(t, backend.deletes)
+	var got radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(owner), &got))
+	require.Equal(t, owner.Finalizers, got.Finalizers)
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseHeld, got.Status.Phrase)
+	require.Equal(t, owner.Status.Coordinator, got.Status.Coordinator, "held cleanup must not change lifecycle state")
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(child), child))
+	require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+}
+
+func Test_DeploymentTemplateReconciler_HoldRunningKubernetesDelete(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	outputID := "/planes/kubernetes/local/namespaces/target/providers/core/ConfigMap/output"
+	owner := sourceManagedTemplate(t, source)
+	owner.Status.Coordinator = &radappiov1alpha3.DeploymentCoordinatorStatus{
+		Phase: coordinatorDeleteRunning, ResourceID: outputID, RetryAfter: &metav1.Time{Time: time.Now().Add(-time.Minute)},
+		Outputs: []radappiov1alpha3.DeploymentOutputStatus{{ID: outputID, State: outputPendingDelete}},
+	}
+	output := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: owner.Namespace}}
+	c := newSourceTestClient(t, source, owner, output)
+	r := &DeploymentTemplateReconciler{Client: c, Scheme: newFluxPolicyTestScheme(t), EventRecorder: record.NewFakeRecorder(5)}
+	request := ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(owner)}
+	_, err := r.Reconcile(t.Context(), request)
+	require.NoError(t, err)
+	var held radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &held))
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseHeld, held.Status.Phrase)
+	require.Equal(t, coordinatorDeleteRunning, held.Status.Coordinator.Phase)
+	require.Equal(t, owner.Status.Coordinator.Outputs, held.Status.Coordinator.Outputs)
+	require.Zero(t, c.deletes, "a running Kubernetes delete must not be reissued while held")
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(output), output))
+
+	r.SourcePolicy = selectedSourcePolicy(t, c, source)
+	_, err = r.Reconcile(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, 1, c.deletes)
+	require.True(t, apierrors.IsNotFound(c.Get(t.Context(), k8sclient.ObjectKeyFromObject(output), output)))
+}
+
+func Test_DeploymentTemplateReconciler_HoldCompletedDelete(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	outputID := "/planes/radius/local/resourceGroups/selected/providers/Applications.Core/containers/output"
+	owner := sourceManagedTemplate(t, source)
+	owner.Status.OutputResources = []string{outputID}
+	owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: outputID, State: outputPendingDelete}}
+	mock := sdkclients.NewMockResourceDeploymentsClient()
+	poller, err := mock.Delete(t.Context(), outputID, "test")
+	require.NoError(t, err)
+	token, err := poller.ResumeToken()
+	require.NoError(t, err)
+	mock.CompleteOperation(token, nil)
+	owner.Status.Operation = &radappiov1alpha3.ResourceOperation{OperationKind: radappiov1alpha3.OperationKindDelete, ResumeToken: token}
+	owner.Status.Coordinator.Phase = coordinatorDeleteRunning
+	owner.Status.Coordinator.ResourceID = outputID
+	child := &radappiov1alpha3.DeploymentResource{
+		ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: owner.Namespace, UID: "output", Finalizers: []string{DeploymentResourceFinalizer},
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind,
+				Name: owner.Name, UID: owner.UID, Controller: new(true)}}},
+		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: outputID},
+		Status: radappiov1alpha3.DeploymentResourceStatus{
+			Phrase: radappiov1alpha3.DeploymentResourcePhraseDeleting, ProvisionedResourceID: outputID,
+			Operation: owner.Status.Operation.DeepCopy(),
+		},
+	}
+	c := newSourceTestClient(t, source, owner, child)
+	policy, err := NewFluxSourcePolicy(hostoptions.FluxOptions{}, c)
+	require.NoError(t, err)
+	backend := &sourceTestDeployments{ResourceDeploymentsClient: mock}
+	r := &DeploymentTemplateReconciler{Client: c, Scheme: newFluxPolicyTestScheme(t), EventRecorder: record.NewFakeRecorder(5),
+		ResourceDeploymentsClient: backend, SourcePolicy: policy}
+	request := ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(owner)}
+
+	_, err = r.Reconcile(t.Context(), request)
+	require.NoError(t, err)
+	var completed radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &completed))
+	require.Nil(t, completed.Status.Operation)
+	require.Equal(t, coordinatorIdle, completed.Status.Coordinator.Phase)
+	require.Empty(t, completed.Status.Coordinator.Outputs, "the accepted delete outcome must be durable")
+	var tracker radappiov1alpha3.DeploymentResource
+	trackerKey := k8sclient.ObjectKeyFromObject(child)
+	require.NoError(t, c.Get(t.Context(), trackerKey, &tracker))
+	require.Equal(t, radappiov1alpha3.DeploymentResourcePhraseDeleted, tracker.Status.Phrase)
+	require.Nil(t, tracker.Status.Operation)
+	require.Contains(t, tracker.Finalizers, DeploymentResourceFinalizer, "tracker retirement is a source-authorized effect")
+
+	_, err = r.Reconcile(t.Context(), request)
+	require.NoError(t, err)
+	var held radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &held))
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseHeld, held.Status.Phrase)
+	require.NoError(t, c.Get(t.Context(), trackerKey, &tracker))
+	require.Contains(t, tracker.Finalizers, DeploymentResourceFinalizer)
+	require.Zero(t, c.deletes)
+
+	r.SourcePolicy = selectedSourcePolicy(t, c, source)
+	_, err = r.Reconcile(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, 1, c.deletes, "the authorized idle pass retires the completed tracker")
+	err = c.Get(t.Context(), trackerKey, &tracker)
+	require.True(t, apierrors.IsNotFound(err))
+	require.Zero(t, backend.deletes, "a completed backend delete must not be issued again")
+}
+
+func Test_DeploymentTemplateReconciler_AttributionOnlyChange(t *testing.T) {
+	t.Parallel()
+	dt := &radappiov1alpha3.DeploymentTemplate{
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{Template: "{}", Repository: "apps"},
+	}
+	hash, err := computeHash(dt)
+	require.NoError(t, err)
+	dt.Status.StatusHash = hash
+	dt.Spec.SourceRef = sourceReference(readyFluxSource())
+	require.True(t, isUpToDate(dt), "associating an unchanged legacy template must not redeploy it")
+	dt.Spec.SourceRef.Revision, dt.Spec.SourceRef.Digest = "new revision", "new digest"
+	require.True(t, isUpToDate(dt), "new artifact attribution alone must not redeploy")
+	dt.Spec.Template = `{"resources":[]}`
+	require.False(t, isUpToDate(dt))
+}
+
+func Test_DeploymentTemplateReconciler_AttributionOnlyGeneration(t *testing.T) {
+	t.Parallel()
+	source := readyFluxSource()
+	dt := sourceManagedTemplate(t, source)
+	hash, err := computeHash(dt)
+	require.NoError(t, err)
+	dt.Generation, dt.Status.ObservedGeneration, dt.Status.StatusHash = 2, 1, hash
+	c := newSourceTestClient(t, source, dt)
+	backend := &sourceTestDeployments{ResourceDeploymentsClient: sdkclients.NewMockResourceDeploymentsClient()}
+	r := &DeploymentTemplateReconciler{Client: c, Scheme: newFluxPolicyTestScheme(t), EventRecorder: record.NewFakeRecorder(5),
+		Radius: NewMockRadiusClient(), ResourceDeploymentsClient: backend, SourcePolicy: selectedSourcePolicy(t, c, source)}
+	request := ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(dt)}
+	for range 2 {
+		_, err = r.Reconcile(t.Context(), request)
+		require.NoError(t, err)
+	}
+	var got radappiov1alpha3.DeploymentTemplate
+	require.NoError(t, c.Get(t.Context(), request.NamespacedName, &got))
+	require.Zero(t, backend.creates, "an attribution-only change must not redeploy")
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, got.Status.Phrase)
+	require.Equal(t, got.Generation, got.Status.ObservedGeneration, "a settled template must observe its current generation")
 }

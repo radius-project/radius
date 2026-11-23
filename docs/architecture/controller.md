@@ -42,7 +42,15 @@ The controller owns Kubernetes reconciliation for template deployment and Flux G
 The root command builds shared host options, creates the logger, and starts a
 single `controller.Service` through shared hosting.
 
-Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler`, `DeploymentResourceReconciler`, and `FluxController`. The template reconciler is the sole dispatcher of deployment and output deletion requests. The resource reconciler maintains passive inventory objects; it cannot call the deployment client.
+Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler` and `DeploymentResourceReconciler`. `FluxController` is registered only when `controller.flux.enabled` is true and explicit source identities are selected. The template reconciler is the sole dispatcher of deployment and output deletion requests. The resource reconciler maintains passive inventory objects; it cannot call the deployment client.
+
+[FluxSourcePolicy](../../pkg/controller/reconciler/flux_source_policy.go) copies startup settings and uses the uncached API reader to check source identity and current-generation readiness. Flux preflights all resolved targets before compilation or target mutation, stores Flux-style `kind` (`GitRepository`), namespace/name/UID/generation, and artifact attribution in `spec.sourceRef`, and uses complete source identity plus target namespace/name for update and pruning. `spec.repository` is still written for compatibility and must match `spec.sourceRef.name`; alone it is legacy attribution, not a source-selection decision.
+
+Preflight holds a same-template namespace move that retains its old deployment scope until the previous target and its cleanup are gone. When a current-generation source removes a target, pruning starts deletion before refreshing that target's source attribution. Preflight also refreshes cleanup attribution for an already-terminating, same-source target that is still configured, while keeping it held against updates. This permits current-generation cleanup after suspension without authorizing the obsolete content for a new deployment.
+
+The template reconciler applies the same policy before adopting a template and before each planning pass, and rechecks it immediately before dispatching a PUT or output DELETE, including a reissued Kubernetes DELETE. A source hold therefore defers deployments, resource-group creation, output cleanup, tracker projection and retirement, and finalizer removal. It retains finalizers and lifecycle state, reports `Held`, emits a warning event, and requeues at a bounded interval. Polling previously accepted work does not cancel it: a completed PUT or DELETE still records its outcome in the template's output inventory, and follow-on effects wait for a valid source. Source attribution is excluded from the spec hash, so an attribution-only change does not redeploy unchanged content; the settled template still observes its new generation. Passive trackers dispatch nothing and need no source checks.
+
+Direct templates with no source attribution retain the installation-trusted Kubernetes-writer workflow. Operators must protect writes to source inputs and deployment CRDs; this policy is not a tenant execution sandbox. The [chart guide](../../deploy/Chart/README.md#flux-source-selection) documents the opt-in, non-overlapping restart, legacy association, and recovery contract.
 
 Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
@@ -214,11 +222,13 @@ sequenceDiagram
     Rec->>Status: update phase, outputs, operation state
     Rec->>Out: project committed inventory into passive trackers
   else update path
+    Rec->>K8S: check selected source, or hold as Held
     Rec->>Status: persist PUT intent, target, submitted hash
     Rec->>Deploy: create deployment if desired state changed
     Deploy-->>Rec: poller + resume token
     Rec->>Status: mark Updating and store token
   else delete path
+    Rec->>K8S: check selected source, or hold as Held
     Rec->>Status: persist DELETE intent and output target
     Rec->>Deploy: delete scoped Radius output (Kubernetes outputs use Kubernetes API)
     Deploy-->>Rec: completion or resume token

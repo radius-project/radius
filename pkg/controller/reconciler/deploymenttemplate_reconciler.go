@@ -75,16 +75,53 @@ type DeploymentTemplateReconciler struct {
 	ResourceDeploymentsClient sdkclients.ResourceDeploymentsClient
 	DelayInterval             time.Duration
 	DeleteRetryInterval       time.Duration
+
+	// SourcePolicy selects the sources that may drive generated templates.
+	SourcePolicy *FluxSourcePolicy
 }
 
 // Reconcile advances one durable lifecycle transition for the template.
+// A source hold pauses new effects, including cleanup, without changing durable lifecycle state.
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	result, err := r.reconcileTemplate(ctx, req)
+	var hold *sourceHold
+	if errors.As(err, &hold) {
+		return r.holdTemplate(ctx, req, hold)
+	}
+	return result, err
+}
+
+// holdTemplate reports a hold from the latest persisted template, so partially
+// planned in-memory lifecycle changes are never saved with the Held phrase.
+func (r *DeploymentTemplateReconciler) holdTemplate(ctx context.Context, req ctrl.Request, hold *sourceHold) (ctrl.Result, error) {
+	owner := &radappiov1alpha3.DeploymentTemplate{}
+	if err := r.reader().Get(ctx, req.NamespacedName, owner); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if owner.Status.Phrase != radappiov1alpha3.DeploymentTemplatePhraseHeld {
+		owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseHeld
+		if err := r.Client.Status().Update(ctx, owner); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	result := reportSourceHold(ctx, owner, r.EventRecorder, hold)
+	result.RequeueAfter = r.deleteRetryDelay()
+	return result, nil
+}
+
+func (r *DeploymentTemplateReconciler) reconcileTemplate(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	owner := &radappiov1alpha3.DeploymentTemplate{}
 	if err := r.reader().Get(ctx, req.NamespacedName, owner); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	if owner.DeletionTimestamp != nil && !controllerutil.ContainsFinalizer(owner, DeploymentTemplateFinalizer) {
 		return ctrl.Result{}, nil
+	}
+	if !controllerutil.ContainsFinalizer(owner, DeploymentTemplateFinalizer) {
+		// Do not adopt a template whose source cannot drive effects.
+		if err := r.SourcePolicy.checkTemplate(ctx, owner); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	if controllerutil.AddFinalizer(owner, DeploymentTemplateFinalizer) {
 		if err := r.Client.Update(ctx, owner); err != nil {
@@ -179,6 +216,11 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 		return r.saveAndRequeue(ctx, owner)
 	}
+	// Accepted operations above may finish and record their outcomes. Hold every new
+	// effect, including cleanup and tracker retirement, until the source is active.
+	if err := r.SourcePolicy.checkTemplate(ctx, owner); err != nil {
+		return ctrl.Result{}, err
+	}
 	if owner.DeletionTimestamp == nil {
 		namespace := &corev1.Namespace{}
 		if err := r.reader().Get(ctx, client.ObjectKey{Name: owner.Namespace}, namespace); err != nil {
@@ -264,9 +306,10 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 	}
 	// isUpToDate replaces a legacy status hash with the current hash. Saving it completes the SHA-256 migration of the
-	// template without a deployment.
-	if owner.Status.Phrase != phrase || owner.Status.StatusHash != stored {
+	// template without a deployment. Attribution-only spec edits change the generation without requiring a PUT.
+	if owner.Status.Phrase != phrase || owner.Status.StatusHash != stored || owner.Status.ObservedGeneration != owner.Generation {
 		owner.Status.Phrase = phrase
+		owner.Status.ObservedGeneration = owner.Generation
 		return r.saveAndRequeue(ctx, owner)
 	}
 	return ctrl.Result{}, nil
@@ -338,6 +381,10 @@ func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *r
 	}
 	hash, err := computeHash(owner)
 	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// An accepted PUT cannot be withdrawn; recheck the source after the resource group call.
+	if err := r.SourcePolicy.checkTemplate(ctx, owner); err != nil {
 		return ctrl.Result{}, err
 	}
 	state := owner.Status.Coordinator
@@ -487,6 +534,10 @@ func (r *DeploymentTemplateReconciler) completePut(ctx context.Context, owner *r
 }
 
 func (r *DeploymentTemplateReconciler) dispatchDelete(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, outputID string) (ctrl.Result, error) {
+	// Kubernetes deletes are reissued while running, so check before every dispatch.
+	if err := r.SourcePolicy.checkTemplate(ctx, owner); err != nil {
+		return ctrl.Result{}, err
+	}
 	id, err := resources.ParseResource(outputID)
 	if err != nil {
 		return r.blockCoordinator(ctx, owner, err.Error())
@@ -645,9 +696,6 @@ func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context,
 				state.Phase, state.ResourceID = coordinatorIdle, ""
 				owner.Status.StatusHash = ""
 				return r.saveAndRequeue(ctx, owner)
-			}
-			if err := r.retireTracker(ctx, &children[i]); err != nil {
-				return ctrl.Result{}, err
 			}
 		}
 	}
@@ -889,7 +937,7 @@ func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1al
 }
 
 func computeHash(owner *radappiov1alpha3.DeploymentTemplate) (string, error) {
-	data, err := json.Marshal(owner.Spec)
+	data, err := templateHashInput(owner)
 	if err != nil {
 		return "", err
 	}
@@ -905,7 +953,7 @@ func computeHash(owner *radappiov1alpha3.DeploymentTemplate) (string, error) {
 // Reconcile saves, so every DeploymentTemplate the controller reconciles is migrated
 // without a deployment.
 func isUpToDate(owner *radappiov1alpha3.DeploymentTemplate) bool {
-	data, err := json.Marshal(owner.Spec)
+	data, err := templateHashInput(owner)
 	if err != nil {
 		return false
 	}
@@ -920,6 +968,14 @@ func isUpToDate(owner *radappiov1alpha3.DeploymentTemplate) bool {
 	default:
 		return false
 	}
+}
+
+func templateHashInput(owner *radappiov1alpha3.DeploymentTemplate) ([]byte, error) {
+	spec := owner.Spec
+	// Attribution is checked separately before effects; observing a new artifact alone
+	// must not redeploy an otherwise unchanged template.
+	spec.SourceRef = nil
+	return json.Marshal(spec)
 }
 
 // SetupWithManager registers the coordinator and watches its passive inventory.

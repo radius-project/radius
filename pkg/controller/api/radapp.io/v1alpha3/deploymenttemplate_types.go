@@ -19,6 +19,7 @@ package v1alpha3
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // DeploymentTemplateSpec defines the desired state of a DeploymentTemplate resource.
@@ -32,8 +33,40 @@ type DeploymentTemplateSpec struct {
 	// ProviderConfig specifies the scopes for resources.
 	ProviderConfig string `json:"providerConfig,omitempty"`
 
-	// Repository is the git repository that the Bicep manifests are stored in.
+	// Repository is the name of the Flux GitRepository that produced this template.
+	// It is retained for compatibility and must match SourceRef.Name. A template with
+	// Repository but no SourceRef is held until it is associated with a selected source.
 	Repository string `json:"repository,omitempty"`
+
+	// SourceRef identifies the Flux source and artifact used to produce this template.
+	SourceRef *DeploymentTemplateSourceReference `json:"sourceRef,omitempty"`
+}
+
+// DeploymentTemplateSourceReference records a generated template's source.
+// It follows the Flux source reference shape (kind, name, namespace) and adds the
+// source UID, generation, and artifact attribution.
+type DeploymentTemplateSourceReference struct {
+	// Kind is the Flux source kind. Only GitRepository is supported.
+	// +kubebuilder:validation:Enum=GitRepository
+	// +kubebuilder:default=GitRepository
+	Kind string `json:"kind,omitempty"`
+	// Namespace is the GitRepository namespace.
+	// +kubebuilder:validation:MinLength=1
+	Namespace string `json:"namespace"`
+	// Name is the GitRepository name.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+	// UID distinguishes a source from a replacement with the same name.
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:MinLength=1
+	UID types.UID `json:"uid"`
+	// Generation is the source specification generation accepted for this template.
+	// +kubebuilder:validation:Minimum=1
+	Generation int64 `json:"generation"`
+	// Revision is the accepted artifact's revision.
+	Revision string `json:"revision,omitempty"`
+	// Digest is the accepted artifact's content digest.
+	Digest string `json:"digest,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of a DeploymentTemplate resource.
@@ -99,6 +132,9 @@ const (
 	// succeeded but residual DeploymentResources removed from the previous generation
 	// are still draining. The reconciler transitions to Ready once they are gone.
 	DeploymentTemplatePhraseReadyPendingCleanup DeploymentTemplatePhrase = "ReadyPendingCleanup"
+
+	// DeploymentTemplatePhraseHeld indicates that source state must be resolved before new effects.
+	DeploymentTemplatePhraseHeld DeploymentTemplatePhrase = "Held"
 
 	// DeploymentTemplatePhraseFailed indicates that the Deployment Template has failed.
 	DeploymentTemplatePhraseFailed DeploymentTemplatePhrase = "Failed"

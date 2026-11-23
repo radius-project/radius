@@ -41,6 +41,7 @@ The development files combine shared host options with service-specific settings
 | `callerAuthentication`           | [`authorization.RequestHeaderOptions`](../../../../pkg/ucp/authorization/requestheader.go)                      | UCP-only request-header CA file, allowed proxy names, and Kubernetes issuer                                                                                                                                     |
 | `kubernetesCallerAuthentication` | [`authorization.KubernetesRequestHeaderOptions`](../../../../pkg/ucp/authorization/kubernetes_requestheader.go) | UCP-only startup discovery of the cluster's request-header trust; enabled by the chart in every internal mode                                                                                                   |
 | `sha256Migration`                | [`hashmigration.Config`](../../../../pkg/upgrade/hashmigration/hashmigration.go)                                | `disabled` turns off the automatic SHA-256 migration                                                                                                                                                            |
+| `controller`                     | [`hostoptions.ControllerOptions`](../../../../pkg/armrpc/hostoptions/providerconfig.go)                         | `flux.enabled` defaults to `false`; `flux.sources` selects exact namespace/name/UID identities                                                                                                                  |
 
 For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
@@ -156,6 +157,39 @@ Both trust loaders require at least one valid X.509 `CERTIFICATE` PEM block, no 
 
 Trust is a startup snapshot. **Restart every UCP replica after rotating the CA bundle or changing allowed names or issuer.** A ConfigMap or projected file update alone does not replace the active trust snapshot. Invalid trust configuration or configured authentication without server TLS fails startup. This slice establishes identity only; it does not add policy endpoints, authorization enforcement, or internal component TLS.
 
+#### Flux source configuration
+
+`controller.flux` is independent of the `authorization` mode. Both chart and local-process configurations default to disabled with an empty source list. Select only installation-trusted publishers, including every accepted executable dependency. This is not a per-namespace execution sandbox; the default deployment engine can manage arbitrary Kubernetes resources.
+
+```yaml
+controller:
+  flux:
+    enabled: true
+    sources:
+      - namespace: flux-system
+        name: applications
+        uid: "<read from the existing GitRepository>"
+```
+
+Read the live identity and generation with `kubectl get gitrepositories.source.toolkit.fluxcd.io applications -n flux-system -o json`. Do not copy a UID from a deleted object. Only active sources with a current-generation Ready artifact are processed; the controller does not write Flux-owned conditions.
+
+Before enabling, inventory all user/group grants on the selected GitRepository, verification Secrets, included sources, controller ConfigMap, DeploymentTemplate specifications/status, and DeploymentResource specifications/status. Only administrators and the appropriate controllers should be able to modify these objects. Check actual lower-trust principals, including their groups, rather than assuming a namespace implies isolation:
+
+```sh
+kubectl auth can-i update gitrepositories.source.toolkit.fluxcd.io -n "$SOURCE_NAMESPACE" --as="$PRINCIPAL"
+kubectl auth can-i patch secrets -n "$SOURCE_NAMESPACE" --as="$PRINCIPAL"
+kubectl auth can-i patch configmaps -n radius-system --as="$PRINCIPAL"
+kubectl auth can-i create deploymenttemplates.radapp.io -n "$TEMPLATE_NAMESPACE" --as="$PRINCIPAL"
+kubectl auth can-i patch deploymenttemplates.radapp.io -n "$TEMPLATE_NAMESPACE" --as="$PRINCIPAL"
+kubectl auth can-i update deploymenttemplates.radapp.io --subresource=status -n "$TEMPLATE_NAMESPACE" --as="$PRINCIPAL"
+```
+
+An administrator running impersonation checks must supply the relevant `--as-group` values and repeat the checks for create/update/patch/delete and resource-status permissions as applicable. Confirm denied mutations in a disposable test installation. A source name, signature, or caller-supplied attribution field does not replace Kubernetes write permissions.
+
+Restart a local controller after configuration changes. Helm changes the controller checksum and uses a non-overlapping `Recreate` rollout, briefly pausing all three reconcilers. Malformed source configuration is a startup error even while disabled; run `helm template` with the intended values before upgrading. Old component image overrides are not compatible with the new settings.
+
+For existing installations, apply the matching additive CRD and explicitly review/associate legacy source-managed templates before enabling Flux. Follow the [chart migration and recovery procedure](../../../../deploy/Chart/README.md#migrating-existing-templates); do not delete/recreate templates or remove held finalizers to bypass migration. `Held` retains operation/tracking state and does not claim a deployment succeeded. Source changes do not cancel previously accepted backend operations.
+
 ### 3. Configure supported environment overrides
 
 Some behavior is read directly from the process environment:
@@ -202,4 +236,7 @@ make debug-status
 - **A local service cannot reach UCP.** Compare its `ucp.direct.endpoint` with `cmd/ucpd/ucp-dev.yaml`; the development endpoint includes `/apis/api.ucp.dev/v1alpha3`.
 - **A Helm edit does not change the installed configuration.** Confirm you changed the appropriate `deploy/Chart/templates/<service>/configmaps.yaml` template or the value that feeds it, then render the chart before reinstalling.
 - **Logging ignores the YAML value.** Unset `RADIUS_LOGGING_JSON` or `RADIUS_LOGGING_LEVEL`; environment values take precedence.
+- **Flux does not reconcile after an upgrade.** Check the startup source-selection notice, the exact source UID, and current-generation Ready status. An empty or disabled selection performs no Flux work. A legacy template needs a reviewed `sourceRef`; schema errors require the matching chart CRD.
+- **A newly added source is not reconciled.** Selection is read at startup. Upgrade the existing release with the complete `controller.flux.sources` list; see [Changing selected sources](../../../../deploy/Chart/README.md#changing-selected-sources).
+- **A template remains `Held`.** Inspect its reasoned event and source identity/generation. Restore an approved source or perform a reviewed association. Holds preserve finalizers, including during deletion; avoid rolling back to a binary that predates these settings.
 - **Aggregated requests return `InvalidAuthenticationInfo`.** Verify that UCP can read `kube-system/extension-apiserver-authentication` and receives the proxy's TLS client certificate. For a local process, configure `callerAuthentication` from that ConfigMap instead. Restart all replicas after changing trust. Headerless local requests remain unidentified; disabling authorization does not make forwarded identity headers trustworthy.
