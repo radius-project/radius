@@ -181,10 +181,41 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 			len(trusted)-1, ucpAPIServiceName, radiusNamespace, ucpAPIServerCASecretName)
 	}
 	// A chart whose Certificate ucp-cert writes another Secret, such as ucp-mtls, leaves ucp-apiserver-tls and its
-	// private key unused, so rad deletes it as authorization off does. It keeps a Secret that rad does not own.
+	// private key unused, so rad deletes it as authorization off does. It keeps a Secret that rad does not own, and
+	// keeps it while UCP may still mount it, because a replacement pod could not start without it.
+	moved, err := ucpServesFromOtherSecret(ctx, kubeClient, radiusNamespace, ucpAPIServerTLSSecretName)
+	if err != nil || !moved {
+		return err
+	}
 	_, err = i.deleteLeftoverSecrets(ctx, kubeClient, dynamicClient, radiusNamespace,
 		[]ucpOffLeftoverSecret{{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}}, false)
 	return err
+}
+
+// ucpServesFromOtherSecret reports whether the Radius release's ucp Deployment has finished rolling out with its API
+// server certificate volume mounting a Secret other than secretName, so no UCP pod, current or replacement, needs it.
+func ucpServesFromOtherSecret(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
+	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
+	}
+	mounted := ucpCertificateSecret(deployment)
+	return helmOwned(deployment, radiusNamespace, radiusReleaseName) && ucpRolledOut(deployment) &&
+		mounted != "" && mounted != secretName, nil
+}
+
+// ucpRolledOut reports whether every pod of deployment runs its current template.
+func ucpRolledOut(deployment *appsv1.Deployment) bool {
+	replicas := int32(1)
+	if deployment.Spec.Replicas != nil {
+		replicas = *deployment.Spec.Replicas
+	}
+	// Replicas counts old and new pods, so equal counts mean no pod with the earlier template is left.
+	return deployment.Status.ObservedGeneration >= deployment.Generation && deployment.Status.Replicas == replicas &&
+		deployment.Status.UpdatedReplicas == replicas && deployment.Status.AvailableReplicas == replicas
 }
 
 // ucpAPIServerCASource is the inject-ca-from-secret value that makes cainjector copy radius-apiserver-ca.
@@ -514,13 +545,7 @@ func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, rad
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
 	}
-	replicas := int32(1)
-	if deployment.Spec.Replicas != nil {
-		replicas = *deployment.Spec.Replicas
-	}
-	// Replicas counts old and new pods, so equal counts mean no pod with the earlier certificate is left.
-	if deployment.Status.ObservedGeneration < deployment.Generation || deployment.Status.Replicas != replicas ||
-		deployment.Status.UpdatedReplicas != replicas || deployment.Status.AvailableReplicas != replicas {
+	if !ucpRolledOut(deployment) {
 		return nil, "Deployment ucp has not finished rolling out", nil
 	}
 	if mounted := ucpCertificateSecret(deployment); mounted != "" && mounted != secretName {
