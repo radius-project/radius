@@ -684,7 +684,16 @@ test("TLS-local setup precedes the candidate and keeps the existing generated co
   );
   assert.equal(
     config.extensions.radius,
-    `br:localhost:5000/test/radius:${tag}`
+    `br:radius-registry:5000/test/radius:${tag}`
+  );
+  assert.match(
+    step(cloud.build, "Publish Radius types locally").run,
+    /br:radius-registry:5000\/test\/radius:/
+  );
+  assert.equal(
+    step(cloud.build, "Publish Bicep test recipes locally").env
+      .BICEP_RECIPE_REGISTRY,
+    "radius-registry:5000"
   );
   assert.notEqual(config.experimentalFeaturesEnabled?.ociEnabled, true);
 });

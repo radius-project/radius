@@ -17,7 +17,7 @@ limitations under the License.
 // Package rogue simulates a compromised workload or component inside the cluster for
 // authorization functional tests. It runs a pod from the rogue-client image (built from
 // ./cmd/rogue-client like magpiego and testrp) and calls internal Radius endpoints from it,
-// optionally presenting a TLS certificate from a mounted Secret.
+// optionally with a certificate, CA bundle, or ServiceAccount token from a mounted Secret.
 package rogue
 
 import (
@@ -26,7 +26,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -84,16 +86,23 @@ type Options struct {
 	// Image overrides DefaultImage().
 	Image string
 
-	// TLSSecretName optionally names a kubernetes.io/tls Secret in Namespace to mount at
-	// TLSMountPath, so requests can present its certificate to act as a component.
+	// TLSSecretName optionally names a Secret in Namespace to mount at TLSMountPath, so
+	// requests can use its ca.crt, tls.crt, and tls.key, or its Radius CA bundle and token.
 	TLSSecretName string
+
+	// TLSSecretItems optionally maps Secret keys to paths under TLSMountPath. Empty mounts
+	// every key at its own name.
+	TLSSecretItems []corev1.KeyToPath
 }
 
 // Request is an HTTP request sent from the rogue pod.
 type Request struct {
 	// Method defaults to GET.
-	Method  string
-	URL     string
+	Method string
+	URL    string
+	// Headers are sent with the request. They must not include Authorization: the command
+	// line is part of the exec request URL, so credentials there would be logged by the API
+	// server and proxies. Send tokens with Receiver and a mounted token file instead.
 	Headers map[string]string
 	Body    string
 
@@ -105,6 +114,19 @@ type Request struct {
 
 	// Insecure skips server certificate verification.
 	Insecure bool
+
+	// Receiver sends the request with the Radius component client transport for this
+	// receiver, such as "applications-rp", instead of a plain HTTP client. The transport
+	// verifies the server against ca.crt from the mounted Secret and the receiver's SPIFFE ID,
+	// then sends the token at <TokenDirectory>/<Receiver>/token. ReceiverNamespace is the
+	// Radius namespace in the SPIFFE ID; TrustDomain defaults to the Radius default.
+	Receiver          string
+	ReceiverNamespace string
+	TrustDomain       string
+
+	// TokenDirectory is the directory under TLSMountPath that holds <Receiver>/token, so one
+	// pod can mount several tokens. It defaults to "tokens".
+	TokenDirectory string
 }
 
 // Response is the result of a Request.
@@ -190,19 +212,7 @@ func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
 		return Response{}, err
 	}
 
-	execReq := c.k8s.CoreV1().RESTClient().Post().
-		Resource("pods").
-		Namespace(c.pod.Namespace).
-		Name(c.pod.Name).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Container: containerName,
-			Command:   args,
-			Stdout:    true,
-			Stderr:    true,
-		}, scheme.ParameterCodec)
-
-	executor, err := remotecommand.NewSPDYExecutor(c.config, http.MethodPost, execReq.URL())
+	executor, err := remotecommand.NewSPDYExecutor(c.config, http.MethodPost, execURL(c.k8s, c.pod, args))
 	if err != nil {
 		return Response{}, fmt.Errorf("rogue: creating exec stream: %w", err)
 	}
@@ -226,6 +236,23 @@ func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
 		return resp, nil
 	}
 	return resp, err
+}
+
+// execURL returns the pods/exec URL that runs args in the rogue container of pod. args are
+// encoded in the URL's query.
+func execURL(k8s kubernetes.Interface, pod *corev1.Pod, args []string) *url.URL {
+	return k8s.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Namespace(pod.Namespace).
+		Name(pod.Name).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   args,
+			Stdout:    true,
+			Stderr:    true,
+		}, scheme.ParameterCodec).
+		URL()
 }
 
 // newPod builds the rogue pod spec.
@@ -263,7 +290,7 @@ func newPod(options Options) *corev1.Pod {
 	if options.TLSSecretName != "" {
 		pod.Spec.Volumes = []corev1.Volume{{
 			Name:   tlsVolumeName,
-			Secret: &corev1.SecretVolumeSource{SecretName: options.TLSSecretName},
+			Secret: &corev1.SecretVolumeSource{SecretName: options.TLSSecretName, Items: options.TLSSecretItems},
 		}}
 		container.VolumeMounts = []corev1.VolumeMount{{Name: tlsVolumeName, MountPath: TLSMountPath, ReadOnly: true}}
 	}
@@ -323,8 +350,26 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	if req.URL == "" {
 		return nil, errors.New("rogue: URL is required")
 	}
-	if (req.ClientCert || req.CACert) && !hasTLS {
-		return nil, errors.New("rogue: ClientCert and CACert require Options.TLSSecretName")
+	if (req.ClientCert || req.CACert || req.Receiver != "") && !hasTLS {
+		return nil, errors.New("rogue: ClientCert, CACert, and Receiver require Options.TLSSecretName")
+	}
+	if req.Receiver != "" && (req.ClientCert || req.CACert || req.Insecure) {
+		return nil, errors.New("rogue: Receiver cannot be combined with ClientCert, CACert, or Insecure")
+	}
+	if req.Receiver != "" && req.ReceiverNamespace == "" {
+		return nil, errors.New("rogue: Receiver requires ReceiverNamespace")
+	}
+	if req.TokenDirectory != "" && req.Receiver == "" {
+		return nil, errors.New("rogue: TokenDirectory requires Receiver")
+	}
+	if req.TokenDirectory != "" && !filepath.IsLocal(req.TokenDirectory) {
+		return nil, errors.New("rogue: TokenDirectory must be a relative path under TLSMountPath")
+	}
+	for k := range req.Headers {
+		if strings.EqualFold(k, "Authorization") {
+			// The value is not echoed, so the error cannot leak the credential either.
+			return nil, errors.New("rogue: Authorization headers are not allowed because the command is sent in the exec request URL; send tokens with Receiver and a mounted token file")
+		}
 	}
 
 	method := req.Method
@@ -354,6 +399,15 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	}
 	if req.Insecure {
 		args = append(args, "-k")
+	}
+	if req.Receiver != "" {
+		args = append(args, "--radius-receiver", req.Receiver, "--radius-dir", TLSMountPath, "--radius-namespace", req.ReceiverNamespace)
+		if req.TrustDomain != "" {
+			args = append(args, "--radius-trust-domain", req.TrustDomain)
+		}
+		if req.TokenDirectory != "" {
+			args = append(args, "--radius-token-dir", path.Join(TLSMountPath, req.TokenDirectory))
+		}
 	}
 
 	return append(args, req.URL), nil
