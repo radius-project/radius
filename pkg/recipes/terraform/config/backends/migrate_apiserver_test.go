@@ -127,7 +127,7 @@ func Test_StateMigrator_APIServer(t *testing.T) {
 		sources := addState(t, legacy, "a", "b", "c")
 		migrator := NewStateMigrator(client)
 
-		result, err := migrator.MigrateLegacyStates(t.Context(), db)
+		result, err := migrator.MigrateLegacyStates(t.Context(), db, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, result.Migrated)
 		require.Equal(t, []string{"a", "b", "c"}, state(t, migrator, current))
@@ -144,7 +144,7 @@ func Test_StateMigrator_APIServer(t *testing.T) {
 		}
 
 		// Another migrator, such as one in another component, finds nothing left to move.
-		result, err = NewStateMigrator(client).MigrateLegacyStates(t.Context(), db)
+		result, err = NewStateMigrator(client).MigrateLegacyStates(t.Context(), db, nil)
 		require.NoError(t, err)
 		require.Zero(t, result.Migrated+result.Remaining+result.Conflicts+result.Skipped)
 		requireTombstone(t, legacy, current)
@@ -163,7 +163,7 @@ func Test_StateMigrator_APIServer(t *testing.T) {
 		require.NoError(t, err)
 
 		migrator := NewStateMigrator(client)
-		result, err := migrator.MigrateLegacyStates(t.Context(), db)
+		result, err := migrator.MigrateLegacyStates(t.Context(), db, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, result.Remaining)
 		require.Empty(t, state(t, migrator, current))
@@ -174,7 +174,7 @@ func Test_StateMigrator_APIServer(t *testing.T) {
 		_, err = client.CoordinationV1().Leases(RadiusNamespace).Update(t.Context(), lease, metav1.UpdateOptions{})
 		require.NoError(t, err)
 
-		result, err = migrator.MigrateLegacyStates(t.Context(), db)
+		result, err = migrator.MigrateLegacyStates(t.Context(), db, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, result.Migrated)
 		require.Equal(t, []string{"state"}, state(t, migrator, current))

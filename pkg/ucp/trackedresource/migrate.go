@@ -33,6 +33,9 @@ import (
 // radiusPlanePrefix is the prefix of the resource groups that hold tracked resource entries.
 const radiusPlanePrefix = "/planes/radius/"
 
+// errGateClosed stops a pass that must wait for the gate.
+var errGateClosed = errors.New("the gate is closed")
+
 // MigrateLegacyEntries moves tracked resource entries stored under legacy (SHA-1) tracking IDs to their current
 // (SHA-256) tracking IDs.
 //
@@ -42,8 +45,12 @@ const radiusPlanePrefix = "/planes/radius/"
 // saved, unless the copy changed since: the legacy entry remains the only entry until a later pass moves it, and the
 // copy of a deleted resource's entry does not bring the entry back. A migrator that deletes a legacy entry it did not
 // copy changes the current entry first, so a concurrent migrator never mistakes that delete for one of the updater and
-// deletes its copy. See https://github.com/radius-project/radius/issues/8084.
-func MigrateLegacyEntries(ctx context.Context, client database.Client) (hashmigration.Result, error) {
+// deletes its copy.
+//
+// gate decides when entries may be moved. UCP of a release before this one resolves the tracking ID of an entry once
+// per request and then saves the entry unconditionally, so it would create a moved legacy entry again; the pass stops
+// while one of its pods runs. See https://github.com/radius-project/radius/issues/8084.
+func MigrateLegacyEntries(ctx context.Context, client database.Client, gate hashmigration.Gate) (hashmigration.Result, error) {
 	result := hashmigration.Result{}
 	groups, err := client.Query(ctx, database.Query{RootScope: "/planes", ScopeRecursive: true, IsScopeQuery: true, ResourceType: "resourcegroups"})
 	if err != nil {
@@ -61,10 +68,16 @@ func MigrateLegacyEntries(ctx context.Context, client database.Client) (hashmigr
 		}
 
 		for _, obj := range entries.Items {
-			entryResult := migrateLegacyEntry(ctx, client, obj)
+			entryResult, err := migrateLegacyEntry(ctx, client, gate, obj)
 			result.Add(entryResult)
 			if entryResult.Message != "" {
 				result.Message = entryResult.Message
+			}
+
+			if errors.Is(err, errGateClosed) {
+				return result, nil
+			} else if err != nil {
+				return result, err
 			}
 		}
 	}
@@ -72,35 +85,48 @@ func MigrateLegacyEntries(ctx context.Context, client database.Client) (hashmigr
 	return result, nil
 }
 
-func migrateLegacyEntry(ctx context.Context, client database.Client, obj database.Object) hashmigration.Result {
+// migrateLegacyEntry moves the tracked resource entry obj if it is stored under its legacy tracking ID. It returns
+// errGateClosed if the pass must wait for gate.
+func migrateLegacyEntry(ctx context.Context, client database.Client, gate hashmigration.Gate, obj database.Object) (hashmigration.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("trackingID", obj.ID)
 	entry := datamodel.GenericResource{}
 	if err := obj.As(&entry); err != nil {
 		logger.Info("Skipping a tracked resource entry that cannot be read", "error", err.Error())
-		return hashmigration.Result{Skipped: 1}
+		return hashmigration.Result{Skipped: 1}, nil
 	}
 
 	original, err := resources.Parse(entry.Properties.ID)
 	if err != nil {
 		logger.Info("Skipping a tracked resource entry without a valid resource ID", "resourceID", entry.Properties.ID)
-		return hashmigration.Result{Skipped: 1}
+		return hashmigration.Result{Skipped: 1}, nil
 	}
 
 	currentID := IDFor(original)
 	if strings.EqualFold(obj.ID, currentID.String()) {
-		return hashmigration.Result{}
+		return hashmigration.Result{}, nil
 	}
 
 	if !strings.EqualFold(obj.ID, LegacyIDFor(original).String()) {
 		logger.Info("Skipping a tracked resource entry whose ID does not match its resource", "resourceID", original.String())
-		return hashmigration.Result{Skipped: 1}
+		return hashmigration.Result{Skipped: 1}, nil
 	}
 
 	if state := entry.AsyncProvisioningState; state != "" && !state.IsTerminal() {
 		// An operation is in flight. It resolves the current ID first, so the entry is moved once it is idle.
-		return hashmigration.Result{Remaining: 1}
+		return hashmigration.Result{Remaining: 1}, nil
 	}
 
+	if reason, err := hashmigration.Wait(ctx, gate); err != nil {
+		return hashmigration.Result{}, err
+	} else if reason != "" {
+		return hashmigration.Result{Remaining: 1, Message: reason}, errGateClosed
+	}
+
+	return moveOrDeduplicate(ctx, client, logger, obj, entry, currentID), nil
+}
+
+// moveOrDeduplicate moves the idle legacy entry obj to currentID, or deletes it if an entry exists under currentID.
+func moveOrDeduplicate(ctx context.Context, client database.Client, logger logr.Logger, obj database.Object, entry datamodel.GenericResource, currentID resources.ID) hashmigration.Result {
 	current, err := client.Get(ctx, currentID.String())
 	if errors.Is(err, &database.ErrNotFound{}) {
 		return moveLegacyEntry(ctx, client, logger, obj, entry, currentID)

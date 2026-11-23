@@ -1,13 +1,13 @@
-suite: UCP SHA-256 migration status RBAC
+suite: UCP SHA-256 migration RBAC
 templates:
   - ucp/rbac.yaml
 release:
   namespace: radius-system
 tests:
-  - it: should limit UCP to the migration status ConfigMap in its namespace
+  - it: should limit UCP to the migration status ConfigMap and the control-plane pods in its namespace
     documentSelector:
-      path: kind
-      value: Role
+      path: $[?(@.kind == "Role" && @.metadata.name == "ucp-sha256-migration")].metadata.name
+      value: ucp-sha256-migration
     asserts:
       - equal:
           path: metadata.name
@@ -33,11 +33,34 @@ tests:
               verbs:
                 - get
                 - patch
+            - apiGroups:
+                - ""
+              resources:
+                - pods
+              verbs:
+                - get
+                - list
+            - apiGroups:
+                - apps
+              resources:
+                - deployments
+              resourceNames:
+                - ucp
+                - applications-rp
+                - dynamic-rp
+              verbs:
+                - get
+            - apiGroups:
+                - apps
+              resources:
+                - replicasets
+              verbs:
+                - get
 
   - it: should bind the Role to the UCP service account
     documentSelector:
-      path: kind
-      value: RoleBinding
+      path: $[?(@.kind == "RoleBinding" && @.metadata.name == "ucp-sha256-migration")].metadata.name
+      value: ucp-sha256-migration
     asserts:
       - equal:
           path: metadata.namespace

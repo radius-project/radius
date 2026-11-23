@@ -55,6 +55,22 @@ func NewConfigMapReporter(client kubernetes.Interface, namespace string) *Config
 // NewKubernetesReporter returns a ConfigMapReporter when the component can build a Kubernetes client from in-cluster or
 // local configuration, and nil otherwise so that the migration only logs its progress.
 func NewKubernetesReporter() Reporter {
+	cluster := ClusterClient()
+	if cluster == nil {
+		return nil
+	}
+
+	client, err := cluster()
+	if err != nil {
+		return nil
+	}
+
+	return NewConfigMapReporter(client, DefaultNamespace)
+}
+
+// ClusterClient returns a function that returns a client for the cluster the component runs in, built from in-cluster
+// or local configuration, or nil if the component has no such configuration.
+func ClusterClient() func() (kubernetes.Interface, error) {
 	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{QPS: kubeutil.DefaultServerQPS, Burst: kubeutil.DefaultServerBurst})
 	if err != nil {
 		return nil
@@ -65,7 +81,7 @@ func NewKubernetesReporter() Reporter {
 		return nil
 	}
 
-	return NewConfigMapReporter(client, DefaultNamespace)
+	return func() (kubernetes.Interface, error) { return client, nil }
 }
 
 // Report implements Reporter.

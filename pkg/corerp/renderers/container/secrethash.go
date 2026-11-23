@@ -19,7 +19,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -128,10 +127,10 @@ func legacySecretHashMatches(ctx context.Context, reader client.Reader, options 
 // NewSecretHashMigrationStep returns the migration step that prepares container workloads for the release that
 // removes SHA-1. client returns a client for the cluster the Deployments of containers are applied to.
 //
-// otherReleases returns the Applications RP pods that run another release. Earlier releases write legacy secret hashes,
-// so while one of their pods runs, it can deploy a container after the scan. The step records the hashes it finds, but
-// is not complete until a scan starts after those pods have stopped.
-func NewSecretHashMigrationStep(client func(context.Context) (k8s.Interface, error), otherReleases func(context.Context) ([]string, error)) hashmigration.Step {
+// gate is closed while Applications RP pods of another release run. Earlier releases write legacy secret hashes, so
+// while one of their pods runs, it can deploy a container after the scan. The step records the hashes it finds, but is
+// not complete until a scan starts while the gate is open.
+func NewSecretHashMigrationStep(client func(context.Context) (k8s.Interface, error), gate hashmigration.Gate) hashmigration.Step {
 	return hashmigration.StepFunc{
 		StepName: SecretHashMigrationStepName,
 		Fn: func(ctx context.Context) (hashmigration.Result, error) {
@@ -141,18 +140,18 @@ func NewSecretHashMigrationStep(client func(context.Context) (k8s.Interface, err
 			}
 
 			// Checked before the scan: a pod that stopped before the scan started cannot write a hash the scan misses.
-			others, err := otherReleases(ctx)
+			waiting, err := hashmigration.Wait(ctx, gate)
 			if err != nil {
-				return hashmigration.Result{}, fmt.Errorf("failed to list the Applications RP pods: %w", err)
+				return hashmigration.Result{}, err
 			}
 
 			result, err := RecordSecretHashes(ctx, kubernetesClient)
-			if err != nil || len(others) == 0 {
+			if err != nil || waiting == "" {
 				return result, err
 			}
 
 			result.Remaining++
-			result.Message = fmt.Sprintf("waiting for Applications RP pods of another release to stop, because they can deploy containers with legacy secret hashes: %s", strings.Join(others, ", "))
+			result.Message = waiting
 			return result, nil
 		},
 	}

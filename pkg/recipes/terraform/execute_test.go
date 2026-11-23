@@ -392,12 +392,14 @@ func TestKubernetesBackendStateIdentity(t *testing.T) {
 			}
 			require.Equal(t, []string{"apply", "apply", "destroy"}, commands)
 
-			var reads, deletes []string
+			var reads, lockReads, deletes []string
 			for _, action := range kube.Actions() {
 				require.Equal(t, backends.RadiusNamespace, action.GetNamespace())
 				switch {
 				case action.Matches("get", "secrets"):
 					reads = append(reads, action.(k8stesting.GetAction).GetName())
+				case action.Matches("get", "leases"):
+					lockReads = append(lockReads, action.(k8stesting.GetAction).GetName())
 				case action.Matches("delete", "secrets"):
 					deletes = append(deletes, action.(k8stesting.DeleteAction).GetName())
 				default:
@@ -412,11 +414,15 @@ func TestKubernetesBackendStateIdentity(t *testing.T) {
 				}
 				expectedReads = append(expectedReads, selectedName)
 			}
+			var expectedLockReads []string
 			if tt.current && !tt.failDestroy {
-				// After the destroy, the delete checks whether the current state is a copy of the legacy state.
+				// After the destroy, the delete checks whether the current state is a copy of the legacy state, or was
+				// found under both names by a committed move, which its tombstone records.
 				expectedReads = append(expectedReads, currentName)
+				expectedLockReads = append(expectedLockReads, "lock-"+legacyName)
 			}
 			require.Equal(t, expectedReads, reads, "apply validation and pre-destroy checks must use the resolved name")
+			require.Equal(t, expectedLockReads, lockReads)
 			if tt.failDestroy {
 				require.Empty(t, deletes)
 			} else {

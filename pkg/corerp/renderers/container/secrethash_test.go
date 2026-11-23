@@ -368,20 +368,26 @@ func Test_NewSecretHashMigrationStep(t *testing.T) {
 	t.Parallel()
 
 	cluster := func(context.Context) (k8s.Interface, error) { return k8sfake.NewClientset(), nil }
-	none := func(context.Context) ([]string, error) { return nil, nil }
-	step := NewSecretHashMigrationStep(cluster, none)
+	step := NewSecretHashMigrationStep(cluster, nil)
 	require.Equal(t, SecretHashMigrationStepName, step.Name())
 	result, err := step.Run(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, hashmigration.Result{}, result)
 
-	step = NewSecretHashMigrationStep(func(context.Context) (k8s.Interface, error) { return nil, errors.New("no cluster") }, none)
+	step = NewSecretHashMigrationStep(func(context.Context) (k8s.Interface, error) { return nil, errors.New("no cluster") }, nil)
 	_, err = step.Run(t.Context())
 	require.ErrorContains(t, err, "no cluster")
 
-	step = NewSecretHashMigrationStep(cluster, func(context.Context) ([]string, error) { return nil, errors.New("pods unavailable") })
+	step = NewSecretHashMigrationStep(cluster, gateFunc(func() (string, error) { return "", errors.New("pods unavailable") }))
 	_, err = step.Run(t.Context())
 	require.ErrorContains(t, err, "pods unavailable")
+}
+
+// gateFunc adapts a function to hashmigration.Gate.
+type gateFunc func() (string, error)
+
+func (f gateFunc) Wait(context.Context) (string, error) {
+	return f()
 }
 
 // A pod of an earlier release can deploy a container with a legacy secret hash after a scan, so the step is not
@@ -399,13 +405,13 @@ func Test_NewSecretHashMigrationStep_WaitsForOtherReleases(t *testing.T) {
 		return false, nil, nil
 	})
 
-	others := []string{"applications-rp-old"}
+	waiting := "waiting for pods that run another release of Radius to stop: applications-rp-old"
 	step := NewSecretHashMigrationStep(
 		func(context.Context) (k8s.Interface, error) { return client, nil },
-		func(context.Context) ([]string, error) {
+		gateFunc(func() (string, error) {
 			order = append(order, "pods")
-			return others, nil
-		})
+			return waiting, nil
+		}))
 
 	result, err := step.Run(t.Context())
 	require.NoError(t, err)
@@ -421,7 +427,7 @@ func Test_NewSecretHashMigrationStep_WaitsForOtherReleases(t *testing.T) {
 	require.NoError(t, err)
 	_, err = client.CoreV1().Secrets(secretHashTestNamespace).Create(t.Context(), secretHashTestSecret(late.Name, data), metav1.CreateOptions{})
 	require.NoError(t, err)
-	others = nil
+	waiting = ""
 
 	result, err = step.Run(t.Context())
 	require.NoError(t, err)

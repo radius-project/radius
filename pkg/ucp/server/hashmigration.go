@@ -19,6 +19,8 @@ package server
 import (
 	"context"
 
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
@@ -37,21 +39,30 @@ const (
 
 // legacyNameMigrator is implemented by database clients that store entries under names derived from a hash.
 type legacyNameMigrator interface {
-	MigrateLegacyNames(ctx context.Context) (hashmigration.Result, error)
+	MigrateLegacyNames(ctx context.Context, gate hashmigration.Gate) (hashmigration.Result, error)
 }
 
 // newHashMigrationService creates the service that migrates the SHA-1-derived values UCP owns: tracked resource IDs
-// and, with the apiserver database provider, the object names of the data store every component shares.
-func newHashMigrationService(provider *databaseprovider.DatabaseProvider, reporter hashmigration.Reporter) *hashmigration.Service {
+// and, with the apiserver database provider, the object names of the data store every component shares. cluster
+// returns a client for the cluster UCP runs in, and is nil if UCP does not run in one, which then has no pods of
+// other releases to wait for.
+func newHashMigrationService(provider *databaseprovider.DatabaseProvider, reporter hashmigration.Reporter, cluster func() (kubernetes.Interface, error)) *hashmigration.Service {
 	return hashmigration.NewService(hashmigration.Options{
 		Component:    hashMigrationComponent,
-		Steps:        hashMigrationSteps(provider),
+		Steps:        hashMigrationSteps(provider, cluster),
 		Reporter:     reporter,
 		InitialDelay: hashmigration.DefaultInitialDelay,
 	})
 }
 
-func hashMigrationSteps(provider *databaseprovider.DatabaseProvider) []hashmigration.Step {
+func hashMigrationSteps(provider *databaseprovider.DatabaseProvider, cluster func() (kubernetes.Interface, error)) []hashmigration.Step {
+	// Only UCP writes tracked resource entries, and every component reads and writes the data store.
+	var trackingGate, datastoreGate hashmigration.Gate
+	if cluster != nil {
+		trackingGate = hashmigration.NewReleaseGate(cluster, hashmigration.DefaultNamespace, hashmigration.AppUCP)
+		datastoreGate = hashmigration.NewReleaseGate(cluster, hashmigration.DefaultNamespace, hashmigration.AppUCP, hashmigration.AppApplicationsRP, hashmigration.AppDynamicRP)
+	}
+
 	return []hashmigration.Step{
 		// Tracked resources run first: re-keying an entry also moves it to its current object name, so the
 		// data store step has less to move.
@@ -63,7 +74,7 @@ func hashMigrationSteps(provider *databaseprovider.DatabaseProvider) []hashmigra
 					return hashmigration.Result{}, err
 				}
 
-				return trackedresource.MigrateLegacyEntries(ctx, client)
+				return trackedresource.MigrateLegacyEntries(ctx, client, trackingGate)
 			},
 		},
 		hashmigration.StepFunc{
@@ -79,7 +90,7 @@ func hashMigrationSteps(provider *databaseprovider.DatabaseProvider) []hashmigra
 					return hashmigration.Result{NotApplicable: true, Message: "the database provider does not derive storage names from hashes"}, nil
 				}
 
-				return migrator.MigrateLegacyNames(ctx)
+				return migrator.MigrateLegacyNames(ctx, datastoreGate)
 			},
 		},
 	}

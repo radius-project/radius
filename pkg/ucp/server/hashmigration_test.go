@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -31,6 +32,13 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 type recordingReporter struct {
@@ -47,10 +55,12 @@ type migratingClient struct {
 	result hashmigration.Result
 	err    error
 	calls  int
+	gate   hashmigration.Gate
 }
 
-func (c *migratingClient) MigrateLegacyNames(context.Context) (hashmigration.Result, error) {
+func (c *migratingClient) MigrateLegacyNames(_ context.Context, gate hashmigration.Gate) (hashmigration.Result, error) {
 	c.calls++
+	c.gate = gate
 	return c.result, c.err
 }
 
@@ -68,7 +78,7 @@ func Test_HashMigrationService(t *testing.T) {
 		require.NoError(t, client.Save(t.Context(), &database.Object{ID: trackedresource.LegacyIDFor(original).String(), Data: entry}))
 
 		reporter := &recordingReporter{statuses: map[string]hashmigration.Status{}}
-		require.True(t, newHashMigrationService(databaseprovider.FromClient(client), reporter).RunPass(t.Context()))
+		require.True(t, newHashMigrationService(databaseprovider.FromClient(client), reporter, nil).RunPass(t.Context()))
 
 		tracked := reporter.statuses["ucp.trackedResources"]
 		require.Equal(t, hashmigration.StateComplete, tracked.State)
@@ -98,7 +108,7 @@ func Test_HashMigrationService(t *testing.T) {
 				t.Parallel()
 				client := &migratingClient{Client: inmemory.NewClient(), result: tt.result, err: tt.err}
 				reporter := &recordingReporter{statuses: map[string]hashmigration.Status{}}
-				require.Equal(t, tt.done, newHashMigrationService(databaseprovider.FromClient(client), reporter).RunPass(t.Context()))
+				require.Equal(t, tt.done, newHashMigrationService(databaseprovider.FromClient(client), reporter, nil).RunPass(t.Context()))
 				require.Equal(t, 1, client.calls)
 				require.Equal(t, tt.expected, reporter.statuses["ucp.datastore"].State)
 				require.Equal(t, tt.result.Migrated, reporter.statuses["ucp.datastore"].Migrated)
@@ -106,11 +116,62 @@ func Test_HashMigrationService(t *testing.T) {
 		}
 	})
 
+	t.Run("waits for pods of other releases", func(t *testing.T) {
+		t.Parallel()
+		self, err := os.Hostname()
+		require.NoError(t, err)
+		// Each Deployment is at revision 2; pods of revision 1 belong to the earlier release.
+		objects := []runtime.Object{}
+		component := func(app string, pods map[string]string) {
+			deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+				Name: app, Namespace: hashmigration.DefaultNamespace, UID: types.UID(app),
+				Annotations: map[string]string{"deployment.kubernetes.io/revision": "2"},
+			}}
+			objects = append(objects, deployment)
+			for _, revision := range []string{"1", "2"} {
+				objects = append(objects, &appsv1.ReplicaSet{ObjectMeta: metav1.ObjectMeta{
+					Name: app + "-" + revision, Namespace: hashmigration.DefaultNamespace, UID: types.UID(app + "-" + revision),
+					Annotations:     map[string]string{"deployment.kubernetes.io/revision": revision},
+					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(deployment, appsv1.SchemeGroupVersion.WithKind("Deployment"))},
+				}})
+			}
+			for name, revision := range pods {
+				objects = append(objects, &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: name, Namespace: hashmigration.DefaultNamespace, Labels: map[string]string{hashmigration.LabelAppName: app},
+						OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "ReplicaSet", Name: app + "-" + revision, UID: types.UID(app + "-" + revision), Controller: new(true)}},
+					},
+					Status: corev1.PodStatus{Phase: corev1.PodRunning},
+				})
+			}
+		}
+		component(hashmigration.AppUCP, map[string]string{self: "2"})
+		component(hashmigration.AppApplicationsRP, map[string]string{"applications-rp-old": "1"})
+		cluster := fake.NewClientset(objects...)
+
+		client := &migratingClient{Client: inmemory.NewClient()}
+		require.NoError(t, client.Save(t.Context(), &database.Object{ID: group, Data: map[string]any{"name": "test-group"}}))
+		entry := datamodel.GenericResourceFromID(original, trackedresource.LegacyIDFor(original))
+		entry.AsyncProvisioningState = v1.ProvisioningStateSucceeded
+		require.NoError(t, client.Save(t.Context(), &database.Object{ID: trackedresource.LegacyIDFor(original).String(), Data: entry}))
+		reporter := &recordingReporter{statuses: map[string]hashmigration.Status{}}
+		service := newHashMigrationService(databaseprovider.FromClient(client), reporter, func() (kubernetes.Interface, error) { return cluster, nil })
+
+		// Only UCP writes tracked resource entries, so an Applications RP pod of another release does not block them.
+		// Every component writes the data store, so its step waits for that pod.
+		service.RunPass(t.Context())
+		require.Equal(t, hashmigration.StateComplete, reporter.statuses["ucp.trackedResources"].State)
+		require.NotNil(t, client.gate)
+		waiting, err := client.gate.Wait(t.Context())
+		require.NoError(t, err)
+		require.Contains(t, waiting, "applications-rp-old")
+	})
+
 	t.Run("reports an unavailable database as a failure", func(t *testing.T) {
 		t.Parallel()
 		provider := databaseprovider.FromOptions(databaseprovider.Options{Provider: "unsupported"})
 		reporter := &recordingReporter{statuses: map[string]hashmigration.Status{}}
-		require.False(t, newHashMigrationService(provider, reporter).RunPass(t.Context()))
+		require.False(t, newHashMigrationService(provider, reporter, nil).RunPass(t.Context()))
 		require.Equal(t, hashmigration.StateFailed, reporter.statuses["ucp.trackedResources"].State)
 		require.Equal(t, hashmigration.StateFailed, reporter.statuses["ucp.datastore"].State)
 	})

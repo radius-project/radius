@@ -82,9 +82,12 @@ func newHashMigrationService(options *dynamicrp.Options) *hashmigration.Service 
 		reporter = hashmigration.NewConfigMapReporter(kubernetesClient, hashmigration.DefaultNamespace)
 	}
 
+	// Both resource providers run Terraform for the resources in the data store they share.
+	gate := hashmigration.NewReleaseGate(client, hashmigration.DefaultNamespace, hashmigration.AppApplicationsRP, hashmigration.AppDynamicRP)
+
 	return hashmigration.NewService(hashmigration.Options{
 		Component:    hashMigrationComponent,
-		Steps:        []hashmigration.Step{backends.NewStateMigrationStep(client, options.DatabaseProvider.GetClient)},
+		Steps:        []hashmigration.Step{backends.NewStateMigrationStep(client, options.DatabaseProvider.GetClient, gate)},
 		Reporter:     reporter,
 		InitialDelay: hashmigration.DefaultInitialDelay,
 	})

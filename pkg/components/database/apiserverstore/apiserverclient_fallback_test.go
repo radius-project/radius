@@ -143,8 +143,8 @@ func Test_APIServerClient_HashFallback(t *testing.T) {
 					}
 					// A delete reads both objects to remove every copy of the entry. A lookup that finds the entry in
 					// neither object reads the current object again, in case the migration moved the entry between the
-					// two reads. A delete that removed a legacy copy, and a save that wrote to the legacy object, also
-					// read the current object again, in case the migration copied the entry there meanwhile.
+					// two reads. A save that wrote to the legacy object also reads the current object again, in case the
+					// migration copied the entry there meanwhile.
 					deleting := strings.Contains(operation, "delete")
 					expectedReads := []string{resourceName(id)}
 					if tt.stored != "current" || deleting {
@@ -156,7 +156,7 @@ func Test_APIServerClient_HashFallback(t *testing.T) {
 					legacyTarget := slices.ContainsFunc(tt.legacy, func(legacyID resources.ID) bool { return legacyID.String() == id.String() })
 					removedLegacy := deleting && operation != "stale delete" && legacyTarget
 					savedLegacy := tt.stored == "legacy" && (operation == "save" || operation == "conditional save")
-					if removedLegacy || savedLegacy {
+					if savedLegacy {
 						expectedReads = append(expectedReads, resourceName(id))
 					}
 					require.Equal(t, expectedReads, reads)
@@ -175,9 +175,34 @@ func Test_APIServerClient_HashFallback(t *testing.T) {
 					wantCount := len(before)
 					previous := before[selected]
 					if deleting {
-						// A delete removes every copy of the entry, so no read can fall back to a copy it left behind.
+						// A delete removes every copy of the entry, so no read can fall back to a copy it left behind. An
+						// entry that had a legacy copy leaves a tombstone in its current object, which keeps other entries.
+						if removedLegacy {
+							current := after[resourceName(id)]
+							require.NotNil(t, current, "the delete must leave a tombstone")
+							require.Nil(t, findIndex(current, id))
+							records, err := migrationRecords(current)
+							require.NoError(t, err)
+							require.Equal(t, map[string]migrationRecord{strings.ToLower(id.String()): {State: recordDeleted}}, records)
+							others := []ucpv1alpha1.ResourceEntry{}
+							if bucket := before[resourceName(id)]; bucket != nil {
+								others = slices.DeleteFunc(slices.Clone(bucket.Entries), func(entry ucpv1alpha1.ResourceEntry) bool { return entry.ID == id.String() })
+							}
+							if len(others) > 0 {
+								require.Equal(t, others, current.Entries)
+								require.Equal(t, map[string]string(assignLabels(current)), current.Labels)
+							} else {
+								require.Empty(t, current.Entries)
+								require.Empty(t, current.Labels)
+							}
+							if before[resourceName(id)] == nil {
+								wantCount++
+							}
+						}
 						for name, bucket := range before {
-							if findIndex(bucket, id) == nil {
+							if removedLegacy && name == resourceName(id) {
+								continue
+							} else if findIndex(bucket, id) == nil {
 								require.Equal(t, bucket, after[name], "a bucket without the entry must not change")
 							} else if len(bucket.Entries) == 1 {
 								require.NotContains(t, after, name)
@@ -189,8 +214,26 @@ func Test_APIServerClient_HashFallback(t *testing.T) {
 							}
 						}
 					} else {
+						// A save to the legacy object changes the current object, which holds no copy, so that a migrator
+						// that read the legacy object before cannot copy the replaced value. It keeps other entries.
+						if savedLegacy {
+							current := after[resourceName(id)]
+							require.NotNil(t, current, "the save must change the current object")
+							require.Nil(t, findIndex(current, id))
+							records, err := migrationRecords(current)
+							require.NoError(t, err)
+							require.Equal(t, map[string]migrationRecord{strings.ToLower(id.String()): {State: recordLegacy, Fence: 1}}, records)
+							if bucket := before[resourceName(id)]; bucket != nil {
+								require.Equal(t, bucket.Entries, current.Entries)
+								require.Equal(t, bucket.Labels, current.Labels)
+							} else {
+								require.Empty(t, current.Entries)
+								require.Empty(t, current.Labels)
+								wantCount++
+							}
+						}
 						for name, bucket := range before {
-							if name != selected {
+							if name != selected && (!savedLegacy || name != resourceName(id)) {
 								require.Equal(t, bucket, after[name], "the unselected bucket must not change")
 							}
 						}

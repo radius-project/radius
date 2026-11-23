@@ -86,7 +86,9 @@ subjects:
     name: ucp
     namespace: {{ .Release.Namespace }}
 ---
-# UCP records the status of the automatic SHA-256 migration in one ConfigMap in its own namespace.
+# UCP records the status of the automatic SHA-256 migration in one ConfigMap in its own namespace, and waits for the
+# pods of other Radius releases to stop before it moves values: it compares the revision of the ReplicaSet of each pod
+# of a component with the revision of the Deployment of the component.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -113,6 +115,33 @@ rules:
     verbs:
       - get
       - patch
+
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    resourceNames:
+      - ucp
+      - applications-rp
+      - dynamic-rp
+    verbs:
+      - get
+
+  # The names of ReplicaSets are generated, so their reads cannot be limited by resourceNames.
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

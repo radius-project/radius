@@ -355,7 +355,35 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 		return err
 	}
 
-	return nil
+	return completeOtherEntry(ctx, u.DatabaseClient, otherID, other, entry.AsyncProvisioningState)
+}
+
+// completeOtherEntry saves the terminal state to the entry under the other tracking ID, as it was read before the
+// resource was fetched, if that entry is busy. A request that resolved that entry before the migration copied it marks
+// it busy, and an update for the resource resolves, and completes, the current entry, so the busy entry could keep the
+// migration, which removes only idle entries, waiting. The fetch saw the resource after that request changed it. An
+// entry that changed since it was read is left to the request that changed it.
+func completeOtherEntry(ctx context.Context, client database.Client, otherID resources.ID, other *database.Object, state v1.ProvisioningState) error {
+	if other == nil {
+		return nil
+	}
+
+	entry := datamodel.GenericResource{}
+	if err := other.As(&entry); err != nil {
+		return err
+	}
+
+	if entry.AsyncProvisioningState == "" || entry.AsyncProvisioningState.IsTerminal() {
+		return nil
+	}
+
+	entry.AsyncProvisioningState = state
+	err := client.Save(ctx, &database.Object{ID: otherID.String(), Data: &entry}, database.WithETag(other.ETag))
+	if errors.Is(err, &database.ErrConcurrency{}) || errors.Is(err, &database.ErrNotFound{}) {
+		return nil
+	}
+
+	return err
 }
 
 func (u *Updater) fetch(ctx context.Context, destination *url.URL) (*trackedResourceState, error) {

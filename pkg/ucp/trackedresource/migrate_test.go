@@ -106,7 +106,7 @@ func Test_MigrateLegacyEntries(t *testing.T) {
 					saveTracked(t, client, original, currentID, tt.current)
 				}
 
-				result, err := MigrateLegacyEntries(t.Context(), client)
+				result, err := MigrateLegacyEntries(t.Context(), client, nil)
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, result)
 
@@ -136,7 +136,7 @@ func Test_MigrateLegacyEntries(t *testing.T) {
 				}
 				require.Len(t, listed.Items, expectedCount)
 
-				again, err := MigrateLegacyEntries(t.Context(), client)
+				again, err := MigrateLegacyEntries(t.Context(), client, nil)
 				require.NoError(t, err)
 				require.Equal(t, hashmigration.Result{Remaining: tt.expected.Remaining}, again)
 			})
@@ -156,7 +156,7 @@ func Test_MigrateLegacyEntries_SkipsUnrecognizedEntries(t *testing.T) {
 	invalid.Properties.ID = "not an id"
 	require.NoError(t, client.Save(t.Context(), &database.Object{ID: LegacyIDFor(original).String(), Data: invalid}))
 
-	result, err := MigrateLegacyEntries(t.Context(), client)
+	result, err := MigrateLegacyEntries(t.Context(), client, nil)
 	require.NoError(t, err)
 	require.Equal(t, hashmigration.Result{Skipped: 2}, result)
 	require.NotNil(t, readTracked(t, client, other))
@@ -175,7 +175,7 @@ func Test_MigrateLegacyEntries_MultipleGroupsAndPlanes(t *testing.T) {
 		ids = append(ids, id)
 	}
 
-	result, err := MigrateLegacyEntries(t.Context(), client)
+	result, err := MigrateLegacyEntries(t.Context(), client, nil)
 	require.NoError(t, err)
 	require.Equal(t, hashmigration.Result{Migrated: 2}, result)
 	for _, id := range ids {
@@ -220,7 +220,7 @@ func Test_MigrateLegacyEntries_ConcurrentUpdate(t *testing.T) {
 	saveTracked(t, store, original, LegacyIDFor(original), v1.ProvisioningStateSucceeded)
 	client := &racingClient{Client: store, legacyID: LegacyIDFor(original).String()}
 
-	result, err := MigrateLegacyEntries(t.Context(), client)
+	result, err := MigrateLegacyEntries(t.Context(), client, nil)
 	require.NoError(t, err)
 	require.Equal(t, hashmigration.Result{Remaining: 1}, result, "a concurrently updated legacy entry must not be deleted")
 	require.Equal(t, v1.ProvisioningStateAccepted, readTracked(t, store, LegacyIDFor(original)).AsyncProvisioningState)
@@ -234,7 +234,7 @@ func Test_MigrateLegacyEntries_ConcurrentUpdate(t *testing.T) {
 	entry.AsyncProvisioningState = v1.ProvisioningStateSucceeded
 	require.NoError(t, store.Save(t.Context(), &database.Object{ID: legacy.ID, Data: entry}))
 
-	result, err = MigrateLegacyEntries(t.Context(), store)
+	result, err = MigrateLegacyEntries(t.Context(), store, nil)
 	require.NoError(t, err)
 	require.Equal(t, hashmigration.Result{Migrated: 1}, result)
 	require.Nil(t, readTracked(t, store, LegacyIDFor(original)))
@@ -288,14 +288,77 @@ func Test_MigrateLegacyEntries_CopyUsedBeforeRemoval(t *testing.T) {
 			client := &usingClient{Client: store, currentID: IDFor(original).String(), legacyID: LegacyIDFor(original).String()}
 
 			// A copy that a request used is kept; both entries are busy and a later pass deduplicates them.
-			result, err := MigrateLegacyEntries(t.Context(), client)
+			result, err := MigrateLegacyEntries(t.Context(), client, nil)
 			require.NoError(t, err)
 			require.Equal(t, hashmigration.Result{Remaining: 1}, result)
 			require.True(t, client.done)
 			require.Equal(t, v1.ProvisioningStateAccepted, readTracked(t, store, LegacyIDFor(original)).AsyncProvisioningState)
 			require.Equal(t, v1.ProvisioningStateAccepted, readTracked(t, store, IDFor(original)).AsyncProvisioningState)
+
+			// The updates for both requests resolve the current entry. They complete the legacy entry too, so the
+			// migration does not wait for it forever.
+			for range 2 {
+				transport := &sequenceTransport{statuses: []int{http.StatusOK}, before: func() {}}
+				require.NoError(t, NewUpdater(store, &http.Client{Transport: transport}).run(t.Context(), original, testURL, "2023-01-01"))
+			}
+			require.Equal(t, v1.ProvisioningStateSucceeded, readTracked(t, store, IDFor(original)).AsyncProvisioningState)
+
+			expected := hashmigration.Result{Deduplicated: 1}
+			for range 3 {
+				result, err = MigrateLegacyEntries(t.Context(), store, nil)
+				require.NoError(t, err)
+				require.Equal(t, expected, result)
+				expected = hashmigration.Result{}
+			}
+			require.Nil(t, readTracked(t, store, LegacyIDFor(original)))
+			require.Equal(t, v1.ProvisioningStateSucceeded, readTracked(t, store, IDFor(original)).AsyncProvisioningState)
 		})
 	}
+}
+
+// UCP of a release before this one resolves the tracking ID of an entry once per request and saves the entry
+// unconditionally, so it would create a moved legacy entry again. The migration moves no entry while its pods run.
+func Test_MigrateLegacyEntries_Gate(t *testing.T) {
+	t.Parallel()
+	original := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/my-resource")
+	other := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/other")
+	setup := func(t *testing.T) database.Client {
+		client := inmemory.NewClient()
+		require.NoError(t, client.Save(t.Context(), &database.Object{ID: migrateGroup, Data: map[string]any{"name": "test-group"}}))
+		saveTracked(t, client, original, LegacyIDFor(original), v1.ProvisioningStateSucceeded)
+		saveTracked(t, client, other, IDFor(other), v1.ProvisioningStateSucceeded)
+		return client
+	}
+
+	t.Run("closed", func(t *testing.T) {
+		t.Parallel()
+		client := setup(t)
+		result, err := MigrateLegacyEntries(t.Context(), client, gateFunc(func() (string, error) { return "waiting", nil }))
+		require.NoError(t, err)
+		require.Equal(t, hashmigration.Result{Remaining: 1, Message: "waiting"}, result)
+		require.NotNil(t, readTracked(t, client, LegacyIDFor(original)))
+		require.Nil(t, readTracked(t, client, IDFor(original)))
+
+		result, err = MigrateLegacyEntries(t.Context(), client, gateFunc(func() (string, error) { return "", nil }))
+		require.NoError(t, err)
+		require.Equal(t, hashmigration.Result{Migrated: 1}, result)
+	})
+
+	t.Run("fails", func(t *testing.T) {
+		t.Parallel()
+		failure := errors.New("pods unavailable")
+		client := setup(t)
+		_, err := MigrateLegacyEntries(t.Context(), client, gateFunc(func() (string, error) { return "", failure }))
+		require.ErrorIs(t, err, failure)
+		require.NotNil(t, readTracked(t, client, LegacyIDFor(original)))
+	})
+}
+
+// gateFunc adapts a function to hashmigration.Gate.
+type gateFunc func() (string, error)
+
+func (f gateFunc) Wait(context.Context) (string, error) {
+	return f()
 }
 
 // deduplicatingClient runs another migrator right after the migration saves the copy, as a second UCP replica would.
@@ -315,7 +378,7 @@ func (c *deduplicatingClient) Save(ctx context.Context, obj *database.Object, op
 	}
 
 	c.done = true
-	result, err := MigrateLegacyEntries(ctx, c.Client)
+	result, err := MigrateLegacyEntries(ctx, c.Client, nil)
 	c.result = result
 	return err
 }
@@ -333,7 +396,7 @@ func Test_MigrateLegacyEntries_ConcurrentMigrators(t *testing.T) {
 
 			// The other migrator deletes the legacy entry after the copy was saved. The first one must not mistake that
 			// for a deleted resource and delete the copy, which would lose the entry.
-			result, err := MigrateLegacyEntries(t.Context(), client)
+			result, err := MigrateLegacyEntries(t.Context(), client, nil)
 			require.NoError(t, err)
 			require.True(t, client.done)
 			require.Equal(t, hashmigration.Result{Deduplicated: 1}, client.result)
@@ -374,13 +437,13 @@ func Test_MigrateLegacyEntries_CurrentCreatedConcurrently(t *testing.T) {
 			existing.Properties.APIVersion = "2024-01-01"
 			client := &creatingClient{Client: store, currentID: IDFor(original).String(), existing: existing}
 
-			result, err := MigrateLegacyEntries(t.Context(), client)
+			result, err := MigrateLegacyEntries(t.Context(), client, nil)
 			require.NoError(t, err)
 			require.Equal(t, hashmigration.Result{Remaining: 1}, result)
 			require.Equal(t, "2024-01-01", readTracked(t, store, IDFor(original)).Properties.APIVersion, "the concurrently created entry must not be overwritten")
 			require.NotNil(t, readTracked(t, store, LegacyIDFor(original)))
 
-			result, err = MigrateLegacyEntries(t.Context(), store)
+			result, err = MigrateLegacyEntries(t.Context(), store, nil)
 			require.NoError(t, err)
 			require.Equal(t, hashmigration.Result{Deduplicated: 1}, result)
 			require.Nil(t, readTracked(t, store, LegacyIDFor(original)))
@@ -446,7 +509,7 @@ func Test_MigrateLegacyEntries_DeletedDuringMove(t *testing.T) {
 				saveTracked(t, store, original, LegacyIDFor(original), v1.ProvisioningStateSucceeded)
 				client := &deletingClient{Client: store, currentID: IDFor(original).String(), legacyID: LegacyIDFor(original).String(), recreate: tt.recreate}
 
-				result, err := MigrateLegacyEntries(t.Context(), client)
+				result, err := MigrateLegacyEntries(t.Context(), client, nil)
 				require.NoError(t, err)
 				result.Message = ""
 				require.Equal(t, hashmigration.Result{}, result)
@@ -570,6 +633,6 @@ func Test_MigrateLegacyEntries_UpdaterAndConcurrentMigrators(t *testing.T) {
 func Test_MigrateLegacyEntries_QueryError(t *testing.T) {
 	t.Parallel()
 	failure := errors.New("unavailable")
-	_, err := MigrateLegacyEntries(t.Context(), &failingQueryClient{Client: inmemory.NewClient(), err: failure})
+	_, err := MigrateLegacyEntries(t.Context(), &failingQueryClient{Client: inmemory.NewClient(), err: failure}, nil)
 	require.ErrorIs(t, err, failure)
 }

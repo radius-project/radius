@@ -17,11 +17,9 @@ limitations under the License.
 package kubernetes
 
 import (
-	"crypto/sha1" //nolint:gosec // Computes the legacy secret hash independently to pin its format.
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -66,12 +64,12 @@ func Test_HashSecretData(t *testing.T) {
 func Test_LegacyHashSecretData(t *testing.T) {
 	t.Parallel()
 
-	// The legacy hash must match what older versions of Radius wrote into Pod templates.
+	// The legacy hash must match what older versions of Radius wrote into Pod templates: the SHA-1 of "|a|1|b|2", and
+	// of no data.
 	data := map[string][]byte{"b": []byte("2"), "a": []byte("1")}
-	expected := fmt.Sprintf("%x", sha1.Sum([]byte("|a|1|b|2"))) //nolint:gosec // Pins the legacy format.
-	require.Equal(t, expected, LegacyHashSecretData(data))
+	require.Equal(t, "8acea4daa50056a10c4fe9ce48c6b0994f54434b", LegacyHashSecretData(data))
 	require.True(t, IsLegacySecretHash(LegacyHashSecretData(data)))
-	require.Equal(t, fmt.Sprintf("%x", sha1.Sum(nil)), LegacyHashSecretData(nil)) //nolint:gosec // Pins the legacy format.
+	require.Equal(t, "da39a3ee5e6b4b0d3255bfef95601890afd80709", LegacyHashSecretData(nil))
 }
 
 func Test_IsLegacySecretHash(t *testing.T) {

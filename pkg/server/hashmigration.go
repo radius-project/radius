@@ -19,7 +19,6 @@ package server
 import (
 	"context"
 	"errors"
-	"os"
 
 	"k8s.io/client-go/kubernetes"
 
@@ -33,9 +32,6 @@ import (
 
 // HashMigrationComponent is the component name applications-rp records its SHA-256 migration status under.
 const HashMigrationComponent = "applications-rp"
-
-// applicationsRPApp is the app.kubernetes.io/name label of the Applications RP pods, and the name of their container.
-const applicationsRPApp = "applications-rp"
 
 // NewHashMigrationService creates the service that migrates the SHA-1-derived values applications-rp owns: the
 // Terraform states of its resources, and the secret hashes of the workloads of its containers.
@@ -81,27 +77,17 @@ func NewHashMigrationService(options hostoptions.HostOptions) *hashmigration.Ser
 }
 
 func newHashMigrationService(databaseProvider *databaseprovider.DatabaseProvider, controlPlane func() (kubernetes.Interface, error), target func(context.Context) (kubernetes.Interface, error), reporter hashmigration.Reporter) *hashmigration.Service {
-	// The Applications RP pods run in the control-plane cluster. The host name of a pod is its name.
-	otherReleases := func(ctx context.Context) ([]string, error) {
-		client, err := controlPlane()
-		if err != nil {
-			return nil, err
-		}
-
-		self, err := os.Hostname()
-		if err != nil {
-			return nil, err
-		}
-
-		return hashmigration.OtherReleasePods(ctx, client, hashmigration.DefaultNamespace, applicationsRPApp, self)
-	}
+	// The pods of the control plane run in the control-plane cluster. Both resource providers run Terraform for the
+	// resources in the data store they share, and only the Applications RP deploys containers.
+	terraformGate := hashmigration.NewReleaseGate(controlPlane, hashmigration.DefaultNamespace, hashmigration.AppApplicationsRP, hashmigration.AppDynamicRP)
+	containerGate := hashmigration.NewReleaseGate(controlPlane, hashmigration.DefaultNamespace, hashmigration.AppApplicationsRP)
 
 	return hashmigration.NewService(hashmigration.Options{
 		Component: HashMigrationComponent,
 		Steps: []hashmigration.Step{
 			// Terraform stores its states in the control-plane cluster.
-			backends.NewStateMigrationStep(controlPlane, databaseProvider.GetClient),
-			container.NewSecretHashMigrationStep(target, otherReleases),
+			backends.NewStateMigrationStep(controlPlane, databaseProvider.GetClient, terraformGate),
+			container.NewSecretHashMigrationStep(target, containerGate),
 		},
 		Reporter:     reporter,
 		InitialDelay: hashmigration.DefaultInitialDelay,

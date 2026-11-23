@@ -25,6 +25,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 
@@ -98,15 +99,29 @@ func Test_HashMigrationService_WaitsForOtherReleases(t *testing.T) {
 	self, err := os.Hostname()
 	require.NoError(t, err)
 
-	pod := func(name string, image string) *corev1.Pod {
+	// The Deployment is at revision 2, and the pods of revision 1 belong to the earlier release.
+	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{
+		Name: hashmigration.AppApplicationsRP, Namespace: hashmigration.DefaultNamespace, UID: "deployment",
+		Annotations: map[string]string{"deployment.kubernetes.io/revision": "2"},
+	}}
+	replicaSet := func(revision string) *appsv1.ReplicaSet {
+		return &appsv1.ReplicaSet{ObjectMeta: metav1.ObjectMeta{
+			Name: "applications-rp-" + revision, Namespace: hashmigration.DefaultNamespace, UID: types.UID("replicaset-" + revision),
+			Annotations:     map[string]string{"deployment.kubernetes.io/revision": revision},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(deployment, appsv1.SchemeGroupVersion.WithKind("Deployment"))},
+		}}
+	}
+	pod := func(name string, revision string) *corev1.Pod {
 		return &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: hashmigration.DefaultNamespace, Labels: map[string]string{hashmigration.LabelAppName: "applications-rp"}},
-			Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "applications-rp", Image: image}}},
-			Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: hashmigration.DefaultNamespace, Labels: map[string]string{hashmigration.LabelAppName: hashmigration.AppApplicationsRP},
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(replicaSet(revision), appsv1.SchemeGroupVersion.WithKind("ReplicaSet"))},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
 		}
 	}
 
-	client := fake.NewClientset(pod(self, "applications-rp:new"), pod("applications-rp-old", "applications-rp:old"))
+	client := fake.NewClientset(deployment, replicaSet("1"), replicaSet("2"), pod(self, "2"), pod("applications-rp-old", "1"))
 	clientFn := func() (kubernetes.Interface, error) { return client, nil }
 	targetFn := func(context.Context) (kubernetes.Interface, error) { return client, nil }
 	reporter := hashmigration.NewConfigMapReporter(client, hashmigration.DefaultNamespace)

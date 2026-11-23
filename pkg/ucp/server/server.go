@@ -62,7 +62,7 @@ func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error)
 	services = append(services, initializer.NewService(options))
 
 	if !options.Config.SHA256Migration.Disabled {
-		services = append(services, newHashMigrationService(options.DatabaseProvider, hashmigration.NewKubernetesReporter()))
+		services = append(services, newHashMigrationService(options.DatabaseProvider, hashmigration.NewKubernetesReporter(), hashmigration.ClusterClient()))
 	}
 
 	return &hosting.Host{

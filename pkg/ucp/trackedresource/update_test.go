@@ -543,6 +543,55 @@ func Test_run(t *testing.T) {
 		}
 	})
 
+	t.Run("successful update completes a busy entry under the other tracking ID", func(t *testing.T) {
+		for _, tt := range []struct {
+			name  string
+			state v1.ProvisioningState
+
+			// saveErr is the result of the save of the other entry: it changed since it was read.
+			saveErr error
+		}{
+			{name: "busy", state: v1.ProvisioningStateAccepted},
+			{name: "busy and changed since", state: v1.ProvisioningStateAccepted, saveErr: &database.ErrConcurrency{}},
+			{name: "idle", state: v1.ProvisioningStateSucceeded},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				updater, databaseClient, roundTripper := setupUpdater(t)
+				current := datamodel.GenericResourceFromID(testID, IDFor(testID))
+				current.AsyncProvisioningState = v1.ProvisioningStateAccepted
+				legacy := datamodel.GenericResourceFromID(testID, LegacyIDFor(testID))
+				legacy.AsyncProvisioningState = tt.state
+
+				// A request resolved the legacy entry before the migration copied it, and another found the copy.
+				databaseClient.EXPECT().Get(gomock.Any(), IDFor(testID).String()).Return(&database.Object{ETag: "current-etag", Data: current}, nil)
+				databaseClient.EXPECT().Get(gomock.Any(), LegacyIDFor(testID).String()).Return(&database.Object{ETag: "legacy-etag", Data: legacy}, nil)
+				roundTripper.RespondWithJSON(t, http.StatusOK, map[string]any{"id": testID.String(), "properties": map[string]any{"provisioningState": v1.ProvisioningStateFailed}})
+
+				saved := databaseClient.EXPECT().
+					Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+						require.Equal(t, IDFor(testID).String(), obj.ID)
+						require.Equal(t, "current-etag", database.NewSaveConfig(options...).ETag)
+						require.Equal(t, v1.ProvisioningStateFailed, obj.Data.(*datamodel.GenericResource).AsyncProvisioningState)
+						return nil
+					})
+				if tt.state != v1.ProvisioningStateSucceeded {
+					databaseClient.EXPECT().
+						Save(gomock.Any(), gomock.Any(), gomock.Any()).
+						DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+							require.Equal(t, LegacyIDFor(testID).String(), obj.ID)
+							require.Equal(t, "legacy-etag", database.NewSaveConfig(options...).ETag, "an entry that changed since it was read is left alone")
+							require.Equal(t, v1.ProvisioningStateFailed, obj.Data.(*datamodel.GenericResource).AsyncProvisioningState)
+							return tt.saveErr
+						}).
+						After(saved.Call)
+				}
+
+				require.NoError(t, updater.run(t.Context(), testID, testURL, apiVersion))
+			})
+		}
+	})
+
 	t.Run("resource still provisioning", func(t *testing.T) {
 		updater, databaseClient, roundTripper := setupUpdater(t)
 

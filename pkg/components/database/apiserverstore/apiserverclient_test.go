@@ -198,10 +198,15 @@ func Test_APIServer_Client(t *testing.T) {
 		err = client.Save(ctx, &obj)
 		require.NoError(t, err)
 
-		// The current (SHA-256) named object must NOT exist - the data stays under the legacy name.
+		// The data stays under the legacy name. The save only records in the current (SHA-256) named object that it
+		// wrote the legacy object, so a migrator that read the legacy object before cannot copy the replaced value.
 		currentName := resourceName(shared.Resource1ID)
-		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: currentName}, &ucpv1alpha1.Resource{})
-		require.True(t, apierrors.IsNotFound(err), "save must not duplicate the resource under the current name")
+		fence := ucpv1alpha1.Resource{}
+		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: currentName}, &fence))
+		require.Empty(t, fence.Entries, "save must not duplicate the resource under the current name")
+		records, err := migrationRecords(&fence)
+		require.NoError(t, err)
+		require.Equal(t, map[string]migrationRecord{strings.ToLower(shared.Resource1ID.String()): {State: recordLegacy, Fence: 1}}, records)
 
 		updated := ucpv1alpha1.Resource{}
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: legacyName}, &updated)
@@ -215,6 +220,12 @@ func Test_APIServer_Client(t *testing.T) {
 
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: legacyName}, &ucpv1alpha1.Resource{})
 		require.True(t, apierrors.IsNotFound(err))
+
+		// The current object keeps a tombstone, so a migrator that read the legacy object before the delete cannot
+		// bring the resource back.
+		requireTombstone(t, ctx, rc, ns, shared.Resource1ID)
+		_, err = client.Get(ctx, shared.Resource1ID.String())
+		require.ErrorIs(t, err, &database.ErrNotFound{})
 	})
 
 	t.Run("save_resource_and_validate_kubernetes_object_uppercase_name", func(t *testing.T) {
@@ -271,11 +282,14 @@ func Test_APIServer_Client(t *testing.T) {
 		require.Equal(t, obj.ETag, updated.Entries[0].ETag)
 		require.JSONEq(t, string(shared.MarshalOrPanic(shared.Data2)), string(updated.Entries[0].Data.Raw))
 
+		// The current bucket keeps its entries; the save records its fence there.
 		unchanged := &ucpv1alpha1.Resource{}
 		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(current), unchanged))
 		require.Equal(t, current.UID, unchanged.UID)
-		require.Equal(t, current.ResourceVersion, unchanged.ResourceVersion)
 		require.Equal(t, current.Entries, unchanged.Entries)
+		records, err := migrationRecords(unchanged)
+		require.NoError(t, err)
+		require.Equal(t, map[string]migrationRecord{strings.ToLower(id.String()): {State: recordLegacy, Fence: 1}}, records)
 
 		result, err := client.Query(ctx, database.Query{RootScope: shared.RadiusScope, ScopeRecursive: true, ResourceType: id.Type()})
 		require.NoError(t, err)
@@ -295,7 +309,9 @@ func Test_APIServer_Client(t *testing.T) {
 		require.Equal(t, map[string]string(assignLabels(updated)), updated.Labels)
 		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(current), unchanged))
 		require.Equal(t, current.Entries, unchanged.Entries)
-		require.Equal(t, current.ResourceVersion, unchanged.ResourceVersion)
+		records, err = migrationRecords(unchanged)
+		require.NoError(t, err)
+		require.Equal(t, map[string]migrationRecord{strings.ToLower(id.String()): {State: recordDeleted}}, records, "the delete of an entry with a legacy copy leaves a tombstone")
 	})
 
 	t.Run("migrate_legacy_names", func(t *testing.T) {
@@ -308,7 +324,7 @@ func Test_APIServer_Client(t *testing.T) {
 			require.NoError(t, rc.Create(ctx, object))
 		}
 
-		result, err := client.MigrateLegacyNames(ctx)
+		result, err := client.MigrateLegacyNames(ctx, nil)
 		require.NoError(t, err)
 		require.Equal(t, hashmigration.Result{Migrated: 2}, result)
 
@@ -346,13 +362,22 @@ func Test_APIServer_Client(t *testing.T) {
 		require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKeyFromObject(unrelated), unchanged))
 		require.Equal(t, unrelated.Entries, unchanged.Entries)
 
-		again, err := client.MigrateLegacyNames(ctx)
+		again, err := client.MigrateLegacyNames(ctx, nil)
 		require.NoError(t, err)
 		require.Equal(t, hashmigration.Result{}, again)
 
 		require.NoError(t, client.Delete(ctx, shared.Resource1ID.String(), database.WithETag(obj.ETag)))
 		_, err = client.Get(ctx, shared.Resource1ID.String())
 		require.ErrorIs(t, err, &database.ErrNotFound{})
+		requireTombstone(t, ctx, rc, ns, shared.Resource1ID)
+
+		// A copy written by a migrator that read the legacy object before the move and the delete fails.
+		stale := fallbackTestResource(t, ns, resourceName(shared.Resource1ID), "legacy", []resources.ID{shared.Resource1ID})
+		require.True(t, apierrors.IsAlreadyExists(rc.Create(ctx, stale)))
+		require.NoError(t, client.Save(ctx, &database.Object{ID: shared.Resource1ID.String(), Data: shared.Data1}, database.WithCreateOnly()))
+		got, err = client.Get(ctx, shared.Resource1ID.String())
+		require.NoError(t, err)
+		require.Equal(t, etag.New(shared.MarshalOrPanic(shared.Data1)), got.ETag)
 	})
 
 	t.Run("save_scope_and_validate_kubernetes_object", func(t *testing.T) {
@@ -782,6 +807,17 @@ func Test_APIServer_Client(t *testing.T) {
 		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName}, &resource)
 		require.True(t, apierrors.IsNotFound(err))
 	})
+}
+
+// requireTombstone requires that the current object of id holds no entry for id and its tombstone.
+func requireTombstone(t *testing.T, ctx context.Context, rc runtimeclient.Client, ns string, id resources.ID) {
+	t.Helper()
+	current := &ucpv1alpha1.Resource{}
+	require.NoError(t, rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: resourceName(id)}, current))
+	require.Nil(t, findIndex(current, id))
+	records, err := migrationRecords(current)
+	require.NoError(t, err)
+	require.Equal(t, migrationRecord{State: recordDeleted}, records[strings.ToLower(id.String())])
 }
 
 func Test_AssignLabels_Resource_NoConflicts(t *testing.T) {
