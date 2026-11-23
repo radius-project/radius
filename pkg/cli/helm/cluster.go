@@ -439,7 +439,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	// no Radius release and resumes only this cleanup, so a failure here still removes Contour, and keeps cert-manager,
 	// which the cleanup needs, before returning the error.
 	if cleanupErr := i.deleteUCPAPIServerLeftovers(ctx, kubeContext, clusterOptions.Radius.Namespace); cleanupErr != nil {
-		return errors.Join(cleanupErr, i.uninstallContour(ctx, clusterOptions, kubeContext))
+		return &RadiusRemovedError{Err: errors.Join(cleanupErr, i.uninstallContour(ctx, clusterOptions, kubeContext))}
 	}
 	if err := i.uninstallContour(ctx, clusterOptions, kubeContext); err != nil {
 		return err
@@ -448,6 +448,16 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	// Uninstall cert-manager only if rad installed it.
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
 }
+
+// RadiusRemovedError reports that UninstallRadius failed after Helm uninstalled the Radius release, so the caller can
+// still finish the steps that depend only on Radius being gone.
+type RadiusRemovedError struct {
+	Err error
+}
+
+func (e *RadiusRemovedError) Error() string { return e.Err.Error() }
+
+func (e *RadiusRemovedError) Unwrap() error { return e.Err }
 
 // uninstallContour deletes the Radius Contour Gateway and uninstalls the Contour release.
 func (i *Impl) uninstallContour(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {

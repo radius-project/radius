@@ -378,7 +378,10 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
 	}
-	require.ErrorContains(t, impl.UninstallRadius(t.Context(), options, "test-context"), ucpAPIServerTLSSecretName)
+	err := impl.UninstallRadius(t.Context(), options, "test-context")
+	require.ErrorContains(t, err, ucpAPIServerTLSSecretName)
+	var removed *RadiusRemovedError
+	require.ErrorAs(t, err, &removed)
 	require.Equal(t, 1, gateway.removeCalls)
 
 	leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
