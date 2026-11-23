@@ -180,7 +180,11 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		output.LogInfo("Removed %d earlier CA certificate(s) from APIService %s, which now trusts only %s/%s",
 			len(trusted)-1, ucpAPIServiceName, radiusNamespace, ucpAPIServerCASecretName)
 	}
-	return nil
+	// A chart whose Certificate ucp-cert writes another Secret, such as ucp-mtls, leaves ucp-apiserver-tls and its
+	// private key unused, so rad deletes it as authorization off does. It keeps a Secret that rad does not own.
+	_, err = i.deleteLeftoverSecrets(ctx, kubeClient, dynamicClient, radiusNamespace,
+		[]ucpOffLeftoverSecret{{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}}, false)
+	return err
 }
 
 // ucpAPIServerCASource is the inject-ca-from-secret value that makes cainjector copy radius-apiserver-ca.
