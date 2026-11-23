@@ -67,14 +67,14 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/AuthorizationScopeParameter"
+            "$ref": "#/parameters/AccessCheckScopeParameter"
           },
           {
             "name": "request",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AccessCheckRequest"
+              "$ref": "#/definitions/BoundedAccessCheckRequest"
             }
           }
         ],
@@ -701,7 +701,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/AccessCheckRequest"
+              "$ref": "#/definitions/BoundedAccessCheckRequest"
             }
           }
         ],
@@ -1283,6 +1283,50 @@
         "target"
       ]
     },
+    "AccessCheckPrincipal": {
+      "type": "object",
+      "description": "An explicitly supplied access-check principal. Input limits do not truncate verified identities returned by inspection or used by omitted-principal self checks.",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/PrincipalType",
+          "description": "The kind of principal.",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.",
+          "minLength": 1,
+          "maxLength": 256,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.",
+          "minLength": 1,
+          "maxLength": 512,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "displayName": {
+          "type": "string",
+          "description": "An optional mutable label that is never used to match principals.",
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "type",
+        "issuer",
+        "subject"
+      ]
+    },
     "AccessCheckRequest": {
       "type": "object",
       "description": "Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.",
@@ -1475,6 +1519,48 @@
         }
       ]
     },
+    "BoundedAccessCheck": {
+      "type": "object",
+      "description": "A bounded permission and concrete target for checkAccess input.",
+      "properties": {
+        "permission": {
+          "$ref": "#/definitions/PermissionName",
+          "description": "The permission being evaluated.",
+          "maxLength": 256
+        },
+        "target": {
+          "type": "string",
+          "description": "The concrete target resource or scope ID.",
+          "maxLength": 2048
+        }
+      },
+      "required": [
+        "permission",
+        "target"
+      ]
+    },
+    "BoundedAccessCheckRequest": {
+      "type": "object",
+      "description": "Bounded checkAccess input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.",
+      "properties": {
+        "principal": {
+          "$ref": "#/definitions/AccessCheckPrincipal",
+          "description": "The principal to check, or the authenticated caller when omitted."
+        },
+        "checks": {
+          "type": "array",
+          "description": "The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/definitions/BoundedAccessCheck"
+          }
+        }
+      },
+      "required": [
+        "checks"
+      ]
+    },
     "CheckAccessResponse": {
       "type": "object",
       "description": "The results under one consistent policy generation.",
@@ -1647,7 +1733,7 @@
     },
     "PermissionName": {
       "type": "string",
-      "description": "An explicit catalog permission such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.",
+      "description": "An explicit catalog permission, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.",
       "pattern": "^[^*/\\s]+(/[^*/\\s]+){2,}$"
     },
     "PolicyChange": {
@@ -2003,6 +2089,13 @@
         "isRadiusAdministrator": {
           "type": "boolean",
           "description": "Whether the caller has Radius Administrator access."
+        },
+        "warnings": {
+          "type": "array",
+          "description": "Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -2040,6 +2133,17 @@
       "type": "string",
       "format": "date-time",
       "x-ms-parameter-location": "method"
+    },
+    "AccessCheckScopeParameter": {
+      "name": "scope",
+      "in": "path",
+      "description": "The plane, resource-group, or supported-resource ID without a leading or trailing slash, up to 2047 characters. Use the installation operation for scope /.",
+      "required": true,
+      "type": "string",
+      "maxLength": 2047,
+      "pattern": "^[^/\\s*]+(/[^/\\s*]+)*$",
+      "x-ms-parameter-location": "method",
+      "x-ms-skip-url-encoding": true
     },
     "AssignmentDeleteOptions": {
       "name": "takeOwnership",
