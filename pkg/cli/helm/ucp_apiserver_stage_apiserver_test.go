@@ -172,7 +172,7 @@ func TestStagedUCPAPIServerCAAdoptedByHelm_APIServer(t *testing.T) {
 		impl := &Impl{logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }}
 		for range 2 {
 			logs = nil
-			require.NoError(t, impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, namespace, "radius", nil))
+			require.NoError(t, impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, namespace, "radius", nil, false))
 			_, err = dynamicClient.Resource(staged[0].resource).Namespace(namespace).Get(t.Context(), foreign.GetName(), metav1.GetOptions{})
 			require.NoError(t, err, "rad must keep %s, which it did not stage", foreign.GetName())
 			for _, object := range staged[1:] {

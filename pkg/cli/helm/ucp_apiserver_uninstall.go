@@ -59,16 +59,16 @@ func (i *Impl) deleteUCPAPIServerLeftovers(ctx context.Context, kubeContext, rad
 	if err != nil {
 		return err
 	}
-	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, nil); err != nil {
+	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, nil, true); err != nil {
 		return err
 	}
-	if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, ucpOffCertificateStageObject, radiusNamespace, radiusReleaseName); err != nil {
+	if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, ucpOffCertificateStageObject, radiusNamespace, radiusReleaseName, true); err != nil {
 		return err
 	}
 	if err := i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace); err != nil {
 		return err
 	}
-	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, ucpUninstallLeftoverSecrets)
+	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, ucpUninstallLeftoverSecrets, true)
 }
 
 // UninstallLeftover is an object that a previous Radius uninstall left after Helm removed the release, as rad read it.
@@ -173,21 +173,22 @@ func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext s
 // staged. Each delete carries the uid and resourceVersion rad read, so an object that changed or was recreated since
 // survives. rad leaves an object with other ownership, or with helm.sh/resource-policy: keep, and warns how to delete it.
 // It keeps each object that declared, the objects of the release Helm applied, holds; declared is empty after Helm
-// uninstalls the release.
-func (i *Impl) deleteUnadoptedUCPAPIServerStage(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace, releaseName string, declared manifestObjectSet) error {
+// uninstalls the release. When an object changed before rad deleted it, it warns, or, when incompleteErr is set, stops
+// with an error, so that uninstall keeps cert-manager for a retry.
+func (i *Impl) deleteUnadoptedUCPAPIServerStage(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace, releaseName string, declared manifestObjectSet, incompleteErr bool) error {
 	for index := len(ucpAPIServerCAStageObjects) - 1; index >= 0; index-- {
 		staged := ucpAPIServerCAStageObjects[index]
 		if declared.has(staged) {
 			continue
 		}
-		if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, staged, radiusNamespace, releaseName); err != nil {
+		if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, staged, radiusNamespace, releaseName, incompleteErr); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (i *Impl) deleteUnadoptedStagedObject(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, staged stageInventoryObject, radiusNamespace, releaseName string) error {
+func (i *Impl) deleteUnadoptedStagedObject(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, staged stageInventoryObject, radiusNamespace, releaseName string, incompleteErr bool) error {
 	namespace, path := radiusNamespace, radiusNamespace+"/"+staged.name
 	objects := dynamicClient.Resource(staged.resource).Namespace(namespace)
 	read := func() (*unstructured.Unstructured, error) {
@@ -233,6 +234,9 @@ func (i *Impl) deleteUnadoptedStagedObject(ctx context.Context, kubeContext stri
 	if !stagedForRelease(object, radiusNamespace, releaseName) {
 		warnForeign()
 		return nil
+	}
+	if incompleteErr {
+		return fmt.Errorf("rad did not delete %s %s, which changed after rad read it. Run the command again to delete it", staged.kind, path)
 	}
 	i.logInfo("Warning: rad did not delete %s %s, which changed after rad read it. Run the command again to delete it", staged.kind, path)
 	return nil
