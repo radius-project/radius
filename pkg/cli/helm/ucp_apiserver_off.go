@@ -108,12 +108,21 @@ type ucpOffLeftoverFound struct {
 // Helm, and this deletes it. It keeps a declared object, such as the radius-selfsigned-bootstrap Issuer that charts
 // which serve UCP from ucp-cert also use to issue radius-ca.
 func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet) error {
+	return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared, false)
+}
+
+// reconcileUCPOffAPIServerTrust is ReconcileUCPOffAPIServerTrust. fresh reports that Helm installed the first revision
+// of the release, which no upgrade preceded, so rad never staged the radius-apiserver-ca chain for it and skips reading
+// the cert-manager Issuers and Certificate, which a user who cannot read them may still install Radius without.
+func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet, fresh bool) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
 	}
-	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
-		return err
+	if !fresh {
+		if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
+			return err
+		}
 	}
 	apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, "")
 	if err != nil || apiService == nil {
