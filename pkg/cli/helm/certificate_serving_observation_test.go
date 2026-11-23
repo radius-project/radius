@@ -205,7 +205,7 @@ func TestObserveServingCertificate(t *testing.T) {
 					var secret *corev1.Secret
 					for path, manifest := range rendered {
 						if strings.HasSuffix(path, "/ucp/apiservice.yaml") {
-							secret, err = renderedUCPOffCertificate(manifest)
+							secret, err = renderedSecret(manifest, ucpOffCertificateSecretName)
 							require.NoError(t, err)
 						}
 					}

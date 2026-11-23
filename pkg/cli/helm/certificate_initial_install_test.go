@@ -152,7 +152,12 @@ func TestInitialCertificateControllerFixtureExecution(t *testing.T) {
 				require.NotContains(t, journal.Data[rotationJournalKey], "PRIVATE KEY")
 				require.NotContains(t, journal.Data[rotationJournalKey], "tls.key")
 				if mode == "selfSigned" && provider == "radius" {
+					require.Equal(t, "Secret", state.Sources["internal"].Kind)
+					require.Equal(t, state.Anchors["internal"].Signer.UID, state.Sources["internal"].UID)
 					require.NotEqual(t, state.Anchors["internal"].CA, state.Anchors["aggregation"].CA)
+				} else if provider == "radius" {
+					require.Equal(t, "ConfigMap", state.Sources["internal"].Kind)
+					require.Equal(t, "radius-mtls-ca", state.Sources["internal"].Name)
 				}
 				source, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 				require.NoError(t, err)

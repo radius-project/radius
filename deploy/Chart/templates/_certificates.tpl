@@ -84,6 +84,16 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- if or (not $ready) $existing.metadata.deletionTimestamp -}}
 {{- fail (printf "issuerRef prerequisite: %s %s must be Ready at its current generation." $issuer.kind $issuer.name) -}}
 {{- end -}}
+{{- $leaves := list "ucp-cert" -}}
+{{- range $receiver := include "radius.authz.certificates.receivers" . | fromJsonArray -}}
+{{- $leaves = append $leaves (printf "%s-spiffe" $receiver) -}}
+{{- end -}}
+{{- range $name := $leaves -}}
+{{- $leaf := lookup "cert-manager.io/v1" "Certificate" $.Release.Namespace $name -}}
+{{- if and $leaf (not (deepEqual (dig "spec" "issuerRef" dict $leaf) $issuer)) -}}
+{{- fail (printf "certificate lifecycle prerequisite: Certificate %s issuerRef differs from the selected issuer; use the lifecycle command." $name) -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- if not $lifecycle -}}
@@ -146,16 +156,19 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- end -}}
 {{- if ne $mode "selfSigned" -}}
 {{- $bundle = printf "%s\n" (trim $root.Values.global.rbac.certificates.caBundle) -}}
-{{- else if $existing -}}
-{{- $bundle = index ($existing.data | default dict) "ca.crt" | default "" -}}
-{{- if eq $kind "Secret" -}}{{- $bundle = b64dec $bundle -}}{{- end -}}
-{{- else if ne .plane "aggregation" -}}
+{{- else if eq .plane "internal" -}}
 {{- $secret := lookup "v1" "Secret" $root.Release.Namespace $signing -}}
 {{- $observed = $secret -}}
 {{- $bundle = dig "data" "ca.crt" "" $secret | b64dec -}}
+{{- else -}}
+{{- $bundle = dig "data" "ca.crt" "" $existing | b64dec -}}
 {{- end -}}
 {{- if and $existing (ne $mode "selfSigned") -}}
 {{- $recordedMode := index ($existing.metadata.annotations | default dict) "radius.io/certificate-mode" | default "" -}}
+{{- $annotations := $existing.metadata.annotations | default dict -}}
+{{- if and (eq .plane "aggregation") (eq $mode "issuerRef") (hasKey $annotations "radius.io/issuer-ref") (ne (index $annotations "radius.io/issuer-ref") (include "radius.authz.certificates.issuer" .)) -}}
+{{- fail "certificate lifecycle prerequisite: retained aggregation trust issuerRef differs from the selected issuer; use the lifecycle command." -}}
+{{- end -}}
 {{- if and $recordedMode (ne $recordedMode $mode) -}}
 {{- fail "certificate lifecycle prerequisite: the public source belongs to another certificate mode; use the lifecycle command." -}}
 {{- end -}}
@@ -164,9 +177,9 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- if or (ne (len ($existing.data | default dict)) 1) (not (empty $existing.binaryData)) (not (empty $existing.stringData)) (empty $actual) (ne (trim $actual) (trim $bundle)) -}}
 {{- fail (printf "certificate lifecycle prerequisite: public %s %s is empty, contains other data, or differs from the selected CA; preserve it and use the lifecycle command." $kind $name) -}}
 {{- end -}}
-{{- $bundle = $actual -}}
+{{- if ne $mode "selfSigned" -}}{{- $bundle = $actual -}}{{- end -}}
 {{- end -}}
-{{- if and (eq .plane "internal") (eq $mode "selfSigned") (not $existing) -}}
+{{- if and (eq .plane "internal") (eq $mode "selfSigned") -}}
 {{- $kind = "Secret" -}}{{- $name = "radius-ca" -}}
 {{- end -}}
 {{- $issuer := include "radius.authz.certificates.issuer" . | fromJson -}}

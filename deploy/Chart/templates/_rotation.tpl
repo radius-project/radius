@@ -67,6 +67,13 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- fail "CA lifecycle public source identity, ownership or contents changed." -}}
 {{- end -}}
 {{- $bundle := index $source.data "ca.crt" | default "" -}}
+{{- if and (eq $plane "internal") (eq $state.mode "selfSigned") -}}
+{{- $live := lookup "v1" "Secret" $.Release.Namespace $record.signer.name -}}
+{{- if or (not $live) (ne $live.metadata.uid $record.signer.uid) $live.metadata.deletionTimestamp
+    (ne (trim $bundle) (trim (dig "data" "ca.crt" "" $live | b64dec))) -}}
+{{- fail "Retained internal ConfigMap must exactly match its pinned signer Secret ca.crt; restore the recorded source." -}}
+{{- end -}}
+{{- end -}}
 {{- if eq $kind "Secret" -}}
 {{- if or (ne $source.type "Opaque") (ne (index $annotations "cert-manager.io/allow-direct-injection") "true") -}}
 {{- fail "Aggregation lifecycle source must remain public-only and injection-enabled." -}}

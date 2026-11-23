@@ -245,7 +245,7 @@ type RevisionInfo struct {
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
-	CheckRadiusCertificates(context.Context, ClusterOptions, string) error
+	CheckRadiusCertificates(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
@@ -454,7 +454,8 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	installDependencies := func(ctx context.Context) error {
-		if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, stored, radiusValues, clusterOptions.Radius.Reinstall); err != nil {
+		render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+		if err := i.ensureSelectedCertManager(ctx, target, clusterOptions, kubeContext, radiusHelmChart.Values, stored, radiusValues, clusterOptions.Radius.Reinstall, render, bootstrap != nil); err != nil {
 			return err
 		}
 
@@ -558,6 +559,16 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
 }
+
+// RadiusRemovedError reports that UninstallRadius failed after Helm uninstalled the Radius release, so the caller can
+// still finish the steps that depend only on Radius being gone.
+type RadiusRemovedError struct {
+	Err error
+}
+
+func (e *RadiusRemovedError) Error() string { return e.Err.Error() }
+
+func (e *RadiusRemovedError) Unwrap() error { return e.Err }
 
 // uninstallContour deletes the Radius Contour Gateway and uninstalls the Contour release.
 func (i *Impl) uninstallContour(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
@@ -715,7 +726,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	return i.withCertificateOffOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, target.mode, func(ctx context.Context) error {
-		if err := i.ensureSelectedCertManager(ctx, target.Mode, clusterOptions, kubeContext, radiusHelmChart.Values, stored, radiusValues, true); err != nil {
+		render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+		if err := i.ensureSelectedCertManager(ctx, target, clusterOptions, kubeContext, radiusHelmChart.Values, stored, radiusValues, true, render, false); err != nil {
 			return err
 		}
 
@@ -730,7 +742,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
 			return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 		}
-		render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
 		if err := i.stageOrdinaryCertificates(ctx, clusterOptions, kubeContext, radiusHelmConf, target, certificates, true, render); err != nil {
 			return err
 		}
@@ -918,7 +929,7 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	}
 
 	return i.withRollbackCertificateOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, releaseRevision(history, targetRevision), func(ctx context.Context) error {
-		if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+		if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, helmConf, history, targetRevision); err != nil {
 			return err
 		}
 
@@ -982,7 +993,7 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 	}
 	return i.withRollbackCertificateOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, releaseRevision(history, revision), func(ctx context.Context) error {
 
-		if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+		if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, helmConf, history, revision); err != nil {
 			return err
 		}
 

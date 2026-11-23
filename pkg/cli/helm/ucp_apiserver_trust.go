@@ -538,3 +538,7 @@ func encodeCertificates(certs []*x509.Certificate) []byte {
 	}
 	return buf.Bytes()
 }
+
+func ucpAPIServerTrustSource(radiusNamespace string) string {
+	return radiusNamespace + "/" + ucpAPIServerTrustSecretName
+}

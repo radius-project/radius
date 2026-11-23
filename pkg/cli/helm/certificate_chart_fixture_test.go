@@ -76,6 +76,7 @@ func TestCertificateValuesSchema(t *testing.T) {
 // These tests run the real chart's REST-backed lookup against a read-only API
 // fixture. They observe issuer readiness, not issuance or approval.
 type certificateChartFixture struct {
+	upgrade       bool
 	objects       []*unstructured.Unstructured
 	values        map[string]any
 	forbiddenPath string

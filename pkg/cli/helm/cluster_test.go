@@ -339,7 +339,7 @@ func Test_Helm_HistoryConsumers_RevisionOrder(t *testing.T) {
 				RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 				DoAndReturn(func(_ *helm.Configuration, name string) ([]*releasev1.Release, error) {
 					return NewHelmClient().RunHelmHistory(configuration, name)
-				}).Times(4) // The latest revision is failed, so stored values come from history too.
+				}).Times(5) // Includes failed-release value recovery and the final rollback history check.
 			client.EXPECT().
 				RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 				Return(failed, nil)
@@ -890,7 +890,7 @@ func Test_Helm_RollbackRadius_Success(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
-		Times(1)
+		Times(2)
 
 	mockHelmClient.EXPECT().
 		RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", 1, true).
@@ -961,7 +961,7 @@ func Test_Helm_RollbackRadius_PrereleaseOrdering(t *testing.T) {
 			mockHelmClient.EXPECT().
 				RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 				Return(history, nil).
-				Times(1)
+				Times(2)
 			mockHelmClient.EXPECT().
 				RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", testCase.revision, true).
 				Return(nil).
@@ -1062,7 +1062,7 @@ func Test_Helm_RollbackRadiusToRevision_Success(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
-		Times(1)
+		Times(2)
 
 	mockHelmClient.EXPECT().
 		RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", targetRevision, true).
@@ -1117,7 +1117,7 @@ func Test_Helm_RollbackRadiusToRevision_RollbackError(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
-		Times(1)
+		Times(2)
 
 	mockHelmClient.EXPECT().
 		RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", targetRevision, true).

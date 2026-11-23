@@ -183,6 +183,9 @@ func (b *initialCertificateInstaller) visitBootstrapPins(ctx context.Context, vi
 			}
 		}
 		pin := b.state.Sources[plane]
+		if plane == "internal" && pin.Kind == "Secret" {
+			continue // The pinned generated signer is already classified above.
+		}
 		var object metav1.Object
 		var bundle []byte
 		var remove func(metav1.DeleteOptions) error

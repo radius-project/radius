@@ -902,7 +902,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 				m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
 					{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: manifestTestChart(t, offManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 					{Version: 2, Config: values, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
-				}, nil)
+				}, nil).Times(2)
 				m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 				rollbacks := 0
 				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
@@ -940,7 +940,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 		}
 		mock := func(rollbacks int, beforeHelm func()) *MockHelmClient {
 			m := NewMockHelmClient(gomock.NewController(t))
-			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil)
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil).Times(1 + rollbacks)
 			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 			m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Times(rollbacks).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
 				beforeHelm()

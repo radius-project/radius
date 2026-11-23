@@ -301,6 +301,23 @@ func setCertificateValues(values map[string]any, certificates map[string]any) {
 }
 
 func unchangedCertificateSelection(stored, current map[string]any) error {
+	if err := unchangedCertificateReference(stored, current); err != nil {
+		return err
+	}
+	if certificateMode(current) == "selfSigned" {
+		return nil
+	}
+	ca, err := validatePublicCA([]byte(stringValue(certificateValues(current)["caBundle"])), time.Now())
+	if err != nil {
+		return err
+	}
+	if !sameCACertificate(stringValue(certificateValues(stored)["caBundle"]), ca) {
+		return fmt.Errorf("changing or recovering CA trust requires coordinated CA migration; preserve the stored dedicated CA")
+	}
+	return nil
+}
+
+func unchangedCertificateReference(stored, current map[string]any) error {
 	if certificateMode(stored) != certificateMode(current) {
 		return fmt.Errorf("certificate mode changes require coordinated CA migration; keep the installed mode")
 	}
@@ -321,15 +338,6 @@ func unchangedCertificateSelection(stored, current map[string]any) error {
 		if oldIssuer != newIssuer {
 			return fmt.Errorf("changing the certificate issuer requires coordinated CA migration")
 		}
-	default:
-		return nil
-	}
-	ca, err := validatePublicCA([]byte(stringValue(certificateValues(current)["caBundle"])), time.Now())
-	if err != nil {
-		return err
-	}
-	if !sameCACertificate(stringValue(certificateValues(stored)["caBundle"]), ca) {
-		return fmt.Errorf("changing or recovering CA trust requires coordinated CA migration; preserve the stored dedicated CA")
 	}
 	return nil
 }
@@ -340,7 +348,7 @@ func stringValue(value any) string {
 }
 
 // prepareCertificateSelection validates the desired selection without authorizing a transition.
-func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string) (*certificatePlan, error) {
+func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, deployed map[string]any) (*certificatePlan, error) {
 	defaults := selected.Values
 	o := options.Certificates
 	if err := o.Validate(); err != nil {
@@ -359,6 +367,11 @@ func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterO
 		stored = nil
 	}
 	merged := resolveEffectiveChartValues(defaults, stored, current)
+	if selfSignedOnly(defaults) {
+		if o.Specified() || !selfSignedOnly(merged) || (certificateValues(defaults) == nil && len(certificateValues(merged)) != 0) {
+			return nil, fmt.Errorf("selected Radius chart does not support certificate selection")
+		}
+	}
 	if certificateValues(current)["mode"] == "selfSigned" && certificateMode(stored) != "selfSigned" {
 		settings := copyValues(certificateValues(merged))
 		for _, field := range []string{"caSecret", "caBundle"} {
@@ -451,6 +464,11 @@ func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterO
 	}
 	if err := validateCASecretName(secretName); err != nil {
 		return nil, err
+	}
+	if deployed != nil {
+		if err := unchangedCertificateReference(deployed, merged); err != nil {
+			return nil, fmt.Errorf("the installed chart selects different certificate settings: %w", err)
+		}
 	}
 	client, err := i.certificateClient(kubeContext)
 	if err != nil {
@@ -605,19 +623,31 @@ func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOpt
 			if latestRevision(revisions).Version != version {
 				return fmt.Errorf("Radius revision changed since certificate preflight; retry the operation")
 			}
-			if plan.signingSecret != nil {
-				secret, err := plan.client.CoreV1().Secrets(plan.namespace).Get(ctx, target.SigningSecret, metav1.GetOptions{})
-				if err != nil {
-					return fmt.Errorf("cannot recheck the selected signing Secret: %w", err)
-				}
-				if secret.UID != target.SigningUID || secret.ResourceVersion != target.SigningVersion || secret.Type != corev1.SecretTypeTLS || secret.DeletionTimestamp != nil || !reflect.DeepEqual(secret.Data, plan.signingSecret.Data) {
-					return fmt.Errorf("signing Secret changed since certificate preflight; retry the operation")
-				}
-			}
-			return nil
+			return plan.recheckSigningSecret(ctx)
 		}
 	}
 	return target, plan, history, nil
+}
+
+// Pre-selection charts declared at most the selfSigned mode, without dedicated CA settings.
+func selfSignedOnly(values map[string]any) bool {
+	settings := certificateValues(values)
+	return len(settings) == 0 || (len(settings) == 1 && settings["mode"] == "selfSigned")
+}
+
+func (plan *certificatePlan) recheckSigningSecret(ctx context.Context) error {
+	if plan == nil || plan.signingSecret == nil {
+		return nil
+	}
+	snapshot := plan.signingSecret
+	secret, err := plan.client.CoreV1().Secrets(plan.namespace).Get(ctx, snapshot.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("cannot recheck the selected signing Secret: %w", err)
+	}
+	if secret.UID != snapshot.UID || secret.ResourceVersion != snapshot.ResourceVersion || secret.Type != snapshot.Type || secret.DeletionTimestamp != nil || !reflect.DeepEqual(secret.Data, snapshot.Data) {
+		return fmt.Errorf("signing Secret changed since certificate preflight; retry the operation")
+	}
+	return nil
 }
 
 func selectedCertificateValues(options ClusterOptions, selected *chart.Chart, current map[string]any) (map[string]any, authz.Mode, error) {
@@ -630,28 +660,16 @@ func selectedCertificateValues(options ClusterOptions, selected *chart.Chart, cu
 }
 
 func certificatePolicyBaseline(options ClusterOptions, history []*releasev1.Release) (*releasev1.Release, error) {
-	latest, deployed := -1, -1
-	for index, revision := range history {
-		if revision == nil {
-			continue
-		}
-		if latest < 0 || revision.Version > history[latest].Version {
-			latest = index
-		}
-		if revisionStatus(revision) == releasecommon.StatusDeployed && (deployed < 0 || revision.Version > history[deployed].Version) {
-			deployed = index
-		}
-	}
-	if latest < 0 {
+	baseline := latestRevision(history)
+	if baseline == nil {
 		return nil, fmt.Errorf("Radius release history is empty; recover the installed release before certificate validation")
 	}
-	baseline := history[latest]
 	if revisionStatus(baseline).IsPending() {
 		return nil, fmt.Errorf("live certificate validation failed: another operation is in progress on the Radius release")
 	}
 	if status := revisionStatus(baseline); status != releasecommon.StatusDeployed {
-		if deployed >= 0 {
-			baseline = history[deployed]
+		if deployed := lastDeployedRevision(history); deployed != nil {
+			baseline = deployed
 		} else if status != releasecommon.StatusFailed && status != releasecommon.StatusSuperseded {
 			return nil, fmt.Errorf("no deployed Radius revision is available for certificate selection")
 		}
@@ -715,11 +733,24 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 }
 
 // An external issuer and its cert-manager installation remain operator-managed.
-func (i *Impl) ensureSelectedCertManager(ctx context.Context, mode string, options ClusterOptions, kubeContext string, defaults, stored, userValues map[string]any, upgrade bool) error {
-	if mode == "issuerRef" {
-		return i.checkInstalledCertManagerReady(ctx, kubeContext, options.Radius.Namespace)
+func (i *Impl) ensureSelectedCertManager(ctx context.Context, target *certificateTarget, options ClusterOptions, kubeContext string, defaults, stored, userValues map[string]any, upgrade bool, render renderRadiusManifest, bootstrap bool) error {
+	var checkProvider func() error
+	if target.Provider == "external" && target.mode != authz.ModeOff && !bootstrap {
+		checkProvider = func() error { return target.checkProviderRender(ctx, render) }
 	}
-	return i.ensureCertManager(ctx, options, kubeContext, defaults, stored, userValues, upgrade)
+	if target.Mode == "issuerRef" {
+		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, options.Radius.Namespace); err != nil {
+			return err
+		}
+	} else if err := i.ensureCertManagerForRender(ctx, options, kubeContext, defaults, stored, userValues, upgrade, checkProvider); err != nil {
+		return err
+	}
+	// After bootstrap, lookups can resolve the newly installed resources. Do not
+	// reuse this render for trust staging after controller migration.
+	if checkProvider != nil {
+		return checkProvider()
+	}
+	return nil
 }
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.
@@ -737,6 +768,11 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	target, _, err := i.prepareOrdinaryCertificates(ctx, options, chart, configuration, current, kubeContext, true)
 	if err != nil {
 		return err
+	}
+	if target.Mode == "issuerRef" {
+		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, options.Radius.Namespace); err != nil {
+			return err
+		}
 	}
 	render := renderOnce(i.renderRadiusUpgrade(kubeContext, configuration, chart, current, options.Radius.ReleaseName, options.Radius.Namespace, !options.ResetValues))
 	if _, _, err := render(ctx); err != nil {

@@ -420,7 +420,7 @@ func TestPrepareSelectedCertificates(t *testing.T) {
 		{name: "reset rejected", installed: true, stored: caReleaseValues("operator-ca", cert), reset: true, err: "cannot discard stored"},
 		{name: "mode switch rejected", installed: true, stored: caReleaseValues("operator-ca", cert), current: map[string]any{"global": map[string]any{"rbac": map[string]any{"certificates": map[string]any{"mode": "selfSigned", "caBundle": nil, "caSecret": nil}}}}, err: "mode changes"},
 		{name: "enable CA on installed selfSigned rejected", installed: true, options: CertificateOptions{CASecret: "operator-ca"}, err: "require global.rbac"},
-		{name: "new Secret upgrade rejected", installed: true, stored: caReleaseValues("operator-ca", cert), options: CertificateOptions{CASecret: "another-ca"}, err: "cannot read signing CA Secret"},
+		{name: "new Secret upgrade rejected", installed: true, stored: caReleaseValues("operator-ca", cert), options: CertificateOptions{CASecret: "another-ca"}, err: "changing the signing Secret"},
 		{name: "trust replacement rejected", installed: true, stored: caReleaseValues("operator-ca", cert), current: caReleaseValues("operator-ca", otherCert), err: "changing trust"},
 		{name: "Secret rotated out of band rejected", installed: true, stored: caReleaseValues("operator-ca", otherCert), err: "changing trust"},
 		{name: "chain as trust rejected", current: caReleaseValues("operator-ca", append(append([]byte{}, cert...), otherCert...)), err: "exactly the dedicated"},
@@ -454,6 +454,9 @@ func TestPrepareSelectedCertificates(t *testing.T) {
 				deployed = copyValues(tt.stored)
 			}
 			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, "selected-cluster", deployed)
+			if tt.options.CASecret == "another-ca" {
+				require.Empty(t, kube.Actions())
+			}
 			require.Equal(t, storedBefore, copyValues(tt.stored))
 			for _, action := range kube.Actions() {
 				require.Equal(t, "get", action.GetVerb(), "preparation must be read only")

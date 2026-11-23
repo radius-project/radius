@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"io"
 	"maps"
 	"reflect"
@@ -80,6 +81,7 @@ type initialCertificateInstaller struct {
 	options     ClusterOptions
 	selected    *chart.Chart
 	helm        *helm.Configuration
+	applied     *releasev1.Release
 	values      map[string]any
 	kubeContext string
 	importPlan  *certificatePlan
@@ -199,6 +201,12 @@ func decodeInitialCertificateState(raw string, store *rotationStore, bound bool)
 		kind, name := "Secret", ucpAPIServerTrustSecretName
 		if plane == "internal" {
 			kind, name = "ConfigMap", "radius-mtls-ca"
+			if state.Mode == "selfSigned" && source.Kind == "Secret" {
+				kind, name = "Secret", "radius-ca"
+				if signer := state.Anchors[plane].Signer; signer == nil || signer.Name != name || signer.UID != source.UID {
+					return state, errors.New("internal trust source is not the pinned bootstrap signer")
+				}
+			}
 		}
 		if !validPlane(plane) || source.Kind != kind || source.Name != name ||
 			source.UID == "" || source.ResourceVersion == "" || len(source.Bundle) == 0 ||
@@ -372,7 +380,7 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 		if b.verifyFixture != nil {
 			err = b.verifyFixture(ctx)
 		} else {
-			err = b.impl.waitForUCPAPIService(ctx, b.kubeContext, b.store.namespace, b.target.mode, nil)
+			err = b.impl.waitForUCPAPIService(ctx, b.kubeContext, b.store.namespace, b.target.mode, b.applied, b.applied != nil && b.applied.Version == 1)
 		}
 		if err != nil {
 			return err
@@ -514,6 +522,15 @@ func (b *initialCertificateInstaller) checkObservedMaterial(ctx context.Context)
 		}
 	}
 	for plane, pin := range b.state.Sources {
+		if plane == "internal" && b.state.Mode == "selfSigned" && pin.Kind == "Secret" {
+			// Completed signers may renew under validateBootstrapRenewal above.
+			if b.state.Phase != "complete" {
+				if err := b.store.checkSignerTrust(ctx, b.state.Anchors[plane].Signer, pin.Bundle); err != nil {
+					return err
+				}
+			}
+			continue
+		}
 		var source metav1.Object
 		var bundle []byte
 		if plane == "aggregation" {
@@ -534,6 +551,11 @@ func (b *initialCertificateInstaller) checkObservedMaterial(ctx context.Context)
 				return errors.New("bootstrap internal source is not public-only")
 			}
 			source, bundle = object, []byte(object.Data[caCertificateKey])
+			if b.state.Mode == "selfSigned" {
+				if err := b.store.checkSignerTrust(ctx, b.state.Anchors[plane].Signer, bundle); err != nil {
+					return err
+				}
+			}
 		}
 		if source.GetUID() != pin.UID || source.GetDeletionTimestamp() != nil ||
 			len(source.GetOwnerReferences()) != 0 || source.GetLabels()[helmManagedByLabel] != helmManagedByValue ||
@@ -566,6 +588,18 @@ func (b *initialCertificateInstaller) publish(ctx context.Context) error {
 				initialCertificateIntent: string(b.journal.UID), "radius.io/certificate-mode": b.state.Mode, "helm.sh/resource-policy": "keep"}}
 		var observed metav1.Object
 		kind := "ConfigMap"
+		if plane == "internal" && b.state.Mode == "selfSigned" {
+			pin := *b.state.Anchors[plane].Signer
+			if err := b.store.checkSignerTrust(ctx, &pin, ca); err != nil {
+				return err
+			}
+			pin.SHA256 = fmt.Sprintf("%x", sha256.Sum256(ca))
+			b.state.Sources[plane] = certificateTrustProjection{Kind: "Secret", Bundle: bytes.Clone(ca), certificateObjectPin: pin}
+			if err := b.save(ctx); err != nil {
+				return err
+			}
+			continue
+		}
 		if plane == "aggregation" {
 			kind, metadata.Name = "Secret", ucpAPIServerTrustSecretName
 			metadata.Annotations[allowDirectInjectionAnnotation] = "true"

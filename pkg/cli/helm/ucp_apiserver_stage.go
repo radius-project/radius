@@ -132,6 +132,9 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if mounted == "" {
 		return nil
 	}
+	if !helmOwned(deployment, radiusNamespace, releaseName) {
+		return foreignUCPDeploymentError(radiusNamespace, releaseName)
+	}
 	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
 	if err != nil || apiService == nil {
 		return err
@@ -148,7 +151,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if !ok {
 		return nil
 	}
-	rendered, err := renderedUCPOffCertificate(manifest)
+	rendered, err := renderedSecret(manifest, ucpOffCertificateSecretName)
 	if err != nil {
 		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
 	}
@@ -324,8 +327,8 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 	return err
 }
 
-// renderedUCPOffCertificate returns Secret ucp-cert in manifest, or nil when manifest has none.
-func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
+// renderedSecret returns the named Secret in manifest, or nil when absent.
+func renderedSecret(manifest, name string) (*corev1.Secret, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
 	for {
 		var document map[string]any
@@ -337,7 +340,7 @@ func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
 			return nil, err
 		}
 		object := &unstructured.Unstructured{Object: document}
-		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != ucpOffCertificateSecretName {
+		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != name {
 			continue
 		}
 		secret := &corev1.Secret{}
@@ -667,4 +670,9 @@ func releaseActionManifest(rel *releasev1.Release, includeWorkloadHooks bool) st
 		}
 	}
 	return strings.Join(documents, "\n---\n")
+}
+
+func foreignUCPDeploymentError(radiusNamespace, releaseName string) error {
+	return fmt.Errorf("Deployment %s/ucp does not belong to Helm release %q, or was replaced after rad read it, so rad did not mount Secret %s in it. "+
+		"Helm has not changed Radius; check the Deployment, then run the command again", radiusNamespace, releaseName, ucpOffCertificateSecretName)
 }

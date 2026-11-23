@@ -332,6 +332,23 @@ func (s *rotationStore) checkCertificateLifecycleRecovery(ctx context.Context, j
 	return ctx.Err()
 }
 
+func (s *rotationStore) checkSignerTrust(ctx context.Context, pin *certificateObjectPin, bundle []byte) error {
+	if pin == nil {
+		return errors.New("selfSigned internal trust requires its pinned signer")
+	}
+	secret, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, pin.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("read pinned internal signer %s: %w", pin.Name, err)
+	}
+	if secret.UID != pin.UID || secret.DeletionTimestamp != nil {
+		return errors.New("internal signer identity changed; restore the recorded source")
+	}
+	if err := exactCertificateSet(secret.Data[caCertificateKey], bundle, s.now()); err != nil {
+		return fmt.Errorf("internal trust must exactly match pinned signer %s ca.crt: %w", pin.Name, err)
+	}
+	return nil
+}
+
 func (s *rotationStore) checkCertificateSignerSnapshot(ctx context.Context, pin *certificateObjectPin, phase rotationPhase) error {
 	if pin == nil {
 		return nil

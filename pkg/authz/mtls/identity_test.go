@@ -229,6 +229,7 @@ func TestCheckSPIFFEID(t *testing.T) {
 		{name: "extra IP SAN", opts: certOptions{uris: spiffeURIs("ucp"), ipAddresses: []net.IP{net.ParseIP("10.0.0.1")}}, want: "SAN other than"},
 		{name: "extra email SAN", opts: certOptions{uris: spiffeURIs("ucp"), emails: []string{"ucp@radius.internal"}}, want: "SAN other than"},
 		{name: "extra otherName SAN", opts: certOptions{uris: spiffeURIs("ucp"), rawSAN: uriAndOtherNameSAN(t, spiffeID("ucp"))}, want: "SAN other than"},
+		{name: "signed URI with empty fragment", opts: certOptions{uris: spiffeURIs("ucp"), rawSAN: uriSAN(t, spiffeID("ucp")+"#")}, want: "is not"},
 		{name: "no URI SAN", opts: certOptions{dnsNames: []string{"ucp.radius-system.svc"}}, want: "no URI SAN"},
 		{name: "other component", opts: certOptions{uris: spiffeURIs("dynamic-rp")}, want: "is not"},
 		{name: "other namespace", opts: certOptions{uris: []string{SPIFFEID(DefaultTrustDomain, "other", "ucp")}}, want: "is not"},
@@ -247,6 +248,14 @@ func TestCheckSPIFFEID(t *testing.T) {
 			require.ErrorContains(t, err, tt.want)
 		})
 	}
+}
+
+// uriSAN encodes a subjectAltName with a single URI, exactly as given.
+func uriSAN(t *testing.T, uri string) []byte {
+	t.Helper()
+	san, err := asn1.Marshal([]asn1.RawValue{{Class: asn1.ClassContextSpecific, Tag: 6, Bytes: []byte(uri)}})
+	require.NoError(t, err)
+	return san
 }
 
 // uriAndOtherNameSAN encodes a subjectAltName with a URI and an otherName, a SAN type that

@@ -43,9 +43,6 @@ func validateUCPAPIServerRenewal(ca *x509.Certificate, pins []*x509.Certificate)
 }
 
 func validateUCPAPIServerAPIAnchors(ca *x509.Certificate, api *unstructured.Unstructured) error {
-	if ca == nil {
-		return nil
-	}
 	encoded, _, err := unstructured.NestedString(api.Object, "spec", "caBundle")
 	if err != nil {
 		return fmt.Errorf("invalid APIService caBundle: %w", err)
@@ -65,6 +62,9 @@ func validateUCPAPIServerAPIAnchors(ca *x509.Certificate, api *unstructured.Unst
 		// The initial Off-to-On transition also trusts the unrelated ucp-ca.
 		// A prior managed root pins both subject and SPKI, including after expiry.
 		if anchor.Subject.CommonName == ucpAPIServerCASecretName {
+			if ca == nil {
+				return fmt.Errorf("APIService still trusts %s but the signer is unavailable; restore the original signer or use the certificate lifecycle", ucpAPIServerCASecretName)
+			}
 			if err := validateUCPAPIServerRenewal(ca, []*x509.Certificate{anchor}); err != nil {
 				return err
 			}

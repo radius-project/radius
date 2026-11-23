@@ -1,3 +1,4 @@
+{{- include "radius.authz.validateSecretNames" . }}
 {{- $lifecycle := include "radius.lifecycleSnapshot" . | mustFromJson }}
 {{- include "radius.initialCertificateGuard" . }}
 {{- if and $lifecycle (eq (include "radius.authz.mode" .) "off") }}
@@ -5,7 +6,6 @@
 {{- end }}
 {{- if ne (include "radius.authz.mode" .) "off" }}
 {{- include "radius.authz.certificates.validate" . }}
-{{- include "radius.authz.validateSecretNames" . }}
 {{- $certificates := .Values.global.rbac.certificates | default dict }}
 {{- $mode := include "radius.authz.certificates.mode" . }}
 {{- $ns := .Release.Namespace }}
@@ -121,6 +121,9 @@ metadata:
     cert-manager.io/allow-direct-injection: "true"
     helm.sh/resource-policy: keep
     radius.io/certificate-mode: {{ $mode | quote }}
+    {{- if eq $mode "issuerRef" }}
+    radius.io/issuer-ref: {{ $source.issuer | toJson | quote }}
+    {{- end }}
     {{- if $source.bootstrapUID }}
     radius.io/certificate-bootstrap: {{ $source.bootstrapUID | quote }}
     {{- end }}

@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -93,6 +94,168 @@ spec:
 	expectRadiusBaseline(t, mock, opts)
 	impl := &Impl{Helm: mock, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{}}
 	require.ErrorContains(t, impl.CheckRadiusCertificates(t.Context(), opts, "selected-context"), "external TLS provider cannot project")
+	for _, action := range []string{"upgrade", "reinstall"} {
+		t.Run(action, func(t *testing.T) {
+			opts := opts
+			opts.Contour.Disabled, opts.RadiusInstalled = true, true
+			opts.CertManager.ChartPath = "cert-manager"
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().LoadChart("chart").Return(c, nil)
+			client.EXPECT().LoadChart("cert-manager").Return(&chart.Chart{}, nil).MaxTimes(1)
+			expectRadiusBaseline(t, client, opts)
+			client.EXPECT().RunHelmGet(gomock.Any(), opts.CertManager.ReleaseName).Return(&releasev1.Release{
+				Labels: radManagedByLabels(), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+			}, nil).AnyTimes()
+			cluster := newStageCluster(t, nil, true)
+			impl := cluster.impl(client)
+			run := impl.UpgradeRadius
+			if action == "reinstall" {
+				opts.Radius.Reinstall = true
+				client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: c, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil)
+				run = impl.InstallRadius
+			}
+			require.ErrorContains(t, run(t.Context(), opts, "selected-context"), "external TLS provider cannot project")
+			require.Empty(t, cluster.clusterWrites())
+		})
+	}
+}
+
+func TestLegacySelfSignedChart(t *testing.T) {
+	legacy := &chart.Chart{Metadata: &chart.Metadata{Name: "radius"}, Values: map[string]any{}}
+	setCertificateValues(legacy.Values, map[string]any{"mode": "selfSigned"})
+	if path := os.Getenv("A9_PREDECESSOR_CHART"); path != "" {
+		var err error
+		legacy, err = loader.Load(path)
+		require.NoError(t, err)
+	}
+	current := map[string]any{}
+	setValue(current, true, "global", "rbac", "dryRun")
+	opts := NewDefaultClusterOptions()
+	for _, installed := range []bool{false, true} {
+		opts.RadiusInstalled = installed
+		target, _, err := (&Impl{}).prepareCertificateTarget(t.Context(), opts, legacy, current, "selected")
+		require.NoError(t, err)
+		require.Equal(t, "selfSigned", target.Mode)
+	}
+	opts.Certificates.CASecret = "operator-ca"
+	_, _, err := (&Impl{}).prepareCertificateTarget(t.Context(), opts, legacy, current, "selected")
+	require.ErrorContains(t, err, "does not support certificate selection")
+}
+
+const byoServingManifest = `apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: ucp-cert}
+spec: {secretName: ucp-apiserver-tls}
+---
+apiVersion: v1
+kind: Secret
+metadata: {name: radius-apiserver-trust}`
+
+func byoHistory(t *testing.T, values map[string]any) []*releasev1.Release {
+	t.Helper()
+	previous := certificateHelperChart(certificateTestChart(t))
+	previous.Templates = append(previous.Templates, &common.File{Name: "templates/serving.yaml", Data: []byte(byoServingManifest)})
+	current := cloneChart(previous)
+	previous.Metadata.Version = "1.0.0"
+	current.Metadata = &chart.Metadata{Name: "radius", Version: "1.1.0"}
+	return []*releasev1.Release{
+		{Version: 1, Chart: previous, Config: values, Manifest: byoServingManifest, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: current, Config: values, Manifest: byoServingManifest, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+	}
+}
+
+type onRenderCluster struct {
+	fakeContourCluster
+	before func()
+}
+
+func (c *onRenderCluster) RenderConfiguration(context, namespace string) (*helm.Configuration, error) {
+	c.before()
+	return c.fakeContourCluster.RenderConfiguration(context, namespace)
+}
+
+func TestRollbackCertificateObservations(t *testing.T) {
+	ca, key, _ := testSigningCA(t, nil, nil, nil, nil)
+	for _, revision := range []bool{false, true} {
+		for _, change := range []string{"failed attempt", "signer", "history", "unchanged"} {
+			t.Run(fmt.Sprintf("revision=%t/%s", revision, change), func(t *testing.T) {
+				history := byoHistory(t, caReleaseValues("operator-ca", ca))
+				client := NewMockHelmClient(gomock.NewController(t))
+				cluster := newStageCluster(t, nil, false)
+				impl := cluster.impl(client)
+				secret := caTLSSecret("operator-ca", ca, key)
+				keys := fake.NewClientset(secret)
+				impl.newCertificateClient = func(string) (kubernetes.Interface, error) { return keys, nil }
+				want := "signing Secret changed"
+				if change == "failed attempt" {
+					history[0].Config, history[0].Manifest = nil, ""
+					history = append(history, &releasev1.Release{Version: 3, Chart: history[0].Chart, Info: &releasev1.Info{Status: releasecommon.StatusFailed}})
+					want = "coordinated CA migration"
+				} else {
+					impl.contourCluster = &onRenderCluster{before: func() {
+						if change == "history" {
+							history = append(history, &releasev1.Release{Version: 3, Info: &releasev1.Info{Status: releasecommon.StatusPendingUpgrade}})
+						} else if change == "signer" {
+							secret.UID = "replacement"
+							require.NoError(t, keys.Tracker().Update(corev1.SchemeGroupVersion.WithResource("secrets"), secret, RadiusSystemNamespace))
+						}
+					}}
+					if change == "history" {
+						want = "history changed"
+					} else if change == "unchanged" {
+						want = "dispatched"
+						client.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(errors.New(want))
+					}
+				}
+				client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).DoAndReturn(func(*helm.Configuration, string) ([]*releasev1.Release, error) { return history, nil }).MinTimes(1)
+				var err error
+				if revision {
+					err = impl.RollbackRadiusToRevision(t.Context(), "selected", 1)
+				} else {
+					err = impl.RollbackRadius(t.Context(), "selected")
+				}
+				require.ErrorContains(t, err, want)
+				require.Empty(t, cluster.clusterWrites())
+				if change == "failed attempt" {
+					require.Empty(t, keys.Actions())
+				}
+			})
+		}
+	}
+}
+
+func TestExternalIssuerDependencyParity(t *testing.T) {
+	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	for _, unsupported := range []bool{false, true} {
+		for _, preflight := range []bool{false, true} {
+			t.Run(fmt.Sprintf("unsupported=%t/preflight=%t", unsupported, preflight), func(t *testing.T) {
+				values := issuerReleaseValues(ca)
+				history := byoHistory(t, values)
+				opts := NewDefaultClusterOptions()
+				opts.Radius.ChartPath, opts.RadiusReleaseValues, opts.Contour.Disabled = "chart", values, true
+				client := NewMockHelmClient(gomock.NewController(t))
+				client.EXPECT().LoadChart("chart").Return(history[1].Chart, nil)
+				client.EXPECT().RunHelmHistory(gomock.Any(), "radius").Return(history, nil).MinTimes(1)
+				version, want := CertManagerChartDefaultVersion, "cainjector"
+				if unsupported {
+					version, want = "v1.19.0", "older than the minimum"
+				}
+				kube, ext := (fakeCertManagerCluster{crd: true, controller: certManagerController("security", version, "")}).clients()
+				require.NoError(t, kube.AppsV1().Deployments("security").Delete(t.Context(), "cert-manager-cainjector", metav1.DeleteOptions{}))
+				keys := kube.(*fake.Clientset)
+				keys.ClearActions()
+				impl := &Impl{Helm: client, contourCluster: &fakeContourCluster{}, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) { return kube, ext, nil }}
+				run := impl.UpgradeRadius
+				if preflight {
+					run = impl.CheckRadiusCertificates
+				}
+				require.ErrorContains(t, run(t.Context(), opts, "selected"), want)
+				for _, action := range keys.Actions() {
+					require.Contains(t, []string{"list", "get"}, action.GetVerb())
+				}
+			})
+		}
+	}
 }
 
 func TestPreflightRendersSelfSignedUpgrade(t *testing.T) {
@@ -200,6 +363,20 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 					}
 				}
 				impl := newStageCluster(t, nil, true).impl(client)
+				if action == "fresh" && !invalid {
+					options.CertManager.ChartPath = "cert-manager"
+					client.EXPECT().LoadChart("cert-manager").Return(&chart.Chart{}, nil)
+					installed := false
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), certManagerReleaseName, CertManagerNamespace, true, DefaultInstallTimeout, radManagedByLabels()).DoAndReturn(func(*helm.Configuration, *chart.Chart, map[string]any, string, string, bool, time.Duration, map[string]string) (*releasev1.Release, error) {
+						installed = true
+						return &releasev1.Release{}, nil
+					})
+					impl.newCertManagerClients = func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+						kube, ext := (fakeCertManagerCluster{}).clients()
+						return kube, ext, nil
+					}
+					impl.contourCluster = &onRenderCluster{before: func() { require.True(t, installed, "fresh lookups need cert-manager installed before rendering") }}
+				}
 				run := impl.UpgradeRadius
 				if options.Radius.Reinstall {
 					run = impl.InstallRadius

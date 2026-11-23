@@ -408,6 +408,9 @@ func (b *initialCertificateInstaller) runPublishedAction(ctx context.Context, co
 			return err
 		}
 	}
-	_, err := run(configuration, helm.DryRunNone)
+	rel, err := run(configuration, helm.DryRunNone)
+	if err == nil {
+		b.applied, err = asRelease(rel)
+	}
 	return err
 }

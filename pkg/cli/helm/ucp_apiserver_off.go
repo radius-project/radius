@@ -121,8 +121,11 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if err != nil {
 		return err
 	}
-	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
-		return err
+	operation, _ := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
+	if operation == nil || !operation.fresh {
+		if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
+			return err
+		}
 	}
 	apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, "")
 	if err != nil || apiService == nil {

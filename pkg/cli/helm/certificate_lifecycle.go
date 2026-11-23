@@ -436,6 +436,11 @@ func (s *rotationStore) checkLifecycleProjection(ctx context.Context, journal *c
 			return errors.New("internal trust source must contain only public ca.crt")
 		}
 		metadata, bundle = object, []byte(object.Data[caCertificateKey])
+		if state.Mode == "selfSigned" {
+			if err := s.checkSignerTrust(ctx, plane.Signer, bundle); err != nil {
+				return err
+			}
+		}
 	}
 	annotations := metadata.GetAnnotations()
 	if metadata.GetDeletionTimestamp() != nil || len(metadata.GetOwnerReferences()) != 0 ||
