@@ -64,6 +64,23 @@ type AccessCheck struct {
 	Target *string
 }
 
+// AccessCheckPrincipal - An explicitly supplied access-check principal. Input limits do not truncate verified identities
+// returned by inspection or used by omitted-principal self checks.
+type AccessCheckPrincipal struct {
+	// REQUIRED; The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller
+	// namespace principals use radius-controller.
+	Issuer *string
+
+	// REQUIRED; The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.
+	Subject *string
+
+	// REQUIRED; The kind of principal.
+	Type *PrincipalType
+
+	// An optional mutable label that is never used to match principals.
+	DisplayName *string
+}
+
 // AccessCheckRequest - Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action.
 // Group membership is resolved from trusted identity context, not caller-provided groups.
 type AccessCheckRequest struct {
@@ -185,6 +202,27 @@ type AuthorizationSettingsResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string
+}
+
+// BoundedAccessCheck - A bounded permission and concrete target for checkAccess input.
+type BoundedAccessCheck struct {
+	// REQUIRED; The permission being evaluated.
+	Permission *string
+
+	// REQUIRED; The concrete target resource or scope ID.
+	Target *string
+}
+
+// BoundedAccessCheckRequest - Bounded checkAccess input. Omitting principal checks the caller. Checking another principal
+// requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided
+// groups.
+type BoundedAccessCheckRequest struct {
+	// REQUIRED; The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with
+	// its own policy generation.
+	Checks []*BoundedAccessCheck
+
+	// The principal to check, or the authenticated caller when omitted.
+	Principal *AccessCheckPrincipal
 }
 
 // CheckAccessResponse - The results under one consistent policy generation.
@@ -449,4 +487,7 @@ type WhoAmIResult struct {
 
 	// REQUIRED; The authenticated user or workload.
 	Principal *Principal
+
+	// Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.
+	Warnings []*string
 }

@@ -6,8 +6,10 @@ package authorization
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -177,6 +179,201 @@ func TestPolicyCacheCancelledWaiter(t *testing.T) {
 	cancel()
 	require.ErrorIs(t, cache.Refresh(ctx), context.Canceled)
 	<-cache.gate
+}
+
+func TestPolicyCacheGateDiagnostics(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+			return testPolicySnapshot(t, 1), nil
+		}), nil)
+		require.NoError(t, err)
+		require.NoError(t, cache.Refresh(t.Context()))
+		asOf := cache.asOf
+		cache.gate <- struct{}{}
+
+		ctx, cancel := context.WithTimeout(t.Context(), PolicyRefreshInterval)
+		defer cancel()
+		require.ErrorIs(t, cache.Refresh(ctx), context.DeadlineExceeded)
+		require.Equal(t, context.DeadlineExceeded, cache.lastError)
+		require.Equal(t, asOf, cache.asOf)
+		require.NoError(t, cache.Ready(), "gate failure must not change freshness semantics")
+
+		caller, stop := context.WithCancel(t.Context())
+		stop()
+		require.ErrorIs(t, cache.Refresh(caller), context.Canceled)
+		require.Equal(t, context.DeadlineExceeded, cache.lastError, "cancelled caller must not overwrite shared failure")
+		<-cache.gate
+		require.NoError(t, cache.Refresh(t.Context()))
+		require.Nil(t, cache.lastError)
+
+		cache.gate <- struct{}{}
+		require.ErrorIs(t, cache.Refresh(caller), context.Canceled)
+		require.Nil(t, cache.lastError, "cancelled caller must not poison a healthy cache")
+		<-cache.gate
+	})
+}
+
+type diagnosticBarrierError struct {
+	error
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (e *diagnosticBarrierError) Is(target error) bool {
+	if target == context.DeadlineExceeded {
+		close(e.entered)
+		<-e.release
+	}
+	return false
+}
+
+func TestPolicyCacheOverlappingRefreshDiagnostics(t *testing.T) {
+	for _, scenario := range []struct {
+		name string
+		err  error
+	}{
+		{name: "recovery"},
+		{name: "new failure", err: errors.New("new refresh failure")},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				oldFailure := &diagnosticBarrierError{
+					error:   errors.New("old refresh failure"),
+					entered: make(chan struct{}),
+					release: make(chan struct{}),
+				}
+				snapshot := testPolicySnapshot(t, 1)
+				secondLoad := make(chan struct{})
+				calls := 0
+				cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+					calls++
+					if calls == 1 {
+						return nil, oldFailure
+					}
+					close(secondLoad)
+					return snapshot, scenario.err
+				}), nil)
+				require.NoError(t, err)
+
+				firstDone, secondDone := make(chan error, 1), make(chan error, 1)
+				go func() { firstDone <- cache.Refresh(t.Context()) }()
+				// Pause the first refresh while its deferred diagnostic is classified.
+				<-oldFailure.entered
+				go func() { secondDone <- cache.Refresh(t.Context()) }()
+				synctest.Wait()
+				select {
+				case <-secondLoad:
+					t.Error("next refresh loaded before the preceding diagnostic was published")
+				default:
+				}
+				close(oldFailure.release)
+				require.ErrorIs(t, <-firstDone, oldFailure)
+				if scenario.err == nil {
+					require.NoError(t, <-secondDone)
+					require.Nil(t, cache.lastError, "an older failure must not overwrite recovery")
+					require.NoError(t, cache.Ready())
+				} else {
+					require.ErrorIs(t, <-secondDone, scenario.err)
+					require.ErrorIs(t, cache.lastError, scenario.err, "the newer failure must remain visible")
+					require.ErrorIs(t, cache.Ready(), ErrAuthorizationUnavailable)
+				}
+			})
+		})
+	}
+}
+
+func TestPolicyCacheSourceCancellationWithLiveAttempt(t *testing.T) {
+	cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+		return nil, fmt.Errorf("source operation: %w", context.Canceled)
+	}), nil)
+	require.NoError(t, err)
+	refreshErr := cache.Refresh(t.Context())
+	require.ErrorIs(t, refreshErr, context.Canceled)
+	require.NoError(t, t.Context().Err())
+	require.Equal(t, refreshErr, cache.lastError, "a source cancellation during a live attempt is a refresh failure")
+}
+
+func TestPolicyCacheAttemptContextDiagnostic(t *testing.T) {
+	for _, cancelled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("cancelled=%t", cancelled), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				caller, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				previous := errors.New("previous failure")
+				driverError := errors.New("private driver detail")
+				cache, err := NewPolicyCache(policySourceFunc(func(ctx context.Context, _ int64) (*PolicySnapshot, error) {
+					if cancelled {
+						cancel()
+					}
+					<-ctx.Done()
+					return nil, driverError
+				}), nil)
+				require.NoError(t, err)
+				cache.lastError = previous
+				require.ErrorIs(t, cache.Refresh(caller), driverError)
+				if cancelled {
+					require.Same(t, previous, cache.lastError)
+				} else {
+					require.Equal(t, context.DeadlineExceeded, cache.lastError)
+					require.NoError(t, caller.Err())
+				}
+			})
+		})
+	}
+}
+
+func TestPolicyCacheRefreshAttemptBound(t *testing.T) {
+	for _, tt := range []struct {
+		gate     bool
+		deadline time.Duration
+	}{
+		{gate: false},
+		{gate: true},
+		{gate: false, deadline: time.Second},
+		{gate: true, deadline: time.Second},
+	} {
+		t.Run(fmt.Sprintf("gate=%t/deadline=%s", tt.gate, tt.deadline), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				cache, err := NewPolicyCache(policySourceFunc(func(ctx context.Context, _ int64) (*PolicySnapshot, error) {
+					require.False(t, tt.gate, "a blocked gate must not reach the source")
+					<-ctx.Done()
+					return nil, ctx.Err()
+				}), nil)
+				require.NoError(t, err)
+				if tt.gate {
+					cache.gate <- struct{}{}
+					defer func() { <-cache.gate }()
+				}
+				// The gate wait has its own poll-interval bound; the source may use the
+				// whole freshness window.
+				caller, expected := t.Context(), PolicyMaxAge
+				if tt.gate {
+					expected = PolicyRefreshInterval
+				}
+				if tt.deadline != 0 {
+					var cancel context.CancelFunc
+					caller, cancel = context.WithTimeout(caller, tt.deadline)
+					defer cancel()
+					expected = tt.deadline
+				}
+				started := time.Now()
+				require.ErrorIs(t, cache.Refresh(caller), context.DeadlineExceeded)
+				require.Equal(t, expected, time.Since(started))
+				require.Equal(t, context.DeadlineExceeded, cache.lastError)
+				require.NoError(t, t.Context().Err())
+			})
+		})
+	}
+}
+
+func TestPolicyCacheDeadlineDiagnosticRedacted(t *testing.T) {
+	cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+		return nil, fmt.Errorf("private backend details: %w", context.DeadlineExceeded)
+	}), nil)
+	require.NoError(t, err)
+	require.ErrorIs(t, cache.Refresh(t.Context()), context.DeadlineExceeded)
+	require.Equal(t, context.DeadlineExceeded, cache.lastError)
+	require.NotContains(t, cache.lastError.Error(), "private")
 }
 
 func TestPolicySnapshotIndexEquivalence(t *testing.T) {
