@@ -30,6 +30,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptrace"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -670,6 +671,68 @@ func TestServe_StaleSigningKeysByMode(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestServe_OptionsAsterisk checks that "OPTIONS *" goes through the token check instead of
+// being answered by net/http's general OPTIONS handler.
+func TestServe_OptionsAsterisk(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			ca := newCA(t)
+			srv := startServer(t, ca, mode)
+			c := client(t, ca)
+
+			sendOptions := func(authorization string) int {
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, "https://"+srv.url, nil)
+				require.NoError(t, err)
+				req.URL = &url.URL{Scheme: "https", Host: srv.url, Opaque: "*"}
+				if authorization != "" {
+					req.Header.Set("Authorization", authorization)
+				}
+				resp, err := c.Do(req)
+				require.NoError(t, err)
+				defer resp.Body.Close()
+				_, _ = io.Copy(io.Discard, resp.Body)
+				return resp.StatusCode
+			}
+
+			status := sendOptions("")
+			requireLogged(t, srv.logs, mode, v1.CodeInvalidAuthenticationInfo, "missing bearer token")
+			if mode == authz.ModeEnforce {
+				require.Equal(t, http.StatusUnauthorized, status)
+				require.Empty(t, srv.seen)
+				return
+			}
+			require.Equal(t, http.StatusOK, status)
+			require.False(t, (<-srv.seen).hasIdentity)
+		})
+	}
+
+	t.Run("stale keys", func(t *testing.T) {
+		t.Parallel()
+		ca := newCA(t)
+		srv := startServer(t, ca, authz.ModeEnforce)
+		c := client(t, ca)
+		tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+
+		require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
+		<-srv.seen
+		srv.keys.unavailable.Store(true)
+		srv.clock.Advance(token.DefaultMaxKeyAge + time.Minute)
+
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, "https://"+srv.url, nil)
+		require.NoError(t, err)
+		req.URL = &url.URL{Scheme: "https", Host: srv.url, Opaque: "*"}
+		req.Header.Set("Authorization", tok)
+		resp, err := c.Do(req)
+		require.NoError(t, err)
+		_ = resp.Body.Close()
+		require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+		requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+		require.Empty(t, srv.seen)
+	})
 }
 
 // TestServe_ConnectAuthorityFormDenials checks that a denied authority-form CONNECT, whose
