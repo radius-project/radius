@@ -128,8 +128,10 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 
 	app := http.Handler(r)
 	app = servicecontext.ARMRequestCtx(s.options.Config.Server.PathBase, s.options.Config.Environment.RoleLocation)(app)
-	app = authenticator.Middleware(app)
 	app = middleware.WithLogger(app)
+	app = authorization.Inspection(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
+	app = authorization.ObserveRequests(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
+	app = authenticator.Middleware(app)
 
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),
@@ -274,7 +276,7 @@ func (s *Service) Run(ctx context.Context) error {
 		}()
 		go func() {
 			logger.Info(fmt.Sprintf("listening for internal traffic on: '%s'...", internal.Addr))
-			err := mtls.ListenAndServe(ctx, internal, s.options.Config.Authorization, nil)
+			err := mtls.ListenAndServe(ctx, internal, s.options.Config.Authorization, mtls.Receiver{Name: "ucp"})
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				internalErr <- fmt.Errorf("internal endpoint failed: %w", err)
 				_ = service.Shutdown(ctx)

@@ -1,0 +1,127 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CHIME_VOICE_CONNECTOR_ID": "hfocqzirpsiyuqeaqrthox"
+  },
+  "interactions": [
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorOrigination",
+      "request": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1}]}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find Origination for VoiceConnector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"1d5ccc8e-843f-48be-9dc1-17da29048cef\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find Origination for VoiceConnector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"e80a9360-291e-4c24-9e1d-2835035f3bbb\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorOrigination",
+      "request": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip2.example.com\",\"Port\":5060,\"Priority\":2,\"Protocol\":\"UDP\",\"Weight\":1}]}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip2.example.com\",\"Port\":5060,\"Priority\":2,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip2.example.com\",\"Port\":5060,\"Priority\":2,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip2.example.com\",\"Port\":5060,\"Priority\":2,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "DeleteVoiceConnectorOrigination",
+      "status": 204,
+      "body": ""
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Origination\":{\"Disabled\":false,\"Routes\":[{\"Host\":\"sip1.example.com\",\"Port\":5060,\"Priority\":1,\"Protocol\":\"UDP\",\"Weight\":1},{\"Host\":\"sip2.example.com\",\"Port\":5060,\"Priority\":2,\"Protocol\":\"UDP\",\"Weight\":1}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorOrigination",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find Origination for VoiceConnector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"50d85c29-12a1-4354-8b59-be61044faa93\"}"
+    }
+  ]
+}
