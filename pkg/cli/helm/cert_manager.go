@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -154,11 +155,8 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	controller := deployments.Items[0]
 	raw := controller.Labels[certManagerVersionLabel]
 	if raw == "" {
-		for _, c := range controller.Spec.Template.Spec.Containers {
-			if tag := imageTag(c.Image); tag != "" {
-				raw = tag
-				break
-			}
+		if container := certManagerControllerContainer(&controller); container != nil {
+			raw = imageTag(container.Image)
 		}
 	}
 
@@ -257,6 +255,10 @@ func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespa
 		var argv []string
 		var resolved []bool
 		raw := container.Args
+		// A command that runs cainjector passes the flags after the executable before the args.
+		if len(container.Command) > 0 && isCAInjectorName(path.Base(container.Command[0])) {
+			raw = slices.Concat(container.Command[1:], container.Args)
+		}
 		for _, arg := range raw {
 			value, ok := expandContainerReferences(arg, env)
 			argv = append(argv, value)
@@ -399,6 +401,25 @@ func caInjectorContainers(deployment *appsv1.Deployment) []corev1.Container {
 	return injectors
 }
 
+// certManagerControllerContainer returns the container of deployment that runs the cert-manager controller: the one
+// named, or running an image named, cert-manager-controller. When it identifies none, it returns the only container,
+// or nil when there are several, so rad never reads the version from a sidecar's image, such as an injected
+// service-mesh proxy.
+func certManagerControllerContainer(deployment *appsv1.Deployment) *corev1.Container {
+	containers := deployment.Spec.Template.Spec.Containers
+	for idx := range containers {
+		image, _, _ := strings.Cut(containers[idx].Image, "@")
+		image, _, _ = strings.Cut(path.Base(image), ":")
+		if containers[idx].Name == "cert-manager-controller" || image == "cert-manager-controller" {
+			return &containers[idx]
+		}
+	}
+	if len(containers) == 1 {
+		return &containers[0]
+	}
+	return nil
+}
+
 func isCAInjectorName(name string) bool {
 	return name == "cainjector" || name == "cert-manager-cainjector"
 }
@@ -427,6 +448,15 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 	}
 	if mode == authz.ModeOff {
 		return nil
+	}
+
+	// Pin both the lookup and its recovery commands before current-context can change.
+	if kubeContext == "" {
+		config, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+		if err != nil {
+			return fmt.Errorf("failed to resolve cert-manager kubeconfig context: %w", err)
+		}
+		kubeContext = config.CurrentContext
 	}
 
 	i.logInfo("Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed. Do not rely on it for production access control.")
@@ -568,6 +598,9 @@ func pendingCertManagerReleaseError(rel *releasev1.Release, options ChartOptions
 	}
 	if !radOwnsCertManagerRelease(rel) {
 		recovery += " This release is not owned by rad; coordinate recovery with the installation's operator rather than taking ownership."
+	}
+	if kubeContext == "" {
+		recovery += " No named kubeconfig context was selected; before running any suggested command, explicitly select and verify the cluster that rad inspected."
 	}
 
 	return clierrors.Message("cert-manager Helm release %q in namespace %q (%s), revision %d is %s. "+

@@ -82,6 +82,24 @@ tests:
           errorMessage: de.internalAuth.enabled must be a boolean
         template: ucp/deployment.yaml
 
+  - it: rejects a Radius engine opt-in with the default image
+    set:
+      global.rbac.enabled: true
+      de.internalAuth.enabled: true
+    asserts: &missingImage
+      - failedTemplate:
+          errorMessage: de.internalAuth.enabled requires an explicitly selected compatible engine image via de.image or de.tag
+        template: ucp/deployment.yaml
+
+  - it: rejects an external engine opt-in with only global image overrides
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+      global.imageRegistry: localhost:5000
+      global.imageTag: source-test-only
+      de.internalAuth.enabled: true
+    asserts: *missingImage
+
   - it: rejects a numeric switch
     set:
       de.internalAuth.enabled: 0
@@ -220,6 +238,7 @@ tests:
     set:
       global.rbac.enabled: true
       de.internalAuth.enabled: true
+      de.image: localhost:5000/deployment-engine@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     asserts:
       - equal:
           path: spec.template.spec.volumes
@@ -304,6 +323,7 @@ tests:
       global.rbac.dryRun: true
       global.rbac.tls.provider: external
       de.internalAuth.enabled: true
+      de.tag: source-test-only
     asserts: &external
       - equal:
           path: spec.template.spec.volumes
@@ -350,4 +370,5 @@ tests:
       global.rbac.enabled: true
       global.rbac.tls.provider: external
       de.internalAuth.enabled: true
+      de.tag: source-test-only
     asserts: *external

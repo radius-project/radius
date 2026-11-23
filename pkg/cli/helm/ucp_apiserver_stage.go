@@ -242,6 +242,9 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return err
 	}
 
+	if err := validateUCPAPIServerAPIAnchors(ca, apiService); err != nil {
+		return err
+	}
 	trusted = unionCertificates(trusted, []*x509.Certificate{ca})
 	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {
 		return err
@@ -286,6 +289,9 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if mounted == "" {
 		return nil
 	}
+	if !helmOwned(deployment, radiusNamespace, releaseName) {
+		return foreignUCPDeploymentError(radiusNamespace, releaseName)
+	}
 	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
 	if err != nil || apiService == nil {
 		return err
@@ -302,7 +308,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if !ok {
 		return nil
 	}
-	rendered, err := renderedUCPOffCertificate(manifest)
+	rendered, err := renderedSecret(manifest, ucpOffCertificateSecretName)
 	if err != nil {
 		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
 	}
@@ -354,9 +360,21 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	if mounted != ucpOffCertificateSecretName {
-		patch, err := json.Marshal(map[string]any{"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
-			"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
-		}}}})
+		// The waits above let the Deployment's status change, so rad reads it again and patches only the Deployment it
+		// inspected, at the resourceVersion it checked.
+		current, err := deployments.Get(ctx, "ucp", metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
+		}
+		if current.UID != deployment.UID || !helmOwned(current, radiusNamespace, releaseName) {
+			return foreignUCPDeploymentError(radiusNamespace, releaseName)
+		}
+		patch, err := json.Marshal(map[string]any{
+			"metadata": map[string]any{"uid": current.UID, "resourceVersion": current.ResourceVersion},
+			"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
+				"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
+			}}},
+		})
 		if err != nil {
 			return err
 		}
@@ -380,6 +398,13 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	return nil
+}
+
+// foreignUCPDeploymentError reports that the ucp Deployment is not the one the Radius release owns, so rad refuses to
+// mount a Secret in it.
+func foreignUCPDeploymentError(radiusNamespace, releaseName string) error {
+	return fmt.Errorf("Deployment %s/ucp does not belong to Helm release %q, or was replaced after rad read it, so rad did not mount Secret %s in it. "+
+		"Helm has not changed Radius; check the Deployment, then run the command again", radiusNamespace, releaseName, ucpOffCertificateSecretName)
 }
 
 // apiServiceCACertificates returns the CA certificates in the caBundle of apiService.
@@ -477,8 +502,8 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 	return err
 }
 
-// renderedUCPOffCertificate returns Secret ucp-cert in manifest, or nil when manifest has none.
-func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
+// renderedSecret returns the named Secret in manifest, or nil when absent.
+func renderedSecret(manifest, name string) (*corev1.Secret, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
 	for {
 		var document map[string]any
@@ -490,7 +515,7 @@ func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
 			return nil, err
 		}
 		object := &unstructured.Unstructured{Object: document}
-		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != ucpOffCertificateSecretName {
+		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != name {
 			continue
 		}
 		secret := &corev1.Secret{}

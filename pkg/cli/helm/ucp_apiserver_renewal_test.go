@@ -577,3 +577,25 @@ func TestRollbackCertificateModeBeforeStaging(t *testing.T) {
 		})
 	}
 }
+
+func TestMissingSignerAPIServicePin(t *testing.T) {
+	for _, name := range []string{"ucp-ca", ucpAPIServerCASecretName} {
+		ca := newTestCA(t, name)
+		api := ucpAPIService(base64.StdEncoding.EncodeToString(ca.pem), "True", "Passed")
+		client := kubefake.NewSimpleClientset()
+		impl := trustImpl(client, ucpAPIServiceDynamicClient(api))
+		rendered := false
+		err := impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, "radius", deployedMode(authz.ModeOff), authz.ModeDryRun,
+			func(context.Context) (string, bool, error) { rendered = true; return "", false, nil })
+		if name == "ucp-ca" {
+			require.NoError(t, err)
+			require.True(t, rendered)
+		} else {
+			require.ErrorContains(t, err, "restore the original signer")
+			require.False(t, rendered)
+		}
+		for _, a := range client.Actions() {
+			require.Equal(t, "get", a.GetVerb())
+		}
+	}
+}

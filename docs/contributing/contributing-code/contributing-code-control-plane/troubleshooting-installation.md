@@ -123,7 +123,7 @@ k3s installs the Traefik CRDs in the background after the cluster starts. When `
 
 If an earlier attempt failed while Helm installed Contour, the `contour` release in `radius-system` has a failed revision. Run `rad install kubernetes` again: after the same checks, Radius upgrades the failed release before it installs Radius. When Radius is already installed, the command prints the `rad install kubernetes --reinstall` command that repairs Contour. If the message instead says that the Gateway API CRDs have more than one owner, run the `kubectl annotate` command that it shows, and then run `rad install kubernetes` again.
 
-When you pass `--kubecontext`, the `kubectl` and `helm` commands in these messages name that context, so they act on the cluster that Radius checked even when the current context of your kubeconfig selects another one. Without `--kubecontext`, Radius and the commands both use the current context of your kubeconfig.
+When you pass `--kubecontext`, the `kubectl` and `helm` commands in these messages name that context, so they act on the cluster that Radius checked even when the current context of your kubeconfig selects another one. Without `--kubecontext`, Radius and the commands both use the current context of your kubeconfig, except for cert-manager preflight: it captures the current context before inspecting the release and includes that name in its recovery commands. If no named context is available, the pending-release diagnostic tells you to explicitly select and verify the inspected cluster before running any suggested command.
 
 ## cert-manager
 

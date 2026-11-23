@@ -106,12 +106,21 @@ type ucpOffLeftoverFound struct {
 // Helm, and this deletes it. It keeps a declared object, such as the radius-selfsigned-bootstrap Issuer that charts
 // which serve UCP from ucp-cert also use to issue radius-ca.
 func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet) error {
+	return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared, false)
+}
+
+// reconcileUCPOffAPIServerTrust is ReconcileUCPOffAPIServerTrust. fresh reports that Helm installed the first revision
+// of the release, which no upgrade preceded, so rad never staged the radius-apiserver-ca chain for it and skips reading
+// the cert-manager Issuers and Certificate, which a user who cannot read them may still install Radius without.
+func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet, fresh bool) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
 	}
-	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
-		return err
+	if !fresh {
+		if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
+			return err
+		}
 	}
 	apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, "")
 	if err != nil || apiService == nil {
@@ -165,9 +174,20 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 // deleteUCPOffLeftovers deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
 // uid and resourceVersion rad read, and warns about each that rad does not own.
 func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) error {
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
+	found, err := i.deleteLeftoverSecrets(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
 	if err != nil {
 		return err
+	}
+	i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, found)
+	return nil
+}
+
+// deleteLeftoverSecrets deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
+// uid and resourceVersion rad read, and returns the state of each.
+func (i *Impl) deleteLeftoverSecrets(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) ([]ucpOffLeftoverFound, error) {
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
+	if err != nil {
+		return nil, err
 	}
 	for n, f := range found {
 		if f.state != ucpOffSecretLeftover {
@@ -179,13 +199,13 @@ func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, ku
 			continue
 		}
 		if !apierrors.IsConflict(err) && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, f.secret, err)
+			return nil, fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, f.secret, err)
 		}
 		// The Secret changed or was deleted since rad read it: decide again from what exists now, but never delete
 		// an object rad has not inspected.
 		again, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, f.ucpOffLeftoverSecret)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		found[n] = again
 		if again.state == ucpOffSecretLeftover {
@@ -193,8 +213,7 @@ func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, ku
 			i.logInfo("Warning: Secret %s/%s changed after rad read it, so rad left it. Run the command again to remove it.", radiusNamespace, f.secret)
 		}
 	}
-	i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, found)
-	return nil
+	return found, nil
 }
 
 // secretPreconditions returns delete preconditions that match only secret as rad read it.
@@ -276,7 +295,7 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 }
 
 // ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate of its
-// name writes it, by spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
+// name exists, or the Radius release's Certificate of that name writes another Secret by spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
 // only ca.crt and the allow-direct-injection annotation, which is what rad and the chart README's plain-Helm steps
 // write.
 func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
@@ -295,10 +314,12 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 		if err != nil && !apierrors.IsNotFound(err) {
 			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
 		}
-		// A Certificate of the same name that writes another Secret, such as the ucp-cert Certificate of a chart
-		// before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one.
+		// Only a Certificate of the Radius release that names another Secret, such as the ucp-cert Certificate of a
+		// chart before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one. Any other Certificate of the
+		// same name may still use it, so rad keeps the Secret, which can hold its private key.
 		if err == nil {
-			if secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName"); secretName == leftover.secret {
+			secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName")
+			if secretName == "" || secretName == leftover.secret || !helmOwned(certificate, radiusNamespace, radiusReleaseName) {
 				return found, nil
 			}
 		}

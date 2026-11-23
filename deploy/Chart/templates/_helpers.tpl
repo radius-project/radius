@@ -193,6 +193,9 @@ off
 {{- if and $enabled (eq (include "radius.authz.mode" .) "off") -}}
 {{- fail "de.internalAuth.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" -}}
 {{- end -}}
+{{- if and $enabled (eq (.Values.de.image | default "deployment-engine") "deployment-engine") (empty .Values.de.tag) -}}
+{{- fail "de.internalAuth.enabled requires an explicitly selected compatible engine image via de.image or de.tag" -}}
+{{- end -}}
 {{- $enabled -}}
 {{- end -}}
 
@@ -314,24 +317,43 @@ mounted there: the SPIFFE server certificate, the Radius CA bundle, and one proj
 {{- end -}}
 
 {{/*
-Fails rendering when an active global.rootCA.mountPath or global.targetCluster.mountPath is a
-reserved authorization mount path, which Kubernetes rejects as a duplicate container mount.
+Authorization mount paths in the containers that mount the target-cluster kubeconfig, as a JSON
+object in the same form as radius.authz.reservedMountPaths. applications-rp and dynamic-rp mount the
+SPIFFE server certificate, the Radius CA bundle, and the ucp token; the Deployment Engine mounts no
+authorization paths. Keep in sync with the rp, dynamic-rp, and de deployment templates.
+*/}}
+{{- define "radius.authz.targetClusterReservedMountPaths" -}}
+{{- $paths := dict (include "radius.authz.spiffe.mountPath" .) "the SPIFFE server certificate" (include "radius.authz.caBundle.mountPath" .) "the Radius CA bundle" -}}
+{{- $_ := set $paths (printf "%s/ucp" (include "radius.authz.tokens.mountPath" .)) "a projected ServiceAccount token" -}}
+{{- $paths | toJson -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active global.rootCA.mountPath is a reserved authorization mount path, or
+when an active global.targetCluster.mountPath or kubeconfig file (mountPath/secretKey) is an
+authorization mount path in a container that mounts the target kubeconfig. Kubernetes rejects a
+duplicate container mount, and a kubeconfig path that is a mounted directory cannot be loaded.
 Renders nothing. Called by the authorization volume helpers, which render only when the
 authorization mode is not off.
 */}}
 {{- define "radius.authz.validateMountPaths" -}}
-{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJson -}}
-{{- $mounts := list -}}
 {{- if .Values.global.rootCA.cert -}}
-{{- $mounts = append $mounts (list "global.rootCA.mountPath" .Values.global.rootCA.mountPath) -}}
+{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJson -}}
+{{- $path := clean (toString .Values.global.rootCA.mountPath) -}}
+{{- if hasKey $reserved $path -}}
+{{- fail (printf "global.rootCA.mountPath must not be %q: Radius authorization mounts %s there" .Values.global.rootCA.mountPath (get $reserved $path)) -}}
+{{- end -}}
 {{- end -}}
 {{- if .Values.global.targetCluster.enabled -}}
-{{- $mounts = append $mounts (list "global.targetCluster.mountPath" .Values.global.targetCluster.mountPath) -}}
-{{- end -}}
-{{- range $mounts -}}
-{{- $path := clean (toString (index . 1)) -}}
+{{- $reserved := include "radius.authz.targetClusterReservedMountPaths" . | fromJson -}}
+{{- $mountPath := toString .Values.global.targetCluster.mountPath -}}
+{{- $path := clean $mountPath -}}
 {{- if hasKey $reserved $path -}}
-{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (get $reserved $path)) -}}
+{{- fail (printf "global.targetCluster.mountPath must not be %q: Radius authorization mounts %s there" $mountPath (get $reserved $path)) -}}
+{{- end -}}
+{{- $file := clean (printf "%s/%s" $mountPath (toString .Values.global.targetCluster.secretKey)) -}}
+{{- if hasKey $reserved $file -}}
+{{- fail (printf "global.targetCluster.mountPath and secretKey must not resolve to %q: Radius authorization mounts %s there" $file (get $reserved $file)) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -340,8 +362,10 @@ authorization mode is not off.
 Fails rendering when an active shared Secret (global.rootCA.secretName or
 global.targetCluster.secretName) is a Secret that cert-manager writes a private key to: a receiver's
 <receiver>-spiffe Secret, a CA Secret, or the UCP API server certificate Secret. The shared Secrets are
-mounted whole into several pods, so reusing one of these names exposes the key.
-Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
+mounted whole into several pods, so reusing one of these names exposes the key. Also fails when a
+global.imagePullSecrets name is a receiver's <receiver>-spiffe Secret: cert-manager cannot add the
+certificate to an existing registry Secret, so the receiver's pod cannot start.
+Check shared mounts even when issuance is disabled: a prior release's Secret can survive rollback.
 */}}
 {{- define "radius.authz.validateSecretNames" -}}
 {{- $shared := list -}}
@@ -352,23 +376,28 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- $shared = append $shared (list "global.targetCluster.secretName" .Values.global.targetCluster.secretName) -}}
 {{- end -}}
 {{- $reserved := dict
+  "ucp-cert" "the chart writes UCP's legacy API server certificate and key to that Secret"
+  "radius-ca" "cert-manager writes the Radius CA certificate and signing key to that Secret"
   "radius-apiserver-ca" "cert-manager writes the UCP API server CA certificate and signing key to that Secret"
   "ucp-apiserver-tls" "cert-manager writes UCP's API server certificate and key to that Secret" -}}
-{{- if eq (include "radius.authz.tls.provider" .) "radius" -}}
-{{- $_ := set $reserved "radius-ca" "cert-manager writes the Radius CA certificate and signing key to that Secret" -}}
-{{- end -}}
-{{- if eq (include "radius.authz.certificates.mode" .) "caSecret" -}}
-{{- $_ := set $reserved .Values.global.rbac.certificates.caSecret "that Secret holds the operator's CA signing key" -}}
+{{- $certificates := (.Values.global.rbac | default dict).certificates | default dict -}}
+{{- if and (eq (toString $certificates.mode) "caSecret") (kindIs "string" $certificates.caSecret) (not (hasKey $reserved $certificates.caSecret)) -}}
+{{- $_ := set $reserved $certificates.caSecret "that Secret holds the operator's CA signing key" -}}
 {{- end -}}
 {{- range $shared -}}
 {{- if hasKey $reserved (index . 1) -}}
 {{- fail (printf "%s must not be %q: %s" (index . 0) (index . 1) (get $reserved (index . 1))) -}}
 {{- end -}}
 {{- end -}}
-{{- range $receiver := include "radius.authz.certificates.receivers" . | fromJsonArray -}}
+{{- range $receiver := include "radius.authz.spiffe.allReceivers" . | fromJsonArray -}}
 {{- range $shared -}}
 {{- if eq (index . 1) (printf "%s-spiffe" $receiver) -}}
 {{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
+{{- end -}}
+{{- end -}}
+{{- range $i, $pullSecret := $.Values.global.imagePullSecrets -}}
+{{- if and (ne (include "radius.authz.mode" $) "off") (kindIs "map" $pullSecret) (eq (toString $pullSecret.name) (printf "%s-spiffe" $receiver)) -}}
+{{- fail (printf "global.imagePullSecrets[%d].name must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret, and cannot add them to an existing registry Secret" $i $pullSecret.name $receiver) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -487,13 +516,17 @@ SPIFFE trust domain of the Radius server certificates.
 {{- $trustDomain -}}
 {{- end -}}
 
+{{- define "radius.authz.spiffe.allReceivers" -}}
+{{- list "ucp" "applications-rp" "dynamic-rp" "bicep-de" | toJson -}}
+{{- end -}}
+
 {{/*
 Components that receive internal calls and get a SPIFFE server certificate, as a JSON list.
 */}}
 {{- define "radius.authz.spiffe.receivers" -}}
-{{- $receivers := list "ucp" "applications-rp" "dynamic-rp" -}}
-{{- if eq (include "radius.de.internalAuth.enabled" .) "true" -}}
-{{- $receivers = append $receivers "bicep-de" -}}
+{{- $receivers := include "radius.authz.spiffe.allReceivers" . | fromJsonArray -}}
+{{- if ne (include "radius.de.internalAuth.enabled" .) "true" -}}
+{{- $receivers = without $receivers "bicep-de" -}}
 {{- end -}}
 {{- $receivers | toJson -}}
 {{- end -}}

@@ -167,32 +167,17 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	err = r.Helm.UninstallRadius(ctx, helm.NewDefaultClusterOptions(), r.KubeContext)
 	if err != nil {
+		// Helm already removed Radius, and a retry finds no release and never purges, so purge what the user confirmed
+		// now. The namespace purge also removes the Radius objects whose cleanup failed.
+		var removed *helm.RadiusRemovedError
+		if r.Purge && errors.As(err, &removed) {
+			return errors.Join(err, r.purge(ctx, plan))
+		}
 		return err
 	}
 
 	if r.Purge {
-		if len(plan.APIServices) > 0 {
-			for _, svc := range plan.APIServices {
-				r.Output.LogInfo("Removing APIService %s", svc)
-			}
-		}
-		if len(plan.CRDs) > 0 {
-			r.Output.LogInfo("Removing Radius custom resource definitions")
-		}
-		for _, ns := range plan.Namespaces {
-			r.Output.LogInfo("Deleting namespace %s", ns)
-		}
-		for _, ns := range plan.ProtectedNamespaces {
-			r.Output.LogInfo("Skipping deletion of namespace %s because Kubernetes does not allow deletion", ns)
-		}
-		r.Output.LogInfo("Waiting for resource deletions to finish...")
-
-		cleanupPlan := kubernetes.CleanupPlan{
-			Namespaces:  plan.Namespaces,
-			APIServices: plan.APIServices,
-			CRDs:        plan.CRDs,
-		}
-		if err := r.Kubernetes.PerformRadiusCleanup(ctx, r.KubeContext, cleanupPlan); err != nil {
+		if err := r.purge(ctx, plan); err != nil {
 			return err
 		}
 		r.Output.LogInfo("Radius was fully uninstalled. All data has been removed.")
@@ -200,6 +185,29 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	r.Output.LogInfo("Radius was uninstalled successfully. Any existing data will be retained for future installations. Local configuration is also retained. Use the `rad workspace` command if updates are needed to your configuration.")
 	return nil
+}
+
+// purge deletes the APIServices, CRDs and namespaces of plan, which the user confirmed, after Helm removed Radius.
+func (r *Runner) purge(ctx context.Context, plan cleanupPlan) error {
+	for _, svc := range plan.APIServices {
+		r.Output.LogInfo("Removing APIService %s", svc)
+	}
+	if len(plan.CRDs) > 0 {
+		r.Output.LogInfo("Removing Radius custom resource definitions")
+	}
+	for _, ns := range plan.Namespaces {
+		r.Output.LogInfo("Deleting namespace %s", ns)
+	}
+	for _, ns := range plan.ProtectedNamespaces {
+		r.Output.LogInfo("Skipping deletion of namespace %s because Kubernetes does not allow deletion", ns)
+	}
+	r.Output.LogInfo("Waiting for resource deletions to finish...")
+
+	return r.Kubernetes.PerformRadiusCleanup(ctx, r.KubeContext, kubernetes.CleanupPlan{
+		Namespaces:  plan.Namespaces,
+		APIServices: plan.APIServices,
+		CRDs:        plan.CRDs,
+	})
 }
 
 // uninstallCertManagerOnly handles a cluster without Radius. It first resumes the cleanup of a previous uninstall that
