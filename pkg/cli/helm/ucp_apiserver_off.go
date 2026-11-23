@@ -324,9 +324,10 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 }
 
 // ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate of its
-// name writes it, by spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for
-// radius-apiserver-trust, it holds only ca.crt, the allow-direct-injection annotation and the release annotations, which
-// is what rad and the chart README's plain-Helm steps write.
+// name exists, or the Radius release's Certificate of that name writes another Secret by spec.secretName, and rad owns
+// it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds only ca.crt, the
+// allow-direct-injection annotation and the release annotations, which is what rad and the chart README's plain-Helm
+// steps write.
 //
 // It checks the Secret's markers before it reads the Certificate, so a Secret rad does not own is foreign without any
 // cert-manager read. When keepUnreadable is set, an owned Secret whose Certificate rad is Forbidden to read is
@@ -356,10 +357,12 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 		if err != nil && !apierrors.IsNotFound(err) {
 			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
 		}
-		// A Certificate of the same name that writes another Secret, such as the ucp-cert Certificate of a chart
-		// before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one.
+		// Only a Certificate of the Radius release that names another Secret, such as the ucp-cert Certificate of a
+		// chart before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one. Any other Certificate of the
+		// same name may still use it, so rad keeps the Secret, which can hold its private key.
 		if err == nil {
-			if secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName"); secretName == leftover.secret {
+			secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName")
+			if secretName == "" || secretName == leftover.secret || !helmOwned(certificate, radiusNamespace, radiusReleaseName) {
 				return found, nil
 			}
 		}

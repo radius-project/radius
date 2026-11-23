@@ -442,8 +442,8 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.True(t, apierrors.IsNotFound(err), "Secret %s has no Certificate, got %v", ucpAPIServerTLSSecretName, err)
 	})
 
-	// A rollback to a chart before radius-apiserver-ca with authorization on renders Certificate ucp-cert, which writes
-	// ucp-mtls; only a ucp-cert Certificate that still writes ucp-apiserver-tls keeps it.
+	// A rollback to a chart before radius-apiserver-ca with authorization on renders the Radius release's Certificate
+	// ucp-cert, which writes ucp-mtls; only a ucp-cert Certificate that still writes ucp-apiserver-tls keeps it.
 	for _, tt := range []struct {
 		secretName string
 		keep       bool
@@ -453,7 +453,10 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 	} {
 		t.Run("Certificate ucp-cert writes "+tt.secretName, func(t *testing.T) {
 			c := newOffAfterOnCluster(t)
-			require.NoError(t, c.dynamic.Tracker().Add(ucpOffTestCertificate(ucpAPIServerCertificateName, tt.secretName)))
+			certificate := ucpOffTestCertificate(ucpAPIServerCertificateName, tt.secretName)
+			certificate.SetLabels(map[string]string{helmManagedByLabel: helmManagedByValue})
+			certificate.SetAnnotations(map[string]string{helmReleaseNameAnnotation: radiusReleaseName, helmReleaseNamespaceAnnotation: RadiusSystemNamespace})
+			require.NoError(t, c.dynamic.Tracker().Add(certificate))
 
 			require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 			c.requireOffAPIService(t)
