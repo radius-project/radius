@@ -440,17 +440,13 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   git("init", "-q", "--bare", "--initial-branch=main", origin);
   git("remote", "add", "origin", origin);
 
-  // The optional archive comes from an actual pre-fix cutoff. Only tagged
-  // build/publication readers are copied; new controller code runs externally.
+  // Copy the cutoff's publication readers with their dependencies. Controller
+  // code still runs from the checkout under test, not from this fixture.
   const compatibilitySource = process.env.FROZEN_RELEASE_COMPAT_DIR ?? root;
   const frozenFiles = [
     ".goreleaser.yaml",
     ".github/workflows/build-release.yaml",
-    ".github/scripts/verify-release-manifest.mjs",
-    ".github/scripts/publish-draft-release.mjs",
-    ".github/scripts/release-assets.mjs",
-    ".github/scripts/release-reconciliation.mjs",
-    ".github/scripts/verify-release-publication.sh",
+    ".github/scripts",
     ".github/release-parity/targets.json",
     "cliff.toml",
     "docs/release-notes/template.md",
@@ -476,7 +472,9 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   } else {
     for (const file of frozenFiles) {
       mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
-      cpSync(path.join(compatibilitySource, file), path.join(repo, file));
+      cpSync(path.join(compatibilitySource, file), path.join(repo, file), {
+        recursive: true
+      });
     }
     write(
       "versions.yaml",

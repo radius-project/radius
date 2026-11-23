@@ -1064,6 +1064,8 @@ test_patch_rerun_needs_no_curated_sections() {
 }
 
 test_bicep_contract_is_frozen_in_plan() {
+    local cutoff
+
     setup_repo "v0.60.0"
     git -C "${REPO}" tag v0.60.0
     node --input-type=module - "${SCRIPT_DIR}" "${REPO}" <<'JS'
@@ -1076,6 +1078,12 @@ outputs.bicepExtensionsContract = "ghcr-v1";
 outputs.ociArtifacts = bicepExtensionTargets;
 await writeFile(file, JSON.stringify(outputs));
 JS
+    commit "feat: enable the GHCR Bicep contract"
+    cutoff="$(git -C "${REPO}" rev-parse HEAD)"
+    git -C "${REPO}" show v0.60.0:.github/release-parity/targets.json \
+        > "${REPO}/.github/release-parity/targets.json"
+    commit "test: change the Bicep targets after the cutoff"
+    PREPARATION_OPTIONS=(--product-commit "${cutoff}")
     run_prepare rc 0.61
     assert_version "v0.61.0-rc.1" || return
     assert_yq_value "${REPO}/.github/release-plans/v0.61.0-rc.1.yaml" \

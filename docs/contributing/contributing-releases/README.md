@@ -53,7 +53,23 @@ Stop if the update is missing or incomplete. Publishing namespaces and recipe pa
 
 ### Pin Radius in bicep-types-aws
 
-The AWS types must use the Radius product commit, not the later release metadata commit. A legacy plan without a pin intent must already reference a matching AWS commit. Rerunning a frozen first RC cannot replace its selected sibling. Never repair a merged plan by editing it or moving a tag.
+Prepare Release captures the `bicep-types-aws` commit; it does not update that repository's `radius` submodule. The release plan check and the controller both compare the submodule pin at the captured commit with `source.productCommit`, not the later release metadata commit. Only AWS commits from before the submodule was introduced have no pin to check.
+
+1. Choose the Radius cutoff **before running Prepare Release**. Set `PRODUCT_COMMIT` to its full SHA and `CHANNEL` to the target channel (for example, `0.63`). For a first RC, select a commit reachable from Radius `main`. For a later RC, final, or patch, use the head of Radius `release/<channel>` after the selected backports have merged.
+2. In a clone of `radius-project/bicep-types-aws`, open a PR to pin the submodule on `release/<channel>`. If that sibling branch does not exist, create it from the sibling's `main` first. If it already pins the chosen SHA, skip the pin PR.
+
+   ```bash
+   git fetch origin
+   git switch -c "pin-radius-${CHANNEL}" "origin/release/${CHANNEL}"
+   git update-index --cacheinfo "160000,${PRODUCT_COMMIT},radius"
+   git commit -s -m "chore: pin Radius for ${CHANNEL}"
+   git push -u origin HEAD
+   gh pr create --repo radius-project/bicep-types-aws --base "release/${CHANNEL}" --fill
+   ```
+
+3. **Merge the pin PR before preparing the Radius release.** For a first RC, pass the same SHA as `product-commit` when you [prepare the plan](#approve-the-plan), so a later merge into Radius `main` cannot change the cutoff. Review both `source.productCommit` and the captured `bicep-types-aws` commit in the generated plan.
+
+If an **unmerged first-RC plan** captured the wrong AWS commit, rerunning preparation keeps that sibling. Close the unmerged preparation PR, retire only its `automation/prepare-release-*` branch, and prepare a new PR with the intended cutoff after the correct AWS pin has merged. Obtain fresh review. If the plan has already merged, follow [break-glass recovery](#break-glass-recovery); do not edit the plan or move a tag.
 
 ### Approve the plan
 
