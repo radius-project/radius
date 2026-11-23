@@ -196,17 +196,17 @@ func (c *MockInterfaceCheckRadiusInstallCall) DoAndReturn(f func(string) (Instal
 }
 
 // DeleteRadiusUninstallLeftovers mocks base method.
-func (m *MockInterface) DeleteRadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+func (m *MockInterface) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext string, leftovers []UninstallLeftover) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteRadiusUninstallLeftovers", ctx, clusterOptions, kubeContext)
+	ret := m.ctrl.Call(m, "DeleteRadiusUninstallLeftovers", ctx, kubeContext, leftovers)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteRadiusUninstallLeftovers indicates an expected call of DeleteRadiusUninstallLeftovers.
-func (mr *MockInterfaceMockRecorder) DeleteRadiusUninstallLeftovers(ctx, clusterOptions, kubeContext any) *MockInterfaceDeleteRadiusUninstallLeftoversCall {
+func (mr *MockInterfaceMockRecorder) DeleteRadiusUninstallLeftovers(ctx, kubeContext, leftovers any) *MockInterfaceDeleteRadiusUninstallLeftoversCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRadiusUninstallLeftovers", reflect.TypeOf((*MockInterface)(nil).DeleteRadiusUninstallLeftovers), ctx, clusterOptions, kubeContext)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRadiusUninstallLeftovers", reflect.TypeOf((*MockInterface)(nil).DeleteRadiusUninstallLeftovers), ctx, kubeContext, leftovers)
 	return &MockInterfaceDeleteRadiusUninstallLeftoversCall{Call: call}
 }
 
@@ -222,13 +222,13 @@ func (c *MockInterfaceDeleteRadiusUninstallLeftoversCall) Return(arg0 error) *Mo
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfaceDeleteRadiusUninstallLeftoversCall) Do(f func(context.Context, ClusterOptions, string) error) *MockInterfaceDeleteRadiusUninstallLeftoversCall {
+func (c *MockInterfaceDeleteRadiusUninstallLeftoversCall) Do(f func(context.Context, string, []UninstallLeftover) error) *MockInterfaceDeleteRadiusUninstallLeftoversCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceDeleteRadiusUninstallLeftoversCall) DoAndReturn(f func(context.Context, ClusterOptions, string) error) *MockInterfaceDeleteRadiusUninstallLeftoversCall {
+func (c *MockInterfaceDeleteRadiusUninstallLeftoversCall) DoAndReturn(f func(context.Context, string, []UninstallLeftover) error) *MockInterfaceDeleteRadiusUninstallLeftoversCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -350,10 +350,10 @@ func (c *MockInterfaceInstallRadiusCall) DoAndReturn(f func(context.Context, Clu
 }
 
 // RadiusUninstallLeftovers mocks base method.
-func (m *MockInterface) RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]string, error) {
+func (m *MockInterface) RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]UninstallLeftover, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RadiusUninstallLeftovers", ctx, clusterOptions, kubeContext)
-	ret0, _ := ret[0].([]string)
+	ret0, _ := ret[0].([]UninstallLeftover)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -371,19 +371,19 @@ type MockInterfaceRadiusUninstallLeftoversCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockInterfaceRadiusUninstallLeftoversCall) Return(arg0 []string, arg1 error) *MockInterfaceRadiusUninstallLeftoversCall {
+func (c *MockInterfaceRadiusUninstallLeftoversCall) Return(arg0 []UninstallLeftover, arg1 error) *MockInterfaceRadiusUninstallLeftoversCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfaceRadiusUninstallLeftoversCall) Do(f func(context.Context, ClusterOptions, string) ([]string, error)) *MockInterfaceRadiusUninstallLeftoversCall {
+func (c *MockInterfaceRadiusUninstallLeftoversCall) Do(f func(context.Context, ClusterOptions, string) ([]UninstallLeftover, error)) *MockInterfaceRadiusUninstallLeftoversCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfaceRadiusUninstallLeftoversCall) DoAndReturn(f func(context.Context, ClusterOptions, string) ([]string, error)) *MockInterfaceRadiusUninstallLeftoversCall {
+func (c *MockInterfaceRadiusUninstallLeftoversCall) DoAndReturn(f func(context.Context, ClusterOptions, string) ([]UninstallLeftover, error)) *MockInterfaceRadiusUninstallLeftoversCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

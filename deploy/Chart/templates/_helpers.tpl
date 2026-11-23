@@ -302,9 +302,45 @@ authorization mode is not off.
 {{- end -}}
 
 {{/*
+Container mount paths the authorization helpers add, as a JSON object that maps each path to what is
+mounted there: the SPIFFE server certificate, the Radius CA bundle, and one projected token per receiver.
+*/}}
+{{- define "radius.authz.reservedMountPaths" -}}
+{{- $paths := dict (include "radius.authz.spiffe.mountPath" .) "the SPIFFE server certificate" (include "radius.authz.caBundle.mountPath" .) "the Radius CA bundle" -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $_ := set $paths (printf "%s/%s" (include "radius.authz.tokens.mountPath" $) .) "a projected ServiceAccount token" -}}
+{{- end -}}
+{{- $paths | toJson -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active global.rootCA.mountPath or global.targetCluster.mountPath is a
+reserved authorization mount path, which Kubernetes rejects as a duplicate container mount.
+Renders nothing. Called by the authorization volume helpers, which render only when the
+authorization mode is not off.
+*/}}
+{{- define "radius.authz.validateMountPaths" -}}
+{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJson -}}
+{{- $mounts := list -}}
+{{- if .Values.global.rootCA.cert -}}
+{{- $mounts = append $mounts (list "global.rootCA.mountPath" .Values.global.rootCA.mountPath) -}}
+{{- end -}}
+{{- if .Values.global.targetCluster.enabled -}}
+{{- $mounts = append $mounts (list "global.targetCluster.mountPath" .Values.global.targetCluster.mountPath) -}}
+{{- end -}}
+{{- range $mounts -}}
+{{- $path := clean (toString (index . 1)) -}}
+{{- if hasKey $reserved $path -}}
+{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (get $reserved $path)) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Fails rendering when an active shared Secret (global.rootCA.secretName or
-global.targetCluster.secretName) is a receiver's <receiver>-spiffe Secret. cert-manager writes the
-receiver's private key to that Secret, and the shared Secrets are mounted whole into several pods.
+global.targetCluster.secretName) is a Secret that cert-manager writes a private key to: a receiver's
+<receiver>-spiffe Secret, a CA Secret, or the UCP API server certificate Secret. The shared Secrets are
+mounted whole into several pods, so reusing one of these names exposes the key.
 Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
 */}}
 {{- define "radius.authz.validateSecretNames" -}}
@@ -315,7 +351,21 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- if .Values.global.targetCluster.enabled -}}
 {{- $shared = append $shared (list "global.targetCluster.secretName" .Values.global.targetCluster.secretName) -}}
 {{- end -}}
-{{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $reserved := dict
+  "radius-apiserver-ca" "cert-manager writes the UCP API server CA certificate and signing key to that Secret"
+  "ucp-apiserver-tls" "cert-manager writes UCP's API server certificate and key to that Secret" -}}
+{{- if eq (include "radius.authz.tls.provider" .) "radius" -}}
+{{- $_ := set $reserved "radius-ca" "cert-manager writes the Radius CA certificate and signing key to that Secret" -}}
+{{- end -}}
+{{- if eq (include "radius.authz.certificates.mode" .) "caSecret" -}}
+{{- $_ := set $reserved .Values.global.rbac.certificates.caSecret "that Secret holds the operator's CA signing key" -}}
+{{- end -}}
+{{- range $shared -}}
+{{- if hasKey $reserved (index . 1) -}}
+{{- fail (printf "%s must not be %q: %s" (index . 0) (index . 1) (get $reserved (index . 1))) -}}
+{{- end -}}
+{{- end -}}
+{{- range $receiver := include "radius.authz.certificates.receivers" . | fromJsonArray -}}
 {{- range $shared -}}
 {{- if eq (index . 1) (printf "%s-spiffe" $receiver) -}}
 {{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
@@ -396,6 +446,7 @@ Secret is not mounted. The Secret is required, so pods wait until cert-manager h
 {{- define "radius.authz.caBundle.volume" -}}
 {{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
 {{- include "radius.authz.validateVolumeNames" . }}
+{{- include "radius.authz.validateMountPaths" . }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") | fromJson }}
 - name: radius-ca
   {{- if eq $source.kind "ConfigMap" }}
@@ -423,7 +474,13 @@ SPIFFE trust domain of the Radius server certificates.
 */}}
 {{- define "radius.authz.spiffe.trustDomain" -}}
 {{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
-{{- $trustDomain := $spiffe.trustDomain | default "radius.internal" | toString -}}
+{{- $trustDomain := "radius.internal" -}}
+{{- if hasKey $spiffe "trustDomain" -}}
+{{- $trustDomain = $spiffe.trustDomain -}}
+{{- if not (kindIs "string" $trustDomain) -}}
+{{- fail (printf "global.rbac.spiffe.trustDomain must be a string, got %s" (kindOf $trustDomain)) -}}
+{{- end -}}
+{{- end -}}
 {{- if or (gt (len $trustDomain) 255) (not (regexMatch "^[a-z0-9._-]+$" $trustDomain)) -}}
 {{- fail (printf "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got %q" $trustDomain) -}}
 {{- end -}}
@@ -462,6 +519,7 @@ Call with (dict "root" $ "component" "<receiver>").
 {{- define "radius.authz.spiffe.volume" -}}
 {{- if and (ne (include "radius.authz.mode" .root) "off") (eq (include "radius.authz.tls.provider" .root) "radius") }}
 {{- include "radius.authz.validateVolumeNames" .root }}
+{{- include "radius.authz.validateMountPaths" .root }}
 - name: spiffe
   secret:
     secretName: {{ .component }}-spiffe
@@ -504,6 +562,7 @@ Call with (dict "root" $ "receivers" (list "<receiver>" ...)).
 {{- define "radius.authz.tokens.volumes" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
 {{- include "radius.authz.validateVolumeNames" .root }}
+{{- include "radius.authz.validateMountPaths" .root }}
 {{- range .receivers }}
 - name: token-{{ . }}
   projected:

@@ -75,6 +75,18 @@ func TestKubernetesRequestHeaderTrust(t *testing.T) {
 	}
 }
 
+func TestKubernetesRequestHeaderCABundle(t *testing.T) {
+	t.Parallel()
+	proxy := newProxyPKI(t)
+	testRequestHeaderCABundles(t, func(t *testing.T, bundle []byte) (*RequestHeaderAuthenticator, error) {
+		configMap := kubernetesRequestHeaderConfigMap(t, proxy.file)
+		configMap.Data["requestheader-client-ca-file"] = string(bundle)
+		return NewKubernetesRequestHeaderAuthenticator(configMap, KubernetesRequestHeaderOptions{
+			KubernetesIssuer: "kubernetes:test-cluster",
+		})
+	})
+}
+
 func TestKubernetesRequestHeaderInvalidConfiguration(t *testing.T) {
 	t.Parallel()
 	proxy := newProxyPKI(t)
@@ -85,7 +97,7 @@ func TestKubernetesRequestHeaderInvalidConfiguration(t *testing.T) {
 		err   string
 	}{
 		{name: "missing proxy CA", field: "requestheader-client-ca-file", err: "contains no certificates"},
-		{name: "invalid proxy CA", field: "requestheader-client-ca-file", value: "invalid", err: "contains no certificates"},
+		{name: "invalid proxy CA", field: "requestheader-client-ca-file", value: "invalid", err: "contains unexpected data"},
 		{name: "missing names", field: "requestheader-allowed-names", err: "parse Kubernetes requestheader-allowed-names"},
 		{name: "null names", field: "requestheader-allowed-names", value: "null", err: "not null"},
 		{name: "invalid names", field: "requestheader-allowed-names", value: "[", err: "parse Kubernetes"},

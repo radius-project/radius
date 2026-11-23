@@ -62,7 +62,7 @@ var ucpOffLeftoverSecrets = []ucpOffLeftoverSecret{
 type ucpOffSecretState int
 
 const (
-	// ucpOffSecretKeep: the Secret does not exist, or its Certificate does, so authorization on still uses it.
+	// ucpOffSecretKeep: the Secret does not exist, or its Certificate still writes it, so authorization on uses it.
 	ucpOffSecretKeep ucpOffSecretState = iota
 	// ucpOffSecretForeign: the Secret exists, but neither cert-manager for the expected Certificate nor rad wrote it.
 	ucpOffSecretForeign
@@ -113,12 +113,9 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
 		return err
 	}
-	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+	apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, "")
+	if err != nil || apiService == nil {
+		return err
 	}
 	offSecret, err := kubeClient.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpOffCertificateSecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -158,7 +155,7 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 		return err
 	}
 	// cainjector may have rewritten the caBundle while rad waited, so settle even when the first read was clean.
-	if err := settleUCPOffTrust(ctx, kubeContext, dynamicClient, offCAs); err != nil {
+	if err := settleUCPOffTrust(ctx, kubeContext, dynamicClient, radiusNamespace, apiService.GetUID(), offCAs); err != nil {
 		return err
 	}
 
@@ -278,8 +275,8 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 	return found, nil
 }
 
-// ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when its Certificate does
-// not exist and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
+// ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate of its
+// name writes it, by spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
 // only ca.crt and the allow-direct-injection annotation, which is what rad and the chart README's plain-Helm steps
 // write.
 func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
@@ -294,12 +291,16 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 	found.object = secret
 	if leftover.certificate != "" {
 		// NotFound also covers a cluster without the cert-manager CRDs.
-		_, err := dynamicClient.Resource(certManagerCertificatesResource).Namespace(radiusNamespace).Get(ctx, leftover.certificate, metav1.GetOptions{})
-		if err == nil {
-			return found, nil
-		}
-		if !apierrors.IsNotFound(err) {
+		certificate, err := dynamicClient.Resource(certManagerCertificatesResource).Namespace(radiusNamespace).Get(ctx, leftover.certificate, metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
 			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
+		}
+		// A Certificate of the same name that writes another Secret, such as the ucp-cert Certificate of a chart
+		// before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one.
+		if err == nil {
+			if secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName"); secretName == leftover.secret {
+				return found, nil
+			}
 		}
 	}
 	found.state = ucpOffSecretForeign
@@ -343,16 +344,17 @@ func waitForUCPOffCertificate(ctx context.Context, kubeContext string, kubeClien
 }
 
 // settleUCPOffTrust removes the cert-manager inject annotations from the UCP APIService and sets its caBundle to
-// offCAs, until both hold for ucpAPIServerCASettleChecks polls in a row.
-func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, offCAs []*x509.Certificate) error {
+// offCAs, until both hold for ucpAPIServerCASettleChecks polls in a row. It refuses an APIService that no longer has
+// uid or that the Radius release in radiusNamespace no longer owns, as appliedUCPAPIService describes.
+func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace string, uid types.UID, offCAs []*x509.Certificate) error {
 	held := 0
 	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-		apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
+		apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, uid)
 		if err != nil {
-			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+			return false, err
+		}
+		if apiService == nil {
+			return true, nil
 		}
 		clean, err := ucpOffTrustClean(apiService, offCAs)
 		if err != nil {

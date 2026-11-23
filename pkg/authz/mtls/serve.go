@@ -179,6 +179,8 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 		handler = http.DefaultServeMux
 	}
 	srv.Handler = s.authorizeCaller(handler)
+	// Otherwise net/http answers "OPTIONS *" itself, before Handler checks the token.
+	srv.DisableGeneralOptionsHandler = true
 
 	if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
 		return srv.Serve(ln)
