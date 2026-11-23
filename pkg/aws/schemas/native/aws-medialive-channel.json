@@ -3970,7 +3970,13 @@
       ]
     },
     "delete": {
-      "permissions": ["medialive:DeleteChannel", "medialive:DescribeChannel"]
+      "permissions": [
+        "iam:PassRole",
+        "medialive:CreateChannel",
+        "medialive:CreateTags",
+        "medialive:DeleteChannel",
+        "medialive:DescribeChannel"
+      ]
     },
     "list": {
       "permissions": ["medialive:DescribeChannel", "medialive:ListChannels"]

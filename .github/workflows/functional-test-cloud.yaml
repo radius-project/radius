@@ -424,16 +424,17 @@ jobs:
         run: make generate-bicep-types VERSION="${REL_VERSION}"
 
       - name: Publish Radius types locally
+        # OCI publishing treats loopback names as HTTP; use the existing TLS alias.
         run: |
           bicep publish-extension ./hack/bicep-types-radius/generated/index.json \
-            --target "br:localhost:5000/test/radius:${REL_VERSION}" --force
+            --target "br:radius-registry:5000/test/radius:${REL_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:localhost:5000/test/radius:${REL_VERSION}",
+              "radius": "br:radius-registry:5000/test/radius:${REL_VERSION}",
               "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
             }
           }
@@ -450,7 +451,7 @@ jobs:
           rad version
           make publish-test-bicep-recipes
         env:
-          BICEP_RECIPE_REGISTRY: localhost:5000
+          BICEP_RECIPE_REGISTRY: radius-registry:5000
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
 
       - name: Checkout current export format

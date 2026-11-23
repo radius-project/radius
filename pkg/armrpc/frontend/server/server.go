@@ -46,6 +46,11 @@ type Options struct {
 	Configure     func(chi.Router) error
 	ArmCertMgr    *authentication.ArmCertManager
 
+	// ReceiverName is the Radius component this server runs as, such as "applications-rp".
+	// Callers' ServiceAccount tokens must have it as their audience when internal component
+	// authorization is on.
+	ReceiverName string
+
 	// AllowedCallers lists the Radius components that may call this server when
 	// internal component authorization is on. Empty allows any Radius component.
 	AllowedCallers []string
