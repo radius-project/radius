@@ -33,6 +33,7 @@ model Principal {
 }
 
 @doc("An explicitly supplied access-check principal. Input limits do not truncate verified identities returned by inspection or used by omitted-principal self checks.")
+@extension("additionalProperties", false)
 model AccessCheckPrincipal {
   ...Principal;
 }
@@ -361,6 +362,7 @@ model AccessCheck {
 }
 
 @doc("A bounded permission and concrete target for checkAccess input.")
+@extension("additionalProperties", false)
 model BoundedAccessCheck {
   ...AccessCheck;
 }
@@ -379,6 +381,7 @@ model AccessCheckRequest {
 }
 
 @doc("Bounded checkAccess input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.")
+@extension("additionalProperties", false)
 model BoundedAccessCheckRequest {
   @doc("The principal to check, or the authenticated caller when omitted.")
   principal?: AccessCheckPrincipal;

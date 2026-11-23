@@ -19,6 +19,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/getkin/kin-openapi/openapi2"
+	"github.com/getkin/kin-openapi/openapi2conv"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
@@ -362,6 +365,85 @@ func TestInspectionContractLimits(t *testing.T) {
 		}
 	}
 	require.True(t, scopedCheck)
+}
+
+func TestInspectionContractRejectsUnknownCheckAccessFields(t *testing.T) {
+	const location = "../../../swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json"
+	data, err := os.ReadFile(location)
+	require.NoError(t, err)
+	var swagger struct {
+		Definitions map[string]*openapi2.SchemaRef `json:"definitions"`
+	}
+	require.NoError(t, json.Unmarshal(data, &swagger))
+	schemas := openapi2conv.ToV3Schemas(swagger.Definitions)
+	// The request models only reference local definitions, so resolve those
+	// without loading the external ARM common types.
+	var resolve func(*openapi3.SchemaRef)
+	resolve = func(ref *openapi3.SchemaRef) {
+		if ref == nil {
+			return
+		}
+		if ref.Value == nil {
+			target := schemas[strings.TrimPrefix(ref.Ref, "#/components/schemas/")]
+			require.NotNil(t, target, ref.Ref)
+			ref.Value = target.Value
+		}
+		for _, property := range ref.Value.Properties {
+			resolve(property)
+		}
+		resolve(ref.Value.Items)
+	}
+	requestSchema := func(model string) *openapi3.Schema {
+		ref := &openapi3.SchemaRef{Ref: "#/components/schemas/" + model}
+		resolve(ref)
+		return ref.Value
+	}
+	require.Equal(t, "#/definitions/BoundedAccessCheckRequest", findRequestRef(t, data, "checkAccess"))
+	require.Equal(t, "#/definitions/AccessCheckRequest", findRequestRef(t, data, "explainAccess"))
+
+	principal := `{"type":"user","issuer":"kubernetes:cluster-a","subject":"alice"}`
+	check := `{"permission":"Radius.Core/applications/read","target":"/"}`
+	for _, tc := range []struct {
+		name, body, unknown string
+	}{
+		{"omitted principal", `{"checks":[` + check + `]}`, ""},
+		{"explicit principal", `{"principal":` + principal + `,"checks":[` + check + `]}`, ""},
+		{"unknown request field", `{"checks":[` + check + `],"groups":[]}`, "groups"},
+		{"unknown principal field", `{"principal":{"type":"user","issuer":"kubernetes:cluster-a","subject":"alice","groups":[]},"checks":[` + check + `]}`, "groups"},
+		{"unknown check field", `{"checks":[{"permission":"Radius.Core/applications/read","target":"/","effect":"allow"}]}`, "effect"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var value any
+			require.NoError(t, json.Unmarshal([]byte(tc.body), &value))
+			checkErr := requestSchema("BoundedAccessCheckRequest").VisitJSON(value)
+			if tc.unknown == "" {
+				require.NoError(t, checkErr)
+			} else {
+				require.ErrorContains(t, checkErr, fmt.Sprintf("property %q is unsupported", tc.unknown))
+			}
+			require.NoError(t, requestSchema("AccessCheckRequest").VisitJSON(value), "explainAccess input stays open")
+		})
+	}
+}
+
+func findRequestRef(t *testing.T, data []byte, operation string) string {
+	var document struct {
+		Paths map[string]map[string]struct {
+			Parameters []struct {
+				In     string `json:"in"`
+				Schema struct {
+					Ref string `json:"$ref"`
+				} `json:"schema"`
+			} `json:"parameters"`
+		} `json:"paths"`
+	}
+	require.NoError(t, json.Unmarshal(data, &document))
+	for _, parameter := range document.Paths["/providers/Radius.Core/"+operation]["post"].Parameters {
+		if parameter.In == "body" {
+			return parameter.Schema.Ref
+		}
+	}
+	return ""
 }
 
 func TestInspectionBootstrapWarning(t *testing.T) {

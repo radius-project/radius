@@ -93,6 +93,23 @@ test("access-check input bounds do not constrain verified identity output", () =
   );
 });
 
+test("only checkAccess input models reject unknown properties", () => {
+  const { definitions } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  const closed = Object.keys(definitions)
+    .filter((name) => definitions[name].additionalProperties === false)
+    .sort();
+  assert.deepEqual(closed, [
+    "AccessCheckPrincipal",
+    "BoundedAccessCheck",
+    "BoundedAccessCheckRequest"
+  ]);
+});
+
 test("inspection scope limits preserve existing policy and management contracts", () => {
   const { definitions, paths, parameters } = json(
     new URL(

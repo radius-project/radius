@@ -1325,7 +1325,8 @@
         "type",
         "issuer",
         "subject"
-      ]
+      ],
+      "additionalProperties": false
     },
     "AccessCheckRequest": {
       "type": "object",
@@ -1537,7 +1538,8 @@
       "required": [
         "permission",
         "target"
-      ]
+      ],
+      "additionalProperties": false
     },
     "BoundedAccessCheckRequest": {
       "type": "object",
@@ -1559,7 +1561,8 @@
       },
       "required": [
         "checks"
-      ]
+      ],
+      "additionalProperties": false
     },
     "CheckAccessResponse": {
       "type": "object",
