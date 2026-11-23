@@ -122,6 +122,10 @@ type Verifier struct {
 	fetchMu             sync.Mutex
 	lastUnknownKeyFetch time.Time
 
+	// noKeys wakes Run when a fetch leaves no usable keys, so Run retries after
+	// UnknownKeyInterval instead of waiting a full RefreshInterval.
+	noKeys chan struct{}
+
 	// mu guards keys and lastSuccess.
 	mu          sync.RWMutex
 	keys        KeySet
@@ -152,6 +156,7 @@ func New(config Config) (*Verifier, error) {
 		maxKeyAge:          orDefault(config.MaxKeyAge, DefaultMaxKeyAge),
 		fetchTimeout:       orDefault(config.FetchTimeout, DefaultFetchTimeout),
 		leeway:             orDefault(config.Leeway, DefaultLeeway),
+		noKeys:             make(chan struct{}, 1),
 	}
 	if v.now == nil {
 		v.now = time.Now
@@ -171,7 +176,8 @@ func orDefault(d, def time.Duration) time.Duration {
 
 // Run loads the signing keys and refreshes them every RefreshInterval until ctx is done.
 // When a Refresh already loaded the keys, the first refresh waits a full RefreshInterval.
-// After a failed refresh it retries every UnknownKeyInterval.
+// After a failed refresh, or when any fetch leaves no usable keys, it retries every
+// UnknownKeyInterval.
 func (v *Verifier) Run(ctx context.Context) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	v.mu.RLock()
@@ -182,10 +188,18 @@ func (v *Verifier) Run(ctx context.Context) {
 	v.mu.RUnlock()
 	timer := time.NewTimer(first)
 	defer timer.Stop()
+	next := time.Now().Add(first)
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-v.noKeys:
+			// A fetch outside Run, such as one for an unknown key ID, left no usable keys.
+			if time.Until(next) > v.unknownKeyInterval {
+				timer.Reset(v.unknownKeyInterval)
+				next = time.Now().Add(v.unknownKeyInterval)
+			}
+			continue
 		case <-timer.C:
 		}
 
@@ -195,6 +209,7 @@ func (v *Verifier) Run(ctx context.Context) {
 			wait = v.unknownKeyInterval
 		}
 		timer.Reset(wait)
+		next = time.Now().Add(wait)
 	}
 }
 
@@ -231,6 +246,10 @@ func (v *Verifier) fetchLocked(ctx context.Context) error {
 	v.keys = KeySet{Issuer: keys.Issuer, Keys: accepted}
 	v.lastSuccess = v.now()
 	if len(accepted) == 0 {
+		select {
+		case v.noKeys <- struct{}{}:
+		default:
+		}
 		return errors.New("key set has no usable signing keys")
 	}
 	return nil
