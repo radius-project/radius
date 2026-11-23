@@ -434,6 +434,12 @@ func Test_GeneratePatchWithOptions_EmptyList(t *testing.T) {
 			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
 		},
 		{
+			name:        "an object of empty lists inside a list item, which a read leaves out",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Config": map[string]any{"Names": []any{}}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Config": map[string]any{"Names": []any{}}}}},
+		},
+		{
 			name:        "a list inside a list item where the last deploy set items",
 			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{"x"}}}},
 			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
