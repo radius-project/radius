@@ -348,16 +348,18 @@ func orEmpty(s []string) []string {
 	return s
 }
 
-// Test_FillAt_SlashInKeyAbove checks a list under a map key that holds a "/". Its flattened path doesn't lead back to
-// the list, so fillAt doesn't match, and the template's list is sent.
+// Test_FillAt_SlashInKeyAbove checks a list under a map key that holds a "/". Its escaped path leads back to the list,
+// so the field AWS fills in is kept.
 func Test_FillAt_SlashInKeyAbove(t *testing.T) {
 	t.Parallel()
 
 	list := []any{map[string]any{"Name": "a"}}
 	root := map[string]any{"Map": map[string]any{"a/b": list}}
 	fields := listFields{awsOwned: func([]string) bool { return true }}
-	_, ok := parseSchemaRules([]byte(`{}`)).fillAt("Map/a/b", list, []any{map[string]any{"Name": "a", "Codec": "h264"}}, root, fields)
-	require.False(t, ok)
+	aws := []any{map[string]any{"Name": "a", "Codec": "h264"}}
+	filled, ok := parseSchemaRules([]byte(`{}`)).fillAt("Map/a~1b", list, aws, root, fields)
+	require.True(t, ok)
+	require.Equal(t, aws, filled)
 }
 
 func Test_RemovePaths(t *testing.T) {

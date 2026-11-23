@@ -786,7 +786,7 @@ func (s *PolicyStore) MutateAndRefresh(ctx context.Context, cache *PolicyCache, 
 		return nil, err
 	}
 	if err := cache.Refresh(ctx); err != nil {
-		return nil, fmt.Errorf("policy committed but local refresh failed: %w", err)
+		return nil, fmt.Errorf("policy committed but local refresh failed: %w: %w", ErrAuthorizationUnavailable, err)
 	}
 	return result, nil
 }

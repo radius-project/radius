@@ -1,0 +1,127 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CHIME_VOICE_CONNECTOR_ID": "hfocqzirpsiyuqeaqrthox"
+  },
+  "interactions": [
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTermination",
+      "request": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/27\"]}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find Termination for VoiceConnector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"d401876b-fafc-4c5b-a183-6a5268982d42\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find Termination for VoiceConnector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"091487eb-d7fe-40ef-b170-2ab6206ccdf2\"}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorTermination",
+      "request": "{\"Termination\":{\"CallingRegions\":[\"US\",\"CA\"],\"CidrAllowedList\":[\"203.0.113.0/27\"]}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\",\"CA\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\",\"CA\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\",\"CA\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "DeleteVoiceConnectorTermination",
+      "status": 204,
+      "body": ""
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Termination\":{\"CallingRegions\":[\"US\",\"CA\"],\"CidrAllowedList\":[\"203.0.113.0/27\"],\"CpsLimit\":1,\"Disabled\":false}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorTermination",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find Termination for VoiceConnector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"2ced8990-7f8f-4ade-a7e5-cfddfacf9dad\"}"
+    }
+  ]
+}
