@@ -52,7 +52,7 @@ import (
 
 func TestAggregationServingInventory(t *testing.T) {
 	t.Parallel()
-	for _, scenario := range []string{"success", "overlap with new-only serving", "extra pod", "missing endpoint", "foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source", "Off public CA", "Off foreign source", "Off wrong type"} {
+	for _, scenario := range []string{"success", "overlap with new-only serving", "extra pod", "missing endpoint", "foreign endpoint", "unknown ready pod", "unknown ready foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source", "Off public CA", "Off foreign source", "Off wrong type"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
 			ca := newTestCA(t, "public")
@@ -85,6 +85,10 @@ func TestAggregationServingInventory(t *testing.T) {
 				endpoints.Endpoints = nil
 			case "foreign endpoint":
 				endpoints.Endpoints[0].TargetRef.UID = "other"
+			case "unknown ready pod":
+				endpoints.Endpoints[0].Conditions.Ready = nil
+			case "unknown ready foreign endpoint":
+				endpoints.Endpoints = append(endpoints.Endpoints, discoveryv1.Endpoint{Addresses: []string{"10.0.0.99"}})
 			case "wrong address":
 				endpoints.Endpoints[0].Addresses = []string{"10.0.0.99"}
 			case "wrong port":
@@ -119,7 +123,7 @@ func TestAggregationServingInventory(t *testing.T) {
 				require.Error(t, err, "fresh-bootstrap inventory still requires one CA")
 				inventory, err = readAggregationServingInventoryForCA(t.Context(), kube, RadiusSystemNamespace, source.Data[caCertificateKey], ca.pem)
 			}
-			if scenario != "success" && scenario != "overlap with new-only serving" && scenario != "Off public CA" {
+			if scenario != "success" && scenario != "unknown ready pod" && scenario != "overlap with new-only serving" && scenario != "Off public CA" {
 				require.Error(t, err)
 				return
 			}

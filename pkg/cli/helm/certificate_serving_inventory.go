@@ -181,7 +181,7 @@ func readAggregationServingInventoryFromSource(ctx context.Context, kube kuberne
 			return inventory, errors.New("aggregation endpoint port differs from the Service target")
 		}
 		for _, endpoint := range slice.Endpoints {
-			if endpoint.Conditions.Ready == nil || !*endpoint.Conditions.Ready ||
+			if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready ||
 				endpoint.Conditions.Terminating != nil && *endpoint.Conditions.Terminating {
 				continue
 			}
