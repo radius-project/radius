@@ -288,7 +288,7 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 }
 
 // ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate of its
-// name writes it, by spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
+// name exists, or the Radius release's Certificate of that name writes another Secret by spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
 // only ca.crt and the allow-direct-injection annotation, which is what rad and the chart README's plain-Helm steps
 // write.
 func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
@@ -307,10 +307,12 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 		if err != nil && !apierrors.IsNotFound(err) {
 			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
 		}
-		// A Certificate of the same name that writes another Secret, such as the ucp-cert Certificate of a chart
-		// before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one.
+		// Only a Certificate of the Radius release that names another Secret, such as the ucp-cert Certificate of a
+		// chart before radius-apiserver-ca, which writes ucp-mtls, no longer uses this one. Any other Certificate of the
+		// same name may still use it, so rad keeps the Secret, which can hold its private key.
 		if err == nil {
-			if secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName"); secretName == leftover.secret {
+			secretName, _, _ := unstructured.NestedString(certificate.Object, "spec", "secretName")
+			if secretName == "" || secretName == leftover.secret || !helmOwned(certificate, radiusNamespace, radiusReleaseName) {
 				return found, nil
 			}
 		}

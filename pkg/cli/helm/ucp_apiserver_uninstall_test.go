@@ -398,6 +398,43 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	require.True(t, stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
 }
 
+// A radius-apiserver-ca Certificate that the Radius release does not own may still use the Secret of that name, which
+// holds its CA private key, even when it names another Secret, so neither uninstall nor a retried uninstall deletes it.
+func Test_UninstallRadius_KeepsSecretOfForeignCertificate(t *testing.T) {
+	for _, secretName := range []string{"", "other-ca"} {
+		t.Run("secretName="+secretName, func(t *testing.T) {
+			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
+				ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+			kubeClient := kubefake.NewSimpleClientset(secret)
+			foreign := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, "", nil)
+			if secretName != "" {
+				require.NoError(t, unstructured.SetNestedField(foreign.Object, secretName, "spec", "secretName"))
+			}
+			dynamicClient := fakeCertManagerDynamicClient(nil, foreign)
+			mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+			options := NewDefaultClusterOptions()
+			mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+			mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound).AnyTimes()
+			impl := &Impl{
+				Helm:                        mockHelmClient,
+				logger:                      func(string, ...any) {},
+				removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+				newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
+				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
+			}
+
+			require.NoError(t, impl.UninstallRadius(t.Context(), options, "test-context"))
+			_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
+			require.NoError(t, err, "uninstall must keep the Secret of a Certificate it does not own")
+
+			leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
+			require.NoError(t, err)
+			require.Empty(t, leftovers)
+		})
+	}
+}
+
 // A retried uninstall lists the Secret of a staged radius-apiserver-ca Certificate with it, because deleting the
 // Certificate leaves the Secret unused, and deletes only what it listed: a Secret replaced while the user confirms
 // survives.
