@@ -115,12 +115,9 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
 		return err
 	}
-	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+	apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, "")
+	if err != nil || apiService == nil {
+		return err
 	}
 	offSecret, err := kubeClient.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpOffCertificateSecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -151,7 +148,7 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 		return err
 	}
 	// cainjector may have rewritten the caBundle while rad waited, so settle even when the first read was clean.
-	if err := settleUCPOffTrust(ctx, kubeContext, dynamicClient, offCAs); err != nil {
+	if err := settleUCPOffTrust(ctx, kubeContext, dynamicClient, radiusNamespace, apiService.GetUID(), offCAs); err != nil {
 		return err
 	}
 
@@ -343,16 +340,17 @@ func waitForUCPOffCertificate(ctx context.Context, kubeContext string, kubeClien
 }
 
 // settleUCPOffTrust removes the cert-manager inject annotations from the UCP APIService and sets its caBundle to
-// offCAs, until both hold for ucpAPIServerCASettleChecks polls in a row.
-func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, offCAs []*x509.Certificate) error {
+// offCAs, until both hold for ucpAPIServerCASettleChecks polls in a row. It refuses an APIService that no longer has
+// uid or that the Radius release in radiusNamespace no longer owns, as appliedUCPAPIService describes.
+func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace string, uid types.UID, offCAs []*x509.Certificate) error {
 	held := 0
 	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-		apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
+		apiService, err := appliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, uid)
 		if err != nil {
-			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+			return false, err
+		}
+		if apiService == nil {
+			return true, nil
 		}
 		clean, err := ucpOffTrustClean(apiService, offCAs)
 		if err != nil {
