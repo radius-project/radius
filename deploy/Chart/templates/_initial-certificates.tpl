@@ -90,7 +90,8 @@ not an override of a subsequent CA lifecycle.
 {{- end -}}
 {{- end -}}
 {{- range $_, $pin := $state.issuers -}}
-{{- $object := lookup "cert-manager.io/v1" $pin.reference.kind $pin.namespace $pin.reference.name -}}
+{{- /* The persisted Go reference uses Kind and Name, unlike Helm values. */ -}}
+{{- $object := lookup "cert-manager.io/v1" $pin.reference.Kind $pin.namespace $pin.reference.Name -}}
 {{- if or (empty $object) (ne $object.metadata.uid $pin.uid) (ne $object.metadata.resourceVersion $pin.resourceVersion)
     (ne (sha256sum (toJson $object.spec)) $pin.specSHA256) -}}
 {{- fail "Initial external issuer identity or configuration changed." -}}
