@@ -1,0 +1,89 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CHIME_VOICE_CONNECTOR_ID": "hfocqzirpsiyuqeaqrthox"
+  },
+  "interactions": [
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorStreamingConfiguration",
+      "request": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":24,\"Disabled\":false}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":24,\"Disabled\":false,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"EventBridge\"}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorStreamingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":24,\"Disabled\":false,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"EventBridge\"}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorStreamingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":24,\"Disabled\":false,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"EventBridge\"}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorStreamingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":24,\"Disabled\":false,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"EventBridge\"}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "PutVoiceConnectorStreamingConfiguration",
+      "request": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":48,\"Disabled\":true,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"SNS\"}]}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":48,\"Disabled\":true,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"SNS\"}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorStreamingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":48,\"Disabled\":true,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"SNS\"}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorStreamingConfiguration",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"StreamingConfiguration\":{\"DataRetentionInHours\":48,\"Disabled\":true,\"StreamingNotificationTargets\":[{\"NotificationTarget\":\"SNS\"}]}}"
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "DeleteVoiceConnectorStreamingConfiguration",
+      "status": 204,
+      "body": ""
+    },
+    {
+      "service": "Chime SDK Voice",
+      "operation": "GetVoiceConnectorStreamingConfiguration",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException:"
+      },
+      "body": "{\"Code\":\"NotFound\",\"Message\":\"Could not find StreamingConfiguration for Voice Connector hfocqzirpsiyuqeaqrthox\",\"RequestId\":\"cd5df1bb-79a0-42d6-9247-4f93137e5855\"}"
+    }
+  ]
+}

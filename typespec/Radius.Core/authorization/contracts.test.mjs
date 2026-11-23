@@ -10,6 +10,165 @@ const examples = readdirSync(examplesDir)
   .filter((file) => file.endsWith(".json"))
   .map((file) => ({ file, ...json(new URL(file, examplesDir)) }));
 
+test("checkAccess bounds do not restrict either explainAccess request", async (t) => {
+  const { definitions, paths } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  const resolve = (schema) =>
+    schema.$ref ?
+      definitions[schema.$ref.slice("#/definitions/".length)]
+    : schema;
+  for (const prefix of ["", "/{scope}"]) {
+    for (const operation of ["checkAccess", "explainAccess"]) {
+      const path = `${prefix}/providers/Radius.Core/${operation}`;
+      await t.test(path, () => {
+        const parameter = paths[path].post.parameters.find(
+          (parameter) => parameter.in === "body"
+        );
+        const request = resolve(parameter.schema);
+        const checks = request.properties.checks;
+        const check = resolve(checks.items);
+        const principal = resolve(request.properties.principal);
+        const bounded = operation === "checkAccess";
+        assert.equal(checks.minItems, 1);
+        assert.equal(checks.maxItems, bounded ? 100 : undefined);
+        assert.equal(
+          check.properties.target.maxLength,
+          bounded ? 2048 : undefined
+        );
+        assert.equal(
+          check.properties.permission.maxLength,
+          bounded ? 256 : undefined
+        );
+        for (const [field, maximum] of [
+          ["issuer", 256],
+          ["subject", 512],
+          ["displayName", 128]
+        ]) {
+          assert.equal(
+            principal.properties[field].maxLength,
+            bounded ? maximum : undefined,
+            field
+          );
+        }
+      });
+    }
+  }
+});
+
+test("access-check input bounds do not constrain verified identity output", () => {
+  const { definitions } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(
+    definitions.BoundedAccessCheckRequest.properties.principal.$ref,
+    "#/definitions/AccessCheckPrincipal"
+  );
+  for (const [field, maximum] of [
+    ["issuer", 256],
+    ["subject", 512],
+    ["displayName", 128]
+  ]) {
+    assert.equal(
+      definitions.AccessCheckPrincipal.properties[field].maxLength,
+      maximum
+    );
+    assert.equal(definitions.Principal.properties[field].maxLength, undefined);
+  }
+  for (const model of ["WhoAmIResult", "CheckAccessResponse"]) {
+    assert.equal(
+      definitions[model].properties.principal.$ref,
+      "#/definitions/Principal"
+    );
+  }
+  assert.equal(
+    definitions.WhoAmIResult.properties.groups.items.$ref,
+    "#/definitions/Principal"
+  );
+});
+
+test("inspection scope limits preserve existing policy and management contracts", () => {
+  const { definitions, paths, parameters } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(definitions.AuthorizationScope.maxLength, undefined);
+  assert.equal(definitions.AuthorizationScopePath.maxLength, undefined);
+  for (const [model, property] of [
+    ["RoleDefinitionProperties", "assignableScopes"],
+    ["RoleAssignmentProperties", "scope"]
+  ]) {
+    const field = definitions[model].properties[property];
+    assert.equal(field.maxLength, undefined);
+    if (field.items) assert.equal(field.items.maxLength, undefined);
+  }
+  assert.equal(
+    definitions.BoundedAccessCheck.properties.target.maxLength,
+    2048
+  );
+  let scopedCheck = false;
+  for (const [path, methods] of Object.entries(paths)) {
+    for (const operation of Object.values(methods)) {
+      for (const value of operation.parameters ?? []) {
+        const parameter =
+          value.$ref?.startsWith("#/parameters/") ?
+            parameters[value.$ref.slice("#/parameters/".length)]
+          : value;
+        if (parameter.name !== "scope") continue;
+        const inspection = path.endsWith("/checkAccess");
+        assert.equal(parameter.maxLength, inspection ? 2047 : undefined, path);
+        if (inspection) scopedCheck = true;
+      }
+    }
+  }
+  assert.equal(scopedCheck, true);
+  assert.equal(
+    parameters["AccessChangeListOptions.scope"].maxLength,
+    undefined
+  );
+});
+
+test("inspection permission limits preserve existing catalog and policy contracts", () => {
+  const { definitions } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  const resolve = (schema) =>
+    schema.$ref ?
+      {
+        ...resolve(definitions[schema.$ref.slice("#/definitions/".length)]),
+        ...schema
+      }
+    : schema;
+  const permission = `Team.Data/${"a".repeat(250)}/read`;
+  for (const [model, property] of [
+    ["RoleDefinitionProperties", "permissions"],
+    ["Permission", "name"],
+    ["EffectiveAccessResponse", "permissions"]
+  ]) {
+    const field = definitions[model].properties[property];
+    const schema = resolve(field.items ?? field);
+    assert.match(permission, new RegExp(schema.pattern), model);
+    assert.equal(schema.maxLength, undefined, model);
+  }
+  const inspection = resolve(
+    definitions.BoundedAccessCheck.properties.permission
+  );
+  assert.match(permission, new RegExp(inspection.pattern));
+  assert.equal(inspection.maxLength, 256);
+  assert.ok(permission.length > inspection.maxLength);
+});
+
 test("examples preserve the requested role and assignment shapes", async (t) => {
   assert.equal(examples.length, 3);
   for (const example of examples) {
@@ -93,16 +252,63 @@ test("entry points keep authorization out of Applications RP generation", () => 
   assert.doesNotMatch(config, /pkg\/corerp/);
 });
 
+const scalarPattern = (source, name, maximum) => {
+  const declaration = source.match(
+    new RegExp(
+      `((?:^[\\t ]*@[^\\n]*\\n)+)^[\\t ]*scalar ${name} extends string;`,
+      "m"
+    )
+  );
+  assert.ok(declaration, `missing scalar decorators: ${name}`);
+  const pattern = declaration[1].match(
+    /^[\t ]*@pattern\("((?:\\.|[^"\\])*)"\)[\t ]*$/m
+  );
+  assert.ok(pattern, `missing scalar pattern: ${name}`);
+  const maxLength = declaration[1].match(/^[\t ]*@maxLength\((\d+)\)[\t ]*$/m);
+  if (maximum === undefined) {
+    assert.equal(maxLength, null, `unexpected scalar maxLength: ${name}`);
+  } else {
+    assert.ok(maxLength, `missing scalar maxLength: ${name}`);
+    assert.equal(Number(maxLength[1]), maximum, `scalar maxLength: ${name}`);
+  }
+  return new RegExp(JSON.parse(`"${pattern[1]}"`));
+};
+
+test("scalar constraints accept decorator order without losing either constraint", () => {
+  const decorators = [
+    '@doc("fixture")',
+    '@pattern("^[a-z]+$")',
+    "@maxLength(8)"
+  ];
+  for (const order of [
+    [0, 1, 2],
+    [2, 1, 0]
+  ]) {
+    const source = `${order.map((index) => decorators[index]).join("\n")}\nscalar Fixture extends string;`;
+    const pattern = scalarPattern(source, "Fixture", 8);
+    assert.ok(pattern.test("abc"));
+    assert.equal(pattern.test("ABC"), false);
+  }
+  for (const [source, expected] of [
+    ["@maxLength(8)", /missing scalar pattern/],
+    ['@pattern("^[a-z]+$")', /missing scalar maxLength/],
+    ['@pattern("^[a-z]+$")\n@maxLength(9)', /scalar maxLength/]
+  ]) {
+    assert.throws(
+      () =>
+        scalarPattern(
+          `${source}\nscalar Fixture extends string;`,
+          "Fixture",
+          8
+        ),
+      expected
+    );
+  }
+});
+
 test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   const source = read(new URL("../authorization.tsp", import.meta.url));
-  const scalarPattern = (name) => {
-    const match = source.match(
-      new RegExp(`@pattern\\("([^"]+)"\\)\\s*scalar ${name} extends string`)
-    );
-    assert.ok(match, `missing scalar constraint: ${name}`);
-    return new RegExp(JSON.parse(`"${match[1]}"`));
-  };
-  const scope = scalarPattern("AuthorizationScope");
+  const scope = scalarPattern(source, "AuthorizationScope");
   const plane = "/planes/radius/local";
   const group = `${plane}/resourceGroups/team-a`;
   for (const value of [
@@ -134,7 +340,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   ]) {
     assert.equal(scope.test(value), false, value);
   }
-  const permission = scalarPattern("PermissionName");
+  const permission = scalarPattern(source, "PermissionName");
   for (const value of [
     "Radius.Core/applications/read",
     "Radius.Core/environments/use/action",
@@ -151,7 +357,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   ]) {
     assert.equal(permission.test(value), false, value);
   }
-  const path = scalarPattern("AuthorizationScopePath");
+  const path = scalarPattern(source, "AuthorizationScopePath");
   assert.ok(path.test(group.slice(1)));
   assert.equal(path.test(group), false);
   assert.equal(path.test(`${group.slice(1)}/`), false);

@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::S3::MultiRegionAccessPointRoutes",
+  "identityScope": "account",
+  "onDelete": "reset",
+  "arnProperty": ""
+}
