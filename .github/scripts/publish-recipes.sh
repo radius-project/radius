@@ -74,7 +74,7 @@ GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 echo "## Recipes published to $REGISTRY_PATH" >>"$GITHUB_STEP_SUMMARY"
 
 while IFS= read -r -d '' RECIPE; do
-    FILENAME=$(basename "$RECIPE")
+    FILENAME="${RECIPE##*/}"
     PUBLISH_REF="$REGISTRY_PATH/${FILENAME%.*}:$RECIPE_VERSION"
 
     # Skip files that start with _. These are not recipes, they are modules that are

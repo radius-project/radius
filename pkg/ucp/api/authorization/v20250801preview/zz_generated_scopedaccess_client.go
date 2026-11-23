@@ -39,11 +39,11 @@ func NewScopedAccessClient(credential azcore.TokenCredential, options *arm.Clien
 
 // CheckAccess -
 // If the operation fails it returns an *azcore.ResponseError type.
-//   - scope - The plane, resource-group, or supported-resource ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging.
-//     Use the installation operations for scope /.
+//   - scope - The plane, resource-group, or supported-resource ID without a leading or trailing slash, up to 2047 characters.
+//     Use the installation operation for scope /.
 //   - options - ScopedAccessClientCheckAccessOptions contains the optional parameters for the ScopedAccessClient.CheckAccess
 //     method.
-func (client *ScopedAccessClient) CheckAccess(ctx context.Context, scope string, request AccessCheckRequest, options *ScopedAccessClientCheckAccessOptions) (ScopedAccessClientCheckAccessResponse, error) {
+func (client *ScopedAccessClient) CheckAccess(ctx context.Context, scope string, request BoundedAccessCheckRequest, options *ScopedAccessClientCheckAccessOptions) (ScopedAccessClientCheckAccessResponse, error) {
 	var err error
 	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ScopedAccessClient.CheckAccess")
 	req, err := client.checkAccessCreateRequest(ctx, scope, request, options)
@@ -58,7 +58,7 @@ func (client *ScopedAccessClient) CheckAccess(ctx context.Context, scope string,
 }
 
 // checkAccessCreateRequest creates the CheckAccess request.
-func (client *ScopedAccessClient) checkAccessCreateRequest(ctx context.Context, scope string, request AccessCheckRequest, _ *ScopedAccessClientCheckAccessOptions) (*policy.Request, error) {
+func (client *ScopedAccessClient) checkAccessCreateRequest(ctx context.Context, scope string, request BoundedAccessCheckRequest, _ *ScopedAccessClientCheckAccessOptions) (*policy.Request, error) {
 	urlPath := "/{scope}/providers/Radius.Core/checkAccess"
 	if scope == "" {
 		return nil, errors.New("parameter scope cannot be empty")
