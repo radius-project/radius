@@ -124,7 +124,7 @@ test_shared_controller_contract() {
     assert_yq "${CONTROLLER}" \
         ".concurrency.queue == \"max\" and
         .concurrency.group ==
-        \"release-\${{ inputs.version }}-\${{ inputs.source-pr-commit }}\"" \
+        \"release-\${{ inputs.version }}-\${{ inputs.source-commit }}\"" \
         "controller concurrency must queue matching attempts"
     assert_json "${CONTROLLER}" '.permissions' '{}' \
         "controller must disable default GITHUB_TOKEN permissions"
@@ -173,22 +173,14 @@ test_approval_gate_and_bindings() {
 
 test_stage_order() {
     assert_json "${CONTROLLER}" \
-        '.jobs."reconcile-source".needs' \
-        '["validate","approve"]' \
-        "source mutation must wait for validation and environment approval"
-    assert_yq "${CONTROLLER}" \
-        '.jobs."reconcile-source".if == null and
-        .jobs."reconcile-source"."continue-on-error" == null' \
-        "failed or rejected approval must never run source reconciliation"
-    assert_json "${CONTROLLER}" \
         '.jobs."publish-deployment-engine".needs' \
-        '["validate","reconcile-source"]' \
-        "Deployment Engine must publish only after resolving the approved source"
+        '["validate","approve"]' \
+        "Deployment Engine must publish after validation and approval"
     assert_json "${CONTROLLER}" '.jobs."reconcile-siblings".needs' \
         '["validate","publish-deployment-engine"]' \
         "sibling reconciliation must follow Deployment Engine"
     assert_json "${CONTROLLER}" '.jobs."create-radius-tag".needs' \
-        '["validate","reconcile-source","publish-deployment-engine","reconcile-siblings"]' \
+        '["validate","publish-deployment-engine","reconcile-siblings"]' \
         "Radius tag creation must be the last mutation stage"
     assert_yq "${CONTROLLER}" \
         '.jobs."create-radius-tag"."timeout-minutes" == 12' \
@@ -241,7 +233,7 @@ test_identity_and_cleanup() {
         "\"\${{ github.workflow_sha }}\"" \
         "resolver code must be pinned to the executing workflow commit"
     assert_json "${CONTROLLER}" \
-        '[.jobs.validate, .jobs."reconcile-source", .jobs."publish-deployment-engine",
+        '[.jobs.validate, .jobs."publish-deployment-engine",
           .jobs."reconcile-siblings", .jobs."create-radius-tag"] |
           map(.steps[0].with.ref) | unique' \
         "[\"\${{ github.workflow_sha }}\"]" \
@@ -272,13 +264,17 @@ test_identity_and_cleanup() {
 test_frozen_output_contract() {
     local job
 
-    assert_json "${CONTROLLER}" '.jobs."reconcile-source".outputs."plan-artifact-id"' \
+    assert_json "${CONTROLLER}" '.jobs.validate.outputs."plan-artifact-id"' \
         "\"\${{ steps.upload-plan.outputs.artifact-id }}\"" \
-        "source resolution must identify its immutable plan artifact"
+        "validation must identify its immutable plan artifact"
     assert_yq "${CONTROLLER}" \
-        '.jobs."reconcile-source".steps[] | select(.id == "upload-plan") |
+        '.jobs.validate.steps[] | select(.id == "upload-plan") |
         .with.path | contains("/release-controller/release-targets.json")' \
         "plan artifact must carry the approved output contract"
+    assert_yq "${CONTROLLER}" \
+        ".jobs.validate.steps[] | select(.id == \"upload-plan\") |
+        .with.name | contains(\"\${{ github.run_attempt }}\")" \
+        "reruns must retain earlier attempts instead of replacing their artifacts"
     assert_json "${CONTROLLER}" \
         '[.jobs."publish-deployment-engine", .jobs."create-radius-tag"] |
         [.[].steps[] | select(.run // "" |
@@ -292,70 +288,9 @@ test_frozen_output_contract() {
             select(.name == \"Download approved release contract\") |
             [(.uses | test(\"^actions/download-artifact@[0-9a-fA-F]{40}\$\")),
             .with.artifact-ids, .with.path, .with.merge-multiple]" \
-            "[true,\"\${{ needs.reconcile-source.outputs.plan-artifact-id }}\",\"\${{ runner.temp }}/release-controller\",true]" \
+            "[true,\"\${{ needs.validate.outputs.plan-artifact-id }}\",\"\${{ runner.temp }}/release-controller\",true]" \
             "${job} must use SHA-pinned actions/download-artifact to download the exact validated artifact into the expected path"
     done
-}
-
-test_frozen_source_bindings() {
-    local job
-
-    assert_yq "${CONTROLLER}" \
-        '.jobs."reconcile-source".steps[] | select(.id == "frozen") |
-        (.env.INPUT_MODE == "create" and
-        (.with.script | contains("reconcile-frozen-release-source.mjs")))' \
-        "only the approved source job may create the App-signed overlay"
-    assert_yq "${CONTROLLER}" \
-        '.jobs.validate.steps[] |
-        select(.name == "Verify existing frozen source signature") |
-        .env.INPUT_MODE == "read"' \
-        "validation must verify signatures without mutating a source"
-    assert_json "${CONTROLLER}" \
-        '.jobs."publish-deployment-engine".steps[] |
-        select(.id == "monitor-de-workflow") | .env.INPUT_RELEASE_IDENTIFIER' \
-        "\"\${{ needs.reconcile-source.outputs.release-identifier }}\"" \
-        "publisher correlation must use the resolved release commit"
-    for job in publish-deployment-engine create-radius-tag; do
-        assert_yq "${CONTROLLER}" \
-            ".jobs.\"${job}\" | to_json |
-            contains(\"inputs.source-commit\") | not" \
-            "${job} must never use the main metadata SHA after source resolution"
-    done
-    assert_json "${CONTROLLER}" \
-        '[.jobs."publish-deployment-engine".steps[] |
-        select(.id == "de-lock" or .id == "lock-image") |
-        .env.INPUT_RELEASE_SOURCE_SHA] | unique' \
-        "[\"\${{ needs.reconcile-source.outputs.release-commit }}\"]" \
-        "both DE lock reads and writes must bind the actual tagged commit"
-    assert_yq "${CONTROLLER}" \
-        '.jobs."reconcile-source".steps[] | select(.id == "upload-plan") |
-        ((.with.name | contains("steps.plan.outputs.release-commit")) and
-        (.with.name | contains("github.run_attempt")))' \
-        "resolved artifacts must bind the exact release commit and attempt"
-    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
-        '.on.workflow_dispatch.inputs."product-commit".required == false' \
-        "preparation must expose the optional explicit first-RC cutoff"
-    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
-        '.jobs.prepare.steps[] | select(.id == "prepare") |
-        ((.run | contains("--existing-plan")) and
-        (.run | contains("--product-commit")))' \
-        "preparation must pass both frozen source inputs to trusted generation"
-    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
-        '.jobs.prepare.steps[] |
-        select(.name == "Capture sibling repository commits") |
-        ((.run | contains("existing-release-plan.yaml")) and
-        (.run | contains("REUSE_FROZEN_PLAN")))' \
-        "reruns must reuse planned siblings instead of recapturing their tips"
-    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
-        '.jobs.prepare.steps[] | select(.id == "update-pr") |
-        ((.if | contains("reuse-frozen-plan")) and
-        (.env.INPUT_HEAD_SHA | contains("preflight.outputs.existing-head")) and
-        (.with.script | contains("updateFrozenPreparation")))' \
-        "existing frozen preparation updates must CAS the exact PM notes snapshot"
-    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
-        ".jobs.prepare.steps[] | select(.id == \"create-pr\") |
-        .if | contains(\"reuse-frozen-plan != 'true'\")" \
-        "branch-replacing PR creation must not update an existing frozen plan"
 }
 
 test_unknown_dispatch_summary() {
@@ -382,7 +317,6 @@ test_unknown_dispatch_summary() {
         for state in unknown found; do
             VERSION=v0.61.0 SOURCE_COMMIT=1111111111111111111111111111111111111111 \
                 READY=true VALIDATE_RESULT=success APPROVE_RESULT=success \
-                SOURCE_RESULT=success \
                 DE_RESULT=failure DE_RUN_STATE="${state}" DE_RUN_URL="" \
                 DE_LOCK_BRANCH="" SIBLINGS_RESULT=skipped RADIUS_RESULT=skipped \
                 GITHUB_STEP_SUMMARY="${summary_root}/${state}.md" \
@@ -406,14 +340,21 @@ test_release_build_contract() {
     assert_json "${CONTROLLER}" \
         '[.jobs.validate.steps[] | select((.run // "") |
         contains("verify-release-build-contract.sh")) |
-        [.if, .env.RELEASE_COMMIT, (.run | contains("--require-sibling-releases"))]]' \
-        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ steps.plan.outputs.source-resolved == 'false' && steps.plan.outputs.product-commit || steps.plan.outputs.release-commit }}\",true]]" \
-        "validation must check frozen product tooling, never later main tooling"
-    # shellcheck disable=SC2016 # Assert the workflow's literal shell expression.
-    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
-        '.jobs.prepare.steps[] | select(.id == "preflight") |
-        (.run | contains("\"${product_commit}\" --require-sibling-releases"))' \
-        "Prepare Release must check sibling publication at the authoritative product cutoff"
+        [.if, .env.RELEASE_COMMIT]]' \
+        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\"]]" \
+        "validation must check the tag workflows of the exact release commit"
+    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
+        'verify-release-build-contract.sh' \
+        "Prepare Release must reject an unmigrated release branch before opening a pull request"
+    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
+        '--expected-targets .github/release-parity/targets.json' \
+        "preparation must bind intended targets to the source contract"
+    assert_contains "${CONTROLLER}" \
+        "args+=(--expected-targets \"\${RUNNER_TEMP}/approved-targets.json\")" \
+        "controller must bind approved targets before mutation"
+    assert_contains "${CONTROLLER}" \
+        "yq -o=json '.expectedOutputs'" \
+        "controller targets must come from the approved plan"
 }
 
 publish_step_index() {
@@ -662,6 +603,70 @@ test_controller_checks_radius_pin() {
     fi
 }
 
+test_bicep_evidence_boundary() {
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION == "read" or .env.INPUT_OPERATION == "select") |
+            .env.INPUT_RELEASE_APP_SLUG)' \
+        "[\"\${{ steps.release-token.outputs.app-slug }}\",\"\${{ steps.release-token.outputs.app-slug }}\"]" \
+        "state readers must bind the configured release App identity"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.env.INPUT_OPERATION == "persist") | .env.INPUT_RELEASE_APP_SLUG' \
+        "\"\${{ steps.bicep-state-token.outputs.app-slug }}\"" \
+        "state writer readback must bind its configured App identity"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "aws-read") |
+        [.with.repositories, .with."permission-actions",
+          .with."permission-contents", .with."permission-metadata"]' \
+        '["bicep-types-aws","read","read","read"]' \
+        "AWS evidence token must be a repository-scoped read token"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION != null or
+          .id == "aws-read" or .id == "bicep-state-token")) |
+        all_c(.if | contains("ghcr-bicep == '\''true'\''"))' \
+        "legacy plans must not collect or persist new Bicep evidence"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "bicep-state-token") |
+        [.with.repositories, .with."permission-contents"]' \
+        '["radius","write"]' \
+        "only an explicit Radius token may persist Bicep evidence"
+    assert_contains "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        'automation/bicep-release-state-' \
+        "Bicep evidence must use a separate state ref"
+    assert_not_contains "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        'automation/release-state-' \
+        "Bicep persistence must not alter Deployment Engine state"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "aws-publication") |
+        [.with."github-token", .env.AWS_DISPATCH_TOKEN,
+          .env.BICEP_STATE_TOKEN]' \
+        "[\"\${{ steps.aws-read.outputs.token }}\",\"\${{ steps.release-token.outputs.token }}\",\"\${{ steps.bicep-state-token.outputs.token }}\"]" \
+        "AWS reads, dispatch and Radius marker use separate scoped clients"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "release-token") |
+        [.with.repositories | contains("bicep-types-aws")]' \
+        '[true]' \
+        "existing sibling token must include the AWS dispatch repository"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION != null) |
+          .env.INPUT_OPERATION)' \
+        '["read","select","authenticate","snapshot","persist"]' \
+        "raw source/controller binding must precede evidence persistence"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.env.INPUT_OPERATION == "snapshot") |
+        .with."github-token"' \
+        "\"\${{ steps.aws-read.outputs.token }}\"" \
+        "original generation validation must retain read-only AWS authority"
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -671,7 +676,6 @@ main() {
     test_shared_controller_contract
     test_approval_gate_and_bindings
     test_frozen_output_contract
-    test_frozen_source_bindings
     test_unknown_dispatch_summary
     test_stage_order
     test_controller_checks_radius_pin
@@ -680,6 +684,7 @@ main() {
     test_resume_waits_for_running_tag_build
     test_de_bridge_uses_immutable_destinations
     test_identity_and_cleanup
+    test_bicep_evidence_boundary
 
     if ((FAIL > 0)); then
         echo "Release controller tests failed: ${PASS} passed, ${FAIL} failed"
