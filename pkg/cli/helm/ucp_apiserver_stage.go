@@ -19,6 +19,7 @@ package helm
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -303,6 +304,12 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if len(target) == 0 {
 		return fmt.Errorf("the rendered Secret %s has no CA certificate in %s", ucpOffCertificateSecretName, caCertificateKey)
 	}
+	// Helm looks up each key of a live ucp-cert separately, so ca.crt may not be the CA that issued tls.crt. rad
+	// checks the pair and finds its issuer in ca.crt before it writes anything.
+	issuer, err := ucpOffCertificateIssuer(rendered, target, radiusNamespace)
+	if err != nil {
+		return fmt.Errorf("%w. Helm has not changed Radius; fix or delete Secret %s, then run the command again", err, ucpOffCertificateSecretName)
+	}
 
 	// cainjector may replace the caBundle with ca.crt of the Secret the APIService names rather than merge into it, so
 	// both CAs go into the owned trust Secret and the APIService names it, before UCP moves. A trust Secret that rad
@@ -367,7 +374,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	var problem string
 	err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
 		var leaf *x509.Certificate
-		leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpOffCertificateSecretName, "the CA in its "+caCertificateKey, target[0])
+		leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpOffCertificateSecretName, "the CA in its "+caCertificateKey, issuer)
 		return leaf != nil, err
 	})
 	if err != nil {
@@ -379,6 +386,25 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	return nil
+}
+
+// ucpOffCertificateIssuer returns the CA of cas that issued the certificate in rendered, the Secret ucp-cert that Helm
+// applies, for UCP's Service name, or an error if its tls.key does not match it or no CA of cas issued it.
+func ucpOffCertificateIssuer(rendered *corev1.Secret, cas []*x509.Certificate, radiusNamespace string) (*x509.Certificate, error) {
+	pair, err := tls.X509KeyPair(rendered.Data[corev1.TLSCertKey], rendered.Data[corev1.TLSPrivateKeyKey])
+	if err != nil {
+		return nil, fmt.Errorf("the rendered Secret %s does not hold a valid key pair: %w", ucpOffCertificateSecretName, err)
+	}
+	leaf, err := x509.ParseCertificate(pair.Certificate[0])
+	if err != nil {
+		return nil, fmt.Errorf("the rendered Secret %s does not hold a valid certificate: %w", ucpOffCertificateSecretName, err)
+	}
+	for _, ca := range cas {
+		if verifiesUCPCertificate(leaf, ca, radiusNamespace) {
+			return ca, nil
+		}
+	}
+	return nil, fmt.Errorf("no CA in %s of the rendered Secret %s issued its certificate for ucp.%s.svc", caCertificateKey, ucpOffCertificateSecretName, radiusNamespace)
 }
 
 // foreignUCPDeploymentError reports that the ucp Deployment is not the one the Radius release owns, so rad refuses to

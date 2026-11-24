@@ -18,11 +18,18 @@ package helm
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"path/filepath"
 	"slices"
@@ -42,6 +49,7 @@ import (
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -996,6 +1004,105 @@ func Test_UpgradeRadius_StageUCPOffCertificateRefusesForeignDeployment(t *testin
 			}
 		})
 	}
+}
+
+// ucpKeyPair returns a PEM serving certificate for UCP's Service name issued by ca and its PEM private key.
+func ucpKeyPair(t *testing.T, ca testCA) ([]byte, []byte) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		Subject:      pkix.Name{CommonName: "ucp"},
+		DNSNames:     []string{"ucp." + RadiusSystemNamespace + ".svc"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, ca.cert, &key.PublicKey, ca.key)
+	require.NoError(t, err)
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	require.NoError(t, err)
+	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+}
+
+// Helm looks up each key of a live ucp-cert separately, so the Secret it applies when authorization turns off can
+// pair a certificate with a ca.crt that did not issue it, or with another key. rad verifies the pair against ca.crt
+// before it writes anything, and waits for the CA in ca.crt that issued the certificate, wherever it is in the bundle.
+func Test_StageUCPOffCertificate_VerifiesRenderedKeyPair(t *testing.T) {
+	tests := []struct {
+		name    string
+		secret  func(c *stageCluster, unrelated testCA) map[string][]byte
+		wantErr string
+	}{
+		{
+			name: "issuer after an unrelated CA",
+			secret: func(c *stageCluster, unrelated testCA) map[string][]byte {
+				crt, key := ucpKeyPair(t, c.ucpCA)
+				return map[string][]byte{corev1.TLSCertKey: crt, corev1.TLSPrivateKeyKey: key, caCertificateKey: append(append([]byte{}, unrelated.pem...), c.ucpCA.pem...)}
+			},
+		},
+		{
+			name: "ca.crt did not issue the certificate",
+			secret: func(c *stageCluster, unrelated testCA) map[string][]byte {
+				crt, key := ucpKeyPair(t, c.ucpCA)
+				return map[string][]byte{corev1.TLSCertKey: crt, corev1.TLSPrivateKeyKey: key, caCertificateKey: unrelated.pem}
+			},
+			wantErr: "no CA in ca.crt of the rendered Secret ucp-cert issued its certificate for ucp.radius-system.svc",
+		},
+		{
+			name: "tls.key does not match the certificate",
+			secret: func(c *stageCluster, unrelated testCA) map[string][]byte {
+				crt, _ := ucpKeyPair(t, c.ucpCA)
+				_, key := ucpKeyPair(t, c.ucpCA)
+				return map[string][]byte{corev1.TLSCertKey: crt, corev1.TLSPrivateKeyKey: key, caCertificateKey: c.ucpCA.pem}
+			},
+			wantErr: "the rendered Secret ucp-cert does not hold a valid key pair",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			c := newStageCluster(t, nil, true)
+			c.onUCP(t)
+			rendered := &corev1.Secret{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+				ObjectMeta: metav1.ObjectMeta{Name: ucpOffCertificateSecretName, Namespace: RadiusSystemNamespace},
+				Type:       corev1.SecretTypeTLS,
+				Data:       tt.secret(c, newTestCA(t, "unrelated")),
+			}
+			manifest, err := json.Marshal(rendered)
+			require.NoError(t, err)
+			beforeAPIService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+			require.NoError(t, err)
+			beforeDeployment, err := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+			require.NoError(t, err)
+
+			err = c.impl(nil).stageUCPOffCertificate(t.Context(), "test-context", RadiusSystemNamespace, "radius",
+				func(context.Context) (string, bool, error) { return string(manifest), true, nil })
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Equal(t, ucpOffCertificateSecretName, ucpCertificateSecret(c.deployment(t)))
+				return
+			}
+			require.ErrorContains(t, err, tt.wantErr)
+			afterAPIService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, beforeAPIService, afterAPIService, "rad must not change the APIService")
+			require.Equal(t, beforeDeployment, c.deployment(t), "rad must not change the Deployment")
+			require.Nil(t, c.stagedOffCertificate(t), "rad must not apply Secret %s", ucpOffCertificateSecretName)
+			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+			require.True(t, apierrors.IsNotFound(err), "rad must not write Secret %s", ucpAPIServerTrustSecretName)
+		})
+	}
+}
+
+func (c *stageCluster) deployment(t *testing.T) *appsv1.Deployment {
+	t.Helper()
+	deployment, err := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	return deployment
 }
 
 // setUCPRolledOut sets the status of the ucp Deployment to one that has, or has not, finished rolling out.
