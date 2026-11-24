@@ -126,6 +126,8 @@ from `global.rbac.enabled` and `global.rbac.dryRun`). Internal calls are
 authenticated with projected Kubernetes ServiceAccount tokens; no component
 presents a client certificate.
 
+The Helm setting `global.rbac.tls.provider` renders `authorization.tlsProvider` (`authz.Options.TLSProvider`), independently of the authorization mode. The default `radius` provider uses the TLS behavior below. The `external` provider uses HTTP under operator-provided encryption, loads no component certificate or CA material, and applies the same receiver-token verification and allowed-caller checks. With either provider, unavailable signing keys cause DryRun to log a would-deny and serve the request without caller identity. Enforce returns 503. Unknown providers fail configuration, and neither provider retries through an unauthenticated transport. UCP's separate aggregated API TLS is unaffected.
+
 - `off` (default): plain HTTP, behavior unchanged.
 - `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
   invalid tokens, disallowed callers, and requests that can't be checked

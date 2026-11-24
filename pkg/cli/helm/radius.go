@@ -23,8 +23,11 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
@@ -38,6 +41,51 @@ const (
 
 type RadiusChartOptions struct {
 	ChartOptions
+}
+
+// radiusActionMode checks the selected chart before changing any dependencies. The caller
+// supplies stored values only for actions that reuse them; coalesced defaults never go to Helm.
+func radiusActionMode(selected *chart.Chart, current, stored map[string]any, options ChartOptions, upgrade bool) (authz.Mode, error) {
+	if selected == nil {
+		return "", fmt.Errorf("missing target Radius chart")
+	}
+	values := helmValues(helmValues(current, stored), selected.Values)
+	if nestedValue(selected.Values, "global", "rbac", "tls", "provider") == nil {
+		for _, key := range []string{"tls", "tlsProvider", "mtls"} {
+			if nestedValue(values, "global", "rbac", key) != nil {
+				return "", fmt.Errorf("selected Radius chart does not support global.rbac.%s", key)
+			}
+		}
+		if nestedValue(values, "de", "internalAuth") != nil {
+			return "", fmt.Errorf("selected Radius chart does not support de.internalAuth.enabled")
+		}
+		for _, key := range []string{"ucpMTLS", "externalIdentity"} {
+			if isTrue(nestedValue(values, "de", key, "enabled")) {
+				return "", fmt.Errorf("de.%s.enabled is retired; use de.internalAuth.enabled", key)
+			}
+		}
+		return resolveAuthzMode(selected.Values, stored, current)
+	}
+	// Use the chart's own mode and engine gates without running hooks, lookups or Secret templates.
+	c := &chart.Chart{Metadata: selected.Metadata}
+	for _, file := range selected.Templates {
+		if filepath.Ext(file.Name) == ".tpl" {
+			c.Templates = append(c.Templates, file)
+		}
+	}
+	const name = "templates/action-mode"
+	c.Templates = append(c.Templates, &common.File{Name: name, Data: []byte(`{{- $_ := include "radius.de.internalAuth.enabled" . -}}{{ include "radius.authz.mode" . }}`)})
+	result, err := engine.Render(c, common.Values{"Values": values, "Capabilities": common.DefaultCapabilities, "Release": map[string]any{"Name": options.ReleaseName, "Namespace": options.Namespace, "IsUpgrade": upgrade, "IsInstall": !upgrade}})
+	if err != nil {
+		return "", fmt.Errorf("resolve selected Radius chart authorization: %w", err)
+	}
+	mode := authz.Mode(result[c.Name()+"/"+name])
+	switch mode {
+	case authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce:
+		return mode, nil
+	default:
+		return "", fmt.Errorf("unsupported Radius authorization mode %q", mode)
+	}
 }
 
 // prepareRadiusChart prepares the Helm chart for Radius and returns the user-supplied
