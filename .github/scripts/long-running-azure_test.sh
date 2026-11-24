@@ -45,12 +45,12 @@ printf 'package fixture\nimport "testing"\n' \
 excluded=(
     Test_ACI
     Test_RadiusCore_AzureMySql_PortalLink
-    Test_RabbitMQ
-    Test_RedisCache
-    Test_Container_ManagedSecretConnection
     Test_AuthzMode_LoggedByEveryComponent
 )
 included=(
+    Test_RabbitMQ
+    Test_RedisCache
+    Test_Container_ManagedSecretConnection
     Test_AuthzMode_LoggedByEveryComponent_AdditionalCheck
     Test_Prefix_Test_AuthzMode_LoggedByEveryComponent
     Test_Boundary_UnauthenticatedCallToApplicationsRP
