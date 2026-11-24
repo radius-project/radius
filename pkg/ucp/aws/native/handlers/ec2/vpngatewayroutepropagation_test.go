@@ -114,6 +114,8 @@ func Test_VPNGatewayRoutePropagation_Update(t *testing.T) {
 	err = h.Update(t.Context(), updateRequest(t, id, propagation("vgw-1", "rtb-2", "rtb-3"), propagation("vgw-1", "rtb-3")))
 	require.ErrorAs(t, err, &failure)
 	require.True(t, failure.Throttled, "UCP answers 429, as for any AWS throttle")
+	require.False(t, failure.ClientError, "throttling isn't the request's fault")
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 
 	require.Error(t, h.Update(t.Context(), updateRequest(t, "id-1", map[string]any{}, map[string]any{})))
 }

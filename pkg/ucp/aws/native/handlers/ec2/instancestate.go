@@ -206,14 +206,10 @@ func (h *InstanceState) apply(ctx context.Context, region string, id string, des
 		verb = "stop"
 		_, err = h.api.StopInstances(ctx, &awsec2.StopInstancesInput{InstanceIds: []string{id}}, inRegion(region), sendOnce)
 	}
-	if err == nil || !ucp_aws.IsClientFault(err) {
+	if err == nil || !ucp_aws.IsClientFault(err) && !ucp_aws.IsThrottled(err) {
 		return err
 	}
-	return &native.Failure{
-		Message:     fmt.Sprintf("AWS can't %s the EC2 instance %q, which is %s: %s", verb, id, current, err),
-		ClientError: true,
-		Outcome:     native.OutcomeRejected,
-	}
+	return awsapi.Unapplied(fmt.Sprintf("AWS can't %s the EC2 instance %q, which is %s: %s", verb, id, current, err), err)
 }
 
 // sendOnce stops the SDK from sending a start or stop again after an error. EC2 may answer a start of an instance that

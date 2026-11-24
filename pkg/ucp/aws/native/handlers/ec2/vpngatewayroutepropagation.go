@@ -27,7 +27,6 @@ import (
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -215,7 +214,7 @@ func (h *VPNGatewayRoutePropagation) Update(ctx context.Context, request native.
 		disable := h.disable(ctx, request.Region, gateway, table)
 		calls = append(calls, func() error {
 			if err := disable(); err != nil {
-				return &native.Failure{Message: fmt.Sprintf("failed to turn off route propagation to a route table: %s", err), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
+				return awsapi.Unapplied(fmt.Sprintf("failed to turn off route propagation to a route table: %s", err), err)
 			}
 			return nil
 		})

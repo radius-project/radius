@@ -169,6 +169,16 @@ func Test_DataLakeSettings_AppendRemovalFails(t *testing.T) {
 			require.Equal(t, []string{outside, adminA, adminB}, sdkPrincipalIDs(awsSettings(t, api).DataLakeAdmins))
 		})
 	}
+
+	t.Run("a throttled put is rejected and not the request's fault", func(t *testing.T) {
+		h, api := newSettings(t, map[string]any{"Admins": admins(outside, adminA, adminB)})
+		api.errs["PutDataLakeSettings"] = nativefake.ClientError("ThrottlingException", "Rate exceeded")
+		var failure *native.Failure
+		require.ErrorAs(t, update(t, h, appendAdmins(adminA, adminB), appendAdmins(adminA)), &failure)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome)
+		require.False(t, failure.ClientError)
+		require.True(t, failure.Throttled)
+	})
 }
 
 // Test_DataLakeSettings_Removed removes every setting from the template. Each goes back to AWS's default, except

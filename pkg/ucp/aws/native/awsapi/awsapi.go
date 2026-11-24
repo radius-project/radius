@@ -87,6 +87,16 @@ func Rejected(err error) error {
 	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
+// Unapplied returns err, from a call AWS applied none of, such as one the SDK sent once, as a failure with message whose
+// outcome is rejected. It is a client error when AWS rejected the call as a client fault, and throttled, and not a
+// client error, when AWS throttled it, so UCP answers 429 as for any AWS throttle.
+func Unapplied(message string, err error) error {
+	if throttled(err) {
+		return &native.Failure{Message: "AWS limited the rate of calls, so it changed nothing. Deploy again later: " + message, Throttled: true, Outcome: native.OutcomeRejected}
+	}
+	return &native.Failure{Message: message, ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+}
+
 // Retried reports whether the SDK sent the call that failed with err more than once, and AWS didn't answer every
 // attempt before the last with a 4xx status. An earlier attempt may then have applied the call, such as one whose
 // response was lost, so AWS's answer to the last attempt doesn't show that AWS changed nothing. A handler that reports a

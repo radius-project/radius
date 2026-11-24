@@ -29,7 +29,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation/types"
 	"github.com/wI2L/jsondiff"
 
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -325,7 +324,7 @@ func removing(removes bool, err error) error {
 	if err == nil || !removes || errors.Is(err, native.ErrNotFound) {
 		return err
 	}
-	return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
+	return awsapi.Unapplied(err.Error(), err)
 }
 
 // Delete changes nothing. The type's metadata makes a delete leave the settings as they are, so UCP never calls it.

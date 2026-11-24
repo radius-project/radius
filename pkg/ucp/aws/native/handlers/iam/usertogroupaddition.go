@@ -27,7 +27,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -252,7 +251,7 @@ func (h *UserToGroupAddition) Update(ctx context.Context, request native.UpdateR
 func rejected(call func() error) func() error {
 	return func() error {
 		if err := call(); err != nil {
-			return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
+			return awsapi.Unapplied(err.Error(), err)
 		}
 		return nil
 	}

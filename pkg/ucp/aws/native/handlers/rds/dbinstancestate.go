@@ -277,14 +277,10 @@ func (h *DBInstanceState) apply(ctx context.Context, region string, id string, d
 		verb = "stop"
 		_, err = h.api.StopDBInstance(ctx, &rds.StopDBInstanceInput{DBInstanceIdentifier: instance.DBInstanceIdentifier}, dbInstanceRegion(region), sendOnce)
 	}
-	if err == nil || !ucp_aws.IsClientFault(err) {
+	if err == nil || !ucp_aws.IsClientFault(err) && !ucp_aws.IsThrottled(err) {
 		return err
 	}
-	return &native.Failure{
-		Message:     fmt.Sprintf("RDS can't %s the DB instance %q, which is %s: %s", verb, id, status, err),
-		ClientError: true,
-		Outcome:     native.OutcomeRejected,
-	}
+	return awsapi.Unapplied(fmt.Sprintf("RDS can't %s the DB instance %q, which is %s: %s", verb, id, status, err), err)
 }
 
 // sendOnce stops the SDK from sending a start or stop again after an error. RDS answers a start of a DB instance that

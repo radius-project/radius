@@ -19,6 +19,7 @@ package awsapi
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -395,4 +396,30 @@ func Test_RecordAttempts(t *testing.T) {
 	stack := middleware.NewStack("call", smithyhttp.NewStackRequest)
 	require.NoError(t, RecordAttempts(stack))
 	require.Empty(t, stack.Finalize.List(), "a client that never retries has no attempts to keep")
+}
+
+func Test_Unapplied(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		err       error
+		client    bool
+		throttled bool
+	}{
+		{"a client fault", response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "InvalidParameterValue", Message: "bad", Fault: smithy.FaultClient}), true, false},
+		{"a throttle modeled as a client fault", response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "ThrottlingException", Message: "Rate exceeded", Fault: smithy.FaultClient}), false, true},
+		{"a throttle the SDK doesn't model", response(http.StatusBadRequest, &smithy.GenericAPIError{Code: "Throttling", Message: "Rate exceeded"}), false, true},
+		{"a server error", response(http.StatusInternalServerError, &smithy.GenericAPIError{Code: "InternalFailure", Message: "failed", Fault: smithy.FaultServer}), false, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var failure *native.Failure
+			require.ErrorAs(t, Unapplied("failed to remove a member: "+tt.err.Error(), tt.err), &failure)
+			require.Equal(t, native.OutcomeRejected, failure.Outcome)
+			require.Equal(t, tt.client, failure.ClientError)
+			require.Equal(t, tt.throttled, failure.Throttled)
+			require.Contains(t, failure.Message, "failed to remove a member")
+			if tt.throttled {
+				require.True(t, strings.HasPrefix(failure.Message, "AWS limited the rate of calls, so it changed nothing. Deploy again later: "))
+			}
+		})
+	}
 }

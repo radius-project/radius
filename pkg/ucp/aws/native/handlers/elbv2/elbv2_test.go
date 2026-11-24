@@ -27,6 +27,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -240,6 +241,16 @@ func Test_ListenerCertificate_Update(t *testing.T) {
 		require.ErrorAs(t, err, &failure)
 		require.Equal(t, native.OutcomeRejected, failure.Outcome)
 		require.False(t, failure.ClientError)
+	})
+
+	t.Run("a throttled removal is rejected and not the request's fault", func(t *testing.T) {
+		h.api.failer.FailOn(0, nativefake.ClientError("Throttling", "Rate exceeded"), false)
+		err := h.Update(ctx, native.UpdateRequest{Region: region, Identifier: identifier, Current: properties(listener, certB, certC), Desired: properties(listener, certC)})
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome)
+		require.False(t, failure.ClientError)
+		require.True(t, failure.Throttled)
 	})
 
 	t.Run("identifier with no listener", func(t *testing.T) {

@@ -20,11 +20,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"testing"
 
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -94,6 +97,19 @@ func requireStateRejected(t *testing.T, err error, want string) {
 	require.True(t, failure.ClientError)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Contains(t, failure.Message, want)
+}
+
+// requireUnappliedThrottle requires err to be a throttle of a call sent once, which applied nothing: rejected, not the
+// request's fault, and throttled, so UCP answers 429. Its message says which call AWS throttled.
+func requireUnappliedThrottle(t *testing.T, err error, call string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.False(t, failure.ClientError)
+	require.True(t, failure.Throttled)
+	require.Contains(t, failure.Message, "AWS limited the rate of calls, so it changed nothing. Deploy again later")
+	require.Contains(t, failure.Message, call)
 }
 
 func Test_InstanceState_Identifier(t *testing.T) {
@@ -274,6 +290,17 @@ func Test_InstanceState_CantStop(t *testing.T) {
 	require.NoError(t, h.Update(t.Context(), update(t, h, "stopped")), "a Spot Instance of a persistent request can be stopped")
 
 	h, api := newInstanceState(types.InstanceStateNameStopped, nil)
+	api.errs["StartInstances"] = &smithyhttp.ResponseError{
+		Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusServiceUnavailable}},
+		Err:      &smithy.GenericAPIError{Code: "RequestLimitExceeded", Message: "Request limit exceeded."},
+	}
+	requireUnappliedThrottle(t, h.Update(t.Context(), update(t, h, "running")), "start the EC2 instance")
+
+	h, api = newInstanceState(types.InstanceStateNameRunning, nil)
+	api.errs["StopInstances"] = fault("RequestLimitExceeded")
+	requireUnappliedThrottle(t, h.Update(t.Context(), update(t, h, "stopped")), "stop the EC2 instance")
+
+	h, api = newInstanceState(types.InstanceStateNameStopped, nil)
 	api.errs["StartInstances"] = nativefake.ServerError("InternalError", "EC2 failed")
 	err := h.Update(t.Context(), update(t, h, "running"))
 	var failure *native.Failure
