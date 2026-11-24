@@ -55,6 +55,10 @@ set -euo pipefail
 case "$*" in
     *"/contents/.github/workflows/build-and-push.yaml?ref="*)
         [[ "$2" == *"ref=${FAKE_BASE_COMMIT:?}" ]] || exit 1
+        if [[ -n "${FAKE_WORKFLOW_ERROR:-}" ]]; then
+            echo "gh: ${FAKE_WORKFLOW_ERROR}" >&2
+            exit 1
+        fi
         printf '%s\n' "${FAKE_PUBLISHER:-null}"
         ;;
     *"/git/ref/tags/"*)
@@ -253,15 +257,18 @@ env: {REGISTRY: ghcr.io/radius-project}
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions: {contents: read}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - run: make test
     if: github.repository == 'radius-project/deployment-engine' && !github.event.deleted
   container:
     runs-on: ubuntu-24.04
     needs: build
     if: github.repository == 'radius-project/deployment-engine' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    permissions: {packages: write}
+    permissions: {packages: write, contents: read}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - id: version
         run: .github/scripts/parse-version.sh --ref "$GITHUB_REF" --sha "$GITHUB_SHA" --out "$GITHUB_OUTPUT"
       - name: Publish image
@@ -285,9 +292,20 @@ YAML
     FAKE_PUBLISHER="$(yq '(.jobs.container.steps[] | select(.id == "version")).run |= (. + "\n" | ... style="literal")' <<< "${workflow}")"
     run_script --require-publisher --allow-absent main v0.61.0
     expect_outputs "${COMMIT_B}" absent "literal-block version command" || return
+    FAKE_PUBLISHER="$(yq '.permissions.contents = "read" | del(.jobs.build.permissions)' <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "build inherits workflow Contents read" || return
     # Shell variables in the mutated publish command belong to the producer.
     # shellcheck disable=SC2016
     for mutation in \
+        'del(.jobs.build.steps[0])' \
+        'del(.jobs.container.steps[0])' \
+        '.jobs.build.permissions = {} | .permissions.contents = "read"' \
+        'del(.jobs.container.permissions.contents) | .permissions.contents = "read"' \
+        '.jobs.build.steps[0].with.ref = "main"' \
+        '.jobs.container.steps[0].with.repository = "radius-project/radius"' \
+        '.jobs.container.steps = ([{"run":"make test"}] + .jobs.container.steps)' \
+        '.jobs.build.steps = ([{"uses":"./local-action"}] + .jobs.build.steps)' \
         ".jobs.container.if = \"github.ref == 'refs/heads/main'\"" \
         '.jobs.build.if = "false"' \
         '.jobs.container.steps = []' \
@@ -302,6 +320,29 @@ YAML
         [[ ! -s "${TEST_ROOT}/outputs" ]] || { fail_test "rejected publisher emitted tag state"; return; }
     done
     unset FAKE_PUBLISHER
+    ((++PASS))
+}
+
+test_workflow_lookup_error() {
+    repository "" "" ahead "${COMMIT_B}"
+    local error expected
+    for error in 'Service Unavailable (HTTP 503)' 'Forbidden (HTTP 403)' 'Not Found (HTTP 404)'; do
+        export FAKE_WORKFLOW_ERROR="${error}"
+        run_script --require-publisher --allow-absent v0.61.0-rc.1 v0.61.0 "${COMMIT_B}"
+        unset FAKE_WORKFLOW_ERROR
+        expected="retry the same commit"
+        if [[ "${error}" == *404* ]]; then
+            expected="is missing at ${COMMIT_B}"
+        elif [[ "${OUTPUT}" == *"select a reviewed release source"* ]]; then
+            fail_test "API failure advised changing the release source"
+            return
+        fi
+        expect_failure "${expected}" "workflow lookup: ${error}" || return
+        if [[ "${OUTPUT}" != *"${error}"* || -s "${TEST_ROOT}/outputs" ]]; then
+            fail_test "workflow lookup lost its error or emitted tag outputs"
+            return
+        fi
+    done
     ((++PASS))
 }
 
@@ -484,6 +525,7 @@ main() {
     test_rejects_mismatched_signed_tag_name
     test_accepts_tag_at_approved_commit
     test_new_tag_requires_active_tag_publisher
+    test_workflow_lookup_error
     test_rejects_tag_moved_after_approval
     test_rejects_malformed_approved_commit
     test_missing_tag_without_plan_prints_recovery_command

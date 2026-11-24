@@ -85,7 +85,7 @@ write_outputs() {
     local state="$2"
 
     if [[ "${REQUIRE_PUBLISHER}" == true ]]; then
-        local path=".github/workflows/build-and-push.yaml" publish_prefix
+        local path=".github/workflows/build-and-push.yaml" publish_prefix workflow
         # Match executable control flow through the push, not a command that
         # could be unreachable. The producer may report its digest afterward.
         publish_prefix="$(cat <<'BASH'
@@ -96,19 +96,40 @@ export BUILDX_METADATA_FILE="$RUNNER_TEMP/build-metadata.json"
 make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"
 BASH
 )"
-        "${GH}" api "repos/${REPOSITORY}/contents/${path}?ref=${commit}" \
-            -H 'Accept: application/vnd.github.raw+json' |
-            yq -o=json '.' |
+        if ! workflow="$("${GH}" api "repos/${REPOSITORY}/contents/${path}?ref=${commit}" \
+            -H 'Accept: application/vnd.github.raw+json' 2>"${LOOKUP_ERROR}")"; then
+            cat "${LOOKUP_ERROR}" >&2
+            if grep -Fq '(HTTP 404)' "${LOOKUP_ERROR}"; then
+                fail "${path} is missing at ${commit}; select a reviewed release source before tagging"
+            fi
+            fail "could not read ${path} at ${commit}; check Contents access and retry the same commit once the API error clears"
+        fi
+        yq -o=json '.' <<<"${workflow}" |
             jq -e \
                 --arg build "github.repository == '${REPOSITORY}' && !github.event.deleted" \
                 --arg container "github.repository == '${REPOSITORY}' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))" \
                 --arg parse '.github/scripts/parse-version.sh --ref "$GITHUB_REF" --sha "$GITHUB_SHA" --out "$GITHUB_OUTPUT"' \
                 --arg push "$publish_prefix" '
                 def mandatory: .if == null and (."continue-on-error" // false) == false;
+                def can_read: if type == "object" then .contents == "read" or .contents == "write"
+                              else . == "read-all" or . == "write-all" end;
+                def checks_out_source($defaults):
+                    ((.permissions // $defaults) | can_read) and
+                    (.steps | to_entries |
+                     map(select(.value.uses // "" | startswith("actions/checkout@"))) as $c |
+                     length > 0 and ($c | length) == 1 and
+                     ($c[0].value | mandatory and
+                      (.uses | test("^actions/checkout@[0-9a-f]{40}$")) and
+                      ((.with // {} | keys) - ["fetch-depth","persist-credentials","ref"] == []) and
+                      (.with.ref == null or .with.ref == "${{ github.sha }}" or .with.ref == "${{ github.ref }}")) and
+                     all(.[] | select(.value.run != null or (.value.uses // "" | startswith("./")));
+                         .key > $c[0].key));
+                .permissions as $defaults |
                 .jobs.container as $job |
                 .on.push.tags == ["v*"] and
                 .env.REGISTRY == "ghcr.io/radius-project" and
                 .jobs.build.needs == null and .jobs.build.if == $build and
+                (.jobs.build | checks_out_source($defaults)) and ($job | checks_out_source($defaults)) and
                 $job.needs == "build" and $job.if == $container and
                 $job.permissions.packages == "write" and $job.env.REGISTRY == null and
                 ([$job.steps | to_entries[] | select(.value.id == "version")] as $v |
