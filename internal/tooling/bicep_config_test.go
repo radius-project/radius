@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -18,6 +19,8 @@ import (
 type bicepConsumerConfig struct {
 	ExperimentalFeaturesEnabled map[string]bool   `json:"experimentalFeaturesEnabled"`
 	Extensions                  map[string]string `json:"extensions"`
+	Formatting                  struct{ IndentSize int }
+	Cloud                       struct{ CredentialPrecedence []string }
 }
 
 func readConsumerConfig(t *testing.T, path string) bicepConsumerConfig {
@@ -31,6 +34,9 @@ func readConsumerConfig(t *testing.T, path string) bicepConsumerConfig {
 }
 
 func TestGenerateBicepConfig(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the Bicep config generator requires Bash")
+	}
 	t.Parallel()
 	script, err := os.ReadFile("../../build/scripts/generate-bicepconfig.sh")
 	require.NoError(t, err)
@@ -109,6 +115,9 @@ func TestBicepConsumerDefaultsAvoidProductionACR(t *testing.T) {
 }
 
 func TestWorkflowBicepConsumerConfigs(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the workflow config steps require Bash and jq")
+	}
 	t.Parallel()
 	for _, workflow := range []string{"functional-test-cloud", "functional-test-noncloud", "long-running-azure"} {
 		t.Run(workflow, func(t *testing.T) {
@@ -142,6 +151,7 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 						continue
 					}
 					count++
+					dynamicRPConfig := workflow == "functional-test-noncloud" && count == 2
 					channels := []string{"edge", "test-ci-123"}
 					if workflow == "long-running-azure" {
 						channels = []string{"latest", "0.62", "0.62.0", "0.62.0-rc.6", "@sha256:" + strings.Repeat("a", 64), "ghcr-latest", "custom"}
@@ -152,6 +162,11 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 							const resources = "test/functional-portable/dynamicrp/noncloud/resources"
 							require.NoError(t, os.MkdirAll(filepath.Join(dir, resources), 0o755))
 							path := filepath.Join(dir, "test/bicepconfig.json")
+							if dynamicRPConfig {
+								checkedIn, err := os.ReadFile(filepath.Join("../..", resources, "bicepconfig.json"))
+								require.NoError(t, err)
+								require.NoError(t, os.WriteFile(filepath.Join(dir, resources, "bicepconfig.json"), checkedIn, 0o600))
+							}
 							var expectedRadius, expectedAWS string
 							if workflow == "long-running-azure" {
 								path = filepath.Join(dir, resources, "bicepconfig.json")
@@ -174,7 +189,7 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 									aws = "br:ghcr.io/radius-project/bicep-types-aws:latest"
 									expectedRadius, expectedAWS = radius, aws
 								}
-								original, err := json.Marshal(map[string]any{
+								original := map[string]any{
 									"experimentalFeaturesEnabled": map[string]bool{"symbolicNameCodegen": true},
 									"extensions": map[string]string{
 										"radius": radius, "aws": aws, "custom": "./custom.tgz",
@@ -182,10 +197,13 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 									},
 									"formatting": map[string]int{"indentSize": 4},
 									"cloud":      map[string][]string{"credentialPrecedence": {"Environment"}},
-								})
-								require.NoError(t, err)
-								require.NoError(t, os.WriteFile(path, original, 0o600))
-								require.NoError(t, os.WriteFile(filepath.Join(dir, "bicepconfig.json"), original, 0o600))
+								}
+								for configPath, indent := range map[string]int{path: 4, filepath.Join(dir, "bicepconfig.json"): 2} {
+									original["formatting"] = map[string]int{"indentSize": indent}
+									data, err := json.Marshal(original)
+									require.NoError(t, err)
+									require.NoError(t, os.WriteFile(configPath, data, 0o600))
+								}
 							}
 							cmd := exec.Command("bash", "-euo", "pipefail", "-c", step.Run)
 							cmd.Dir = dir
@@ -209,8 +227,10 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 									tag = "latest" // Existing per-job test tag, not a production default.
 								}
 								require.Equal(t, "br:radius-registry:5000/radius:"+tag, config.Extensions["radius"])
-								if config.Extensions["testresources"] != "" {
+								if dynamicRPConfig {
 									require.Equal(t, "br:radius-registry:5000/testresources:"+tag, config.Extensions["testresources"])
+									nested := readConsumerConfig(t, filepath.Join(dir, resources, "bicepconfig.json"))
+									require.Equal(t, config.Extensions, nested.Extensions)
 								}
 							case "functional-test-cloud":
 								if jobName == "build" {
@@ -228,15 +248,8 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 								require.Equal(t, "br:private-test.example/testresources:latest", config.Extensions["testresources"])
 								require.Equal(t, "./custom.tgz", config.Extensions["custom"])
 								require.True(t, config.ExperimentalFeaturesEnabled["symbolicNameCodegen"])
-								data, err := os.ReadFile(path)
-								require.NoError(t, err)
-								var preserved struct {
-									Formatting struct{ IndentSize int }
-									Cloud      struct{ CredentialPrecedence []string }
-								}
-								require.NoError(t, json.Unmarshal(data, &preserved))
-								require.Equal(t, 4, preserved.Formatting.IndentSize)
-								require.Equal(t, []string{"AzureCLI", "Environment"}, preserved.Cloud.CredentialPrecedence)
+								require.Equal(t, 4, config.Formatting.IndentSize)
+								require.Equal(t, []string{"AzureCLI", "Environment"}, config.Cloud.CredentialPrecedence)
 								rootPath := filepath.Join(dir, "bicepconfig.json")
 								root := readConsumerConfig(t, rootPath)
 								require.Equal(t, expectedRadius, root.Extensions["radius"])
@@ -244,11 +257,8 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 								require.Equal(t, "./keep-root-testresources.tgz", root.Extensions["testresources"])
 								require.Equal(t, "./custom.tgz", root.Extensions["custom"])
 								require.True(t, root.ExperimentalFeaturesEnabled["symbolicNameCodegen"])
-								data, err = os.ReadFile(rootPath)
-								require.NoError(t, err)
-								require.NoError(t, json.Unmarshal(data, &preserved))
-								require.Equal(t, 4, preserved.Formatting.IndentSize)
-								require.Equal(t, []string{"Environment"}, preserved.Cloud.CredentialPrecedence)
+								require.Equal(t, 2, root.Formatting.IndentSize)
+								require.Equal(t, []string{"Environment"}, root.Cloud.CredentialPrecedence)
 							}
 						})
 					}

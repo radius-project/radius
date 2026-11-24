@@ -231,15 +231,15 @@ rebuild-bicep-types-index:
 # be available. CI workflows (added separately) call this target after
 # generating types and authenticating to the registry.
 #
-# Example:
-#   make publish-bicep-extension BICEP_PUBLISH_TARGET=br:ghcr.io/radius-project/bicep-types-radius:edge
+# Example (replace your-github-user with your own namespace):
+#   make publish-bicep-extension BICEP_PUBLISH_TARGET=br:ghcr.io/your-github-user/bicep-types-radius:dev
 BICEP_PUBLISH_INDEX := $(BICEP_TYPES_OUTPUT_BASE)/../index.json
 BICEP_PUBLISH_TARGET ?=
 
 .PHONY: publish-bicep-extension
 publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICEP_PUBLISH_TARGET. Requires generate-bicep-types to have been run.
 	@if [ -z "$(BICEP_PUBLISH_TARGET)" ]; then \
-		echo "ERROR: BICEP_PUBLISH_TARGET must be set (e.g. br:ghcr.io/radius-project/bicep-types-radius:edge)"; \
+		echo "ERROR: BICEP_PUBLISH_TARGET must be set (e.g. br:ghcr.io/your-github-user/bicep-types-radius:dev)"; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(BICEP_PUBLISH_INDEX)" ]; then \
