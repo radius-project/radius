@@ -1,0 +1,110 @@
+{
+  "typeName": "AWS::CloudWatch::ManagedInsightRule",
+  "description": "A managed Contributor Insights rule: a rule AWS defines for an AWS resource, from a template ListManagedInsightRules lists for it, made with PutManagedInsightRules. ResourceARN and TemplateName identify it, and AWS names the rule.",
+  "definitions": {
+    "Tag": {
+      "type": "object",
+      "description": "A key-value pair on the rule.",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 256
+        }
+      },
+      "required": ["Key", "Value"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "ResourceARN": {
+      "type": "string",
+      "description": "The ARN of the AWS resource the rule collects data for.",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "TemplateName": {
+      "type": "string",
+      "description": "The template of the rule, as ListManagedInsightRules returns it for the resource.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[0-9A-Za-z][\\-\\.\\_0-9A-Za-z]{0,126}[0-9A-Za-z]$"
+    },
+    "State": {
+      "type": "string",
+      "description": "Whether the rule is enabled. A rule that is enabled analyzes data and incurs costs. The default is ENABLED.",
+      "enum": ["ENABLED", "DISABLED"]
+    },
+    "Tags": {
+      "type": "array",
+      "description": "The tags of the rule.",
+      "maxItems": 50,
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "RuleName": {
+      "type": "string",
+      "description": "The name AWS gave the rule."
+    },
+    "Arn": {
+      "type": "string",
+      "description": "The ARN of the rule."
+    }
+  },
+  "required": ["ResourceARN", "TemplateName"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/ResourceARN", "/properties/TemplateName"],
+  "createOnlyProperties": [
+    "/properties/ResourceARN",
+    "/properties/TemplateName"
+  ],
+  "readOnlyProperties": ["/properties/RuleName", "/properties/Arn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "cloudwatch:PutManagedInsightRules",
+        "cloudwatch:ListManagedInsightRules",
+        "cloudwatch:DisableInsightRules",
+        "cloudwatch:ListTagsForResource",
+        "cloudwatch:PutInsightRule",
+        "cloudwatch:TagResource",
+        "sts:GetCallerIdentity"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "cloudwatch:ListManagedInsightRules",
+        "cloudwatch:ListTagsForResource",
+        "sts:GetCallerIdentity"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "cloudwatch:ListManagedInsightRules",
+        "cloudwatch:ListTagsForResource",
+        "cloudwatch:EnableInsightRules",
+        "cloudwatch:DisableInsightRules",
+        "cloudwatch:TagResource",
+        "cloudwatch:UntagResource",
+        "sts:GetCallerIdentity"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "cloudwatch:ListManagedInsightRules",
+        "cloudwatch:ListTagsForResource",
+        "cloudwatch:DeleteInsightRules",
+        "cloudwatch:DescribeInsightRules",
+        "sts:GetCallerIdentity"
+      ]
+    }
+  }
+}

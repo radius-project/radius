@@ -44,6 +44,7 @@ var iamPrefixes = map[string]string{
 	"elasticloadbalancingv2":   "elasticloadbalancing",
 	"emr":                      "elasticmapreduce",
 	"fsx":                      "fsx",
+	"grafana":                  "grafana",
 	"iam":                      "iam",
 	"iot":                      "iot",
 	"kinesisanalyticsv2":       "kinesisanalytics",
@@ -179,6 +180,8 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 			"dms:AddTagsToResource", "rds:AddTagsToResource", "fsx:TagResource", "dax:TagResource", "elasticmapreduce:AddTags",
 			// Tags sent in the create call itself: TagSpecifications, or Tags.
 			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
+			// Tags sent with PutManagedInsightRules, which its ManagedRule page says need both.
+			"cloudwatch:PutInsightRule", "cloudwatch:TagResource",
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}

@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::CloudWatch::ManagedInsightRule",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": "Arn"
+}

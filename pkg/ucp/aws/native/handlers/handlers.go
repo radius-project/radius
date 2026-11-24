@@ -30,6 +30,7 @@ import (
 	elbv2sdk "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
 	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
+	grafanasdk "github.com/aws/aws-sdk-go-v2/service/grafana"
 	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
 	iotsdk "github.com/aws/aws-sdk-go-v2/service/iot"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
@@ -57,6 +58,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/elbv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/grafana"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iot"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
@@ -74,6 +76,7 @@ import (
 // is in pkg/aws/schemas.
 func All(cfg aws.Config) []native.Handler {
 	chimeAPI := chimesdkvoicesdk.NewFromConfig(cfg)
+	cloudwatchAPI := cloudwatchsdk.NewFromConfig(cfg)
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
@@ -100,7 +103,8 @@ func All(cfg aws.Config) []native.Handler {
 		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
 		medialive.NewChannel(medialivesdk.NewFromConfig(cfg)),
 		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3API),
-		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stsAPI),
+		cloudwatch.NewAnomalyDetector(cloudwatchAPI, stsAPI),
+		cloudwatch.NewManagedInsightRule(cloudwatchAPI, stsAPI),
 		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
@@ -115,6 +119,7 @@ func All(cfg aws.Config) []native.Handler {
 		chime.NewStreamingConfiguration(chimeAPI),
 		chime.NewOrigination(chimeAPI),
 		chime.NewTermination(chimeAPI),
+		grafana.NewWorkspaceServiceAccount(grafanasdk.NewFromConfig(cfg)),
 	}
 }
 
