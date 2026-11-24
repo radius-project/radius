@@ -30,6 +30,7 @@ spec:
         azure.workload.identity/use: "true"
         {{- end }}
       annotations:
+        radius.io/profiler-enabled: {{ .Values.rp.profilerEnabled | default false | quote }}
         checksum/authz-config: {{ $authzConfig | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"

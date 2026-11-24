@@ -48,11 +48,20 @@ The ownership output must match your release name and namespace. This atomic pat
 
 ## Configuration Options
 
-### UCP profiling
+### Control plane profiling
 
-UCP profiling is now off by default on installs and upgrades. For temporary diagnostics, add `--set ucp.profilerEnabled=true` to your Helm upgrade. This restarts UCP with a listener on port 6060 on all pod interfaces. The listener has no authentication or authorization. Before enabling it, restrict network access to trusted operators and do not expose the port through a Service or Ingress.
+Profiling is now off by default on installs and upgrades for all control plane services: UCP, the applications RP, the dynamic RP, and the controller. For temporary diagnostics, add one of these values to your Helm upgrade:
 
-After diagnosis, upgrade with `--set ucp.profilerEnabled=false` and wait for the UCP rollout to finish. If you use a values file, reset the setting there too so a later upgrade does not re-enable it.
+| Service | Value | Port |
+| --- | --- | --- |
+| UCP | `ucp.profilerEnabled=true` | 6060 |
+| Applications RP | `rp.profilerEnabled=true` | 6060 |
+| Dynamic RP | `dynamicrp.profilerEnabled=true` | 6062 |
+| Controller | `controller.profilerEnabled=true` | 6060 |
+
+This restarts the service with a listener on all pod interfaces. The listener has no authentication or authorization. Before enabling it, restrict network access to trusted operators and do not expose the port through a Service or Ingress.
+
+After diagnosis, upgrade with the same value set to `false` and wait for the rollout to finish. If you use a values file, reset the setting there too so a later upgrade does not re-enable it.
 
 ### In-Cluster Container Image Builds
 

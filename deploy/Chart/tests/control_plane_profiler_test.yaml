@@ -1,0 +1,66 @@
+suite: test applications RP, dynamic RP, and controller profiling
+templates:
+  - rp/configmaps.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/configmaps.yaml
+  - dynamic-rp/deployment.yaml
+  - controller/configmaps.yaml
+  - controller/deployment.yaml
+tests:
+  - it: disables the profiler by default
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'profilerProvider:\n  enabled: false\n  port: 6060\n'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'profilerProvider:\n  enabled: false\n  port: 6062\n'
+        template: dynamic-rp/configmaps.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'profilerProvider:\n  enabled: false\n  port: 6060\n'
+        template: controller/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "false"
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "false"
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "false"
+        template: controller/deployment.yaml
+
+  - it: starts new pods with profiling enabled on explicit opt-in
+    set:
+      rp.profilerEnabled: true
+      dynamicrp.profilerEnabled: true
+      controller.profilerEnabled: true
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'profilerProvider:\n  enabled: true\n  port: 6060\n'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'profilerProvider:\n  enabled: true\n  port: 6062\n'
+        template: dynamic-rp/configmaps.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'profilerProvider:\n  enabled: true\n  port: 6060\n'
+        template: controller/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "true"
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "true"
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "true"
+        template: controller/deployment.yaml

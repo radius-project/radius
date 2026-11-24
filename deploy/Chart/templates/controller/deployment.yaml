@@ -24,6 +24,7 @@ spec:
         app.kubernetes.io/name: controller
         app.kubernetes.io/part-of: radius
       annotations:
+        radius.io/profiler-enabled: {{ .Values.controller.profilerEnabled | default false | quote }}
         checksum/authz-config: {{ include "radius.authz.checksumInput" . | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
