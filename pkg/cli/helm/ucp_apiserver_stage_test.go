@@ -1828,10 +1828,14 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 		moveUCP bool
 		// otherVolume, when set, is another ucp pod volume that still uses ucp-apiserver-tls after the rollout.
 		otherVolume *corev1.Volume
-		wantDelete  bool
+		// unmarked removes the Radius release annotations from ucp-apiserver-tls, as on a Secret another release or an
+		// operator wrote. rad refuses the rollback before Helm runs, so the Secret stays.
+		unmarked   bool
+		wantDelete bool
 	}{
 		{name: "UCP still mounts the Secret", moveUCP: false, wantDelete: false},
 		{name: "UCP rolled out with another Secret", moveUCP: true, wantDelete: true},
+		{name: "the Secret lacks the Radius release annotations", moveUCP: true, unmarked: true, wantDelete: false},
 		{name: "another UCP Secret volume still uses the Secret", moveUCP: true, wantDelete: false, otherVolume: &corev1.Volume{
 			Name: "sidecar-tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpAPIServerTLSSecretName}}}},
 		{name: "a projected UCP volume still uses the Secret", moveUCP: true, wantDelete: false, otherVolume: &corev1.Volume{
@@ -1843,13 +1847,25 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 			shortenUCPAPIServiceWait(t)
 			c := newStageCluster(t, nil, true)
 			c.onUCP(t)
+			if tt.unmarked {
+				secret, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
+				require.NoError(t, err)
+				delete(secret.Annotations, releaseNameAnnotation)
+				delete(secret.Annotations, releaseNamespaceAnnotation)
+				_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Update(t.Context(), secret, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
 			m := NewMockHelmClient(gomock.NewController(t))
 			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
 				{Version: 1, Config: authzOnValues, Manifest: parentManifest, Chart: manifestTestChart(t, parentManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 				{Version: 2, Config: authzOnValues, Manifest: manifest, Chart: manifestTestChart(t, manifest), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 			}, nil)
 			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
-			m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
+			rollback := m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true)
+			if tt.unmarked {
+				rollback.Times(0)
+			}
+			rollback.DoAndReturn(func(*helm.Configuration, string, int, bool) error {
 				certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCertificateName, radiusReleaseName, nil)
 				require.NoError(t, unstructured.SetNestedField(certificate.Object, "ucp-mtls", "spec", "secretName"))
 				if tt.moveUCP {
@@ -1865,12 +1881,17 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 				return c.dynamic.Tracker().Add(certificate)
 			})
 
-			require.NoError(t, c.impl(m).RollbackRadiusToRevision(t.Context(), "test-context", 1))
-			_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
+			err := c.impl(m).RollbackRadiusToRevision(t.Context(), "test-context", 1)
+			if tt.unmarked {
+				require.ErrorContains(t, err, "is not marked for Certificate "+ucpAPIServerCertificateName)
+			} else {
+				require.NoError(t, err)
+			}
+			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
 			if tt.wantDelete {
 				require.True(t, apierrors.IsNotFound(err), "rollback must delete Secret %s, which neither a Certificate nor UCP uses, got %v", ucpAPIServerTLSSecretName, err)
 			} else {
-				require.NoError(t, err, "rollback must keep Secret %s while a ucp pod volume uses it", ucpAPIServerTLSSecretName)
+				require.NoError(t, err, "rollback must keep Secret %s while a ucp pod volume uses it or the Radius release did not issue it", ucpAPIServerTLSSecretName)
 			}
 			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
 			require.NoError(t, err)
