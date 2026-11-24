@@ -33,7 +33,7 @@ const sourceSha = "a".repeat(40);
 const parentSha = "b".repeat(40);
 const digest = `sha256:${"c".repeat(64)}`;
 
-test("tagged Bicep image consumes full-version ACR for both publication contracts", async (t) => {
+test("consumer cutover selects full-version GHCR only for approved ghcr-v1 plans", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "release-bicep-config-")
   );
@@ -59,9 +59,17 @@ test("tagged Bicep image consumes full-version ACR for both publication contract
         actual,
         releaseBicepConfig(input.plan, sourceSha, version)
       );
-      assert.equal(actual.experimentalFeaturesEnabled?.ociEnabled, undefined);
+      assert.equal(
+        actual.experimentalFeaturesEnabled?.ociEnabled,
+        ghcr ? true : undefined
+      );
       for (const [name, ref] of Object.entries(actual.extensions)) {
-        assert.equal(ref, `br:biceptypes.azurecr.io/${name}:${version}`);
+        assert.equal(
+          ref,
+          ghcr ?
+            `br:ghcr.io/radius-project/bicep-types-${name}:${version}`
+          : `br:biceptypes.azurecr.io/${name}:${version}`
+        );
       }
     }
   }
@@ -70,9 +78,10 @@ test("tagged Bicep image consumes full-version ACR for both publication contract
   assert.deepEqual(
     JSON.parse(await readFile(path.join(edge, "bicepconfig.json"))),
     {
+      experimentalFeaturesEnabled: { ociEnabled: true },
       extensions: {
-        radius: "br:biceptypes.azurecr.io/radius:latest",
-        aws: "br:biceptypes.azurecr.io/aws:latest"
+        radius: "br:ghcr.io/radius-project/bicep-types-radius:edge",
+        aws: "br:ghcr.io/radius-project/bicep-types-aws:edge"
       }
     }
   );
