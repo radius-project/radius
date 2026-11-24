@@ -98,12 +98,17 @@ type Client interface {
 
 #### Methods
 
-| Method | Purpose |
-|--------|---------|
-| `Query` | Executes a scoped query filtered by root scope, resource type, and optional filters. Returns a paginated list of `Object` values. |
-| `Get` | Retrieves a single resource by its fully-qualified resource ID. Returns `ErrNotFound` if the resource does not exist. |
-| `Delete` | Removes a single resource by ID. Supports OCC via an optional ETag. |
-| `Save` | Creates or updates a resource (logical PUT). Computes and sets the ETag on the object after writing. Supports OCC via an optional ETag. |
+| Method   | Purpose                                                                                                                                 |
+|----------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `Query`  | Executes a scoped query filtered by root scope, resource type, and optional filters. Returns a paginated list of `Object` values.       |
+| `Get`    | Retrieves a single resource by its fully-qualified resource ID. Returns `ErrNotFound` if the resource does not exist.                   |
+| `Delete` | Removes a single resource by ID. Supports OCC via an optional ETag.                                                                     |
+| `Save`   | Creates or updates a resource (logical PUT). Computes and sets the ETag on the object after writing. Supports OCC via an optional ETag. |
+
+Every provider also implements the optional `database.Enumerator` interface,
+whose `Enumerate` method visits every stored object regardless of scope or
+type. Background maintenance, such as the SHA-256 migration of Terraform state
+names, uses it instead of a `Query`, which requires a resource type.
 
 #### Key Types
 
@@ -113,11 +118,11 @@ type Client interface {
 
 #### Error Types
 
-| Error | Meaning |
-|-------|---------|
-| `ErrNotFound` | The resource with the given ID does not exist. |
+| Error            | Meaning                                                                        |
+|------------------|--------------------------------------------------------------------------------|
+| `ErrNotFound`    | The resource with the given ID does not exist.                                 |
 | `ErrConcurrency` | An OCC conflict: the resource was modified or deleted since the ETag was read. |
-| `ErrInvalid` | A programming error — invalid arguments were passed. |
+| `ErrInvalid`     | A programming error — invalid arguments were passed.                           |
 
 ### `secret.Client`
 
@@ -137,11 +142,11 @@ type Client interface {
 }
 ```
 
-| Method | Purpose |
-|--------|---------|
-| `Save` | Creates or updates a secret by name. |
-| `Delete` | Deletes a secret by name. Returns `ErrNotFound` if absent. |
-| `Get` | Retrieves a secret's value by name. Returns `ErrNotFound` if absent. |
+| Method   | Purpose                                                              |
+|----------|----------------------------------------------------------------------|
+| `Save`   | Creates or updates a secret by name.                                 |
+| `Delete` | Deletes a secret by name. Returns `ErrNotFound` if absent.           |
+| `Get`    | Retrieves a secret's value by name. Returns `ErrNotFound` if absent. |
 
 ### `queue.Client`
 
@@ -161,12 +166,12 @@ type Client interface {
 }
 ```
 
-| Method | Purpose |
-|--------|---------|
-| `Enqueue` | Adds a message to the queue. |
-| `Dequeue` | Retrieves the next available message, respecting lease semantics. |
-| `FinishMessage` | Acknowledges and removes a message after successful processing. |
-| `ExtendMessage` | Extends the visibility timeout / lease on a message. |
+| Method          | Purpose                                                           |
+|-----------------|-------------------------------------------------------------------|
+| `Enqueue`       | Adds a message to the queue.                                      |
+| `Dequeue`       | Retrieves the next available message, respecting lease semantics. |
+| `FinishMessage` | Acknowledges and removes a message after successful processing.   |
+| `ExtendMessage` | Extends the visibility timeout / lease on a message.              |
 
 ## Implementations
 
@@ -225,7 +230,20 @@ Radius runs on Kubernetes.
 **How it works:**
 
 - Each UCP resource is stored as an entry inside a Kubernetes `Resource` object.
-  The Kubernetes object name is derived from `<resource-name>.<SHA1-hash-of-id>`.
+  The Kubernetes object name is derived from `<resource-name>.<hash-of-id>`,
+  where the hash is a truncated SHA-256 hash of the resource ID. Older versions
+  of Radius used a SHA-1 hash.
+- Lookups prefer the entry under its current (SHA-256) object name and fall back
+  to the legacy (SHA-1) object name. UCP moves legacy entries to their current
+  object names in the background (`MigrateLegacyNames` in `migrate.go`), once no
+  pod of another Radius release runs. An entry being moved can have a copy under
+  each name: reads and queries return the current copy, and a delete removes
+  both. The current object records each move in its `ucp.dev/sha256-migration`
+  annotation. A delete of an entry that had a legacy copy writes a tombstone
+  there before it removes any copy, and a save of an entry still under its
+  legacy name records the write there too, so a move that read the legacy copy
+  earlier can neither bring the entry back nor hide the saved value. An object
+  can remain that holds only tombstones.
 - Labels on the Kubernetes object encode the root scope segments and resource
   type, enabling efficient list queries via label selectors.
 - Hash collisions are handled by storing multiple entries in a single Kubernetes
@@ -398,11 +416,11 @@ The factory map in
 [databaseprovider/factory.go](../../pkg/components/database/databaseprovider/factory.go)
 maps provider type strings to initialization functions:
 
-| Key | Factory | Client |
-|-----|---------|--------|
-| `"apiserver"` | `initAPIServerClient` | `apiserverstore.APIServerClient` |
-| `"inmemory"` | `initInMemoryClient` | `inmemory.Client` |
-| `"postgresql"` | `initPostgreSQLClient` | `postgres.PostgresClient` |
+| Key            | Factory                | Client                           |
+|----------------|------------------------|----------------------------------|
+| `"apiserver"`  | `initAPIServerClient`  | `apiserverstore.APIServerClient` |
+| `"inmemory"`   | `initInMemoryClient`   | `inmemory.Client`                |
+| `"postgresql"` | `initPostgreSQLClient` | `postgres.PostgresClient`        |
 
 ### `SecretProvider`
 
@@ -411,10 +429,10 @@ maps provider type strings to initialization functions:
 Similar pattern, but uses `NewSecretProvider` and `SetClient`. Factory map in
 [secretprovider/factory.go](../../pkg/components/secret/secretprovider/factory.go):
 
-| Key | Factory | Client |
-|-----|---------|--------|
+| Key            | Factory                      | Client              |
+|----------------|------------------------------|---------------------|
 | `"kubernetes"` | `initKubernetesSecretClient` | `kubernetes.Client` |
-| `"inmemory"` | `initInMemorySecretClient` | `inmemory.Client` |
+| `"inmemory"`   | `initInMemorySecretClient`   | `inmemory.Client`   |
 
 ### `QueueProvider`
 
@@ -423,10 +441,10 @@ Similar pattern, but uses `NewSecretProvider` and `SetClient`. Factory map in
 Similar pattern, but uses `New` and `SetClient`. Factory map in
 [queueprovider/factory.go](../../pkg/components/queue/queueprovider/factory.go):
 
-| Key | Factory | Client |
-|-----|---------|--------|
+| Key           | Factory         | Client                   |
+|---------------|-----------------|--------------------------|
 | `"apiserver"` | `initAPIServer` | `apiserver` queue client |
-| `"inmemory"` | `initInMemory` | `inmemory` named queue |
+| `"inmemory"`  | `initInMemory`  | `inmemory` named queue   |
 
 ## How to Create a New Implementation
 

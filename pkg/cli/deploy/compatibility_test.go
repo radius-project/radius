@@ -72,6 +72,7 @@ func Test_formatCompatibilityWarning(t *testing.T) {
 		{name: "floating channel does not excuse CLI and control-plane skew", pin: "0.60", cli: "0.60.2", cp: "0.60.0", expected: []string{"CLI and target control-plane releases differ"}},
 		{name: "floating channel does not match control plane", pin: "0.60", cli: "0.60.0", cp: "0.61.0", expected: []string{"Could not check the Radius extension release", "tag(s): 0.60"}},
 		{name: "latest", pin: "latest", cli: "0.60.0", cp: "0.60.0", expected: []string{"Could not check", "tag(s): latest"}},
+		{name: "edge", pin: "edge", cli: "0.60.0", cp: "0.60.0", expected: []string{"tag(s): edge", "floating, local, custom, or digest-pinned and does not identify a full release"}},
 		{name: "custom tag", pin: "custom", cli: "0.60.0", cp: "0.60.0", expected: []string{"Could not check", "tag(s): unknown"}},
 		{name: "development CLI", pin: "0.60.0", cli: "edge", cp: "0.60.0", expected: []string{"CLI does not report a full release"}},
 		{name: "development server", pin: "0.60.0", cli: "0.60.0", cp: "edge", expected: []string{"control plane does not report a full release"}},
@@ -143,6 +144,8 @@ func Test_extensionTag(t *testing.T) {
 		"./custom-extension.tgz",
 		"br:example.io/radius:secret\ninjected output",
 		"br:example.io/radius:credential-secret",
+		"br:example.io/radius:edge-secret",
+		"br:example.io/radius:edge\ninjected output",
 		"br:localhost:5000/radius/types",
 		"br:localhost:5000/radius/types@sha256:abc",
 	} {

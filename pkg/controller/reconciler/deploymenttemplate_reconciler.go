@@ -246,6 +246,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		}
 		return ctrl.Result{}, nil
 	}
+	stored := owner.Status.StatusHash
 	if !isUpToDate(owner) {
 		return r.dispatchPut(ctx, owner)
 	}
@@ -262,7 +263,9 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 			phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
 		}
 	}
-	if owner.Status.Phrase != phrase {
+	// isUpToDate replaces a legacy status hash with the current hash. Saving it completes the SHA-256 migration of the
+	// template without a deployment.
+	if owner.Status.Phrase != phrase || owner.Status.StatusHash != stored {
 		owner.Status.Phrase = phrase
 		return r.saveAndRequeue(ctx, owner)
 	}
@@ -893,12 +896,30 @@ func computeHash(owner *radappiov1alpha3.DeploymentTemplate) (string, error) {
 	return hashutil.Hex(data), nil
 }
 
+// isUpToDate reports whether the spec of owner is the spec it was last deployed with.
+//
+// It accepts both the current SHA-256 hash and the legacy SHA-1 hash so that
+// upgrading Radius (which changes the hash algorithm) does not flag an otherwise
+// unchanged DeploymentTemplate as out-of-date and trigger an unnecessary deployment.
+// A legacy hash is replaced with the current hash in the status of owner, which
+// Reconcile saves, so every DeploymentTemplate the controller reconciles is migrated
+// without a deployment.
 func isUpToDate(owner *radappiov1alpha3.DeploymentTemplate) bool {
 	data, err := json.Marshal(owner.Spec)
 	if err != nil {
 		return false
 	}
-	return owner.Status.StatusHash == hashutil.Hex(data) || owner.Status.StatusHash == hashutil.LegacyHex(data)
+
+	current := hashutil.Hex(data)
+	switch owner.Status.StatusHash {
+	case current:
+		return true
+	case hashutil.LegacyHex(data):
+		owner.Status.StatusHash = current
+		return true
+	default:
+		return false
+	}
 }
 
 // SetupWithManager registers the coordinator and watches its passive inventory.
