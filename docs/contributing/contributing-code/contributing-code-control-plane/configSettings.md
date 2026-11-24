@@ -40,6 +40,7 @@ The development files combine shared host options with service-specific settings
 | `authorization`                  | [`authz.Options`](../../../../pkg/authz/mode.go)                                                                | `mode` is `off` (default), `dryRun`, or `enforce`; also `podSecurityLevel`, `controlPlaneNamespace`, `controlPlaneSecrets`, `certificateDirectory`, `caDirectory`, `tokenDirectory`, `trustDomain`, `namespace` |
 | `callerAuthentication`           | [`authorization.RequestHeaderOptions`](../../../../pkg/ucp/authorization/requestheader.go)                      | UCP-only request-header CA file, allowed proxy names, and Kubernetes issuer                                                                                                                                     |
 | `kubernetesCallerAuthentication` | [`authorization.KubernetesRequestHeaderOptions`](../../../../pkg/ucp/authorization/kubernetes_requestheader.go) | UCP-only startup discovery of the cluster's request-header trust; enabled by the chart in every internal mode                                                                                                   |
+| `sha256Migration`                | [`hashmigration.Config`](../../../../pkg/upgrade/hashmigration/hashmigration.go)                                | `disabled` turns off the automatic SHA-256 migration                                                                                                                                                            |
 
 For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
@@ -117,6 +118,8 @@ These protections apply to the cluster hosting the control plane, not an unrelat
 The Applications RP rollout checksum covers its authorization mode and, when active, its effective Pod Security level, control-plane namespace, and protected Secret names, so changing these settings restarts the provider with the updated policy. Settings omitted from the runtime configuration in `off` mode do not affect its checksum.
 
 UCP reads `aws.fingerprintKeyFile`, the file that holds the HMAC key for fingerprints of write-only AWS property values. It defaults to `/var/secrets/aws-fingerprint/key`, where the chart mounts the `radius-aws-fingerprint-key` Secret, so the chart does not render it. Set it when running UCP as a local process with a key file of at least 32 random bytes. When the file is missing or invalid, UCP still starts and logs an error naming the Secret.
+
+UCP, Applications RP, and Dynamic RP read `sha256Migration.disabled`. Each runs a background migration of values that older versions of Radius derived with SHA-1, and records its progress in the `radius-sha256-migration` ConfigMap in `radius-system`; see the [SHA-256 migration design note](../../../../eng/design-notes/security/2026-06-sha1-to-sha256-migration.md#automatic-migration). The chart does not render the setting, so the migration runs. The in-process test hosts set `disabled: true` so that tests do not record status in the cluster that the local kubeconfig selects. Do not disable it in an installation: a later release requires the migration to have completed.
 
 #### Configure verified Kubernetes caller identity
 

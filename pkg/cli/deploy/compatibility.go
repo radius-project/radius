@@ -165,7 +165,7 @@ func extensionTag(reference string) string {
 	if _, err := releaseVersion(tag); err == nil {
 		return tag
 	}
-	if tag == "latest" {
+	if tag == "latest" || tag == "edge" {
 		return tag
 	}
 	if _, err := semver.NewVersion(tag); err == nil && !strings.ContainsAny(tag, "\r\n\t ") {
