@@ -58,12 +58,18 @@ kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/
   radapp.io/release-name=radius radapp.io/release-namespace=radius-system
 ```
 
-If the hook fails anyway, run the same `helm upgrade` again once the Secret holds both CAs. After the `ucp` Deployment rolls out, check that `kubectl get apiservice v1alpha3.api.ucp.dev` reports `Available` as `True`, then delete the `radius-apiserver-trust` Secret and run `helm upgrade` again, so the APIService trusts only `radius-apiserver-ca` and follows its renewals. With Helm 4 server-side apply, cainjector co-owns the APIService's `spec.caBundle`, so this upgrade can fail with a field-manager conflict on `caBundle`; if it does, run the same `helm upgrade` with `--force-conflicts`:
+If the hook fails anyway, run the same `helm upgrade` again once the Secret holds both CAs. Then wait until the `ucp` Deployment has rolled out and the APIService reports `Available`. Delete the `radius-apiserver-trust` Secret and run `helm upgrade` again only if both commands succeed, so the APIService trusts only `radius-apiserver-ca` and follows its renewals:
 
 ```bash
-kubectl rollout status deployment/ucp -n radius-system
-kubectl get apiservice v1alpha3.api.ucp.dev
-kubectl delete secret radius-apiserver-trust -n radius-system
+kubectl rollout status deployment/ucp -n radius-system --timeout=5m &&
+  kubectl wait --for=condition=Available apiservice/v1alpha3.api.ucp.dev --timeout=5m &&
+  kubectl delete secret radius-apiserver-trust -n radius-system &&
+  helm upgrade radius deploy/Chart -n radius-system --reuse-values
+```
+
+With Helm 4 server-side apply, cainjector co-owns the APIService's `spec.caBundle`. If that last `helm upgrade` fails with a field-manager conflict on `caBundle`, retry only the upgrade with `--force-conflicts`:
+
+```bash
 helm upgrade radius deploy/Chart -n radius-system --reuse-values --force-conflicts
 ```
 
