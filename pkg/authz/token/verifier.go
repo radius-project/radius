@@ -204,8 +204,13 @@ func (v *Verifier) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-v.noKeys:
-			// A fetch outside Run, such as one for an unknown key ID, left no usable keys.
-			if time.Until(next) > v.unknownKeyInterval {
+			// A fetch outside Run, such as one for an unknown key ID, left no usable keys. A later
+			// fetch may have loaded keys before Run read the signal, so it retries soon only while
+			// the cache is still empty.
+			v.mu.RLock()
+			empty := len(v.keys.Keys) == 0
+			v.mu.RUnlock()
+			if empty && time.Until(next) > v.unknownKeyInterval {
 				timer.Reset(v.unknownKeyInterval)
 				next = time.Now().Add(v.unknownKeyInterval)
 			}

@@ -676,6 +676,36 @@ func TestRun_RetriesAfterUnknownKeyRefreshLeavesNoKeys(t *testing.T) {
 	})
 }
 
+func TestRun_IgnoresNoKeysSignalAfterKeysReload(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		clock := &fakeClock{now: start}
+		source := newFakeSource(map[string]crypto.PublicKey{})
+		v, err := New(Config{
+			Namespace:          testNamespace,
+			Audience:           testAudience,
+			Keys:               source,
+			Now:                clock.Now,
+			RefreshInterval:    time.Hour,
+			UnknownKeyInterval: 10 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		// An empty fetch signals Run, and a later fetch loads keys before Run reads the signal.
+		require.Error(t, v.Refresh(t.Context()))
+		source.set(defaultKeys(), nil)
+		require.NoError(t, v.Refresh(t.Context()))
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go v.Run(ctx)
+		synctest.Wait()
+
+		// The cache holds usable keys, so Run waits the full RefreshInterval and does not fetch again.
+		time.Sleep(20 * time.Millisecond)
+		synctest.Wait()
+		require.Equal(t, 2, source.count())
+	})
+}
+
 func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {
 	clock := &fakeClock{now: start}
 	source := newFakeSource(defaultKeys())
