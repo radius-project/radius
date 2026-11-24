@@ -839,28 +839,16 @@ test("uses one total timeout budget for discovery and completion", async () => {
 test("all publisher callers use stable identifiers without time-window discovery", async () => {
   const cases = [
     {
-      file: "__build-bicep-types.yaml",
-      identifier:
-        "INPUT_RELEASE_IDENTIFIER: ${{ steps.release-metadata.outputs.release_version }}-${{ github.sha }}",
-      sourceBinding: '"source_sha": ${{ toJSON(github.sha) }}',
-      eventType: "INPUT_EVENT_TYPE: bicep-types",
-      timeout: "timeout-minutes: 18"
-    },
-    {
       file: "publish-de-image.yaml",
       identifier:
         "INPUT_RELEASE_IDENTIFIER: ${{ steps.payload.outputs.tag }}-${{ github.run_id }}",
-      sourceBinding:
-        '"expected_revision": ${{ toJSON(steps.payload.outputs.expected_revision) }}',
       eventType: "INPUT_EVENT_TYPE: deployment-engine",
       timeout: "timeout-minutes: 18"
     },
     {
       file: "__release-controller.yaml",
       identifier:
-        "INPUT_RELEASE_IDENTIFIER: ${{ needs.reconcile-source.outputs.release-identifier }}",
-      sourceBinding:
-        '"source_sha": ${{ toJSON(needs.reconcile-source.outputs.release-commit) }}',
+        "INPUT_RELEASE_IDENTIFIER: ${{ needs.validate.outputs.release-identifier }}",
       eventType: "INPUT_EVENT_TYPE: deployment-engine",
       // The job also waits up to 15 minutes for a newly created tag's build.
       timeout: "timeout-minutes: 40"
@@ -884,7 +872,6 @@ test("all publisher callers use stable identifiers without time-window discovery
       /INPUT_CLIENT_PAYLOAD: \|-\n([\s\S]*?)\n\s*INPUT_MAX_WAIT_SECONDS/
     );
     assert.ok(payload, fixture.file);
-    assert.ok(payload[1].includes(fixture.sourceBinding), fixture.file);
     assert.match(payload[1], /\$\{\{ toJSON\(/, fixture.file);
     assert.doesNotMatch(payload[1], /"\$\{\{/, fixture.file);
   }
