@@ -30,6 +30,7 @@ tests:
     set:
       global.rbac.enabled: true
       de.internalAuth.enabled: true
+      de.tag: source-test-only
     asserts:
       - contains:
           path: spec.template.spec.containers[0].env
