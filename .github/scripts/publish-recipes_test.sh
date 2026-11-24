@@ -6,7 +6,9 @@
 # You may obtain a copy of the License at
 # http://www.apache.org/licenses/LICENSE-2.0
 
-set -euo pipefail
+set -Eeuo pipefail
+
+trap 'echo "FAIL at line ${LINENO}: ${BASH_COMMAND}" >&2; if [[ -f "${MOCK_STATE:-}/output" ]]; then cat "${MOCK_STATE}/output" >&2; fi' ERR
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/radius-publish-recipes-test.XXXXXX")"
@@ -32,7 +34,19 @@ active=("${MOCK_STATE}"/active/*)
 if ((${#active[@]} > 1)); then
     touch "${MOCK_STATE}/overlap"
 fi
-sleep 0.1
+if [[ "${MOCK_REQUIRE_OVERLAP}" == 1 ]]; then
+    # Keep a worker active until a peer observes it, even on a slow runner.
+    for attempt in {1..100}; do
+        [[ -e "${MOCK_STATE}/overlap" ]] && break
+        sleep 0.05
+    done
+    [[ -e "${MOCK_STATE}/overlap" ]] || {
+        echo "timed out waiting for concurrent publish workers" >&2
+        exit 1
+    }
+else
+    sleep 0.1
+fi
 if [[ "${name}" == "${MOCK_FAILURE}" ]]; then
     echo "intentional publish failure: ${name}" >&2
     exit 77
@@ -44,7 +58,7 @@ EOF
 chmod +x "${work_dir}/bin/rad"
 export PATH="${work_dir}/bin:${PATH}"
 export RECIPE_DIRECTORY="${work_dir}/recipes with spaces"
-export MOCK_FAILURE="" MOCK_SIGNAL_RECIPE=""
+export MOCK_FAILURE="" MOCK_SIGNAL_RECIPE="" MOCK_REQUIRE_OVERLAP=0
 run_case() {
     local expected="$1" status=0
     export MOCK_STATE
@@ -59,17 +73,28 @@ run_case() {
         exit 1
     }
     if [[ -f "${MOCK_STATE}/started" ]]; then
-        [[ "$(wc -l <"${MOCK_STATE}/started")" == "$(wc -l <"${MOCK_STATE}/finished")" ]]
+        [[ "$(wc -l <"${MOCK_STATE}/started")" == "$(wc -l <"${MOCK_STATE}/finished")" ]] || {
+            cat "${MOCK_STATE}/output"
+            echo "Workers still running after publisher exit ${status} (expected ${expected})" >&2
+            exit 1
+        }
     fi
     remaining=("${MOCK_STATE}"/active/*)
     [[ ! -e "${remaining[0]}" ]]
 }
-for parallelism in default 2 3 4; do
+cat >"${work_dir}/delayed-launch.sh" <<'EOF'
+trap 'if [[ "${BASH_COMMAND}" == "publish_pids+=("* ]]; then sleep 0.2; fi' DEBUG
+EOF
+for parallelism in default 2 3 4 delayed; do
     unset BICEP_RECIPE_PUBLISH_PARALLELISM
-    export MOCK_PARALLELISM=1
+    export MOCK_PARALLELISM=1 MOCK_REQUIRE_OVERLAP=0
+    if [[ "${parallelism}" == delayed ]]; then
+        export BASH_ENV="${work_dir}/delayed-launch.sh"
+        parallelism=2
+    fi
     if [[ "${parallelism}" != default ]]; then
         export BICEP_RECIPE_PUBLISH_PARALLELISM="${parallelism}"
-        export MOCK_PARALLELISM="${parallelism}"
+        export MOCK_PARALLELISM="${parallelism}" MOCK_REQUIRE_OVERLAP=1
     fi
     run_case 0
     [[ "$(wc -l <"${GITHUB_STEP_SUMMARY}")" -eq 10 ]]
@@ -82,7 +107,8 @@ for parallelism in default 2 3 4; do
         [[ -e "${MOCK_STATE}/overlap" ]]
     fi
 done
-export BICEP_RECIPE_PUBLISH_PARALLELISM=4 MOCK_PARALLELISM=4
+unset BASH_ENV
+export BICEP_RECIPE_PUBLISH_PARALLELISM=4 MOCK_PARALLELISM=4 MOCK_REQUIRE_OVERLAP=0
 export MOCK_FAILURE=recipe-1.bicep
 run_case 77
 grep -q 'intentional publish failure' "${MOCK_STATE}/output"

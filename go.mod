@@ -28,6 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.33.18
 	github.com/aws/aws-sdk-go-v2/credentials v1.21.0
 	github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12
+	github.com/aws/aws-sdk-go-v2/service/chimesdkvoice v1.38.12
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.12
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.83.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.75.7
@@ -46,6 +47,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5
+	github.com/aws/aws-sdk-go-v2/service/rds v1.133.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
 	github.com/aws/aws-sdk-go-v2/service/s3control v1.81.0
 	github.com/aws/aws-sdk-go-v2/service/s3tables v1.26.0

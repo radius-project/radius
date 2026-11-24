@@ -171,3 +171,32 @@ func Test_Replay_VPNGatewayRoutePropagation(t *testing.T) {
 		Poll:       5 * time.Second,
 	}.Run(t)
 }
+
+// Test_Replay_InstanceState stops a running instance and starts it again, as UCP does once it took the instance over,
+// against responses written by hand from EC2's API reference. A delete changes nothing in AWS, so there is no delete
+// step. To record it, launch an instance with an EBS root volume, wait until it is running, export its ID, and
+// terminate it after recording.
+func Test_Replay_InstanceState(t *testing.T) {
+	s := awsreplay.New(t, "testdata/instancestate.json")
+	id := s.Input("RADIUS_REC_EC2_INSTANCE")
+	h := NewInstanceState(awsec2.NewFromConfig(s.Config(t.Context())))
+	for _, state := range []string{"stopped", "running"} {
+		properties := map[string]any{"InstanceId": id, "State": state}
+		before, err := h.UpdateState(t.Context(), awsreplay.Region, id)
+		require.NoError(t, err)
+		require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: awsreplay.Region, Identifier: id, Desired: properties, State: before}))
+		for polls := 0; ; polls++ {
+			require.Less(t, polls, 120, "the instance didn't get to %s", state)
+			progress, err := h.UpdateProgress(t.Context(), awsreplay.Region, id, before)
+			require.NoError(t, err)
+			require.Nil(t, progress.Failure)
+			if progress.Done {
+				break
+			}
+			s.Wait(15 * time.Second)
+		}
+		got, err := h.Read(t.Context(), awsreplay.Region, id)
+		require.NoError(t, err)
+		nativetest.RequireSubset(t, properties, got)
+	}
+}

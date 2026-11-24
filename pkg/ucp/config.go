@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/authorization"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -50,6 +51,9 @@ type Config struct {
 	// KubernetesCallerAuthentication loads dedicated aggregation-proxy trust from
 	// the cluster at startup. It is mutually exclusive with CallerAuthentication.
 	KubernetesCallerAuthentication *authorization.KubernetesRequestHeaderOptions `yaml:"kubernetesCallerAuthentication,omitempty"`
+
+	// UserAuthorization enables the user-facing policy runtime, not enforcement.
+	UserAuthorization authorization.RuntimeOptions `yaml:"userAuthorization"`
 
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`
@@ -83,6 +87,9 @@ type Config struct {
 
 	// Server is the configuration for the HTTP server.
 	Server hostoptions.ServerOptions `yaml:"server"`
+
+	// SHA256Migration is the configuration for the automatic migration of SHA-1-derived values.
+	SHA256Migration hashmigration.Config `yaml:"sha256Migration"`
 
 	// Tracing is the configuration for the tracing system.
 	Tracing traceservice.Options `yaml:"tracerProvider"`

@@ -34,6 +34,7 @@ import (
 // iamPrefixes maps the AWS SDK service package a handler's client uses to the service's prefix in IAM actions.
 var iamPrefixes = map[string]string{
 	"appsync":                  "appsync",
+	"chimesdkvoice":            "chime",
 	"cloudwatch":               "cloudwatch",
 	"codebuild":                "codebuild",
 	"databasemigrationservice": "dms",
@@ -48,6 +49,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"rds":                      "rds",
 	"s3":                       "s3",
 	"s3control":                "s3",
 	"s3tables":                 "s3tables",
@@ -59,7 +61,8 @@ var iamPrefixes = map[string]string{
 
 // operationsOf maps a handler method to the schema handler operations whose permissions must cover the AWS calls it
 // makes. Find runs when a PUT or a DELETE looks for a lost create, and Progress while UCP waits for a create, an
-// update, or a delete.
+// update, or a delete. UpdateState runs before an update, and UpdateProgress while UCP waits for it
+// (native.UpdatePreparer).
 var operationsOf = map[string][]string{
 	"Create":     {"create"},
 	"Find":       {"create", "delete"},
@@ -68,6 +71,8 @@ var operationsOf = map[string][]string{
 	// UCP resolves an identifier on a PUT and on `existing`.
 	"ResolveIdentifier": {"create", "read", "update"},
 	"Update":            {"update"},
+	"UpdateState":       {"update"},
+	"UpdateProgress":    {"update"},
 	"Delete":            {"delete"},
 	"DeleteScoped":      {"delete"},
 	"DeleteToken":       {"delete"},
@@ -100,10 +105,15 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 			} `json:"handlers"`
 		}
 		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
+		// UCP calls nothing of the handler on a delete whose metadata calls nothing in AWS.
+		onDelete := registry.Lookup(h.TypeName()).Metadata.OnDelete
 		for method, ops := range operationsOf {
 			for _, call := range src.Calls(typ.Name(), method) {
 				action := src.iam[call] + ":" + call
 				for _, op := range ops {
+					if op == "delete" && (onDelete == "nothing" || onDelete == "leave") {
+						continue
+					}
 					gap := h.TypeName() + " " + op + ": " + action
 					if !slices.Contains(schema.Handlers[op].Permissions, action) && !slices.Contains(missing, gap) {
 						missing = append(missing, gap)
@@ -179,6 +189,9 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 	}
 	implied["create"] = append(implied["create"], tableReplication...)
 	implied["update"] = append(implied["update"], tableReplication...)
+	// AWS checks the caller for this on a Chime streaming Put with a MediaInsightsConfiguration.
+	implied["create"] = append(implied["create"], "chime:GetMediaInsightsPipelineConfiguration")
+	implied["update"] = append(implied["update"], "chime:GetMediaInsightsPipelineConfiguration")
 	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}

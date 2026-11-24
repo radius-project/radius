@@ -212,6 +212,20 @@ if [[ "$1" == "api" ]]; then
         */contents/docs/release-notes/v0.60.0.md*)
             cat "${FIXTURES}/release-note.md"
             ;;
+        */contents/.github/release-parity/targets.json*)
+            if [[ -n "${SOURCE_TARGETS_ERROR:-}" ]]; then
+                echo "${SOURCE_TARGETS_ERROR}" >&2
+                exit 1
+            fi
+            cat "${FIXTURES}/targets.json"
+            ;;
+        */contents/.github/release-plans/v0.60.*yaml*)
+            if [[ -n "${SOURCE_PLAN_ERROR:-}" ]]; then
+                echo "${SOURCE_PLAN_ERROR}" >&2
+                exit 1
+            fi
+            cat "${FIXTURES}/plan.json"
+            ;;
         *)
             echo "unexpected gh api endpoint: ${endpoint}" >&2
             exit 1
@@ -319,7 +333,16 @@ cat >"${FAKE_BIN}/oras" <<'EOF'
 set -euo pipefail
 
 reference="${*: -1}"
+if [[ "${reference}" == biceptypes.azurecr.io/* &&
+    -f "${FIXTURES}/plan.json" ]]; then
+    echo "GHCR-only verification must not request ACR: ${reference}" >&2
+    exit 1
+fi
 if [[ "${reference}" == ghcr.io/radius-project/bicep-types-* ]]; then
+    if [[ "${MISSING_DOWNSTREAM}" == "true" ]]; then
+        echo "GHCR artifact unavailable" >&2
+        exit 1
+    fi
     name="${reference##*/}"
     name="${name%%[:@]*}"
     manifest="${FIXTURES}/${name}.json"
@@ -328,6 +351,7 @@ if [[ "${reference}" == ghcr.io/radius-project/bicep-types-* ]]; then
             '{digest:$digest}'
     else
         cat "${manifest}"
+        [[ "${WRONG_GHCR:-false}" != "true" ]] || printf ' '
     fi
     exit 0
 fi
@@ -354,7 +378,9 @@ cat >"${FAKE_BIN}/yq" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
-if [[ "$1" == "eval" ]]; then
+if [[ "$1" == "-o=json" ]]; then
+    cat
+elif [[ "$1" == "eval" ]]; then
     cat <<'JSON'
 {
   "apiVersion": "v2",
@@ -395,7 +421,7 @@ chmod +x "${FAKE_BIN}/yq"
 
 run_collector() {
     PATH="${FAKE_BIN}:${PATH}" \
-        RELEASE_PARITY_TARGETS="${TARGETS}" \
+        RELEASE_PARITY_TARGETS="${TARGET_OVERRIDE-${TARGETS}}" \
         RELEASE_PARITY_OBSERVED_AT="2026-08-19T01:00:00Z" \
         RELEASE_PARITY_RUNTIME_ASSET="rad_linux_amd64" \
         bash "${SCRIPT_DIR}/release-parity-manifest.sh" \
@@ -403,8 +429,55 @@ run_collector() {
         --output "${OUTPUT}" "$@" >/dev/null
 }
 
+check_source_targets() {
+    PATH="${FAKE_BIN}:${PATH}" bash -eu -c '
+        source "$1"
+        TEMP_DIR="$(mktemp -d)"
+        resolve_source_targets radius-project/radius "${SOURCE_COMMIT}" "$2"
+        cmp "${TARGETS_FILE}" "$3"
+    ' bash "${SCRIPT_DIR}/release-parity-manifest.sh" "$@"
+}
+
+for historical_tag in v0.60.0 v0.60.1; do
+    SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' \
+        SOURCE_PLAN_ERROR='gh: Not Found (HTTP 404)' \
+        check_source_targets "${historical_tag}" \
+        "${SCRIPT_DIR}/../release-parity/legacy-targets.json" ||
+        fail "missing historical targets did not select frozen legacy inventory"
+done
+for error in 'gh: Unauthorized (HTTP 401)' 'gh: Forbidden (HTTP 403)' \
+    'gh: Service Unavailable (HTTP 503)' 'network timeout' 'connection failed near /404'; do
+    if SOURCE_TARGETS_ERROR="${error}" SOURCE_PLAN_ERROR='gh: Not Found (HTTP 404)' \
+        check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+        fail "non-404 source lookup failure selected legacy inventory"
+    fi
+    if SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' SOURCE_PLAN_ERROR="${error}" \
+        check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+        fail "failed plan lookup selected legacy inventory"
+    fi
+done
+if RELEASE_PARITY_STAGED=true SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' \
+    SOURCE_PLAN_ERROR='gh: Not Found (HTTP 404)' \
+    check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+    fail "staged release selected historical fallback"
+fi
+printf 'schemaVersion: 2\n' >"${FIXTURES}/plan.json"
+if SOURCE_TARGETS_ERROR='gh: Not Found (HTTP 404)' \
+    check_source_targets v0.60.0 "${SCRIPT_DIR}/../release-parity/legacy-targets.json"; then
+    fail "approved plan with missing targets selected historical fallback"
+fi
+rm "${FIXTURES}/plan.json"
+
 run_collector
 cp "${OUTPUT}" "${FIRST_OUTPUT}"
+printf '{"schemaVersion":2,"version":"v0.60.0","expectedOutputs":%s}\n' \
+    "$(cat "${TARGETS}")" >"${FIXTURES}/legacy-plan.json"
+TARGET_OVERRIDE="" run_collector --plan-file "${FIXTURES}/legacy-plan.json"
+cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
+    fail "explicit legacy plan did not resolve its source targets"
+TARGET_OVERRIDE="" run_collector
+cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
+    fail "historical source contract was replaced by current main targets"
 run_collector
 cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
     fail "collector output was not deterministic"
@@ -595,11 +668,21 @@ for repository in ghcr.io/radius-project/bicep-types-aws \
 done
 mv "${FIXTURES}/approved-targets.json" "${TARGETS}"
 run_collector --plan-file "${FIXTURES}/plan.json"
+cp "${OUTPUT}" "${FIRST_OUTPUT}"
+TARGET_OVERRIDE="" run_collector
+cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
+    fail "standalone GHCR inspection did not load the committed source plan"
 jq -e '
     (.downstream.ociArtifacts | length) == 2
     and all(.downstream.ociArtifacts[]; .reference | endswith(":0.60.0"))
     and .downstream.bicepExtensionLock.version == "v0.60.0"
 ' "${OUTPUT}" >/dev/null || fail "GHCR collection did not preserve the locked pair"
+if MISSING_DOWNSTREAM=true run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
+    fail "GHCR collection accepted a missing full-version GHCR artifact"
+fi
+if WRONG_GHCR=true run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
+    fail "GHCR collection accepted substituted GHCR bytes"
+fi
 mv "${ASSETS}/bicep-extension-lock.json" "${FIXTURES}/saved-lock.json"
 if run_collector --plan-file "${FIXTURES}/plan.json" 2>/dev/null; then
     fail "GHCR collection accepted missing evidence"

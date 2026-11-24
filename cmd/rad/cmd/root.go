@@ -36,6 +36,7 @@ import (
 	app_list "github.com/radius-project/radius/pkg/cli/cmd/app/list"
 	app_show "github.com/radius-project/radius/pkg/cli/cmd/app/show"
 	app_status "github.com/radius-project/radius/pkg/cli/cmd/app/status"
+	"github.com/radius-project/radius/pkg/cli/cmd/auth"
 	bicep_generate_kubernetes_manifest "github.com/radius-project/radius/pkg/cli/cmd/bicep/generatekubernetesmanifest"
 	bicep_publish "github.com/radius-project/radius/pkg/cli/cmd/bicep/publish"
 	bicep_publishextension "github.com/radius-project/radius/pkg/cli/cmd/bicep/publishextension"
@@ -426,6 +427,7 @@ func initSubCommands() {
 
 	versionCmd, _ := version.NewCommand(framework)
 	RootCmd.AddCommand(versionCmd)
+	RootCmd.AddCommand(auth.NewCommand(framework))
 }
 
 func configureOutput(cmd *cobra.Command, writer *output.OutputWriter) {
