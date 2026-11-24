@@ -3,6 +3,8 @@ kind: ConfigMap
 metadata:
   name: ucp-config
   namespace: "{{ .Release.Namespace }}"
+  annotations:
+    radius.io/tls-provider: {{ include "radius.authz.tls.provider" . | quote }}
   labels:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
