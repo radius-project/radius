@@ -329,6 +329,7 @@ func Test_FluxController_SourceAndAttributionEventsHoldTemplates(t *testing.T) {
 	sourceKeys := []types.NamespacedName{
 		{Namespace: namespace, Name: "association"},
 		{Namespace: namespace, Name: "suspended"},
+		{Namespace: namespace, Name: "probe"},
 	}
 	sources := make([]sourcev1.GitRepository, len(sourceKeys))
 	for i, key := range sourceKeys {
@@ -351,6 +352,10 @@ func Test_FluxController_SourceAndAttributionEventsHoldTemplates(t *testing.T) {
 				},
 			},
 		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "probe", Namespace: namespace},
+			Spec:       radappiov1alpha3.DeploymentTemplateSpec{Repository: sources[2].Name, Template: "{}"},
+		},
 	}
 	for _, template := range templates {
 		template.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
@@ -372,6 +377,7 @@ func Test_FluxController_SourceAndAttributionEventsHoldTemplates(t *testing.T) {
 		Sources: []hostoptions.FluxSourceSelection{
 			{Namespace: sources[0].Namespace, Name: sources[0].Name, UID: string(sources[0].UID)},
 			{Namespace: sources[1].Namespace, Name: sources[1].Name, UID: string(sources[1].UID)},
+			{Namespace: sources[2].Namespace, Name: sources[2].Name, UID: string(sources[2].UID)},
 		},
 	}, mgr.GetAPIReader())
 	require.NoError(t, err)
@@ -382,6 +388,31 @@ func Test_FluxController_SourceAndAttributionEventsHoldTemplates(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return fluxController.initialized.Load() && mgr.GetCache().WaitForCacheSync(ctx)
 	}, 30*time.Second, 100*time.Millisecond, "dynamic GitRepository controller and its watches should be ready")
+
+	// The dynamic controller registers its event handlers asynchronously after it is initialized, and the initial
+	// list of templates does not enqueue sources. Toggle the attribution of a probe template that uses its own source
+	// until that source holds it; this proves attribution updates reach a running controller before the assertions.
+	probeKey := k8sclient.ObjectKeyFromObject(templates[2])
+	require.Eventually(t, func() bool {
+		var probe radappiov1alpha3.DeploymentTemplate
+		if err := direct.Get(ctx, probeKey, &probe); err != nil {
+			return false
+		}
+		if probe.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseHeld {
+			return true
+		}
+		if probe.Spec.SourceRef == nil {
+			probe.Spec.SourceRef = &radappiov1alpha3.DeploymentTemplateSourceReference{
+				Kind: sourcev1.GitRepositoryKind, Namespace: sources[2].Namespace, Name: sources[2].Name,
+				UID: sources[2].UID, Generation: sources[2].Generation,
+			}
+		} else {
+			probe.Spec.SourceRef = nil
+		}
+		// A conflict with the controller's status update is retried on the next tick.
+		_ = direct.Update(ctx, &probe)
+		return false
+	}, 30*time.Second, time.Second, "attribution updates should reach the dynamic GitRepository controller")
 
 	var legacy radappiov1alpha3.DeploymentTemplate
 	legacyKey := k8sclient.ObjectKeyFromObject(templates[0])
