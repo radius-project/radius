@@ -83,7 +83,7 @@ BICEP_VERSION="${BICEP_VERSION:-}"
 # its compiled imports. The version is fixed so the output does not depend on
 # the build channel.
 readonly RECIPE_PACK_ENTRY_FILE="default.bicep"
-readonly RECIPE_PACK_RADIUS_EXTENSION="br:biceptypes.azurecr.io/radius:latest"
+readonly RECIPE_PACK_RADIUS_EXTENSION="br:ghcr.io/radius-project/bicep-types-radius:edge"
 
 # YAML keys of the two pin sections in defaults.yaml.
 readonly RESOURCE_TYPES_SECTION="resourceTypes"
@@ -656,7 +656,7 @@ vendor_recipe_pack() {
     # finds, regardless of any config in the fetched tree.
     build_dir="$(mktemp -d)"
     cp "${src}" "${build_dir}/${RECIPE_PACK_ENTRY_FILE}"
-    printf '{\n  "extensions": {\n    "radius": "%s"\n  }\n}\n' \
+    printf '{\n  "experimentalFeaturesEnabled": {"ociEnabled": true},\n  "extensions": {\n    "radius": "%s"\n  }\n}\n' \
         "${RECIPE_PACK_RADIUS_EXTENSION}" >"${build_dir}/bicepconfig.json"
     if ! "${BICEP}" build "${build_dir}/${RECIPE_PACK_ENTRY_FILE}" --outfile "${build_dir}/default.json"; then
         rm -rf "${build_dir}"
