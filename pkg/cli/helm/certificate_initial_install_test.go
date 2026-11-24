@@ -39,6 +39,8 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/release"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -50,6 +52,104 @@ import (
 	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
 )
+
+func TestFailedBootstrapRetryRejectsChangedTransaction(t *testing.T) {
+	for _, change := range []string{"label", "values", "provider", "chart", "complete", "namespace", "upgrade", "preflight"} {
+		t.Run(change, func(t *testing.T) {
+			b, _ := initialControllerFixture(t, "selfSigned", "external")
+			b.applyFixture = func(context.Context) error { return errors.New("fixture install failed") }
+			require.ErrorContains(t, b.run(t.Context()), "fixture install failed")
+			previous := &releasev1.Release{Name: b.store.release, Namespace: b.store.namespace, Version: 1,
+				Chart: cloneChart(b.selected), Config: copyValues(b.values),
+				Labels: map[string]string{initialCertificateIntent: b.state.ID},
+				Info:   &releasev1.Info{Status: releasecommon.StatusFailed}}
+			selected := cloneChart(b.selected)
+			switch change {
+			case "label":
+				previous.Labels[initialCertificateIntent] = "unrelated"
+			case "values":
+				previous.Config["unrelated"] = true
+			case "provider":
+				setValue(previous.Config, "radius", "global", "rbac", "tls", "provider")
+			case "chart":
+				selected.Metadata.Version = "99.0.0"
+			case "complete":
+				b.state.Phase = "complete"
+				data, err := json.Marshal(b.state)
+				require.NoError(t, err)
+				journal := b.journal.DeepCopy()
+				journal.Data[rotationJournalKey] = string(data)
+				_, err = b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Update(t.Context(), journal, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			case "namespace":
+				ns, err := b.store.kube.CoreV1().Namespaces().Get(t.Context(), b.store.namespace, metav1.GetOptions{})
+				require.NoError(t, err)
+				ns.UID = "replaced"
+				_, err = b.store.kube.CoreV1().Namespaces().Update(t.Context(), ns, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+			options := b.options
+			options.Radius.Reinstall, options.RadiusInstalled = true, true
+			options.Radius.ChartPath = "chart"
+			options.Contour.Disabled = true
+			options.RadiusReleaseValues, options.RadiusReleaseChart = previous.Config, previous.Chart
+			h := NewMockHelmClient(gomock.NewController(t))
+			h.EXPECT().LoadChart("chart").Return(selected, nil).MaxTimes(1)
+			h.EXPECT().RunHelmHistory(gomock.Any(), b.store.release).Return([]*releasev1.Release{previous}, nil).MaxTimes(1)
+			b.impl.Helm = h
+			run := b.impl.InstallRadius
+			if change == "upgrade" {
+				run = b.impl.UpgradeRadius
+			} else if change == "preflight" {
+				run = b.impl.CheckRadiusCertificates
+			}
+			kube := b.store.kube.(*kubefake.Clientset)
+			kube.ClearActions()
+			require.Error(t, run(t.Context(), options, ""))
+			for _, action := range kube.Actions() {
+				require.Contains(t, []string{"get", "list"}, action.GetVerb(), "%s mutated %s", change, action.GetResource())
+			}
+		})
+	}
+}
+
+func TestFailedBootstrapRetryRechecksJournal(t *testing.T) {
+	for _, change := range []string{"journal", "release"} {
+		t.Run(change, func(t *testing.T) {
+			b, _ := initialControllerFixture(t, "selfSigned", "external")
+			b.applyFixture = func(context.Context) error { return errors.New("fixture install failed") }
+			require.ErrorContains(t, b.run(t.Context()), "fixture install failed")
+			previous := &releasev1.Release{Name: b.store.release, Namespace: b.store.namespace, Version: 1,
+				Chart: cloneChart(b.selected), Config: copyValues(b.values),
+				Labels: map[string]string{initialCertificateIntent: b.state.ID},
+				Info:   &releasev1.Info{Status: releasecommon.StatusFailed}}
+			options := b.options
+			options.Radius.Reinstall, options.RadiusInstalled = true, true
+			options.RadiusReleaseChart, options.RadiusReleaseValues = previous.Chart, previous.Config
+			h := NewMockHelmClient(gomock.NewController(t))
+			h.EXPECT().RunHelmHistory(gomock.Any(), b.store.release).Return([]*releasev1.Release{previous}, nil)
+			b.impl.Helm = h
+			_, plan, _, err := b.impl.selectActionCertificates(t.Context(), &options, b.selected, nil, copyValues(b.values), "", true)
+			require.NoError(t, err)
+			changed := *previous
+			if change == "release" {
+				changed.Labels = map[string]string{initialCertificateIntent: "another-transaction"}
+			} else {
+				journal := b.journal.DeepCopy()
+				journal.Annotations = map[string]string{"changed": "true"}
+				_, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Update(t.Context(), journal, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+			h.EXPECT().RunHelmHistory(gomock.Any(), b.store.release).Return([]*releasev1.Release{&changed}, nil)
+			kube := b.store.kube.(*kubefake.Clientset)
+			kube.ClearActions()
+			require.ErrorContains(t, plan.recheck(), "changed since")
+			for _, action := range kube.Actions() {
+				require.Contains(t, []string{"get", "list"}, action.GetVerb())
+			}
+		})
+	}
+}
 
 // initialControllerFixture simulates issuance only. It never runs cert-manager,
 // CSI, cainjector, a workload, or an authenticated observer.

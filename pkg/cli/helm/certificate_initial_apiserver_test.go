@@ -32,6 +32,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -281,6 +282,12 @@ spec:
 	recorded, err := impl.Helm.RunHelmGet(configuration, store.release)
 	require.NoError(t, err)
 	require.Equal(t, 1, recorded.Version)
+	// A failed first Helm action has no deployed baseline, but its published
+	// bootstrap and transaction-labelled release still authorize an identical retry.
+	recorded.Info.Status = releasecommon.StatusFailed
+	require.NoError(t, configuration.Releases.Update(recorded))
+	recorded, err = impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
 	options.RadiusInstalled, options.Radius.Reinstall, options.RadiusReleaseValues = true, true, recorded.Config
 	inject()
 	reject()
@@ -292,6 +299,13 @@ spec:
 	require.Equal(t, journal.UID, resumed.UID)
 	require.Equal(t, state.ID, again.ID)
 	require.Equal(t, "published", again.Phase)
+	require.NoError(t, requests.Delete(ctx, "inject-volume", metav1.DeleteOptions{}))
+	require.ErrorContains(t, impl.InstallRadius(ctx, options, "fixture"), "aggregation deployment has not converged")
+	retried, err := impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
+	require.Equal(t, 2, retried.Version)
+	require.Equal(t, releasecommon.StatusDeployed, retried.Info.Status)
+	require.Equal(t, state.ID, retried.Labels[initialCertificateIntent])
 }
 
 func checkHistoricalBootstrapRetry(t *testing.T, store *rotationStore, kubeconfig string) {

@@ -328,6 +328,11 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 	b.state.NamespaceUID = namespace.UID
 	return withIdentityOperation(ctx, b.store.kube, b.store.namespace, func(operation *identityOperation) error {
 		b.operation = operation
+		if b.importPlan != nil && b.importPlan.recheck != nil {
+			if err := b.importPlan.recheck(); err != nil {
+				return err
+			}
+		}
 		if b.journal == nil {
 			if err := b.checkFresh(ctx); err != nil {
 				return err
