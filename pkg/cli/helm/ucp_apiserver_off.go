@@ -334,8 +334,8 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 // ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate of its
 // name exists, or, for ucp-apiserver-tls, the Radius release's Certificate ucp-cert writes another Secret by
 // spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
-// only ca.crt, the allow-direct-injection annotation and the release annotations, which is what rad and the chart README's plain-Helm steps
-// write.
+// only ca.crt, the allow-direct-injection annotation and the release annotations, which is what rad and the chart
+// README's plain-Helm steps write. A Secret that the live UCP pod template references is never a leftover.
 //
 // It checks the Secret's markers before it reads the Certificate, so a Secret rad does not own is foreign without any
 // cert-manager read. When keepUnreadable is set, an owned Secret whose Certificate rad is Forbidden to read is
@@ -351,6 +351,12 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 		return found, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, leftover.secret, err)
 	}
 	found.object = secret
+	// A Secret that the live UCP pod template still references, in a volume or a container environment, stays: a
+	// replacement pod could not start without it.
+	referenced, err := ucpReferencesSecret(ctx, kubeClient, radiusNamespace, leftover.secret)
+	if err != nil || referenced {
+		return found, err
+	}
 	if !ownsUCPOffSecret(secret, leftover) {
 		found.state = ucpOffSecretForeign
 		return found, nil

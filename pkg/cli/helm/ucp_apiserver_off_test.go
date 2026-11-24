@@ -442,6 +442,32 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.True(t, apierrors.IsNotFound(err), "Secret %s has no Certificate, got %v", ucpAPIServerTLSSecretName, err)
 	})
 
+	// UCP may still use ucp-apiserver-tls through another part of its pod template, such as a projected volume, after
+	// it serves ucp-cert; cleanup keeps the Secret until no part of the template references it.
+	for _, projected := range []bool{true, false} {
+		t.Run(fmt.Sprintf("ucp projects ucp-apiserver-tls=%t", projected), func(t *testing.T) {
+			c := newOffAfterOnCluster(t)
+			if projected {
+				deployments := c.kube.AppsV1().Deployments(RadiusSystemNamespace)
+				deployment, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+				require.NoError(t, err)
+				deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, corev1.Volume{Name: "sidecar-tls",
+					VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{
+						{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}}}})
+				_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+
+			require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			c.requireOffAPIService(t)
+			if projected {
+				require.NotNil(t, c.secret(t, ucpAPIServerTLSSecretName), "UCP still projects Secret %s", ucpAPIServerTLSSecretName)
+			} else {
+				require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName), "nothing uses Secret %s", ucpAPIServerTLSSecretName)
+			}
+		})
+	}
+
 	// A rollback to a chart before radius-apiserver-ca with authorization on renders the Radius release's Certificate
 	// ucp-cert, which writes ucp-mtls; only a ucp-cert Certificate that still writes ucp-apiserver-tls keeps it.
 	for _, tt := range []struct {

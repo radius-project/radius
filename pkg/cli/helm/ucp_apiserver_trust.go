@@ -208,6 +208,20 @@ func ucpServesFromOtherSecret(ctx context.Context, client kubernetes.Interface, 
 		mounted != "" && mounted != secretName && !podTemplateReferencesSecret(deployment, secretName), nil
 }
 
+// ucpReferencesSecret reports whether the pod template of the live ucp Deployment references secretName, so a UCP pod,
+// current or replacement, may still need it. A missing or terminating Deployment, as after Helm uninstalls the release,
+// references nothing.
+func ucpReferencesSecret(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
+	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
+	}
+	return deployment.DeletionTimestamp == nil && podTemplateReferencesSecret(deployment, secretName), nil
+}
+
 // podTemplateReferencesSecret reports whether deployment's pod template names secretName in a Secret volume, a
 // projected Secret source, or an env secretKeyRef or envFrom secretRef of a container or init container.
 func podTemplateReferencesSecret(deployment *appsv1.Deployment, secretName string) bool {
