@@ -117,6 +117,8 @@ tests:
           path: spec.secretTemplate.annotations
           value:
             cert-manager.io/allow-direct-injection: "true"
+            radapp.io/release-name: radius
+            radapp.io/release-namespace: radius-system
         documentIndex: 6
       - equal:
           path: spec.issuerRef
@@ -149,6 +151,10 @@ tests:
     asserts:
       - equal:
           path: metadata.namespace
+          value: custom-ns
+        documentIndex: 6
+      - equal:
+          path: spec.secretTemplate.annotations["radapp.io/release-namespace"]
           value: custom-ns
         documentIndex: 6
       - equal:

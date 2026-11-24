@@ -198,6 +198,16 @@ ucp-cert
 {{- end -}}
 
 {{/*
+Annotations that cert-manager copies from secretTemplate onto the Secrets it issues for UCP's API
+server Certificates. rad deletes such a Secret after its Certificate is gone only when these name
+this release, so it never deletes a private key another release or an operator wrote.
+*/}}
+{{- define "radius.ucp.issuedSecretAnnotations" -}}
+radapp.io/release-name: {{ .Release.Name | quote }}
+radapp.io/release-namespace: {{ .Release.Namespace | quote }}
+{{- end -}}
+
+{{/*
 Hash of the authorization settings a component reads at startup, for the checksum/authz-config pod
 annotation, so changing any of them rolls the pods.
 */}}

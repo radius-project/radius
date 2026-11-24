@@ -49,6 +49,13 @@ var ucpInjectAnnotations = []string{
 // certificateNameAnnotation is the annotation cert-manager sets on each Secret it issues, naming its Certificate.
 const certificateNameAnnotation = "cert-manager.io/certificate-name"
 
+// The chart's UCP API server Certificates set these annotations through secretTemplate, so each Secret cert-manager
+// issues for them names the Helm release that declared the Certificate.
+const (
+	releaseNameAnnotation      = "radapp.io/release-name"
+	releaseNamespaceAnnotation = "radapp.io/release-namespace"
+)
+
 // ucpOffLeftoverSecret is a Secret that only authorization on uses. certificate names the cert-manager Certificate
 // that issues it, or is empty for radius-apiserver-trust, which rad writes. With authorization off, Helm removes
 // those Certificates, but cert-manager keeps their Secrets.
@@ -236,7 +243,8 @@ func (i *Impl) warnForeignUCPOffSecrets(kubeContext, radiusNamespace string, fou
 		if f.state != ucpOffSecretForeign {
 			continue
 		}
-		owner := fmt.Sprintf("cert-manager did not issue for Certificate %s", f.certificate)
+		owner := fmt.Sprintf("cert-manager did not issue for Certificate %s of Helm release %q, as its annotations %s and %s show",
+			f.certificate, radiusReleaseName, releaseNameAnnotation, releaseNamespaceAnnotation)
 		if f.certificate == "" {
 			owner = fmt.Sprintf("does not hold only a non-empty %s with annotation %s=true as rad writes it", caCertificateKey, allowDirectInjectionAnnotation)
 		}
@@ -327,10 +335,14 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 	return found, nil
 }
 
-// ownsUCPOffSecret reports whether rad's contract owns secret, the Secret of leftover.
+// ownsUCPOffSecret reports whether rad's contract owns secret, the Secret of leftover. cert-manager must have issued a
+// Secret with a Certificate for leftover's Certificate of the Radius release, as the release annotations that the
+// chart's secretTemplate sets show; the certificate-name annotation alone does not identify the release.
 func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool {
 	if leftover.certificate != "" {
-		return secret.Annotations[certificateNameAnnotation] == leftover.certificate
+		return secret.Annotations[certificateNameAnnotation] == leftover.certificate &&
+			secret.Annotations[releaseNameAnnotation] == radiusReleaseName &&
+			secret.Annotations[releaseNamespaceAnnotation] == secret.Namespace
 	}
 	return ownsUCPAPIServerTrust(secret)
 }

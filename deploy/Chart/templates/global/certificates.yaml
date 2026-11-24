@@ -108,9 +108,12 @@ spec:
   commonName: radius-apiserver-ca
   secretName: radius-apiserver-ca
   # Lets cert-manager's cainjector copy ca.crt, this self-signed CA certificate, into UCP's APIService.
+  # The release annotations mark the Secret as this release's, so rad deletes it only for this release
+  # once its Certificate is gone.
   secretTemplate:
     annotations:
       cert-manager.io/allow-direct-injection: "true"
+      {{- include "radius.ucp.issuedSecretAnnotations" . | nindent 6 }}
   # 1 year, renewed at two-thirds of its lifetime, keeping the key like radius-ca.
   duration: 8760h
   renewBefore: 2920h

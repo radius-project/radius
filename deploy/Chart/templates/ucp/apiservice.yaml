@@ -15,6 +15,10 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   secretName: {{ include "radius.ucp.apiServerSecretName" . }}
+  # Marks the Secret as this release's, so rad deletes it only for this release once this Certificate is gone.
+  secretTemplate:
+    annotations:
+      {{- include "radius.ucp.issuedSecretAnnotations" . | nindent 6 }}
   # 24 hours, renewed at two-thirds of its lifetime.
   duration: 24h
   renewBefore: 8h

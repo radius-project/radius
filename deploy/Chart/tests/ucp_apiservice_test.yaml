@@ -89,6 +89,12 @@ tests:
           value: [ucp.radius-system.svc]
         documentIndex: 0
       - equal:
+          path: spec.secretTemplate.annotations
+          value:
+            radapp.io/release-name: radius
+            radapp.io/release-namespace: radius-system
+        documentIndex: 0
+      - equal:
           path: spec.usages
           value:
             - digital signature
@@ -288,6 +294,10 @@ tests:
       - equal:
           path: spec.dnsNames
           value: [ucp.custom-ns.svc]
+        documentIndex: 0
+      - equal:
+          path: spec.secretTemplate.annotations["radapp.io/release-namespace"]
+          value: custom-ns
         documentIndex: 0
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]

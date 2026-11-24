@@ -116,15 +116,22 @@ func tlsSecret(name string, crt, caCrt []byte) *corev1.Secret {
 // whose ca.crt is the CA certificate itself, annotated by secretTemplate so cainjector may copy it.
 func apiServerCASecret(ca testCA) *corev1.Secret {
 	secret := tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem)
-	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true", "cert-manager.io/certificate-name": ucpAPIServerCASecretName}
+	secret.Annotations = issuedSecretAnnotations(ucpAPIServerCASecretName)
+	secret.Annotations[allowDirectInjectionAnnotation] = "true"
 	return secret
+}
+
+// issuedSecretAnnotations are the annotations of a Secret that cert-manager issued for Certificate certificate of the
+// Radius release: its own certificate-name annotation and the release annotations of the chart's secretTemplate.
+func issuedSecretAnnotations(certificate string) map[string]string {
+	return map[string]string{certificateNameAnnotation: certificate, releaseNameAnnotation: radiusReleaseName, releaseNamespaceAnnotation: RadiusSystemNamespace}
 }
 
 // apiServerTLSSecret is ucp-apiserver-tls as cert-manager issues it for Certificate ucp-cert from radius-apiserver-ca.
 func apiServerTLSSecret(t *testing.T, ca testCA) *corev1.Secret {
 	t.Helper()
 	secret := tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, ca), ca.pem)
-	secret.Annotations = map[string]string{"cert-manager.io/certificate-name": ucpAPIServerCertificateName}
+	secret.Annotations = issuedSecretAnnotations(ucpAPIServerCertificateName)
 	return secret
 }
 

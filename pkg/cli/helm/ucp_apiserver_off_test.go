@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 
@@ -253,6 +254,33 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		require.Empty(t, c.clusterWrites())
 	})
+
+	// cert-manager sets certificate-name on every Secret it issues, so a fresh install with authorization off, which
+	// has no Certificate of that name, must not delete a private key another release or an operator issued for one.
+	for _, release := range []map[string]string{nil, {releaseNameAnnotation: "other", releaseNamespaceAnnotation: RadiusSystemNamespace}} {
+		t.Run(fmt.Sprintf("keeps Secrets issued for a Certificate of that name for release %q", release[releaseNameAnnotation]), func(t *testing.T) {
+			c := newOffAfterOnCluster(t)
+			secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
+			for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName} {
+				secret := c.secret(t, name)
+				delete(secret.Annotations, releaseNameAnnotation)
+				delete(secret.Annotations, releaseNamespaceAnnotation)
+				maps.Copy(secret.Annotations, release)
+				_, err := secrets.Update(t.Context(), secret, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+			logs := []string{}
+			impl := c.impl(nil)
+			impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
+
+			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			c.requireOffAPIService(t)
+			for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName} {
+				require.NotNil(t, c.secret(t, name), "rad must not delete Secret %s, which the Radius release did not issue", name)
+				require.Contains(t, strings.Join(logs, "\n"), fmt.Sprintf(`Warning: rad did not delete Secret radius-system/%s`, name))
+			}
+		})
+	}
 
 	t.Run("nothing to do without the APIService or Secret ucp-cert", func(t *testing.T) {
 		c := newStageCluster(t, nil, false)

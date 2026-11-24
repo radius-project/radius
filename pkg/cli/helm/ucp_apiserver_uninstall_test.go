@@ -289,7 +289,7 @@ func Test_UninstallRadius_ChangedLeftoverKeepsCertManager(t *testing.T) {
 			setup: func(t *testing.T, kubeClient *kubefake.Clientset, _ *dynamicfake.FakeDynamicClient) {
 				require.NoError(t, kubeClient.Tracker().Add(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName,
 					Namespace: RadiusSystemNamespace, UID: "uid-ca", ResourceVersion: "1",
-					Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}))
+					Annotations: issuedSecretAnnotations(ucpAPIServerCASecretName)}}))
 				changed := false
 				kubeClient.PrependReactor("delete", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
 					if changed || action.(k8stesting.DeleteAction).GetName() != ucpAPIServerCASecretName {
@@ -338,7 +338,7 @@ func Test_UninstallRadius_ChangedLeftoverKeepsCertManager(t *testing.T) {
 func Test_UninstallRadius_DeletesUCPAPIServerSecrets(t *testing.T) {
 	issued := func(name, certificate string) *corev1.Secret {
 		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: RadiusSystemNamespace, UID: types.UID("uid-" + name), ResourceVersion: "1",
-			Annotations: map[string]string{certificateNameAnnotation: certificate}}}
+			Annotations: issuedSecretAnnotations(certificate)}}
 	}
 	stagedOffCertificate := func(release string) *unstructured.Unstructured {
 		object := stagedUCPAPIServerObject("Secret", ucpOffCertificateSecretName, release, nil)
@@ -367,11 +367,36 @@ func Test_UninstallRadius_DeletesUCPAPIServerSecrets(t *testing.T) {
 				"radius-system/radius-apiserver-ca", "radius-system/ucp-apiserver-tls",
 			},
 		},
+		{
+			// cert-manager sets certificate-name on every Secret it issues, so a Secret that another release or an
+			// operator issued for a Certificate of that name has it too; only the chart's release annotations make it
+			// this release's.
+			name:     "issued for a Certificate of that name without the release annotations",
+			secrets:  []runtime.Object{foreignIssuedSecret(ucpAPIServerCASecretName, ucpAPIServerCASecretName, nil), foreignIssuedSecret(ucpAPIServerTLSSecretName, ucpAPIServerCertificateName, nil)},
+			wantKept: []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName},
+			wantLogged: []string{
+				`Secret radius-system/radius-apiserver-ca, which cert-manager did not issue for Certificate radius-apiserver-ca of Helm release "radius"`,
+				`Secret radius-system/ucp-apiserver-tls, which cert-manager did not issue for Certificate ucp-cert of Helm release "radius"`,
+			},
+		},
+		{
+			name: "issued for another release",
+			secrets: []runtime.Object{
+				foreignIssuedSecret(ucpAPIServerCASecretName, ucpAPIServerCASecretName, map[string]string{releaseNameAnnotation: "other", releaseNamespaceAnnotation: RadiusSystemNamespace}),
+				foreignIssuedSecret(ucpAPIServerTLSSecretName, ucpAPIServerCertificateName, map[string]string{releaseNameAnnotation: radiusReleaseName, releaseNamespaceAnnotation: "other"}),
+			},
+			wantKept:   []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName},
+			wantLogged: []string{"radius-system/radius-apiserver-ca", "radius-system/ucp-apiserver-tls"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			kubeClient := kubefake.NewSimpleClientset(tt.secrets...)
-			dynamicClient := fakeCertManagerDynamicClient(nil, tt.staged)
+			var staged []runtime.Object
+			if tt.staged != nil {
+				staged = append(staged, tt.staged)
+			}
+			dynamicClient := fakeCertManagerDynamicClient(nil, staged...)
 			mockHelmClient := NewMockHelmClient(gomock.NewController(t))
 			options := NewDefaultClusterOptions()
 			for _, c := range []struct{ releaseName, ns string }{
@@ -412,6 +437,15 @@ func Test_UninstallRadius_DeletesUCPAPIServerSecrets(t *testing.T) {
 	}
 }
 
+// foreignIssuedSecret is a Secret that cert-manager issued for a Certificate named certificate, with release
+// annotations release, but that the Radius release did not declare.
+func foreignIssuedSecret(name, certificate string, release map[string]string) *corev1.Secret {
+	annotations := map[string]string{certificateNameAnnotation: certificate}
+	maps.Copy(annotations, release)
+	return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: RadiusSystemNamespace, UID: types.UID("uid-" + name), ResourceVersion: "1",
+		Annotations: annotations}}
+}
+
 // A rollback, or an upgrade, to a chart that still declares part of the radius-apiserver-ca chain, such as the
 // radius-selfsigned-bootstrap Issuer of the parent chart, must not delete that part after Helm applies it.
 func Test_deleteUnadoptedUCPAPIServerStage_KeepsDeclaredObjects(t *testing.T) {
@@ -435,7 +469,7 @@ func Test_deleteUnadoptedUCPAPIServerStage_KeepsDeclaredObjects(t *testing.T) {
 func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	issued := func(name, certificate string) *corev1.Secret {
 		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: RadiusSystemNamespace, UID: types.UID("uid-" + name), ResourceVersion: "1",
-			Annotations: map[string]string{certificateNameAnnotation: certificate}}}
+			Annotations: issuedSecretAnnotations(certificate)}}
 	}
 	trust := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "uid-trust", ResourceVersion: "1",
@@ -493,7 +527,7 @@ func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
 	for _, changed := range []string{"", "Secret", "Certificate"} {
 		t.Run("changed="+changed, func(t *testing.T) {
 			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
-				ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+				ResourceVersion: "1", Annotations: issuedSecretAnnotations(ucpAPIServerCASecretName)}}
 			kubeClient := kubefake.NewSimpleClientset(secret)
 			kubeClient.PrependReactor("delete", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
 				live, err := kubeClient.Tracker().Get(secretsResource, RadiusSystemNamespace, ucpAPIServerCASecretName)
