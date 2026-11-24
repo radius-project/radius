@@ -86,6 +86,10 @@ fake_bicep() {
         build)
             [[ "$3" == "--outfile" ]] || return 2
             [[ -f "$(dirname "$2")/bicepconfig.json" ]] || return 3
+            yq -e '
+                .experimentalFeaturesEnabled.ociEnabled == true and
+                .extensions.radius == "br:ghcr.io/radius-project/bicep-types-radius:edge"
+            ' "$(dirname "$2")/bicepconfig.json" >/dev/null || return 4
             printf '{"metadata":{"_generator":{"version":"0.46.1"}},"marker":"%s"}\n' \
                 "$(cat "$2")" >"$4"
             ;;

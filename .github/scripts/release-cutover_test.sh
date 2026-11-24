@@ -68,6 +68,8 @@ test_release_job_graph() {
         "coordinate-release",
         "finalize-release",
         "goreleaser-release",
+        "publish-legacy-bicep-types",
+        "publish-radius-bicep-extension",
         "publish-sibling-releases",
         "release-preflight",
         "verify-release"
@@ -118,8 +120,37 @@ test_publication_gate() {
         (."finalize-release".steps | any(
           .name == "Promote verified Bicep aliases" and
           (.if | contains("promote_channel")) and
-          (."continue-on-error" // false) == false))
-    ' > /dev/null; then
+          (."continue-on-error" // false) == false)) and
+        (."finalize-release".steps | map(.name) |
+          index("Recheck outputs after approval") < index("Get Bicep promotion token") and
+          index("Promote and mirror locked Bicep extensions") < index("Publish and verify draft GitHub Release")) and
+        ."finalize-release".permissions."id-token" == null and
+        (."finalize-release".steps | any(
+          .name == "Promote and mirror locked Bicep extensions" and
+          .with."github-token" == "${{ steps.promotion-token.outputs.token }}" and
+          (.with.script | contains("promote-release-bicep.mjs")))) and
+        (."finalize-release".steps | all(.[]; ((.run // "") | test("azure-oidc-login|az acr")) | not)) and
+        ."publish-radius-bicep-extension".uses == "./.github/workflows/__publish-release-bicep.yaml" and
+        (."publish-legacy-bicep-types".if | contains("ghcr-bicep == '\''false'\''")) and
+        (."publish-radius-bicep-extension".if | contains("ghcr-bicep == '\''true'\''")) and
+        (."release-preflight".steps |
+          all((.uses // "" | contains("create-github-app-token")) | not)) and
+        (."build-and-push-bicep-types".steps |
+          map(select(.uses // "" | contains("create-github-app-token"))) |
+          length == 1 and all(.[]; .name == "Get immutable Bicep mirror token" and
+            (.if | contains("ghcr-bicep == '\''true'\''")) and
+            .with.owner == "azure-octo" and .with.repositories == "radius-publisher")) and
+        (."build-and-push-bicep-types".steps | map(.name) |
+          index("Authenticate and retain immutable extension pair") <
+          index("Stage immutable ACR mirrors before verification")) and
+        (."verify-release".needs | index("build-and-push-bicep-types") != null) and
+        (."finalize-release".steps | map(select(
+          .name == "Get Bicep promotion token" or .name == "Promote verified Bicep aliases")) |
+          length == 2 and all(.[]; .if | contains("ghcr-bicep == '\''false'\''"))) and
+        (."finalize-release".steps | any(.name == "Get Bicep promotion token" and
+          (.if | contains("ghcr-bicep == '\''true'\''")))) and
+        (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json"))
+    ' >/dev/null; then
         fail_test "failed verification or missing approval can reach publication"
         return
     fi
@@ -161,6 +192,8 @@ test_privileged_jobs_require_preflight() {
         build-and-push-helm-chart \
         build-and-push-bicep-types \
         attest-release \
+        publish-legacy-bicep-types \
+        publish-radius-bicep-extension \
         finalize-release; do
         needs="$(JOB="${job}" yq -o=json '
             .jobs[strenv(JOB)].needs
@@ -450,7 +483,7 @@ test_release_resume_contract() {
     published_guards="$(grep -Fc \
         "needs.release-preflight.outputs.release-state != 'published'" \
         "${RELEASE_WORKFLOW}")"
-    if [[ "${published_guards}" != "7" ]]; then
+    if [[ "${published_guards}" != "9" ]]; then
         fail_test "published releases can re-enter mutating jobs"
         return
     fi
@@ -514,8 +547,9 @@ test_bicep_image_uses_staged_extension_versions() {
     if ! yq -o=json '.jobs."build-and-push-remaining-images".steps' \
         "${RELEASE_WORKFLOW}" | jq -e '
         any(.[]; .run == "make docker-publish-bicep" and
-            .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}")
-    ' > /dev/null; then
+            .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}" and
+            .env.BICEP_RELEASE_PLAN == ".github/release-plans/${{ github.ref_name }}.yaml")
+    ' >/dev/null; then
         fail_test "release Bicep image still depends on unpublished channel aliases"
         return
     fi
@@ -530,12 +564,12 @@ test_bicep_image_uses_staged_extension_versions() {
         trap 'rm -rf "${directory}"' EXIT
         for tag in edge 0.61.0 0.61.2 0.61.0-rc.1; do
             expected="${tag}"
-            [[ "${tag}" != edge ]] || expected=latest
             bash "${REPO_ROOT}/build/scripts/generate-bicepconfig.sh" \
                 "${tag}" "${directory}"
             jq -e --arg tag "${expected}" '
-                .extensions.radius == ("br:biceptypes.azurecr.io/radius:" + $tag) and
-                .extensions.aws == ("br:biceptypes.azurecr.io/aws:" + $tag)
+                .experimentalFeaturesEnabled.ociEnabled == true and
+                .extensions.radius == ("br:ghcr.io/radius-project/bicep-types-radius:" + $tag) and
+                .extensions.aws == ("br:ghcr.io/radius-project/bicep-types-aws:" + $tag)
             ' "${directory}/bicepconfig.json" > /dev/null || exit 1
         done
     ); then

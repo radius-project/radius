@@ -118,7 +118,12 @@ export function verifySnapshot(artifact, source) {
   );
 }
 
-export function selectSnapshot(artifacts, source, reuseRequested = false) {
+export function selectSnapshot(
+  artifacts,
+  source,
+  reuseRequested = false,
+  firstCaptureProven = false
+) {
   const matches = artifacts.filter(
     (artifact) => artifact.name === snapshotName(source)
   );
@@ -132,10 +137,186 @@ export function selectSnapshot(artifacts, source, reuseRequested = false) {
     return matches[0].id;
   }
   assert.ok(
-    source.generationAttempt === 1 && !reuseRequested,
+    !reuseRequested && (source.generationAttempt === 1 || firstCaptureProven),
     "Retry snapshot missing; recover the original run artifact, never regenerate"
   );
   return "";
+}
+
+export async function proveFirstCapture(github, source, expected, run = tool) {
+  const { data: current } = await github.rest.actions.getWorkflowRunAttempt({
+    ...repo,
+    run_id: source.runId,
+    attempt_number: source.generationAttempt,
+    request: request()
+  });
+  await verifyRun(github, source);
+  assert.ok(
+    positive(current.run_number),
+    "Missing authenticated current run sequence"
+  );
+  const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+    ...repo,
+    workflow_id: "build-release.yaml",
+    per_page: 100,
+    request: request()
+  });
+  const matching = runs.filter(
+    (entry) =>
+      entry.head_sha === source.commit &&
+      entry.head_branch === source.ref.slice("refs/tags/".length) &&
+      ["push", "workflow_dispatch"].includes(entry.event)
+  );
+  const histories = matching.filter((entry) => entry.id !== source.runId);
+  histories.push({ id: source.runId, run_attempt: source.generationAttempt });
+  for (const history of histories) {
+    assert.ok(
+      positive(history.id) && positive(history.run_attempt),
+      "Unknown prior generation history"
+    );
+    const artifacts = await github.paginate(
+      github.rest.actions.listWorkflowRunArtifacts,
+      {
+        ...repo,
+        run_id: history.id,
+        per_page: 100,
+        request: request()
+      }
+    );
+    assert.ok(
+      !artifacts.some(
+        (artifact) => artifact.name === `bicep-types-radius-${history.id}.tar`
+      ),
+      "Original snapshot exists; reuse it rather than capture again"
+    );
+    const lastAttempt =
+      history.id === source.runId ?
+        source.generationAttempt - 1
+      : history.run_attempt;
+    for (let attempt = 1; attempt <= lastAttempt; attempt++) {
+      const { data: prior } = await github.rest.actions.getWorkflowRunAttempt({
+        ...repo,
+        run_id: history.id,
+        attempt_number: attempt,
+        request: request()
+      });
+      await verifyRun(github, { ...source, runId: history.id }, attempt);
+      const jobs = await github.paginate(
+        github.rest.actions.listJobsForWorkflowRunAttempt,
+        {
+          ...repo,
+          run_id: history.id,
+          attempt_number: attempt,
+          per_page: 100,
+          request: request()
+        }
+      );
+      if (
+        history.id !== source.runId &&
+        attempt === history.run_attempt &&
+        positive(prior.run_number) &&
+        prior.run_number > current.run_number &&
+        ["queued", "pending"].includes(prior.status)
+      ) {
+        assert.ok(
+          jobs.every(
+            (job) =>
+              ["queued", "pending"].includes(job.status) &&
+              !job.started_at &&
+              (job.steps ?? []).every(
+                (step) =>
+                  ["queued", "pending"].includes(step.status) &&
+                  !step.started_at
+              )
+          ),
+          "Queued run may already have started generation"
+        );
+        continue;
+      }
+      assert.equal(
+        prior.status,
+        "completed",
+        "Earlier matching run is still active"
+      );
+      const captures = jobs.filter(
+        (job) =>
+          job.name === "Capture versioned Radius Bicep types" ||
+          job.name.endsWith(" / Capture versioned Radius Bicep types") ||
+          job.name === "Stage full-version Radius Bicep extension"
+      );
+      assert.equal(
+        captures.length,
+        1,
+        "Cannot prove prior generation never started"
+      );
+      const job = captures[0];
+      assert.equal(job.status, "completed", "Prior capture state is unknown");
+      if (job.conclusion !== "skipped") {
+        for (const name of [
+          "Generate types once for the full release version",
+          "Capture native Bicep OCI snapshot",
+          "Retain original native snapshot"
+        ]) {
+          const steps = job.steps?.filter((step) => step.name === name);
+          assert.equal(
+            steps?.length,
+            1,
+            "Cannot prove prior generation step was skipped"
+          );
+          assert.equal(steps[0].status, "completed");
+          assert.equal(
+            steps[0].conclusion,
+            "skipped",
+            "Prior generation may have started"
+          );
+        }
+      }
+    }
+  }
+  assert.equal(
+    await existingManifest(expected.reference, run),
+    null,
+    "Immutable full version exists; never regenerate"
+  );
+}
+
+export async function captureSelected(
+  { core, context },
+  directory,
+  env = process.env,
+  run = tool
+) {
+  const selected = await load(join(directory, "capture-selection.json"));
+  assert.equal(
+    core.getInput("generation_run_id"),
+    "",
+    "An explicit generation run may only be reused"
+  );
+  const plan = JSON.parse(
+    await run([
+      "yq",
+      "-o=json",
+      ".",
+      `.github/release-plans/${context.ref.slice("refs/tags/".length)}.yaml`
+    ])
+  );
+  const source = releaseIdentity(context, env, plan);
+  assert.deepEqual(
+    selected.source,
+    source,
+    "Capture selection belongs to another source or attempt"
+  );
+  assert.deepEqual(
+    selected.expected,
+    plannedBicepExtensions(plan, source.commit)[1]
+  );
+  assert.equal((await run(["git", "rev-parse", "HEAD"])).trim(), source.commit);
+  await capture(
+    source,
+    directory,
+    core.getInput("registry", { required: true }),
+    run
+  );
 }
 
 export async function prepareRelease(
@@ -162,13 +343,32 @@ export async function prepareRelease(
     { "org.opencontainers.image.version": expected.version },
     run
   );
-  await verifyRun(github, bundle.source);
+  await verifyGeneration(github, bundle.source, artifact);
+  const record = {
+    ...expected,
+    digest: bundle.manifestDigest,
+    generation: {
+      workflow,
+      runId: bundle.source.runId,
+      runAttempt: bundle.source.generationAttempt,
+      artifactId: artifact.id,
+      artifactDigest: artifact.digest
+    }
+  };
+  const receipt = { status: "prepared", record };
+  await save(join(directory, "receipt.json"), receipt);
+  return receipt;
+}
+
+export async function verifyGeneration(github, source, artifact) {
+  verifySnapshot(artifact, source);
+  await verifyRun(github, source);
   const jobs = await github.paginate(
     github.rest.actions.listJobsForWorkflowRunAttempt,
     {
       ...repo,
       run_id: source.runId,
-      attempt_number: bundle.source.generationAttempt,
+      attempt_number: source.generationAttempt,
       per_page: 100,
       request: request()
     }
@@ -203,20 +403,6 @@ export async function prepareRelease(
       created <= Date.parse(captures[0].completed_at),
     "Snapshot was not uploaded by the recorded generation attempt"
   );
-  const record = {
-    ...expected,
-    digest: bundle.manifestDigest,
-    generation: {
-      workflow,
-      runId: bundle.source.runId,
-      runAttempt: bundle.source.generationAttempt,
-      artifactId: artifact.id,
-      artifactDigest: artifact.digest
-    }
-  };
-  const receipt = { status: "prepared", record };
-  await save(join(directory, "receipt.json"), receipt);
-  return receipt;
 }
 
 // ORAS's exact resolver-not-found diagnostic is the only absence result.
@@ -362,6 +548,11 @@ export default async function script({ github, context, core }) {
   try {
     const directory = core.getInput("directory", { required: true });
     await mkdir(directory, { recursive: true });
+    const operation = core.getInput("operation", { required: true });
+    if (operation === "capture") {
+      await captureSelected({ core, context }, directory);
+      return;
+    }
     const { source, expected } = await approvedRelease(
       { github, context },
       directory
@@ -370,7 +561,6 @@ export default async function script({ github, context, core }) {
     const attempt = core.getInput("generation_run_attempt");
     const generation = generationSource(source, runId, attempt);
     await verifyRun(github, generation);
-    const operation = core.getInput("operation", { required: true });
     if (operation === "select") {
       const artifacts = await github.paginate(
         github.rest.actions.listWorkflowRunArtifacts,
@@ -381,19 +571,26 @@ export default async function script({ github, context, core }) {
           request: request()
         }
       );
-      const id = selectSnapshot(artifacts, generation, Boolean(runId));
+      const hasSnapshot = artifacts.some(
+        (artifact) => artifact.name === snapshotName(generation)
+      );
+      if (!hasSnapshot && !runId)
+        await proveFirstCapture(github, source, expected);
+      const id = selectSnapshot(
+        artifacts,
+        generation,
+        Boolean(runId),
+        !hasSnapshot && !runId
+      );
+      if (id === "")
+        await save(join(directory, "capture-selection.json"), {
+          source,
+          expected
+        });
       core.setOutput("artifact_id", id);
       core.setOutput("generation_run_id", generation.runId);
       core.setOutput("reuse", id !== "");
       core.setOutput("version", expected.version);
-    } else if (operation === "capture") {
-      assert.equal(runId, "", "An explicit generation run may only be reused");
-      assert.equal(source.generationAttempt, 1, "Never regenerate on retry");
-      await capture(
-        source,
-        directory,
-        core.getInput("registry", { required: true })
-      );
     } else if (operation === "prepare") {
       const id = Number(core.getInput("artifact_id", { required: true }));
       assert.ok(positive(id));

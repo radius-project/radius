@@ -346,6 +346,15 @@ test_release_build_contract() {
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \
         'verify-release-build-contract.sh' \
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
+    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
+        '--expected-targets .github/release-parity/targets.json' \
+        "preparation must bind intended targets to the source contract"
+    assert_contains "${CONTROLLER}" \
+        "args+=(--expected-targets \"\${RUNNER_TEMP}/approved-targets.json\")" \
+        "controller must bind approved targets before mutation"
+    assert_contains "${CONTROLLER}" \
+        "yq -o=json '.expectedOutputs'" \
+        "controller targets must come from the approved plan"
 }
 
 publish_step_index() {
@@ -594,6 +603,70 @@ test_controller_checks_radius_pin() {
     fi
 }
 
+test_bicep_evidence_boundary() {
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION == "read" or .env.INPUT_OPERATION == "select") |
+            .env.INPUT_RELEASE_APP_SLUG)' \
+        "[\"\${{ steps.release-token.outputs.app-slug }}\",\"\${{ steps.release-token.outputs.app-slug }}\"]" \
+        "state readers must bind the configured release App identity"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.env.INPUT_OPERATION == "persist") | .env.INPUT_RELEASE_APP_SLUG' \
+        "\"\${{ steps.bicep-state-token.outputs.app-slug }}\"" \
+        "state writer readback must bind its configured App identity"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "aws-read") |
+        [.with.repositories, .with."permission-actions",
+          .with."permission-contents", .with."permission-metadata"]' \
+        '["bicep-types-aws","read","read","read"]' \
+        "AWS evidence token must be a repository-scoped read token"
+    assert_yq "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION != null or
+          .id == "aws-read" or .id == "bicep-state-token")) |
+        all_c(.if | contains("ghcr-bicep == '\''true'\''"))' \
+        "legacy plans must not collect or persist new Bicep evidence"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "bicep-state-token") |
+        [.with.repositories, .with."permission-contents"]' \
+        '["radius","write"]' \
+        "only an explicit Radius token may persist Bicep evidence"
+    assert_contains "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        'automation/bicep-release-state-' \
+        "Bicep evidence must use a separate state ref"
+    assert_not_contains "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        'automation/release-state-' \
+        "Bicep persistence must not alter Deployment Engine state"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "aws-publication") |
+        [.with."github-token", .env.AWS_DISPATCH_TOKEN,
+          .env.BICEP_STATE_TOKEN]' \
+        "[\"\${{ steps.aws-read.outputs.token }}\",\"\${{ steps.release-token.outputs.token }}\",\"\${{ steps.bicep-state-token.outputs.token }}\"]" \
+        "AWS reads, dispatch and Radius marker use separate scoped clients"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "release-token") |
+        [.with.repositories | contains("bicep-types-aws")]' \
+        '[true]' \
+        "existing sibling token must include the AWS dispatch repository"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION != null) |
+          .env.INPUT_OPERATION)' \
+        '["read","select","authenticate","snapshot","persist"]' \
+        "raw source/controller binding must precede evidence persistence"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.env.INPUT_OPERATION == "snapshot") |
+        .with."github-token"' \
+        "\"\${{ steps.aws-read.outputs.token }}\"" \
+        "original generation validation must retain read-only AWS authority"
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -611,6 +684,7 @@ main() {
     test_resume_waits_for_running_tag_build
     test_de_bridge_uses_immutable_destinations
     test_identity_and_cleanup
+    test_bicep_evidence_boundary
 
     if ((FAIL > 0)); then
         echo "Release controller tests failed: ${PASS} passed, ${FAIL} failed"
