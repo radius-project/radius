@@ -167,6 +167,23 @@ func generateLegacySecretSuffix(resourceRecipe *recipes.ResourceMetadata) (strin
 	return hashutil.LegacyHex([]byte(input)), nil
 }
 
+// SecretSuffixes returns the current (SHA-256) and legacy (SHA-1) secret suffixes of the Terraform state of a
+// recipe. The Kubernetes backend stores the state in the Secret named KubernetesBackendNamePrefix followed by the
+// suffix.
+func SecretSuffixes(resourceRecipe *recipes.ResourceMetadata) (current string, legacy string, err error) {
+	current, err = generateSecretSuffix(resourceRecipe)
+	if err != nil {
+		return "", "", err
+	}
+
+	legacy, err = generateLegacySecretSuffix(resourceRecipe)
+	if err != nil {
+		return "", "", err
+	}
+
+	return current, legacy, nil
+}
+
 // secretSuffixInput returns the deterministic input string that the Terraform state secret suffix is
 // derived from for the given recipe.
 func secretSuffixInput(resourceRecipe *recipes.ResourceMetadata) (string, error) {

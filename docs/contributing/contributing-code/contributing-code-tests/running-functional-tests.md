@@ -232,7 +232,11 @@ Newly installed Gateway API resources may not appear immediately in Kubernetes A
 
 ### Bicep reports that a local extension has not been restored
 
-`BCP190` for `br:localhost:5443/radius:<tag>` or `br:localhost:5443/testresources:<tag>` is a local extension-cache error, not a deployed-resource failure. The runner restores both extensions serially in the selected suite's isolated HOME and verifies a template with `--no-restore` before launching the tests. This avoids relying on concurrent builds to populate a shared cold cache.
+`BCP190` for `br:radius-local-registry:5443/radius:<tag>` or `br:radius-local-registry:5443/testresources:<tag>` is a local extension-cache error, not a deployed-resource failure. The runner restores both extensions serially in the selected suite's isolated HOME and verifies a template with `--no-restore` before launching the tests. This avoids relying on concurrent builds to populate a shared cold cache.
+
+The runner uses its existing certificate-covered `radius-local-registry` alias for Bicep extension and recipe publication and consumption. With OCI enabled in the root config, native Bicep publication treats `localhost` as HTTP; using the alias keeps the TLS-only registry working without disabling certificate validation. Docker image pushes and the HTTPS readiness probe retain their localhost endpoints.
+
+Temporary test configs also enable OCI and read the public AWS extension from `br:ghcr.io/radius-project/bicep-types-aws:edge`. Radius and `testresources` continue to use the locally built extensions; recipe/image registries and caller-provided configs restored after the run are unchanged.
 
 If this preparation fails, inspect the restore/build error and confirm that the setup completed and the local registry is running. Tests do not start after a failed extension preparation. Keep the same checkout commit between setup and test commands, because the published extension tags are derived from that commit.
 
@@ -318,7 +322,7 @@ make test-functional-all-noncloud
 
 The supported groups, including `authz`, and variants are defined in [`build/test.mk`](../../../../build/test.mk).
 
-The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its startup-log smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`. This check requires startup messages to remain available in the current pod logs; use a fresh installation because log rotation can remove those messages from long-running pods. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests. The leg then switches the same installation to enforce with `rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" --set global.rbac.dryRun=false --set global.rbac.enabled=true` and reruns only the mTLS boundary tests that call applications-rp directly from rogue pods, with `AUTHZ_EXPECTED_MODE=enforce`. Use the same chart and `rad` installer for both modes: reinstall preserves stored image and registry values and retains the `rad` server-side apply field manager; switching with the Helm CLI causes ownership conflicts. Other tests are not rerun in enforce because, until clients present certificates, enforce breaks UCP-to-resource-provider calls.
+The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its startup-log smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`. This check requires startup messages to remain available in the current pod logs; use a fresh installation because log rotation can remove those messages from long-running pods. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests. The leg then switches the same installation to enforce with `rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" --set global.rbac.dryRun=false --set global.rbac.enabled=true` and reruns only the boundary tests that call applications-rp directly from rogue pods, with `AUTHZ_EXPECTED_MODE=enforce`. Use the same chart and `rad` installer for both modes: reinstall preserves stored image and registry values and retains the `rad` server-side apply field manager; switching with the Helm CLI causes ownership conflicts.
 
 Tests that use the rogue client helper (`test/rogue`) run a pod from the `rogue-client` image, which is built from source like `magpiego` and `testrp` and resolved from `DOCKER_REGISTRY` and `REL_VERSION`. It is never published to `ghcr.io/radius-project`: `make docker-build` and `make docker-push` include it, but the GoReleaser publish configuration excludes it, so it exists only in CI and local registries. To use it locally, build and push it to a registry your cluster can pull from, for example `make docker-build-rogue-client docker-push-rogue-client DOCKER_REGISTRY=<registry> DOCKER_TAG_VERSION=<tag>`, then run the tests with the same `DOCKER_REGISTRY` and `REL_VERSION=<tag>`.
 
@@ -340,6 +344,25 @@ The upgrade group includes `Test_RadUpgradeFromReleasedVersion`, which downloads
 For database tests, install Radius into a fresh cluster with `--set database.enabled=true`.
 
 For multicluster tests, create a `target-kubeconfig` Secret in `radius-system`, install Radius with `global.targetCluster.enabled=true`, and set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig.
+
+#### Exercise persisted-hash compatibility during an upgrade
+
+[`Test_HashCompatibilityUpgrade`](../../../../test/functional-portable/upgrade/hash_compatibility_test.go) is an opt-in, destructive scenario within the isolated upgrade group. Supply distinct baseline and candidate control-plane images, accessible to the dedicated cluster, and keep the repository's development chart unchanged:
+
+```bash
+RADIUS_HASH_BASELINE_REGISTRY=<baseline-registry> \
+RADIUS_HASH_BASELINE_TAG=<baseline-tag> \
+DOCKER_REGISTRY=<candidate-registry> \
+REL_VERSION=<candidate-tag> \
+make test-functional-upgrade-noncloud \
+  GOTEST_OPTS='-count=1 -run ^Test_HashCompatibilityUpgrade$'
+```
+
+Both baseline variables are required; omitting both skips this scenario, and providing an incomplete or identical baseline/candidate pair fails before installation. Use the normal custom-build workflow to prepare the images. Preserve the baseline source revision and image digests with the run's evidence. Set `DE_IMAGE` and `DE_TAG` together when using a custom registry, as for the other upgrade tests. `RADIUS_HASH_WORKLOAD_IMAGE` can override the default Alpine test workload with an image that provides `/bin/sh` and `sleep`.
+
+The test installs its own small Terraform module server using the existing module-server manifest. Its Terraform fixture uses the built-in `terraform_data` resource, so no cloud account or external Terraform provider is required. It pauses only the Radius control-plane Deployments while preparing test-owned legacy datastore, tracking, and Terraform-state identities, restores the baseline, then performs a real image upgrade with version preflight enabled. After the upgrade it waits up to 10 minutes for every component to record a completed SHA-256 migration in the `radius-sha256-migration` ConfigMap. The scenario checks workload pod/template/ReplicaSet/restart identities, that each legacy record was moved to its current name exactly once, that the Terraform state moved with its lineage and managed-resource identity and left its legacy lock held, that the workload kept its secret hash and gained the recorded `radapp.io/secret-hash-sha256` annotation, writes during rollout, no-op and intentional updates, and deletion.
+
+This is historical-format fixture coverage using actual baseline and candidate binaries. It does not establish the safety of mixed writers when one binary understands only SHA-1. A release-to-release claim still needs real release artifacts and a supported incremental version route; do not obtain it by inventing chart versions or disabling preflight.
 
 ### Check for authorization dry-run would-deny logs
 
