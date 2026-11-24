@@ -1284,7 +1284,7 @@ jobs:
             const {default: finalize} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/promote-release-bicep.mjs`)
             await finalize({github, core, context})
         env:
-          INPUT_PLAN_FILE: dist/verification/plan.json
+          INPUT_PLAN_FILE: ${{ steps.aws-pin.outputs.plan-file }}
           INPUT_LOCK_FILE: dist/verification/assets/bicep-extension-lock.json
           INPUT_MANIFEST_FILE: dist/verification/release-manifest.json
           INPUT_PROMOTE_CHANNEL: ${{ steps.alias-policy.outputs.promote_channel }}

@@ -159,6 +159,21 @@ function fixture() {
           if (!data) throw notFound();
           return { data };
         },
+        compareCommitsWithBasehead: async ({ basehead, ...repository }) => {
+          assert.deepEqual(repository, { ...aws, per_page: 1 });
+          const [from, to] = basehead.split("...");
+          const seen = new Set();
+          for (const queue = [to]; queue.length; ) {
+            const sha = queue.shift();
+            if (sha === from) return { data: { status: "ahead" } };
+            if (seen.has(sha)) continue;
+            seen.add(sha);
+            queue.push(
+              ...(f.awsCommits.get(sha)?.parents ?? []).map((p) => p.sha)
+            );
+          }
+          return { data: { status: "diverged" } };
+        },
         getContent: async ({ path, ref, ...repository }) => {
           assert.deepEqual(repository, radius);
           assert.match(ref, /^[a-f0-9]{40}$/); // never reread by mutable state ref
@@ -328,7 +343,7 @@ test("reject corrupt content and foreign receipt versions, plans, pin intents or
   await assert.rejects(f.read, /intent/);
 });
 
-test("verify the immutable AWS tree, gitlink and parent for writes and replays; base is valid only on a no-op", async () => {
+test("verify the immutable AWS tree, gitlink and base ancestry for writes and replays; base is valid only on a no-op", async () => {
   const noop = fixture();
   await assert.rejects(() => noop.write(base), /planned tree/);
   noop.awsCommits.get(base).commit.tree.sha = expectedTree;
@@ -336,11 +351,13 @@ test("verify the immutable AWS tree, gitlink and parent for writes and replays; 
     ...noop.record,
     landedCommit: base
   });
+  // A pin landed above a since-reverted backport still carries the approved tree.
+  const backport = fixture();
+  backport.awsCommits.get(landed).parents[0].sha = other;
+  assert.equal((await backport.write()).landedCommit, landed);
   for (const corrupt of [
     (f) => (f.awsCommits.get(landed).commit.tree.sha = other),
-    (f) => (f.awsCommits.get(landed).parents[0].sha = other),
-    (f) => f.awsCommits.get(landed).parents.push({ sha: other }),
-    (f) => f.awsCommits.get(landed).files.push({ filename: "schema" }),
+    (f) => (f.awsCommits.get(landed).parents[0].sha = source),
     (f) => (f.tree.truncated = true),
     (f) => (f.tree.tree = []),
     (f) => (f.tree.tree[0].type = "blob"),
@@ -383,7 +400,10 @@ test("tag reader uses the raw blob at the peeled Radius tag and routes only AWS 
     await readFile(reader.outputs["plan-file"], "utf8")
   );
   const expected = structuredClone(f.plan);
-  expected.siblingRepositories[2].sourceCommit = landed;
+  Object.assign(expected.siblingRepositories[2], {
+    sourceCommit: landed,
+    sourceRef: "release/0.63"
+  });
   assert.deepEqual(effective, expected);
   const manifest = {
     schemaVersion: 1,

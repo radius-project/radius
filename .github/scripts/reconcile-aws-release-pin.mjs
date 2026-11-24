@@ -60,17 +60,17 @@ async function commitAt(github, ref) {
   return (await github.rest.repos.getCommit({ owner, repo, ref })).data;
 }
 
-function verifyContent(commit, base, tree) {
+function verifyContent(commit, parent, tree) {
   assert(
     commit.parents.length === 1 &&
-      commit.parents[0].sha === base &&
+      commit.parents[0].sha === parent &&
       commit.commit.tree.sha === tree,
-    `AWS commit ${commit.sha} does not contain exactly the planned pin on ${base}`
+    `AWS commit ${commit.sha} does not contain exactly the planned pin on ${parent}`
   );
 }
 
-function verifyProposal(commit, base, tree) {
-  verifyContent(commit, base, tree);
+function verifyProposal(commit, parent, tree) {
+  verifyContent(commit, parent, tree);
   assert(
     signedByReleaseApp(commit),
     `AWS pin proposal ${commit.sha} is not signed by the release App`
@@ -80,7 +80,7 @@ function verifyProposal(commit, base, tree) {
 async function signedProposal(
   github,
   branch,
-  base,
+  parent,
   baseTree,
   product,
   tree,
@@ -88,7 +88,7 @@ async function signedProposal(
 ) {
   const existing = await getRef(github, branch);
   if (existing) {
-    verifyProposal(await commitAt(github, existing), base, tree);
+    verifyProposal(await commitAt(github, existing), parent, tree);
     return existing;
   }
   const { data: replacement } = await github.rest.git.createTree({
@@ -101,11 +101,11 @@ async function signedProposal(
   const head = await createReleaseAppCommit(
     github,
     { owner, repo },
-    base,
+    parent,
     tree,
     `chore(release): pin Radius for ${version}`
   );
-  verifyProposal(await commitAt(github, head), base, tree);
+  verifyProposal(await commitAt(github, head), parent, tree);
   await createRef(github, branch, head);
   return head;
 }
@@ -179,7 +179,7 @@ async function buildPassed(github, head) {
   return runs.length > 0 && runs.every((run) => run.conclusion === "success");
 }
 
-async function land(github, pr, head, target, base, tree, wait) {
+async function land(github, pr, head, target, parent, tree, wait) {
   const args = { owner, repo, pull_number: pr };
   for (let attempt = 0; attempt < 75; attempt++) {
     const { data: pull } = await github.rest.pulls.get(args);
@@ -198,7 +198,7 @@ async function land(github, pr, head, target, base, tree, wait) {
       );
       // GitHub rebase-merges can rewrite the signature and SHA. Verify the
       // actual landed parent and entire tree against the verified App proposal.
-      verifyContent(await commitAt(github, pull.merge_commit_sha), base, tree);
+      verifyContent(await commitAt(github, pull.merge_commit_sha), parent, tree);
       return pull.merge_commit_sha;
     }
     assert(
@@ -206,7 +206,7 @@ async function land(github, pr, head, target, base, tree, wait) {
       `AWS pin PR #${pr} was closed without merging`
     );
     assert(
-      (await getRef(github, target)) === base,
+      (await getRef(github, target)) === parent,
       `AWS ${target} advanced during preparation`
     );
     assert(pull.mergeable_state !== "dirty", `AWS pin PR #${pr} conflicts`);
@@ -230,6 +230,39 @@ async function land(github, pr, head, target, base, tree, wait) {
   );
 }
 
+// Read-only. The release branch may only hold the approved content: the
+// captured tree, or that tree with the planned pin (which is then reused).
+async function pinState(github, target, base, baseTree, tree, sourceRef) {
+  const tip = await getRef(github, target);
+  assert(
+    tip || sourceRef === "main",
+    `Captured AWS branch ${sourceRef} disappeared`
+  );
+  if (baseTree === tree) return { tip, landed: base };
+  if (!tip) return { tip, parent: base };
+  const { data } = await github.rest.repos.compareCommitsWithBasehead({
+    owner,
+    repo,
+    basehead: `${base}...${tip}`
+  });
+  assert(
+    ["ahead", "identical"].includes(data.status) &&
+      data.commits.length === data.total_commits,
+    `AWS ${target} no longer descends from ${base}`
+  );
+  const landed = data.commits.find((c) => c.commit.tree.sha === tree);
+  if (landed) return { tip, landed: landed.sha };
+  const tipTree =
+    tip === base ? baseTree : (
+      data.commits.find((c) => c.sha === tip)?.commit.tree.sha
+    );
+  assert(
+    tipTree === baseTree,
+    `AWS ${target} has changes outside the approved plan; revert them through a reviewed pull request, then resume the release`
+  );
+  return { tip, parent: tip };
+}
+
 export async function reconcile({
   github,
   base,
@@ -243,34 +276,23 @@ export async function reconcile({
   wait = sleep
 }) {
   const target = `release/${channel}`;
-  const branch = `automation/radius-pin-${version}-${product}`;
   await requireCheck(github, repo, target, buildCheck);
-  let tip = await getRef(github, target);
-  if (!tip) {
-    assert(
-      sourceRef === "main",
-      `Captured AWS branch ${sourceRef} disappeared`
-    );
-    await createRef(github, target, base);
-    tip = await getRef(github, target);
-  }
-  if (tip !== base) {
-    // Only an already merged proposal can explain a newer target on replay.
-    const prior = await findPull(github, branch, target);
-    assert(
-      prior?.merged_at &&
-        prior.head.repo?.full_name === repository &&
-        prior.user.login === releaseBot,
-      `AWS ${target} changed since its source was captured`
-    );
-    verifyProposal(await commitAt(github, prior.head.sha), base, tree);
-    return land(github, prior.number, prior.head.sha, target, base, tree, wait);
-  }
-  if (baseTree === tree) return base;
+  const { tip, landed, parent } = await pinState(
+    github,
+    target,
+    base,
+    baseTree,
+    tree,
+    sourceRef
+  );
+  if (!tip) await createRef(github, target, base);
+  if (landed) return landed;
+  // A new parent (after a reviewed revert) gets a new proposal branch.
+  const branch = `automation/radius-pin-${version}-${product.slice(0, 12)}-${parent.slice(0, 12)}`;
   const head = await signedProposal(
     github,
     branch,
-    base,
+    parent,
     baseTree,
     product,
     tree,
@@ -278,7 +300,7 @@ export async function reconcile({
   );
   const pr = await ensurePull(github, branch, target, head, product, version);
   log(`AWS pin proposal: https://github.com/${repository}/pull/${pr}`);
-  return land(github, pr, head, target, base, tree, wait);
+  return land(github, pr, head, target, parent, tree, wait);
 }
 
 function parsePlan(raw) {
@@ -378,6 +400,15 @@ export default async function controller({ github, core, context }) {
       } catch (error) {
         if (error.status !== 404) throw error;
       }
+      // Catch unplanned AWS release-branch changes before approval.
+      await pinState(
+        github,
+        `release/${plan.channel}`,
+        base,
+        git(checkout, "rev-parse", `${base}^{tree}`),
+        aws.radiusPin.expectedTree,
+        aws.sourceRef
+      );
     }
     if (plan.releaseType === "final") await finalParity(github, plan, checkout);
     // No releasable SHA until the approved pin is locked. The base is only a preflight input.

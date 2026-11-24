@@ -43,7 +43,7 @@ RELEASE_PARITY_STAGED=true RELEASE_PARITY_TARGETS="${DIRECTORY}/targets.json" \
     RELEASE_PARITY_ASSETS_DIR="${DIRECTORY}/assets" \
     bash "${ROOT}/.github/scripts/release-parity-manifest.sh" \
     --version "${VERSION}" --output "${DIRECTORY}/observed.json" \
-    --plan-file "${DIRECTORY}/plan.json"
+    --plan-file "${PLAN}"
 
 lock_files=()
 while IFS= read -r name; do

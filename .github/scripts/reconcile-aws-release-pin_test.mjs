@@ -79,8 +79,9 @@ function fixture(t, state = "wrong") {
   let pull;
   const result = (data) => ({ data });
   const github = {
-    paginate: async () =>
-      config.rules ?
+    paginate: async (route, { repo }) =>
+      repo === "radius" ? [{ type: "update" }, { type: "deletion" }]
+      : config.rules ?
         [
           {
             type: "required_status_checks",
@@ -161,7 +162,30 @@ function fixture(t, state = "wrong") {
               tree: { sha: git("rev-parse", `${ref}^{tree}`) },
               verification: { verified: config.signed }
             }
-          })
+          }),
+        async compareCommitsWithBasehead({ basehead }) {
+          const [from, to] = basehead.split("...");
+          const ancestor = (a, b) => {
+            try {
+              git("merge-base", "--is-ancestor", a, b);
+              return true;
+            } catch {
+              return false;
+            }
+          };
+          const commits = git("rev-list", "--reverse", `${from}..${to}`)
+            .split("\n")
+            .filter(Boolean)
+            .map((sha) => ({
+              sha,
+              commit: { tree: { sha: git("rev-parse", `${sha}^{tree}`) } }
+            }));
+          const status =
+            from === to ? "identical"
+            : ancestor(from, to) ? "ahead"
+            : "diverged";
+          return result({ status, total_commits: commits.length, commits });
+        }
       },
       pulls: {
         list: async () => result(pull ? [pull] : []),
@@ -186,19 +210,17 @@ function fixture(t, state = "wrong") {
           assert.equal(sha, pull.head.sha);
           assert.equal(merge_method, "rebase");
           calls.push("merge");
-          const tree = git(
-            "rev-parse",
-            `${config.badMerge ? base : sha}^{tree}`
-          );
+          const tip = git("rev-parse", `refs/heads/${target}`);
+          const tree = git("rev-parse", `${config.badMerge ? tip : sha}^{tree}`);
           const landed = git(
             "commit-tree",
             tree,
             "-p",
-            base,
+            tip,
             "-m",
             "rebased by GitHub"
           );
-          git("update-ref", `refs/heads/${target}`, landed, base);
+          git("update-ref", `refs/heads/${target}`, landed, tip);
           Object.assign(pull, {
             merged: true,
             merged_at: "now",
@@ -237,48 +259,61 @@ function fixture(t, state = "wrong") {
       wait: async () => {}
     });
   };
-  return { plan, approve, config, calls, git, github, dir, siblings, base };
+  // Commit on parent with the given keep content and optional Radius gitlink.
+  const child = (parent, keep, link) => {
+    writeFileSync(join(dir, "keep"), keep);
+    git("read-tree", parent);
+    git("update-index", "keep");
+    if (link) git("update-index", "--cacheinfo", `160000,${link},radius`);
+    return git("commit-tree", git("write-tree"), "-p", parent, "-m", "child");
+  };
+  return {
+    plan,
+    approve,
+    child,
+    config,
+    calls,
+    git,
+    github,
+    dir,
+    siblings,
+    base
+  };
+}
+
+async function inspect(f, siblingRepositories) {
+  const file = join(f.dir, "plan.json");
+  writeFileSync(
+    file,
+    JSON.stringify({
+      schemaVersion: 2,
+      version,
+      channel,
+      releaseType: "rc",
+      source: { productCommit: product },
+      siblingRepositories
+    })
+  );
+  const output = {};
+  await controller({
+    github: f.github,
+    context: { repo: { owner: "radius-project", repo: "radius" } },
+    core: {
+      getInput: (key) =>
+        ({ MODE: "inspect", PLAN_FILE: file, AWS_CHECKOUT: f.dir })[key],
+      setOutput: (key, value) => {
+        output[key] = value;
+      },
+      summary: { addRaw: () => ({ write: async () => {} }) }
+    }
+  });
+  return output.commit;
 }
 
 test("inspection returns a legacy SHA but never the base as a pending pin's release SHA", async (t) => {
   const f = fixture(t);
-  const file = join(f.dir, "plan.json");
-  const output = {};
-  const lookup = f.github.paginate;
-  f.github.paginate = (route, options) =>
-    options.repo === "radius" ?
-      [{ type: "update" }, { type: "deletion" }]
-    : lookup(route, options);
-  const core = {
-    getInput: (key) =>
-      ({ MODE: "inspect", PLAN_FILE: file, AWS_CHECKOUT: f.dir })[key],
-    setOutput: (key, value) => {
-      output[key] = value;
-    },
-    summary: { addRaw: () => ({ write: async () => {} }) }
-  };
-  const plan = {
-    schemaVersion: 2,
-    version,
-    channel,
-    releaseType: "rc",
-    source: { productCommit: product }
-  };
-  for (const [siblings, expected] of [
-    [f.siblings, f.base],
-    [f.plan(), ""]
-  ]) {
-    writeFileSync(
-      file,
-      JSON.stringify({ ...plan, siblingRepositories: siblings })
-    );
-    await controller({
-      github: f.github,
-      context: { repo: { owner: "radius-project", repo: "radius" } },
-      core
-    });
-    assert.equal(output.commit, expected);
-  }
+  assert.equal(await inspect(f, f.siblings), f.base);
+  assert.equal(await inspect(f, f.plan()), "");
   assert.deepEqual(f.calls, []);
 });
 
@@ -306,7 +341,7 @@ test("first RC corrects the wrong-repository SHA; replay adopts the exact rebase
   f.git(
     "update-ref",
     "-d",
-    `refs/heads/automation/radius-pin-${version}-${product}`
+    `refs/heads/automation/radius-pin-${version}-${product.slice(0, 12)}-${f.base.slice(0, 12)}`
   );
   const next = f.git(
     "commit-tree",
@@ -378,18 +413,51 @@ test("tampered product or expected tree and intervening backports cannot cause a
     edited[2].radiusPin[key] = "e".repeat(40);
     await assert.rejects(f.approve(edited), /approved AWS pin intent/);
   }
-  const later = f.git(
-    "commit-tree",
-    `${f.base}^{tree}`,
-    "-p",
-    f.base,
-    "-m",
-    "backport"
+  f.git("branch", target, f.child(f.base, "backport\n"));
+  await assert.rejects(f.approve(frozen), /outside the approved plan/);
+  assert.deepEqual(f.calls, []);
+});
+
+test("a matching base needs no proposal even after unrelated AWS backports", async (t) => {
+  const f = fixture(t, "match");
+  const frozen = f.plan();
+  f.git("branch", target, f.child(f.base, "backport\n"));
+  assert.equal(await f.approve(frozen), f.base);
+  assert.deepEqual(f.calls, []);
+});
+
+test("inspection rejects unplanned AWS release-branch changes before approval", async (t) => {
+  const f = fixture(t);
+  const frozen = f.plan();
+  f.git("branch", target, f.child(f.base, "backport\n"));
+  await assert.rejects(inspect(f, frozen), /outside the approved plan/);
+  assert.deepEqual(f.calls, []);
+});
+
+test("after a reviewed revert the pin is proposed on the current AWS tip", async (t) => {
+  const f = fixture(t);
+  const frozen = f.plan();
+  const revert = f.child(f.child(f.base, "backport\n"), "original\n");
+  f.git("branch", target, revert);
+  assert.equal(await inspect(f, frozen), "");
+  const landed = await f.approve(frozen);
+  assert.equal(f.git("rev-parse", `${landed}^`), revert);
+  assert.equal(
+    f.git("rev-parse", `${landed}^{tree}`),
+    frozen[2].radiusPin.expectedTree
   );
-  f.git("branch", target, later);
-  await assert.rejects(
-    f.approve(frozen),
-    /changed since its source was captured/
-  );
+  assert.deepEqual(f.calls, ["commit", "ref", "pr", "merge"]);
+});
+
+test("a pin that landed on a backport is adopted once the backport is reverted", async (t) => {
+  const f = fixture(t);
+  const frozen = f.plan();
+  const backport = f.child(f.base, "backport\n");
+  const pinned = f.child(backport, "backport\n", product);
+  f.git("branch", target, pinned);
+  await assert.rejects(f.approve(frozen), /outside the approved plan/);
+  const revert = f.child(pinned, "original\n", product);
+  f.git("update-ref", `refs/heads/${target}`, revert);
+  assert.equal(await f.approve(frozen), revert);
   assert.deepEqual(f.calls, []);
 });

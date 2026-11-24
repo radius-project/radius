@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tool } from "./bicep-types.mjs";
+import { tagPlan } from "./aws-pin-receipt.mjs";
 import assets, { readBicepExtensionLock } from "./release-assets.mjs";
 import { observeExtension, readAwsEvidence } from "./collect-release-bicep.mjs";
 import {
@@ -61,7 +62,7 @@ export default async function stage({ github, context, core, run = tool }) {
   const directory = core.getInput("directory", { required: true });
   await mkdir(directory, { recursive: true });
   const tag = context.ref.slice("refs/tags/".length);
-  const plan = JSON.parse(
+  let plan = JSON.parse(
     await run(["yq", "-o=json", ".", `.github/release-plans/${tag}.yaml`])
   );
   const ghcr = usesGhcrBicepExtensions(plan.expectedOutputs);
@@ -79,6 +80,8 @@ export default async function stage({ github, context, core, run = tool }) {
     ["preflight", "lock"].includes(operation),
     "Unknown Bicep staging operation"
   );
+  // Pair against the same receipt-resolved AWS source the controller published.
+  plan = await tagPlan({ github, context });
   const { source, expected } = await approvedRelease(
     { github, context },
     directory

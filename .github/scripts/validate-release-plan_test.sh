@@ -562,7 +562,7 @@ expect_radius_pin_failure() {
 
     output="$(run_validator 2>&1)" || status=$?
     if [[ "${status}" == 0 || "${output}" != *"${expected}"* ||
-        "${output}" != *"#pin-radius-in-bicep-types-aws"* ]]; then
+        "${output}" != *"#verify-the-approved-aws-source"* ]]; then
         fail_test "expected failure containing '${expected}': ${output}"
         return
     fi
@@ -580,7 +580,7 @@ test_verifies_proposed_radius_pin() {
     local seed="${SIBLING_ROOT}/bicep-types-aws-seed" tree before output
     mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
     cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" "${REPO}/.github/scripts/"
-    cp "${SCRIPT_DIR}"/../workflows/{build-release,__build-bicep-types}.yaml \
+    cp "${SCRIPT_DIR}/../workflows/build-release.yaml" \
         "${REPO}/.github/workflows/"
     git -C "${REPO}" add .github
     git -C "${REPO}" commit -qm "Install tag-owned AWS receipt readers"

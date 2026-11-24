@@ -247,7 +247,7 @@ test_first_rc_reviews_pin_without_writing_aws() {
     cp "${REPO}/out/base.json" "${REPO}/siblings.json"
     mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
     cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" "${REPO}/.github/scripts/"
-    cp "${root}"/.github/workflows/{__build-bicep-types,build-release}.yaml \
+    cp "${root}/.github/workflows/build-release.yaml" \
         "${REPO}/.github/workflows/"
     git -C "${REPO}" add .github siblings.json
     git -C "${REPO}" commit -qm "Install receipt readers"

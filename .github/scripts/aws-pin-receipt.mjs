@@ -138,13 +138,21 @@ async function verifyLanded(
   github,
   { landedCommit, baseCommit, productCommit, expectedTree }
 ) {
+  // Content, not history shape: the landed commit must carry exactly the
+  // approved tree and descend from the approved base.
   const landed = await commitAt(github, aws, landedCommit);
+  let descends = landedCommit === baseCommit;
+  if (!descends) {
+    const { data } = await github.rest.repos.compareCommitsWithBasehead({
+      ...aws,
+      basehead: `${baseCommit}...${landedCommit}`,
+      per_page: 1
+    });
+    descends = data.status === "ahead";
+  }
   requireThat(
-    landed.commit.tree.sha === expectedTree &&
-      (landedCommit === baseCommit ||
-        (onlyParent(landed, baseCommit) &&
-          onlyChange(landed, "radius", "modified"))),
-    `AWS commit ${landedCommit} is not the planned tree and pin on ${baseCommit}`
+    landed.commit.tree.sha === expectedTree && descends,
+    `AWS commit ${landedCommit} is not the planned tree descending from ${baseCommit}`
   );
   const { data } = await github.rest.git.getTree({
     ...aws,
@@ -274,12 +282,9 @@ export async function writeReceipt(github, plan, planBlob, landedCommit) {
   return adopt(winner, landedCommit);
 }
 
-export default async function materializeTagPlan({
-  github,
-  context,
-  core,
-  runnerTemp = process.env.RUNNER_TEMP
-}) {
+// The committed plan at the Radius tag, with a pinned AWS source routed to
+// the receipt-locked landed commit on its release branch.
+export async function tagPlan({ github, context }) {
   const version = context.ref?.replace(/^refs\/tags\//, "");
   requireThat(
     context.repo.owner === radius.owner &&
@@ -321,8 +326,18 @@ export default async function materializeTagPlan({
     const record = await readReceipt(github, plan, blob);
     requireThat(record, `Missing AWS pin receipt for ${version}`);
     entry.sourceCommit = record.landedCommit;
+    entry.sourceRef = `release/${plan.channel}`;
   }
+  return plan;
+}
 
+export default async function materializeTagPlan({
+  github,
+  context,
+  core,
+  runnerTemp = process.env.RUNNER_TEMP
+}) {
+  const plan = await tagPlan({ github, context });
   const directory = await mkdtemp(join(runnerTemp, "aws-pin-"));
   const file = join(directory, "effective-plan.json");
   await writeFile(file, `${JSON.stringify(plan, null, 2)}\n`, {
@@ -330,5 +345,5 @@ export default async function materializeTagPlan({
     mode: 0o600
   });
   core.setOutput("plan-file", file);
-  core.setOutput("sha", entry.sourceCommit);
+  core.setOutput("sha", awsEntry(plan).sourceCommit);
 }

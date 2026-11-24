@@ -22,7 +22,6 @@ require_reader() {
         fail "${file}:${job} does not require the AWS receipt"
 }
 
-require_reader __build-bicep-types.yaml build-and-push-aws-bicep-types
 require_reader build-release.yaml verify-release
 require_reader build-release.yaml finalize-release
 require_reader build-release.yaml publish-sibling-releases

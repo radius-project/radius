@@ -407,7 +407,7 @@ verify_ghcr_only_bicep() {
                 (.with.script | contains("promote-release-bicep.mjs")) and
                 .env.INPUT_LOCK_FILE == "dist/verification/assets/bicep-extension-lock.json" and
                 .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
-                .env.INPUT_PLAN_FILE == "dist/verification/plan.json" and
+                .env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}" and
                 .env.INPUT_JOB_DEADLINE == "${{ env.BICEP_JOB_DEADLINE }}" and
                 .env.INPUT_PROMOTE_CHANNEL == "${{ steps.alias-policy.outputs.promote_channel }}" and
                 .env.INPUT_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")) and

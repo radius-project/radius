@@ -672,6 +672,14 @@ cp "${OUTPUT}" "${FIRST_OUTPUT}"
 TARGET_OVERRIDE="" run_collector
 cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
     fail "standalone GHCR inspection did not load the committed source plan"
+cp "${FIXTURES}/plan.json" "${FIXTURES}/unpinned-plan.json"
+jq '.siblingRepositories[0].radiusPin = {}' "${FIXTURES}/unpinned-plan.json" \
+    >"${FIXTURES}/plan.json"
+if TARGET_OVERRIDE="" run_collector 2>"${FIXTURES}/pinned-error.log" ||
+    ! grep -q 'requires the receipt-resolved --plan-file' "${FIXTURES}/pinned-error.log"; then
+    fail "standalone inspection used a pinned plan's unreleased AWS base"
+fi
+mv "${FIXTURES}/unpinned-plan.json" "${FIXTURES}/plan.json"
 jq -e '
     (.downstream.ociArtifacts | length) == 2
     and all(.downstream.ociArtifacts[]; .reference | endswith(":0.60.0"))

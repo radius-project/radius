@@ -855,10 +855,21 @@ jobs:
         env:
           SOURCE_SHA: ${{ inputs.source-commit }}
           VERSION: ${{ inputs.version }}
+          AWS_COMMIT: ${{ steps.lock-aws.outputs.commit || needs.validate.outputs.aws-release-commit }}
         run: |
           git fetch --no-tags origin "${SOURCE_SHA}"
+          set -o pipefail
+          # A pinned AWS source publishes from its receipt-locked landed commit.
           git show "${SOURCE_SHA}:.github/release-plans/${VERSION}.yaml" |
-            yq -o=json '.' >"${RUNNER_TEMP}/bicep-plan.json"
+            yq -o=json '.' |
+            jq -e --arg commit "${AWS_COMMIT}" '
+              . as $plan
+              | (.siblingRepositories[] | select(.name == "bicep-types-aws"))
+                |= if has("radiusPin") then
+                     if $commit == "" then error("missing locked AWS commit") else
+                       .sourceCommit = $commit | .sourceRef = "release/\($plan.channel)"
+                     end
+                   else . end' >"${RUNNER_TEMP}/bicep-plan.json"
 
       - name: Reconcile durable AWS evidence
         if: needs.validate.outputs.ghcr-bicep == 'true'
