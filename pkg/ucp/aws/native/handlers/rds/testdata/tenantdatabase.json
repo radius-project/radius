@@ -1,0 +1,229 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_ORACLE_CDB_INSTANCE": "radius-rec-cdb",
+    "RADIUS_REC_RUN": "example"
+  },
+  "interactions": [
+    {
+      "service": "RDS",
+      "operation": "DescribeDBInstances",
+      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>available</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bcc01</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "CreateTenantDatabase",
+      "request": "Action=CreateTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&MasterUserPassword=xxxxxxxxxxxxxxx&MasterUsername=admin&Tags.Tag.1.Key=radius-recording&Tags.Tag.1.Value=example&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<CreateTenantDatabaseResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <CreateTenantDatabaseResult>\n    <TenantDatabase>\n      <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n      <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n      <TenantDBName>pdbrec</TenantDBName>\n      <Status>creating</Status>\n      <MasterUsername>admin</MasterUsername>\n      <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n      <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n      <CharacterSetName>AL32UTF8</CharacterSetName>\n      <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n      <DeletionProtection>false</DeletionProtection>\n      <TagList>\n        <Tag>\n          <Key>radius-recording</Key>\n          <Value>example</Value>\n        </Tag>\n      </TagList>\n    </TenantDatabase>\n  </CreateTenantDatabaseResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0009</RequestId>\n  </ResponseMetadata>\n</CreateTenantDatabaseResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>creating</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0010</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>available</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0011</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBInstances",
+      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>backing-up</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bdd01</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>available</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0011</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBInstances",
+      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>available</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bdd02</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>available</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0012</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>available</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0013</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBInstances",
+      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>available</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bcc02</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "ModifyTenantDatabase",
+      "request": "Action=ModifyTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&MasterUserPassword=xxxxxxxxxxxxxxx&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<ModifyTenantDatabaseResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <ModifyTenantDatabaseResult>\n    <TenantDatabase>\n      <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n      <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n      <TenantDBName>pdbrec</TenantDBName>\n      <Status>modifying</Status>\n      <MasterUsername>admin</MasterUsername>\n      <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n      <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n      <CharacterSetName>AL32UTF8</CharacterSetName>\n      <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n      <DeletionProtection>false</DeletionProtection>\n      <PendingModifiedValues>\n        <MasterUserPassword>****</MasterUserPassword>\n      </PendingModifiedValues>\n      <TagList>\n        <Tag>\n          <Key>radius-recording</Key>\n          <Value>example</Value>\n        </Tag>\n      </TagList>\n    </TenantDatabase>\n  </ModifyTenantDatabaseResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0014</RequestId>\n  </ResponseMetadata>\n</ModifyTenantDatabaseResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "AddTagsToResource",
+      "request": "Action=AddTagsToResource&ResourceName=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Adb%3Aradius-rec-cdb%3Apdbrec&Tags.Tag.1.Key=team&Tags.Tag.1.Value=a&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<AddTagsToResourceResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0015</RequestId>\n  </ResponseMetadata>\n</AddTagsToResourceResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>modifying</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <PendingModifiedValues>\n          <MasterUserPassword>****</MasterUserPassword>\n        </PendingModifiedValues>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n          <Tag>\n            <Key>team</Key>\n            <Value>a</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0016</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>available</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n          <Tag>\n            <Key>team</Key>\n            <Value>a</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0017</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBInstances",
+      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>available</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bdd03</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>available</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n          <Tag>\n            <Key>team</Key>\n            <Value>a</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0018</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>available</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n          <Tag>\n            <Key>team</Key>\n            <Value>a</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0019</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBInstances",
+      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>available</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bcc03</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DeleteTenantDatabase",
+      "request": "Action=DeleteTenantDatabase&DBInstanceIdentifier=radius-rec-cdb&FinalDBSnapshotIdentifier=radius-rec-cdb-pdbrec-final-20261118-120000-5037503b&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DeleteTenantDatabaseResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DeleteTenantDatabaseResult>\n    <TenantDatabase>\n      <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n      <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n      <TenantDBName>pdbrec</TenantDBName>\n      <Status>deleting</Status>\n      <MasterUsername>admin</MasterUsername>\n      <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n      <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n      <CharacterSetName>AL32UTF8</CharacterSetName>\n      <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n      <DeletionProtection>false</DeletionProtection>\n      <TagList>\n        <Tag>\n          <Key>radius-recording</Key>\n          <Value>example</Value>\n        </Tag>\n        <Tag>\n          <Key>team</Key>\n          <Value>a</Value>\n        </Tag>\n      </TagList>\n    </TenantDatabase>\n  </DeleteTenantDatabaseResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0020</RequestId>\n  </ResponseMetadata>\n</DeleteTenantDatabaseResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases>\n      <TenantDatabase>\n        <TenantDatabaseCreateTime>2026-11-18T12:00:00.000Z</TenantDatabaseCreateTime>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <TenantDBName>pdbrec</TenantDBName>\n        <Status>deleting</Status>\n        <MasterUsername>admin</MasterUsername>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n        <TenantDatabaseResourceId>tdb-ABCDEFGHIJKLMNOPQRSTUVWXY2</TenantDatabaseResourceId>\n        <TenantDatabaseARN>arn:aws:rds:us-west-2:123456789012:db:radius-rec-cdb:pdbrec</TenantDatabaseARN>\n        <CharacterSetName>AL32UTF8</CharacterSetName>\n        <NcharCharacterSetName>AL16UTF16</NcharCharacterSetName>\n        <DeletionProtection>false</DeletionProtection>\n        <TagList>\n          <Tag>\n            <Key>radius-recording</Key>\n            <Value>example</Value>\n          </Tag>\n          <Tag>\n            <Key>team</Key>\n            <Value>a</Value>\n          </Tag>\n        </TagList>\n      </TenantDatabase>\n    </TenantDatabases>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0021</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeTenantDatabases",
+      "request": "Action=DescribeTenantDatabases&DBInstanceIdentifier=radius-rec-cdb&TenantDBName=pdbrec&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeTenantDatabasesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeTenantDatabasesResult>\n    <TenantDatabases/>\n  </DescribeTenantDatabasesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0022</RequestId>\n  </ResponseMetadata>\n</DescribeTenantDatabasesResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBInstances",
+      "request": "Action=DescribeDBInstances&DBInstanceIdentifier=radius-rec-cdb&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBInstancesResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBInstancesResult>\n    <DBInstances>\n      <DBInstance>\n        <DBInstanceIdentifier>radius-rec-cdb</DBInstanceIdentifier>\n        <DBInstanceStatus>available</DBInstanceStatus>\n        <Engine>oracle-se2-cdb</Engine>\n        <DbiResourceId>db-ABCDEFGHIJKLMNOPQRSTUVWXY1</DbiResourceId>\n      </DBInstance>\n    </DBInstances>\n  </DescribeDBInstancesResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4bdd04</RequestId>\n  </ResponseMetadata>\n</DescribeDBInstancesResponse>\n"
+    }
+  ]
+}

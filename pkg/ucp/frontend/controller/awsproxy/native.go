@@ -537,6 +537,9 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     write-only value, because the record has no fingerprints for them.
 //   - failed, and AWS changed nothing (native.OutcomeRejected), such as a GraphQL schema AppSync couldn't create: the
 //     create is sent again with this deploy's template.
+//   - failed with every value applied (native.OutcomeApplied), such as a resource whose state needs a repair: the
+//     create is finished and its values, with their write-only fingerprints, count as applied, as the worker records
+//     them. The request continues as an update, which sends only what the template changes.
 //   - failed otherwise: the request returns the failure, and the record stays, so a DELETE can remove the resource.
 func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	identifier := rec.Properties.AWSIdentifier
@@ -573,14 +576,19 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 		return conflict("A create of the AWS resource %q is still running in AWS. Deploy again when it finishes.", r.id.Name()), nil
 	case progress.Failure != nil && progress.Failure.Outcome == native.OutcomeRejected:
 		return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
-	case progress.Failure != nil:
+	case progress.Failure != nil && progress.Failure.Outcome != native.OutcomeApplied:
 		return failureResponse(r.id, progress.Failure), nil
 	}
 
 	ucplog.FromContextOrDiscard(ctx).Info("Found the AWS resource of an interrupted create", "alias", r.id.Name(), "awsIdentifier", identifier)
-	// The create may have applied some or all of its values, so Radius owns them, and the update below clears one the
-	// template no longer sets.
-	records.KeepPending(rec)
+	if progress.Failure != nil {
+		// AWS applied every value of the create, so its write-only fingerprints count too, as the worker records them.
+		records.Settle(rec, native.OutcomeApplied)
+	} else {
+		// The create may have applied some or all of its values, so Radius owns them, and the update below clears one
+		// the template no longer sets.
+		records.KeepPending(rec)
+	}
 	records.FinishCreate(rec)
 	current, err := e.readResource(ctx, r, identifier)
 	if err != nil {
@@ -860,6 +868,10 @@ func failureResponse(id resources.ID, failure interface {
 	error
 	IsClientError() bool
 }) armrpc_rest.Response {
+	var busy *native.Failure
+	if errors.As(failure, &busy) && busy.Conflict {
+		return conflict("%s", failure.Error())
+	}
 	details := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: failure.Error(), Target: id.String()}}
 	if failure.IsClientError() {
 		details.Error.Code = v1.CodeInvalid

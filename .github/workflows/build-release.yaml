@@ -1403,7 +1403,7 @@ jobs:
           webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
 
   coordinate-release:
-    name: Coordinate docs and samples
+    name: Coordinate docs, samples, and final Bicep recipes
     needs: [release-preflight, verify-release, finalize-release]
     if: >-
       !cancelled() && needs.verify-release.result == 'success' &&
@@ -1427,7 +1427,12 @@ jobs:
         run: make install-yq
 
       - name: Read approved plan
-        run: yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${RUNNER_TEMP}/plan.json"
+        id: plan
+        run: |
+          plan="${RUNNER_TEMP}/plan.json"
+          yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${plan}"
+          recipes="$(yq -r '.releaseType == "final" and has("recipeSourceCommit")' "${plan}")"
+          echo "recipes=${recipes}" >>"${GITHUB_OUTPUT}"
 
       - name: Get docs and samples dispatch token
         id: coordination-token
@@ -1441,6 +1446,17 @@ jobs:
           permission-contents: read
           permission-pull-requests: read
 
+      - name: Get final Bicep recipe dispatch token
+        if: steps.plan.outputs.recipes == 'true'
+        id: recipe-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: resource-types-contrib
+          permission-actions: write
+
       - name: Reconcile downstream workflows
         id: coordinate
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -1448,13 +1464,15 @@ jobs:
           INPUT_PLAN_FILE: ${{ runner.temp }}/plan.json
           INPUT_SOURCE_SHA: ${{ github.sha }}
           COORDINATION_TOKEN: ${{ steps.coordination-token.outputs.token }}
+          RECIPE_TOKEN: ${{ steps.recipe-token.outputs.token }}
         with:
           retries: 5
           script: |
             // Use a separate client: the job client's auth hook overrides headers.
             const remote = getOctokit(process.env.COORDINATION_TOKEN).request
+            const recipeRemote = process.env.RECIPE_TOKEN && getOctokit(process.env.RECIPE_TOKEN).request
             const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
-            await coordinate({ github, remote, context, core })
+            await coordinate({ github, remote, recipeRemote, context, core })
 
       - name: Report coordination state
         if: always()

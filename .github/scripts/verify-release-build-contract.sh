@@ -550,6 +550,19 @@ main() {
         fi
     done < <(git ls-tree --name-only "${COMMIT}:.github/workflows")
 
+    if [[ "${REQUIRE_BICEP_RECIPES:-false}" == true ]]; then
+        yq_true "${BUILD_WORKFLOW}" '
+            [.jobs."coordinate-release".steps[] |
+                select(.id == "coordinate" and .if == null and
+                    .env.RECIPE_TOKEN != null and
+                    (."continue-on-error" // false) == false)] |
+                length == 1' || reject "has no final Bicep recipe coordinator"
+        if ! git grep -q -F 'publish-bicep-recipes.yaml' "${COMMIT}" -- \
+            .github/scripts/coordinate-release.mjs; then
+            reject "does not coordinate the Bicep recipe publisher"
+        fi
+    fi
+
     echo "Release commit ${COMMIT} starts ${BUILD_WORKFLOW} on its tag."
 }
 

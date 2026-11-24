@@ -43,6 +43,8 @@ While the first-RC PR remains open, rerunning with the same type/channel retains
 
 Review the generated draft PR: version, product commit, sibling commits, selected backports, and expected outputs in `.github/release-plans/`. For RC/final notes, edit only **Highlights** and **Upgrading**; retain the image-pinning warning. Patch notes are fully generated.
 
+For a new final, review `recipeSourceCommit` in `resource-types-contrib` and confirm its `main` push published the signed recipe inventory. This is separate from the `recipes` sibling commit. Preparation retries retain the original recipe SHA.
+
 Root `CHANGELOG.md` contains finals and patches only. RC.1 and final notes cover the full new-version changes; later RCs show only changes since the preceding RC, and patches only changes since the preceding stable tag in that channel. Entries are newest first within each category. New plans record `changelogPolicy: stable-only`; an RC changes three metadata files, leaving the root changelog unchanged.
 
 Mark the PR ready, obtain approval, and **squash-merge into `main`**. A frozen first-RC plan does not need regeneration just because `main` advanced.
@@ -79,18 +81,18 @@ Follow the exact downstream run and PR links in the release summary:
 | Type  | Maintainer action                                                                                                                                                                                                                      |
 |-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | RC    | Review and squash-merge the docs and samples upmerge PRs into `edge`, if created. Then [resume the same release](#troubleshooting) so sample tests run. Require all three successful coordination receipts before preparing the final. |
-| Final | Confirm automated docs publication, samples publication, and sample tests succeed. Also publish the final's Bicep recipes using the command below.                                                                                     |
+| Final | Confirm docs publication, samples publication, sample tests, and the final Bicep recipe run all succeed.                                                                                                                               |
 | Patch | Confirm sample tests succeed; no docs/samples release-branch recut is needed.                                                                                                                                                          |
 
 RC upmerges affect only `edge`, not the docs/samples default release branches. Only a final publishes their new `vX.Y` branches and switches their defaults; patches only run sample tests.
 
-**Final only:** confirm `resource-types-contrib` `main` contains the intended recipe source, then run [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml). Replace `0.62.0` with the actual final version **without `v`**:
+**Finals with `recipeSourceCommit`:** follow the `bicep-recipes / vX.Y.0-<full Radius release commit>` run from the release summary. It publishes the version tags and eligible `latest` aliases from the approved recipe inventory. If the receipt has no run URL, [reconcile the unknown dispatch](./README.md#lost-dispatch-response); do not launch a second publisher.
+
+**Legacy finals approved without `recipeSourceCommit`:** Radius does not dispatch the publisher. Once the stable Radius release is public, confirm that contrib `main` contains the intended recipes and that no publication for this version is running or has succeeded. Run the command below with the final version **without `v`** (replace `0.62.0`), then record the successful run URL. Do not use this command to recover a pinned final.
 
 ```bash
 gh workflow run publish-bicep-recipes.yaml --repo radius-project/resource-types-contrib --ref main -f release_version=0.62.0
 ```
-
-Wait for success and record the run URL. This is a separate maintainer action, not dispatched by Radius; it publishes release-version recipe tags and moves recipe `latest` tags.
 
 ## Verification
 

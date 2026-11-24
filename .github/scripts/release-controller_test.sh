@@ -285,9 +285,9 @@ test_release_build_contract() {
     assert_json "${CONTROLLER}" \
         '[.jobs.validate.steps[] | select((.with.script // "") |
         contains("verifyReleaseBuildSource")) |
-        [.if, .env.INPUT_SOURCE_SHA]]' \
-        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\"]]" \
-        "validation must check the tag workflows of the exact release commit"
+        [.if, .env.INPUT_SOURCE_SHA, .env.REQUIRE_BICEP_RECIPES]]' \
+        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\",\"\${{ steps.plan.outputs.recipe-source-commit != '' }}\"]]" \
+        "validation must check the exact release commit and require recipes only for pinned plans"
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \
         'verify-release-build-contract.sh' \
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
