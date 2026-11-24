@@ -69,7 +69,7 @@ func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusName
 	if mode == authz.ModeOff {
 		return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared, fresh)
 	}
-	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
+	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace, fresh); err != nil {
 		return err
 	}
 	return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace)

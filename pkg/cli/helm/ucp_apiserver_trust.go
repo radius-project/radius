@@ -90,7 +90,10 @@ const (
 // It verifies only the current trust: rad writes the caBundle itself, so a cainjector that cannot update the
 // APIService passes. Such an injector leaves the earlier radius-apiserver-ca certificate in the caBundle after
 // cert-manager renews it, which keeps working, because the renewal keeps the key, until that certificate expires.
-func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
+//
+// fresh reports that the release is at its first revision. A trust Secret then is left from an earlier install rather
+// than staged for this one, so rad trusts none of its CAs and only deletes it.
+func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, fresh bool) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
@@ -131,7 +134,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 	if trust != nil && !overlap {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 	}
-	if overlap {
+	if overlap && !fresh {
 		trusted = unionCertificates(trusted, []*x509.Certificate{ca})
 		if err := applyUCPAPIServerTrust(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, uid, trusted); err != nil {
 			return err
@@ -168,7 +171,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 	if err := settleUCPAPIServerCA(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, uid); err != nil {
 		return err
 	}
-	if overlap && len(trusted) > 1 {
+	if overlap && !fresh && len(trusted) > 1 {
 		output.LogInfo("Removed %d earlier CA certificate(s) from APIService %s, which now trusts only %s/%s",
 			len(trusted)-1, ucpAPIServiceName, radiusNamespace, ucpAPIServerCASecretName)
 	}

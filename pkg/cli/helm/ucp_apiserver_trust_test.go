@@ -270,7 +270,25 @@ func Test_reconcileUCPAPIServerTrust_FreshInstall(t *testing.T) {
 	)
 	dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
 
-	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	requireNoTrustSecret(t, kubeClient)
+}
+
+// A uninstall that kept radius-apiserver-trust leaves the CAs of the earlier install in it. A fresh install must neither
+// trust them nor wait for UCP to move off them.
+func Test_reconcileUCPAPIServerTrust_FreshInstallIgnoresLeftoverTrust(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	apiServerCA, earlier := newTestCA(t, "radius-apiserver-ca"), newTestCA(t, "earlier-ca")
+	leftover := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, Annotations: trustSecretAnnotations()},
+		Data:       map[string][]byte{caCertificateKey: earlier.pem},
+	}
+	kubeClient := kubefake.NewSimpleClientset(apiServerCASecret(apiServerCA), leftover)
+	dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
+
+	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, true))
 	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 	requireNoTrustSecret(t, kubeClient)
@@ -285,7 +303,7 @@ func Test_reconcileUCPAPIServerTrust_RestoredOverlapAPIService(t *testing.T) {
 	kubeClient := kubefake.NewSimpleClientset(apiServerCASecret(apiServerCA))
 	dynamicClient := ucpAPIServiceDynamicClient(stale)
 
-	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
 	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 	requireNoTrustSecret(t, kubeClient)
@@ -324,7 +342,7 @@ func Test_reconcileUCPAPIServerTrust_CorrectsStaleCAInjectorWrite(t *testing.T) 
 				return false, nil, nil
 			})
 
-			require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
 			require.Equal(t, 1, staleWrites)
 			require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 		})
@@ -391,7 +409,7 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 			kubeClient := kubefake.NewSimpleClientset(tt.secret)
 			dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
 
-			err := trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+			err := trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false)
 			require.ErrorContains(t, err, tt.want)
 			require.Empty(t, apiServiceCASource(t, dynamicClient), "rad must not point the APIService at an unusable CA")
 		})
@@ -459,7 +477,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	_, err = kubeClient.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), ucpDeployment(false), metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	err = impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+	err = impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false)
 	require.ErrorContains(t, err, "Deployment ucp has not finished rolling out")
 	require.ErrorContains(t, err, "The API server still trusts the earlier CA too")
 	require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
@@ -471,7 +489,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	// radius-apiserver-ca, which cainjector follows from then on, and deletes the trust Secret.
 	_, err = kubeClient.AppsV1().Deployments(RadiusSystemNamespace).UpdateStatus(t.Context(), ucpDeployment(true), metav1.UpdateOptions{})
 	require.NoError(t, err)
-	require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+	require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
 	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 	requireNoTrustSecret(t, kubeClient)
@@ -496,7 +514,7 @@ func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T)
 	)
 	dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
 
-	err := trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+	err := trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false)
 	require.ErrorContains(t, err, "is not issued by radius-apiserver-ca")
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, kubeClient))
 	require.Empty(t, apiServiceCASource(t, dynamicClient))
@@ -594,7 +612,7 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 		impl := trustImpl(kubeClient, dynamicClient)
 		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
 
-		require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
 		require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
 		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 		requireForeignTrustSecretKept(t, kubeClient)
@@ -632,7 +650,7 @@ func Test_UCPAPIServerTrust_SecretOfAnotherRelease(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset(otherReleaseTrust(otherCA), apiServerCASecret(apiServerCA), apiServerTLSSecret(t, apiServerCA), ucpDeployment(true))
 		dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
 
-		require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
 		require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
 		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 		secret, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
@@ -754,7 +772,7 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 		require.NoError(t, c.dynamic.Tracker().Add(ucpAPIService("", "", "")))
 		deleted := c.enforceDeletePreconditions(t, nil)
 
-		require.NoError(t, c.impl(nil).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
 		require.Equal(t, []string{ucpAPIServerTrustSecretName}, *deleted)
 		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
 	})
@@ -790,7 +808,7 @@ var postHelmTrustPaths = map[string]func(t *testing.T, prepare func(*unstructure
 		kubeClient := kubefake.NewSimpleClientset(apiServerCASecret(apiServerCA))
 		dynamicClient := ucpAPIServiceDynamicClient(apiService).(*dynamicfake.FakeDynamicClient)
 		return dynamicClient, func() error {
-			return trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+			return trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false)
 		}
 	},
 	"off": func(t *testing.T, prepare func(*unstructured.Unstructured)) (*dynamicfake.FakeDynamicClient, func() error) {

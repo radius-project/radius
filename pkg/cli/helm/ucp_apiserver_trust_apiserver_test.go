@@ -99,7 +99,7 @@ func TestUCPAPIServerTrustFollowsCARenewal_APIServer(t *testing.T) {
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return client, nil },
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
 	}
-	require.NoError(t, impl.reconcileUCPAPIServerTrust(ctx, "test-context", RadiusSystemNamespace))
+	require.NoError(t, impl.reconcileUCPAPIServerTrust(ctx, "test-context", RadiusSystemNamespace, false))
 	requireNoTrustSecret(t, client)
 	requireAPIServiceCABundle(t, dynamicClient, issued)
 

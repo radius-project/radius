@@ -13,6 +13,12 @@ kubernetesProvider:
         version: v1
         resource: secrets
       namespaced: true
+    "apiregistration.k8s.io/v1/APIService":
+      gvr:
+        group: apiregistration.k8s.io
+        version: v1
+        resource: apiservices
+      namespaced: false
 tests:
   - it: generates the ucp-cert Secret and caBundle when authorization is off
     template: ucp/apiservice.yaml
@@ -255,6 +261,10 @@ tests:
       global.rbac.enabled: true
     kubernetesProvider:
       objects:
+        - apiVersion: apiregistration.k8s.io/v1
+          kind: APIService
+          metadata:
+            name: v1alpha3.api.ucp.dev
         - apiVersion: v1
           kind: Secret
           metadata:
@@ -284,6 +294,43 @@ tests:
       - equal:
           path: spec.caBundle
           value: dHJ1c3QtY2E=
+        documentIndex: 1
+
+  - it: ignores a leftover trust Secret on a fresh install without the APIService
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: dHJ1c3QtY2E=
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.caBundle
+          value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         documentIndex: 1
 
   - it: ignores a radius-apiserver-trust Secret that rad does not own
