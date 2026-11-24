@@ -461,6 +461,11 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 	if !cert.BasicConstraintsValid || !cert.IsCA {
 		return nil, nil, "its tls.crt is not a CA certificate", nil
 	}
+	// A CA Secret kept from an earlier install can hold an expired CA until cert-manager renews it, so rad waits for
+	// the renewal rather than trust it.
+	if now := time.Now(); now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
+		return nil, nil, "its tls.crt CA is expired or not yet valid", nil
+	}
 	bundle := secret.Data[caCertificateKey]
 	cas := caCertificates(bundle)
 	if len(cas) == 0 || len(cas) != countCertificates(bundle) || !onlyCertificateBlocks(bundle) {

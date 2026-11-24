@@ -376,7 +376,7 @@ func Test_extraCertificates(t *testing.T) {
 
 func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 	ca, other := newTestCA(t, "radius-apiserver-ca"), newTestCA(t, "other-ca")
-	leaf := issueUCPCertificate(t, ca)
+	leaf, expired := issueUCPCertificate(t, ca), expiredTestCA(t, "radius-apiserver-ca")
 	tests := []struct {
 		name     string
 		secret   *corev1.Secret
@@ -389,6 +389,7 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 			append(append([]byte{}, ca.pem...), "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n"...)), want: "its ca.crt does not hold only CA certificates"},
 		{name: "ca.crt holds trailing text", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, append(append([]byte{}, ca.pem...), "not a certificate\n"...)),
 			want: "its ca.crt does not hold only CA certificates"},
+		{name: "tls.crt CA is expired", secret: tlsSecret(ucpAPIServerCASecretName, expired, expired), want: "its tls.crt CA is expired or not yet valid"},
 		{name: "ca.crt is another CA", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, other.pem), want: "its ca.crt does not hold the CA certificate in tls.crt"},
 		{name: "cainjector may not copy ca.crt", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem), want: "cert-manager.io/allow-direct-injection"},
 		{name: "not marked for a release", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem), want: "it does not have annotations radapp.io/release-name",

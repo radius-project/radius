@@ -893,6 +893,26 @@ func Test_UpgradeRadius_StageUCPAPIServerCATimeout(t *testing.T) {
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
 }
 
+// Plain Helm can leave radius-apiserver-ca behind when authorization turns off. When it turns on again, rad must wait
+// for cert-manager to renew an expired CA rather than make the API server trust it.
+func Test_UpgradeRadius_StageUCPAPIServerCAWaitsForAValidCA(t *testing.T) {
+	expireUCPAPIServiceWait(t)
+	u := newStageUpgrade(t, map[string]any{}, "upgrade")
+	c := newStageCluster(t, nil, false)
+	require.NoError(t, c.dynamic.Tracker().Add(c.offAPIService(t)))
+	expired := apiServerCASecret(c.apiServerCA)
+	pem := expiredTestCA(t, "radius-apiserver-ca")
+	expired.Data[corev1.TLSCertKey], expired.Data[caCertificateKey] = pem, pem
+	_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), expired, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	err = u.run(t, c.impl(u.mock(t, 0, func() {})), []string{"global.rbac.enabled=true"})
+	require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-ca is not usable")
+	require.ErrorContains(t, err, "its tls.crt CA is expired or not yet valid")
+	require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic), "the API server must not trust an expired CA")
+	require.Equal(t, []string{"ucp-ca"}, trustedSubjects(t, c.kube), "the overlap must not hold an expired CA")
+}
+
 // deployedMode returns a function that returns mode, as stageUCPAPIServerCA reads the deployed mode.
 func deployedMode(mode authz.Mode) func() (authz.Mode, error) {
 	return func() (authz.Mode, error) { return mode, nil }
