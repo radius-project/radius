@@ -534,6 +534,8 @@ main() {
             reject "is missing the sibling release publisher"
         [[ "${publisher}" != *azure-octo* ]] ||
             reject "still targets the old Deployment Engine owner"
+        grep -Eq '^[[:space:]]*github: target\.repo === "deployment-engine" \? engine : siblings,$' <<<"${publisher}" ||
+            reject "does not select the Deployment Engine client by repository"
     fi
     verify_attestation_gate
 

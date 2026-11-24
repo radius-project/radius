@@ -54,8 +54,11 @@ function fixture() {
         }
       },
       repos: {
-        getContent: async () => {
-          if (!state.content) {
+        getContent: async ({ ref }) => {
+          if (
+            !state.content ||
+            (ref !== state.ref.object.sha && !ref.startsWith("automation/"))
+          ) {
             throw Object.assign(new Error("not found"), { status: 404 });
           }
           return { data: state.content };
@@ -95,6 +98,22 @@ test("reports a missing release lock", async () => {
   const state = fixture();
   await reconcileLock(state);
   assert.equal(state.outputs.exists, "false");
+});
+
+test("a stale post-write ref cannot complete lock creation", async () => {
+  const ctx = fixture();
+  ctx.inputs.MODE = "create";
+  ctx.inputs.DE_DIGEST = digest;
+  const getRef = ctx.github.rest.git.getRef;
+  ctx.github.rest.git.getRef = async (args) =>
+    ctx.state.content ?
+      { data: { object: { sha: releaseSource } } }
+    : getRef(args);
+  await assert.rejects(reconcileLock(ctx), /Created lock is not visible/);
+  assert.deepEqual(ctx.outputs, {});
+  ctx.github.rest.git.getRef = getRef;
+  await reconcileLock(ctx);
+  assert.equal(ctx.outputs.digest, digest);
 });
 
 test("creates and reuses an immutable release lock", async () => {

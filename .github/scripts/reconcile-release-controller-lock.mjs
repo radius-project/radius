@@ -339,6 +339,11 @@ export default async function reconcileReleaseControllerLock({
   }
 
   if (!content) {
+    if (mode === "create") {
+      throw new Error(
+        `Created lock is not visible at ${reference.object.sha}; resume to verify it`
+      );
+    }
     if (reference.object.sha !== inputs.releaseSourceCommit) {
       throw new Error(`Release state branch ${branch} has no lock file`);
     }

@@ -85,7 +85,17 @@ write_outputs() {
     local state="$2"
 
     if [[ "${REQUIRE_PUBLISHER}" == true ]]; then
-        local path=".github/workflows/build-and-push.yaml"
+        local path=".github/workflows/build-and-push.yaml" publish_prefix
+        # Match executable control flow through the push, not a command that
+        # could be unreachable. The producer may report its digest afterward.
+        publish_prefix="$(cat <<'BASH'
+if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+  bash .github/scripts/require-unused-tag.sh "$TAG"
+fi
+export BUILDX_METADATA_FILE="$RUNNER_TEMP/build-metadata.json"
+make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"
+BASH
+)"
         "${GH}" api "repos/${REPOSITORY}/contents/${path}?ref=${commit}" \
             -H 'Accept: application/vnd.github.raw+json' |
             yq -o=json '.' |
@@ -93,7 +103,7 @@ write_outputs() {
                 --arg build "github.repository == '${REPOSITORY}' && !github.event.deleted" \
                 --arg container "github.repository == '${REPOSITORY}' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))" \
                 --arg parse '.github/scripts/parse-version.sh --ref "$GITHUB_REF" --sha "$GITHUB_SHA" --out "$GITHUB_OUTPUT"' \
-                --arg push 'make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"' '
+                --arg push "$publish_prefix" '
                 def mandatory: .if == null and (."continue-on-error" // false) == false;
                 .jobs.container as $job |
                 .on.push.tags == ["v*"] and
@@ -104,9 +114,9 @@ write_outputs() {
                 ([$job.steps | to_entries[] | select(.value.id == "version")] as $v |
                  [$job.steps | to_entries[] | select(.value.name == "Publish image")] as $p |
                  ($v | length) == 1 and ($p | length) == 1 and $v[0].key < $p[0].key and
-                 ($v[0].value | mandatory and .run == $parse) and
+                 ($v[0].value | mandatory and (.run | rtrimstr("\n")) == $parse) and
                  ($p[0].value | mandatory and .env.TAG == "${{ steps.version.outputs.ghcr-tag }}" and
-                    .env.REGISTRY == null and (.run | split("\n") | index($push) != null)))
+                    .env.REGISTRY == null and (.run == $push or (.run | startswith($push + "\n")))))
             ' >/dev/null ||
             fail "${commit} lacks the active direct GHCR tag publisher; select a reviewed release source before tagging"
     fi
@@ -124,6 +134,9 @@ plan_absent_tag() {
     local base base_commit
 
     if [[ -z "${ABSENT_BASE}" ]]; then
+        if [[ -n "${EXPECTED_COMMIT}" ]]; then
+            fail "Missing ${REPOSITORY} ref refs/tags/${TAG}; expected commit ${EXPECTED_COMMIT}. Stop recovery and investigate the missing ref."
+        fi
         fail "Deployment Engine tag ${TAG} does not exist. The release controller creates it after approval; to release another commit, create the signed tag with: ${recovery}"
     fi
     base="$("${GH}" api "repos/${REPOSITORY}/commits/${ABSENT_BASE}")" ||

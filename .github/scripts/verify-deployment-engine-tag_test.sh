@@ -115,6 +115,7 @@ repository() {
 }
 
 run_script() {
+    : >"${TEST_ROOT}/outputs"
     set +e
     OUTPUT="$(GITHUB_OUTPUT="${TEST_ROOT}/outputs" GH="${TEST_ROOT}/gh" \
         bash "${SCRIPT}" "$@" 2>&1)"
@@ -251,8 +252,12 @@ on: {push: {tags: ['v*']}}
 env: {REGISTRY: ghcr.io/radius-project}
 jobs:
   build:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: make test
     if: github.repository == 'radius-project/deployment-engine' && !github.event.deleted
   container:
+    runs-on: ubuntu-24.04
     needs: build
     if: github.repository == 'radius-project/deployment-engine' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions: {packages: write}
@@ -262,7 +267,12 @@ jobs:
       - name: Publish image
         env:
           TAG: ${{ steps.version.outputs.ghcr-tag }}
-        run: make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            bash .github/scripts/require-unused-tag.sh "$TAG"
+          fi
+          export BUILDX_METADATA_FILE="$RUNNER_TEMP/build-metadata.json"
+          make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"
 YAML
 )"
     if [[ -n "${DE_PUBLISHER_FIXTURE:-}" ]]; then
@@ -272,6 +282,11 @@ YAML
     FAKE_PUBLISHER="${workflow}"
     run_script --require-publisher --allow-absent main v0.61.0
     expect_outputs "${COMMIT_B}" absent "new tag at transferred publisher" || return
+    FAKE_PUBLISHER="$(yq '(.jobs.container.steps[] | select(.id == "version")).run |= (. + "\n" | ... style="literal")' <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "literal-block version command" || return
+    # Shell variables in the mutated publish command belong to the producer.
+    # shellcheck disable=SC2016
     for mutation in \
         ".jobs.container.if = \"github.ref == 'refs/heads/main'\"" \
         '.jobs.build.if = "false"' \
@@ -279,12 +294,26 @@ YAML
         '(.jobs.container.steps[] | select(.name == "Publish image")).if = "false"' \
         '(.jobs.container.steps[] | select(.name == "Publish image")).env.TAG = "latest"' \
         '(.jobs.container.steps[] | select(.name == "Publish image")).run = "make docker-build"' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).run |= ("if ! docker manifest inspect \"$REGISTRY/deployment-engine:$TAG\"; then exit 0; fi\n" + .)' \
         '(.jobs.container.steps[] | select(.id == "version")).run = "echo skipped"'; do
         FAKE_PUBLISHER="$(yq "${mutation}" <<< "${workflow}")"
         run_script --require-publisher --allow-absent main v0.61.0
         expect_failure "lacks the active direct GHCR tag publisher" "${mutation}" || return
+        [[ ! -s "${TEST_ROOT}/outputs" ]] || { fail_test "rejected publisher emitted tag state"; return; }
     done
     unset FAKE_PUBLISHER
+    ((++PASS))
+}
+
+test_missing_pinned_tag_stops_recovery() {
+    repository ""
+    run_script v0.61.0-rc.1 "${COMMIT_A}"
+    expect_failure "refs/tags/v0.61.0-rc.1; expected commit ${COMMIT_A}" \
+        "missing pinned tag must identify the approved ref and commit" || return
+    if [[ -s "${TEST_ROOT}/outputs" || "${OUTPUT}" =~ (git\ push|git\ tag|creat) ]]; then
+        fail_test "pinned recovery planned or suggested creating a missing tag"
+        return
+    fi
     ((++PASS))
 }
 
@@ -458,6 +487,7 @@ main() {
     test_rejects_tag_moved_after_approval
     test_rejects_malformed_approved_commit
     test_missing_tag_without_plan_prints_recovery_command
+    test_missing_pinned_tag_stops_recovery
     test_absent_tag_plans_base_commit
     test_absent_plan_must_be_on_main
     test_absent_plan_requires_resolvable_base

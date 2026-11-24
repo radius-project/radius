@@ -162,6 +162,12 @@ main() {
     expect pass "new preparations require sibling publication" HEAD --require-sibling-releases
     expect pass "new mutation requires GHCR-only publication" HEAD --require-current-bicep
     expect pass "new release uses the transferred Deployment Engine" HEAD --require-current-engine
+    local publisher="${REPO}/.github/scripts/publish-sibling-releases.mjs"
+    sed 's/target.repo === "deployment-engine"/target.owner === "radius-project"/' \
+        "${ROOT}/.github/scripts/publish-sibling-releases.mjs" > "${publisher}"
+    expect "does not select the Deployment Engine client by repository" \
+        "reject an owner-only backport" HEAD --require-current-engine
+    write_pipeline
     yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "engine-token")).with.owner = "azure-octo"' "${WORKFLOWS}/build-release.yaml"
     expect "does not publish the transferred Deployment Engine" "reject old installation" HEAD --require-current-engine
 

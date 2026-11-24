@@ -340,6 +340,19 @@ test_deployment_engine_tag_automation() {
                 .with.owner != "radius-project")] | length == 0' \
             "$(basename "${workflow}") must not request the old installation"
     done
+    local spec job id access
+    for spec in 'prepare-release.yaml prepare de-token read' \
+        '__release-controller.yaml validate de-read-token read' \
+        '__release-controller.yaml publish-deployment-engine de-read-token read' \
+        '__release-controller.yaml publish-deployment-engine de-write-token write' \
+        'build-release.yaml publish-sibling-releases engine-token write'; do
+        read -r workflow job id access <<< "${spec}"
+        assert_json "${WORKFLOWS}/${workflow}" \
+            "[.jobs.\"${job}\".steps[] | select(.id == \"${id}\") |
+              [.with.owner, .with.repositories, .with.\"client-id\", .with.\"private-key\", .with.\"permission-contents\"]]" \
+            "[[\"radius-project\",\"deployment-engine\",\"\${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}\",\"\${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}\",\"${access}\"]]" \
+            "${job}.${id} must request the scoped publisher App token"
+    done
     assert_yq "${WORKFLOWS}/prepare-release.yaml" \
         ".jobs.prepare.steps[] |
         select(.name == \"Verify or plan Deployment Engine tag\") |
