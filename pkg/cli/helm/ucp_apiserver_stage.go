@@ -286,12 +286,26 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 
+	// The chart copies a live ucp-cert into the Secret it renders, so its CA would go into the caBundle below. rad
+	// uses only one the release owns, and checks it again after rendering so the chart did not read another.
+	before, err := releaseUCPOffCertificate(ctx, kubeContext, kubeClient, radiusNamespace, releaseName)
+	if err != nil {
+		return err
+	}
 	manifest, ok, err := render(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to render the Radius chart to stage Secret %s: %w", ucpOffCertificateSecretName, err)
 	}
 	if !ok {
 		return nil
+	}
+	after, err := releaseUCPOffCertificate(ctx, kubeContext, kubeClient, radiusNamespace, releaseName)
+	if err != nil {
+		return err
+	}
+	if (before == nil) != (after == nil) || before != nil && (before.UID != after.UID || before.ResourceVersion != after.ResourceVersion) {
+		return fmt.Errorf("Secret %s/%s changed while rad rendered the Radius chart. Helm has not changed Radius; run the command again",
+			radiusNamespace, ucpOffCertificateSecretName)
 	}
 	rendered, err := renderedUCPOffCertificate(manifest)
 	if err != nil {
@@ -386,6 +400,31 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	return nil
+}
+
+// releaseUCPOffCertificate returns the live Secret ucp-cert, or nil if it does not exist, or an error if it does not
+// belong to Helm release releaseName, as applyHelmOwnedSecret requires, so rad never trusts the CA of another owner.
+func releaseUCPOffCertificate(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace, releaseName string) (*corev1.Secret, error) {
+	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpOffCertificateSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpOffCertificateSecretName, err)
+	}
+	if !helmOwned(secret, radiusNamespace, releaseName) {
+		return nil, foreignUCPOffCertificateError(kubeContext, radiusNamespace, releaseName)
+	}
+	return secret, nil
+}
+
+// foreignUCPOffCertificateError reports that Secret ucp-cert is not part of Helm release releaseName, so rad does not
+// trust its CA.
+func foreignUCPOffCertificateError(kubeContext, radiusNamespace, releaseName string) error {
+	return fmt.Errorf("Secret %s/%s exists but is not part of Helm release %s/%s, so rad will not trust its CA. Helm has not changed Radius. "+
+		"Delete it with %s if Radius should manage it, then run the command again",
+		radiusNamespace, ucpOffCertificateSecretName, radiusNamespace, releaseName,
+		kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpOffCertificateSecretName))
 }
 
 // ucpOffCertificateIssuer returns the CA of cas that the certificate in rendered, the Secret ucp-cert that Helm applies,

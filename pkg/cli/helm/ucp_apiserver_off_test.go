@@ -298,7 +298,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		c.onUCP(t)
 		// Helm wrote Secret ucp-cert and the off caBundle, but UCP still serves the certificate from radius-apiserver-ca.
 		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(),
-			tlsSecret(ucpOffCertificateSecretName, issueUCPCertificate(t, c.ucpCA), c.ucpCA.pem), metav1.CreateOptions{})
+			helmUCPOffCertificateSecret(issueUCPCertificate(t, c.ucpCA), c.ucpCA.pem), metav1.CreateOptions{})
 		require.NoError(t, err)
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
@@ -330,6 +330,31 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		c.requireOffTrust(t)
+	})
+
+	t.Run("refuses a ucp-cert that the release does not own", func(t *testing.T) {
+		c := newOffAfterOnCluster(t)
+		secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
+		foreign, err := secrets.Get(t.Context(), ucpOffCertificateSecretName, metav1.GetOptions{})
+		require.NoError(t, err)
+		delete(foreign.Labels, helmManagedByLabel)
+		delete(foreign.Annotations, helmReleaseNameAnnotation)
+		delete(foreign.Annotations, helmReleaseNamespaceAnnotation)
+		_, err = secrets.Update(t.Context(), foreign, metav1.UpdateOptions{})
+		require.NoError(t, err)
+		before, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+
+		reconcileErr := c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil)
+
+		after, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, before.Object, after.Object, "rad must not make the API server trust the CA of a foreign ucp-cert")
+		for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName} {
+			_, err := secrets.Get(t.Context(), name, metav1.GetOptions{})
+			require.NoError(t, err, "Secret %s must remain while UCP may still serve from it", name)
+		}
+		require.ErrorContains(t, reconcileErr, "Secret radius-system/ucp-cert is not part of Helm release radius-system/radius")
 	})
 
 	t.Run("retries when cainjector writes first", func(t *testing.T) {

@@ -112,6 +112,13 @@ func tlsSecret(name string, crt, caCrt []byte) *corev1.Secret {
 	}
 }
 
+// helmUCPOffCertificateSecret is Secret ucp-cert as Helm applies it for the Radius release with authorization off.
+func helmUCPOffCertificateSecret(crt, caCrt []byte) *corev1.Secret {
+	secret := tlsSecret(ucpOffCertificateSecretName, crt, caCrt)
+	setHelmOwnership(&secret.ObjectMeta, "radius", RadiusSystemNamespace)
+	return secret
+}
+
 // apiServerCASecret is radius-apiserver-ca as cert-manager issues it from the chart's Certificate: a self-signed CA
 // whose ca.crt is the CA certificate itself, annotated by secretTemplate so cainjector may copy it.
 func apiServerCASecret(ca testCA) *corev1.Secret {

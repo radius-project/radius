@@ -376,13 +376,15 @@ func (c *stageCluster) helmAppliesOff(t *testing.T, target *corev1.Secret, caBun
 		_, err = secrets.Update(t.Context(), existing, metav1.UpdateOptions{})
 		require.NoError(t, err)
 	case target != nil:
-		_, err = secrets.Create(t.Context(), target.DeepCopy(), metav1.CreateOptions{})
+		created := target.DeepCopy()
+		setHelmOwnership(&created.ObjectMeta, "radius", RadiusSystemNamespace)
+		_, err = secrets.Create(t.Context(), created, metav1.CreateOptions{})
 		require.NoError(t, err)
 	case err == nil:
 		caBundle = existing.Data[caCertificateKey]
 	default:
 		require.True(t, apierrors.IsNotFound(err))
-		_, err = secrets.Create(t.Context(), tlsSecret(ucpOffCertificateSecretName, issueUCPCertificate(t, c.ucpCA), c.ucpCA.pem), metav1.CreateOptions{})
+		_, err = secrets.Create(t.Context(), helmUCPOffCertificateSecret(issueUCPCertificate(t, c.ucpCA), c.ucpCA.pem), metav1.CreateOptions{})
 		require.NoError(t, err)
 		caBundle = c.ucpCA.pem
 	}
@@ -1123,6 +1125,59 @@ func Test_StageUCPOffCertificate_VerifiesRenderedKeyPair(t *testing.T) {
 			require.Nil(t, c.stagedOffCertificate(t), "rad must not apply Secret %s", ucpOffCertificateSecretName)
 			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 			require.True(t, apierrors.IsNotFound(err), "rad must not write Secret %s", ucpAPIServerTrustSecretName)
+		})
+	}
+}
+
+// The chart copies a live ucp-cert into the Secret it renders when authorization turns off. A valid key pair in a
+// ucp-cert that the release does not own must not get its CA into the trust Secret or the caBundle, whether it existed
+// before rad rendered the chart or appeared while it did.
+func Test_StageUCPOffCertificate_RefusesForeignLiveCertificate(t *testing.T) {
+	for _, duringRender := range []bool{false, true} {
+		t.Run(fmt.Sprintf("created during render %t", duringRender), func(t *testing.T) {
+			c := newStageCluster(t, nil, true)
+			c.onUCP(t)
+			foreignCA := newTestCA(t, "foreign")
+			crt, key := ucpKeyPair(t, foreignCA)
+			foreign := &corev1.Secret{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+				ObjectMeta: metav1.ObjectMeta{Name: ucpOffCertificateSecretName, Namespace: RadiusSystemNamespace},
+				Type:       corev1.SecretTypeTLS,
+				Data:       map[string][]byte{corev1.TLSCertKey: crt, corev1.TLSPrivateKeyKey: key, caCertificateKey: foreignCA.pem},
+			}
+			secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
+			if !duringRender {
+				_, err := secrets.Create(t.Context(), foreign.DeepCopy(), metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+			manifest, err := json.Marshal(foreign)
+			require.NoError(t, err)
+			beforeAPIService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+			require.NoError(t, err)
+			beforeDeployment := c.deployment(t)
+
+			stageErr := c.impl(nil).stageUCPOffCertificate(t.Context(), "test-context", RadiusSystemNamespace, "radius",
+				func(ctx context.Context) (string, bool, error) {
+					if duringRender {
+						if _, err := secrets.Create(ctx, foreign.DeepCopy(), metav1.CreateOptions{}); err != nil {
+							return "", false, err
+						}
+					}
+					return string(manifest), true, nil
+				})
+			require.Error(t, stageErr)
+			afterAPIService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, beforeAPIService, afterAPIService, "rad must not change the APIService")
+			require.Equal(t, beforeDeployment, c.deployment(t), "rad must not change the Deployment")
+			_, err = secrets.Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+			require.True(t, apierrors.IsNotFound(err), "rad must not write Secret %s", ucpAPIServerTrustSecretName)
+			live, err := secrets.Get(t.Context(), ucpOffCertificateSecretName, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, foreign.Data, live.Data, "rad must not change the foreign Secret")
+			require.NotContains(t, live.Labels, helmManagedByLabel)
+			require.ErrorContains(t, stageErr, "Secret radius-system/ucp-cert exists but is not part of Helm release radius-system/radius, so rad will not trust its CA")
+			require.ErrorContains(t, stageErr, `kubectl --context "test-context" -n radius-system delete secret ucp-cert`)
 		})
 	}
 }

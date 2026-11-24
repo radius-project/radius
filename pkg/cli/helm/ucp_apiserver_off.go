@@ -142,6 +142,12 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if err != nil {
 		return fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpOffCertificateSecretName, err)
 	}
+	// Helm applied ucp-cert with the release, so one without the release's metadata was replaced since; rad does not
+	// make the API server trust its CA.
+	if !helmOwned(offSecret, radiusNamespace, radiusReleaseName) {
+		return fmt.Errorf("Secret %s/%s is not part of Helm release %s/%s, so rad did not make APIService %s trust its CA. "+
+			"Check the Secret, then run the command again", radiusNamespace, ucpOffCertificateSecretName, radiusNamespace, radiusReleaseName, ucpAPIServiceName)
+	}
 	offCAs := caCertificates(offSecret.Data[caCertificateKey])
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
