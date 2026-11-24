@@ -241,8 +241,8 @@ func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, 
 // caInjectorProblem describes a setting of the cainjector containers that stops cainjector from injecting the CA
 // certificates of a Secret in radiusNamespace into an APIService, or returns "" when there is none. It reads the flags
 // in Args, with the $(NAME) references to the container's environment that Kubernetes expands. podNamespace is the
-// namespace of the cainjector pods. When it cannot resolve the --namespace value, it calls warn and does not check that
-// setting; rad then reports the problem when the CA certificate never reaches the APIService.
+// namespace of the cainjector pods. When it cannot resolve the value of --namespace, --ignore-namespaces or
+// --enable-apiservices-injectable, it calls warn and does not check that setting; rad then reports the problem when the CA certificate never reaches the APIService.
 func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespace string, warn func(format string, v ...any)) string {
 	for _, container := range injectors {
 		env := containerEnvironment(container, podNamespace)
@@ -267,10 +267,17 @@ func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespa
 				value, rawValue, valueResolved = argv[idx+1], raw[idx+1], resolved[idx+1]
 			}
 			if !valueResolved {
-				if name == "namespace" {
+				// rad cannot tell what cainjector receives, so it leaves the flag unchecked and says so for each it checks.
+				switch name {
+				case "namespace":
 					namespace, namespaceResolved = &rawValue, false
+				case "ignore-namespaces":
+					warn("Warning: rad could not resolve the --ignore-namespaces value %q of cert-manager cainjector container %q, so it did not check that cainjector watches namespace %q",
+						rawValue, container.Name, radiusNamespace)
+				case "enable-apiservices-injectable":
+					warn("Warning: rad could not resolve the --enable-apiservices-injectable value %q of cert-manager cainjector container %q, so it did not check that cainjector injects CA certificates into APIServices",
+						rawValue, container.Name)
 				}
-				// rad cannot tell what cainjector receives for any other flag either, so it leaves it unchecked.
 				continue
 			}
 			switch name {

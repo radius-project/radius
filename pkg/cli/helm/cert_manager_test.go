@@ -795,6 +795,8 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 		wantWarning bool
 		// wantNamespaceWarning is set when rad cannot resolve the namespace flag and warns instead of checking it.
 		wantNamespaceWarning bool
+		// wantFlagWarning is the warning for another flag whose value rad cannot resolve.
+		wantFlagWarning string
 	}{
 		{name: "chart defaults", args: []string{"--v=2", "--leader-election-namespace=kube-system"}},
 		{name: "injection explicitly enabled", args: []string{"--enable-apiservices-injectable=true", "--enable-certificates-data-source"}},
@@ -835,6 +837,14 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 			env:                  []corev1.EnvVar{{Name: "WATCH_NAMESPACE", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{Key: "namespace"}}}},
 			wantNamespaceWarning: true},
 		{name: "namespace from an undefined variable", args: []string{"--namespace=$(WATCH_NAMESPACE)"}, wantNamespaceWarning: true},
+		{name: "ignored namespaces from a ConfigMap", args: []string{"--ignore-namespaces=$(IGNORED)"},
+			env: []corev1.EnvVar{{Name: "IGNORED", ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{Key: "ignored"}}}},
+			wantFlagWarning: `Warning: rad could not resolve the --ignore-namespaces value "$(IGNORED)" of cert-manager cainjector container "cert-manager-cainjector", ` +
+				`so it did not check that cainjector watches namespace "radius-system"`},
+		{name: "APIService injection from a Secret", args: []string{"--enable-apiservices-injectable=$(APISERVICES)"},
+			env: []corev1.EnvVar{{Name: "APISERVICES", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{Key: "enabled"}}}},
+			wantFlagWarning: `Warning: rad could not resolve the --enable-apiservices-injectable value "$(APISERVICES)" of cert-manager cainjector container "cert-manager-cainjector", ` +
+				`so it did not check that cainjector injects CA certificates into APIServices`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -871,6 +881,8 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 			if tt.wantWarning {
 				require.Equal(t, []string{`Warning: rad could not tell which container of cert-manager cainjector Deployment security/cert-manager-cainjector ("proxy", "injector") runs cainjector, ` +
 					`so it did not check that cainjector can inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService`}, warnings)
+			} else if tt.wantFlagWarning != "" {
+				require.Equal(t, []string{tt.wantFlagWarning}, warnings)
 			} else if tt.wantNamespaceWarning {
 				require.Equal(t, []string{`Warning: rad could not resolve the --namespace value "$(WATCH_NAMESPACE)" of cert-manager cainjector container "cert-manager-cainjector", ` +
 					`so it did not check that cainjector watches namespace "radius-system"`}, warnings)
