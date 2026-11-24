@@ -18,12 +18,14 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -121,6 +123,9 @@ func Test_DeploymentTemplateReconciler_IsUpToDate(t *testing.T) {
 		},
 	}
 	require.True(t, isUpToDate(owner), "legacy SHA-1 hashes must not cause an unnecessary PUT after upgrade")
+	hash, err := computeHash(owner)
+	require.NoError(t, err)
+	require.Equal(t, hash, owner.Status.StatusHash, "a legacy hash is replaced with the current hash, which Reconcile saves")
 }
 
 func Test_ParseDeploymentScopeFromProviderConfig(t *testing.T) {
@@ -358,6 +363,30 @@ func Test_DeploymentTemplateReconciler_SpecChangedDuringOperation(t *testing.T) 
 	require.NotEqual(t, submittedHash, second.Status.Coordinator.SubmittedHash)
 	f.completePut()
 	require.True(t, isUpToDate(f.ready()))
+}
+
+// A status hash that an older version of Radius computed with SHA-1 is replaced with the current hash and saved without
+// a deployment, so the controller no longer needs SHA-1 for the template.
+func Test_DeploymentTemplateReconciler_MigratesLegacyStatusHash(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	f.runningPut()
+	f.completePut()
+	owner := f.ready()
+	current := owner.Status.StatusHash
+	require.NotEmpty(t, current)
+
+	// Record the status an older version of Radius wrote: the SHA-1 hash of the same spec.
+	data, err := json.Marshal(owner.Spec)
+	require.NoError(t, err)
+	owner.Status.StatusHash = hashutil.LegacyHex(data)
+	require.NoError(t, f.client.Status().Update(t.Context(), owner))
+
+	f.step()
+	owner = f.owner()
+	require.Nil(t, owner.Status.Operation, "a legacy hash of the same spec must not start a deployment")
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, owner.Status.Phrase)
+	require.Equal(t, current, owner.Status.StatusHash, "the current hash must be saved")
 }
 
 func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
