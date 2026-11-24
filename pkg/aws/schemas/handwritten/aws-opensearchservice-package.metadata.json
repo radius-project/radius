@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::OpenSearchService::Package",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": ""
+}

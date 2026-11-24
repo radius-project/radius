@@ -49,6 +49,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"opensearch":               "es",
 	"rds":                      "rds",
 	"s3":                       "s3",
 	"s3control":                "s3",

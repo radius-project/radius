@@ -1,0 +1,96 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_OPENSEARCH_DOMAIN": "radius-rec-logs",
+    "RADIUS_REC_PACKAGE_ID": "F123456789"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": []}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "AssociatePackage",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ConflictException"
+      },
+      "body": "{\"message\": \"Domain radius-rec-logs is processing a change\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Domain not found: radius-rec-missing\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "AssociatePackage",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Domain not found: radius-rec-missing\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Domain not found: radius-rec-missing\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"ReferencePath\": \"analyzers/F123456789\", \"DomainPackageStatus\": \"ACTIVE\", \"LastUpdated\": 1795200000, \"PrerequisitePackageIDList\": []}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DissociatePackage",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ConflictException"
+      },
+      "body": "{\"message\": \"Package F123456789 is in use by an index\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListPackagesForDomain",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"DomainPackageDetailsList\": [{\"DomainName\": \"radius-rec-logs\", \"PackageID\": \"F123456789\", \"PackageName\": \"radius-rec-synonyms\", \"PackageType\": \"TXT-DICTIONARY\", \"PackageVersion\": \"v1\", \"DomainPackageStatus\": \"ACTIVE\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DissociatePackage",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException"
+      },
+      "body": "{\"message\": \"Package is not associated to this domain\"}"
+    }
+  ]
+}
