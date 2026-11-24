@@ -165,7 +165,7 @@ func (h *ActivityStream) Create(ctx context.Context, request native.CreateReques
 		Mode:             types.ActivityStreamMode(awsapi.String(request.Properties, "Mode")),
 		KmsKeyId:         aws.String(awsapi.String(request.Properties, "KmsKeyId")),
 		ApplyImmediately: aws.Bool(true),
-	}, inRegion(request.Region), sendOnce)
+	}, inRegion(request.Region), retryThrottlesOnly)
 	if err != nil {
 		return "", awsapi.Rejected(err)
 	}

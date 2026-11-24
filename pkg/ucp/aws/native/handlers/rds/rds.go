@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package rds has the native handlers for Amazon RDS resources that have no CloudFormation type: a DB cluster's
-// database activity stream and an RDS for Oracle tenant database. Their schemas are hand-written, in
-// pkg/aws/schemas/handwritten.
 package rds
 
 import (
@@ -45,12 +42,12 @@ type API interface {
 
 var inRegion = awsapi.InRegion[rds.Options]
 
-// sendOnce makes the SDK send a call again only when AWS throttled it, which AWS refuses before acting on. A change
-// that takes no idempotency token, such as CreateTenantDatabase, can't be sent again after any other error: when the
-// first attempt reached AWS, the retry gets an error such as TenantDatabaseAlreadyExists, which UCP would read as
+// retryThrottlesOnly makes the SDK send a call again only when AWS throttled it, which AWS refuses before acting on. A
+// change that takes no idempotency token, such as CreateTenantDatabase, can't be sent again after any other error: when
+// the first attempt reached AWS, the retry gets an error such as TenantDatabaseAlreadyExists, which UCP would read as
 // rejected, and it would drop the record of a change AWS has. Sent once, an error AWS answers with a 5xx leaves the
 // outcome unknown, and the next deploy reads what AWS has.
-func sendOnce(o *rds.Options) {
+func retryThrottlesOnly(o *rds.Options) {
 	o.Retryer = throttleRetryer{o.Retryer}
 }
 

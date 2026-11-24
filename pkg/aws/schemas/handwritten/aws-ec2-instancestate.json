@@ -1,0 +1,35 @@
+{
+  "typeName": "AWS::EC2::InstanceState",
+  "description": "Keeps an existing Amazon EC2 instance running or stopped, with EC2's StartInstances and StopInstances. A deploy starts or stops the instance only when its state differs from the template's. Deleting it changes nothing in AWS: the instance stays as it is.",
+  "properties": {
+    "InstanceId": {
+      "type": "string",
+      "description": "The ID of the instance, such as i-1234567890abcdef0. EC2 can stop only an instance whose root volume is an Amazon EBS volume. To start an instance whose EBS volumes are encrypted with a customer managed key, the caller needs kms:CreateGrant on that key, with the condition kms:GrantIsForAWSResource set to true."
+    },
+    "State": {
+      "type": "string",
+      "description": "The state to keep the instance in: running or stopped. While the instance changes state, a read returns EC2's state, such as pending or stopping.",
+      "enum": ["running", "stopped"]
+    }
+  },
+  "required": ["InstanceId", "State"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/InstanceId"],
+  "createOnlyProperties": ["/properties/InstanceId"],
+  "handlers": {
+    "create": {
+      "permissions": ["ec2:DescribeInstances"]
+    },
+    "read": {
+      "permissions": ["ec2:DescribeInstances"]
+    },
+    "update": {
+      "permissions": [
+        "ec2:DescribeInstances",
+        "ec2:StartInstances",
+        "ec2:StopInstances",
+        "kms:CreateGrant"
+      ]
+    }
+  }
+}
