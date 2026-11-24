@@ -163,8 +163,6 @@ jobs:
             --release-commit "${RELEASE_COMMIT}" \
             --trigger "${TRIGGER}" \
             --output-dir "${RUNNER_TEMP}/release-controller"
-          recipes="$(yq -r 'has("recipeSourceCommit")' "${RUNNER_TEMP}/release-plan.yaml")"
-          echo "REQUIRE_BICEP_RECIPES=${recipes}" >>"${GITHUB_ENV}"
 
       # A tag runs the tagged commit's workflows, so check them before any mutation.
       - name: Verify release commit runs the release build
@@ -172,6 +170,7 @@ jobs:
         id: build-contract
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          REQUIRE_BICEP_RECIPES: ${{ steps.plan.outputs.recipe-source-commit != '' }}
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
           INPUT_PLAN_FILE: ${{ runner.temp }}/release-plan.yaml
