@@ -198,7 +198,11 @@ async function land(github, pr, head, target, parent, tree, wait) {
       );
       // GitHub rebase-merges can rewrite the signature and SHA. Verify the
       // actual landed parent and entire tree against the verified App proposal.
-      verifyContent(await commitAt(github, pull.merge_commit_sha), parent, tree);
+      verifyContent(
+        await commitAt(github, pull.merge_commit_sha),
+        parent,
+        tree
+      );
       return pull.merge_commit_sha;
     }
     assert(

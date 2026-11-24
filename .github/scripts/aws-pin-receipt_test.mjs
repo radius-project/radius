@@ -163,7 +163,7 @@ function fixture() {
           assert.deepEqual(repository, { ...aws, per_page: 1 });
           const [from, to] = basehead.split("...");
           const seen = new Set();
-          for (const queue = [to]; queue.length; ) {
+          for (const queue = [to]; queue.length;) {
             const sha = queue.shift();
             if (sha === from) return { data: { status: "ahead" } };
             if (seen.has(sha)) continue;

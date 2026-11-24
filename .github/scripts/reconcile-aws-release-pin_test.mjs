@@ -211,7 +211,10 @@ function fixture(t, state = "wrong") {
           assert.equal(merge_method, "rebase");
           calls.push("merge");
           const tip = git("rev-parse", `refs/heads/${target}`);
-          const tree = git("rev-parse", `${config.badMerge ? tip : sha}^{tree}`);
+          const tree = git(
+            "rev-parse",
+            `${config.badMerge ? tip : sha}^{tree}`
+          );
           const landed = git(
             "commit-tree",
             tree,
