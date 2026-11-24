@@ -245,10 +245,46 @@ test_new_tag_requires_active_tag_publisher() {
     run_script --require-publisher --allow-absent main v0.61.0
     expect_failure "lacks the active direct GHCR tag publisher" \
         "an unmigrated Deployment Engine commit must not be tagged" || return
-    export FAKE_PUBLISHER='{"on":{"push":{"tags":["v*"]}},"env":{"REGISTRY":"ghcr.io/radius-project"},"jobs":{"container":{"permissions":{"packages":"write"}}}}'
+    local workflow mutation
+    workflow="$(cat <<'YAML'
+on: {push: {tags: ['v*']}}
+env: {REGISTRY: ghcr.io/radius-project}
+jobs:
+  build:
+    if: github.repository == 'radius-project/deployment-engine' && !github.event.deleted
+  container:
+    needs: build
+    if: github.repository == 'radius-project/deployment-engine' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions: {packages: write}
+    steps:
+      - id: version
+        run: .github/scripts/parse-version.sh --ref "$GITHUB_REF" --sha "$GITHUB_SHA" --out "$GITHUB_OUTPUT"
+      - name: Publish image
+        env:
+          TAG: ${{ steps.version.outputs.ghcr-tag }}
+        run: make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"
+YAML
+)"
+    if [[ -n "${DE_PUBLISHER_FIXTURE:-}" ]]; then
+        workflow="$(<"${DE_PUBLISHER_FIXTURE}")"
+    fi
+    export FAKE_PUBLISHER
+    FAKE_PUBLISHER="${workflow}"
     run_script --require-publisher --allow-absent main v0.61.0
-    unset FAKE_PUBLISHER
     expect_outputs "${COMMIT_B}" absent "new tag at transferred publisher" || return
+    for mutation in \
+        ".jobs.container.if = \"github.ref == 'refs/heads/main'\"" \
+        '.jobs.build.if = "false"' \
+        '.jobs.container.steps = []' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).if = "false"' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).env.TAG = "latest"' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).run = "make docker-build"' \
+        '(.jobs.container.steps[] | select(.id == "version")).run = "echo skipped"'; do
+        FAKE_PUBLISHER="$(yq "${mutation}" <<< "${workflow}")"
+        run_script --require-publisher --allow-absent main v0.61.0
+        expect_failure "lacks the active direct GHCR tag publisher" "${mutation}" || return
+    done
+    unset FAKE_PUBLISHER
     ((++PASS))
 }
 

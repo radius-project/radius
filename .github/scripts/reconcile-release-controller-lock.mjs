@@ -130,6 +130,37 @@ async function verifyLockCommit(
       `Release state commit ${sha} on ${branch} is not a GitHub-verified App commit`
     );
   }
+  // The Contents API records the App as author and GitHub's web-flow as
+  // committer. Verify the signer of this exact object, not just Git metadata.
+  const { repository } = await github.graphql(
+    `query($owner: String!, $repo: String!, $sha: GitObjectID!) {
+      repository(owner: $owner, name: $repo) {
+        object(oid: $sha) { ... on Commit {
+          signature { isValid wasSignedByGitHub signer { databaseId } }
+        } }
+      }
+    }`,
+    { owner, repo, sha }
+  );
+  const signature = repository?.object?.signature;
+  const committer = commit.committer;
+  const app =
+    committer?.id === commit.author.id &&
+    committer.login === commit.author.login &&
+    committer.type === "Bot";
+  const githubWeb =
+    committer?.id === 19864447 &&
+    committer.login === "web-flow" &&
+    signature?.wasSignedByGitHub === true;
+  if (
+    (!app && !githubWeb) ||
+    signature?.isValid !== true ||
+    signature.signer?.databaseId !== committer.id
+  ) {
+    throw new Error(
+      `Release state commit ${sha} has an untrusted committer or signer`
+    );
+  }
 }
 
 // A final release promotes its last RC, so it must ship the Deployment Engine

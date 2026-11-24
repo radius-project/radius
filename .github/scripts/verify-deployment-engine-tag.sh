@@ -88,9 +88,26 @@ write_outputs() {
         local path=".github/workflows/build-and-push.yaml"
         "${GH}" api "repos/${REPOSITORY}/contents/${path}?ref=${commit}" \
             -H 'Accept: application/vnd.github.raw+json' |
-            yq -e '(.on.push.tags[] == "v*") and
+            yq -o=json '.' |
+            jq -e \
+                --arg build "github.repository == '${REPOSITORY}' && !github.event.deleted" \
+                --arg container "github.repository == '${REPOSITORY}' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))" \
+                --arg parse '.github/scripts/parse-version.sh --ref "$GITHUB_REF" --sha "$GITHUB_SHA" --out "$GITHUB_OUTPUT"' \
+                --arg push 'make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"' '
+                def mandatory: .if == null and (."continue-on-error" // false) == false;
+                .jobs.container as $job |
+                .on.push.tags == ["v*"] and
                 .env.REGISTRY == "ghcr.io/radius-project" and
-                .jobs.container.permissions.packages == "write"' >/dev/null ||
+                .jobs.build.needs == null and .jobs.build.if == $build and
+                $job.needs == "build" and $job.if == $container and
+                $job.permissions.packages == "write" and $job.env.REGISTRY == null and
+                ([$job.steps | to_entries[] | select(.value.id == "version")] as $v |
+                 [$job.steps | to_entries[] | select(.value.name == "Publish image")] as $p |
+                 ($v | length) == 1 and ($p | length) == 1 and $v[0].key < $p[0].key and
+                 ($v[0].value | mandatory and .run == $parse) and
+                 ($p[0].value | mandatory and .env.TAG == "${{ steps.version.outputs.ghcr-tag }}" and
+                    .env.REGISTRY == null and (.run | split("\n") | index($push) != null)))
+            ' >/dev/null ||
             fail "${commit} lacks the active direct GHCR tag publisher; select a reviewed release source before tagging"
     fi
 

@@ -8,6 +8,8 @@ import reconcileLock, {
 const releaseSource = "a".repeat(40);
 const deSource = "b".repeat(40);
 const digest = `sha256:${"c".repeat(64)}`;
+const releaseBot = { login: "radius-release[bot]", type: "Bot", id: 294554884 };
+const webFlow = { login: "web-flow", type: "User", id: 19864447 };
 
 function fixture() {
   const inputs = {
@@ -22,6 +24,20 @@ function fixture() {
   const outputs = {};
   const state = { ref: undefined, content: undefined };
   const github = {
+    graphql: async (_query, { sha }) => {
+      assert.equal(sha, state.ref.object.sha);
+      return {
+        repository: {
+          object: {
+            signature: {
+              isValid: true,
+              wasSignedByGitHub: true,
+              signer: { databaseId: webFlow.id }
+            }
+          }
+        }
+      };
+    },
     rest: {
       git: {
         getRef: async ({ ref }) => {
@@ -51,11 +67,8 @@ function fixture() {
         getCommit: async () => ({
           data: {
             parents: [{ sha: releaseSource }],
-            author: {
-              login: "radius-release[bot]",
-              type: "Bot",
-              id: 294554884
-            },
+            author: releaseBot,
+            committer: webFlow,
             commit: { verification: { verified: true } }
           }
         })
@@ -199,7 +212,43 @@ test("rejects an unsigned lock commit", async () => {
       commit: { verification: { verified: false } }
     }
   });
+
   await assert.rejects(() => reconcileLock(state), /GitHub-verified App/);
+});
+
+test("binds a release-App author to its committer and signer", async () => {
+  const human = { login: "octocat", type: "User", id: 1 };
+  for (const [committer, signer, githubSigned, accepted] of [
+    [releaseBot, releaseBot, false, true],
+    [human, human, false, false],
+    [webFlow, human, true, false],
+    [webFlow, webFlow, false, false],
+    [releaseBot, human, false, false]
+  ]) {
+    const state = fixture();
+    storeLock(state);
+    const { data } = await state.github.rest.repos.getCommit();
+    state.github.rest.repos.getCommit = async () => ({
+      data: { ...data, committer }
+    });
+    state.github.graphql = async () => ({
+      repository: {
+        object: {
+          signature: {
+            isValid: true,
+            wasSignedByGitHub: githubSigned,
+            signer: { databaseId: signer.id }
+          }
+        }
+      }
+    });
+    if (accepted) await reconcileLock(state);
+    else
+      await assert.rejects(
+        reconcileLock(state),
+        /untrusted committer or signer/
+      );
+  }
 });
 
 test("does not write a lock on a conflicting state branch", async () => {
