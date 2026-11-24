@@ -1,0 +1,55 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_AMPLIFY_APP_ID": "d1a2b3c4d5e6f7"
+  },
+  "interactions": [
+    {
+      "service": "Amplify",
+      "operation": "CreateBackendEnvironment",
+      "request": "{\"environmentName\":\"radiusrec\",\"stackName\":\"amplify-radiusrec\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"backendEnvironment\":{\"backendEnvironmentArn\":\"arn:aws:amplify:us-west-2:123456789012:apps/d1a2b3c4d5e6f7/backendenvironments/radiusrec\",\"createTime\":1763560800.0,\"environmentName\":\"radiusrec\",\"stackName\":\"amplify-radiusrec\",\"updateTime\":1763560800.0}}"
+    },
+    {
+      "service": "Amplify",
+      "operation": "GetBackendEnvironment",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"backendEnvironment\":{\"backendEnvironmentArn\":\"arn:aws:amplify:us-west-2:123456789012:apps/d1a2b3c4d5e6f7/backendenvironments/radiusrec\",\"createTime\":1763560800.0,\"environmentName\":\"radiusrec\",\"stackName\":\"amplify-radiusrec\",\"updateTime\":1763560800.0}}"
+    },
+    {
+      "service": "Amplify",
+      "operation": "GetBackendEnvironment",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"backendEnvironment\":{\"backendEnvironmentArn\":\"arn:aws:amplify:us-west-2:123456789012:apps/d1a2b3c4d5e6f7/backendenvironments/radiusrec\",\"createTime\":1763560800.0,\"environmentName\":\"radiusrec\",\"stackName\":\"amplify-radiusrec\",\"updateTime\":1763560800.0}}"
+    },
+    {
+      "service": "Amplify",
+      "operation": "DeleteBackendEnvironment",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"backendEnvironment\":{\"backendEnvironmentArn\":\"arn:aws:amplify:us-west-2:123456789012:apps/d1a2b3c4d5e6f7/backendenvironments/radiusrec\",\"createTime\":1763560800.0,\"environmentName\":\"radiusrec\",\"stackName\":\"amplify-radiusrec\",\"updateTime\":1763560800.0}}"
+    },
+    {
+      "service": "Amplify",
+      "operation": "GetBackendEnvironment",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "NotFoundException"
+      },
+      "body": "{\"message\":\"Backend environment radiusrec not found for app d1a2b3c4d5e6f7\"}"
+    }
+  ]
+}

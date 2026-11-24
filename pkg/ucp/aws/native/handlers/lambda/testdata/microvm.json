@@ -1,0 +1,72 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_MICROVM_IMAGE_ARN": "arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web"
+  },
+  "interactions": [
+    {
+      "service": "Lambda Microvms",
+      "operation": "RunMicrovm",
+      "request": "{\"clientToken\":\"00000000-0000-0000-0000-000000000000\",\"idlePolicy\":{\"autoResumeEnabled\":false,\"maxIdleDurationSeconds\":60,\"suspendedDurationSeconds\":0},\"imageIdentifier\":\"arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web\",\"logging\":{\"disabled\":{}},\"maximumDurationInSeconds\":900}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"egressNetworkConnectors\":[],\"endpoint\":\"https://mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0.microvm.lambda.us-west-2.on.aws\",\"idlePolicy\":{\"autoResumeEnabled\":false,\"maxIdleDurationSeconds\":60,\"suspendedDurationSeconds\":0},\"imageArn\":\"arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web\",\"imageVersion\":\"1\",\"ingressNetworkConnectors\":[],\"maximumDurationInSeconds\":900,\"microvmId\":\"mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\",\"startedAt\":1763560800.0,\"state\":\"PENDING\"}"
+    },
+    {
+      "service": "Lambda Microvms",
+      "operation": "GetMicrovm",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"egressNetworkConnectors\":[],\"endpoint\":\"https://mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0.microvm.lambda.us-west-2.on.aws\",\"idlePolicy\":{\"autoResumeEnabled\":false,\"maxIdleDurationSeconds\":60,\"suspendedDurationSeconds\":0},\"imageArn\":\"arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web\",\"imageVersion\":\"1\",\"ingressNetworkConnectors\":[],\"maximumDurationInSeconds\":900,\"microvmId\":\"mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\",\"startedAt\":1763560800.0,\"state\":\"PENDING\"}"
+    },
+    {
+      "service": "Lambda Microvms",
+      "operation": "GetMicrovm",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"egressNetworkConnectors\":[],\"endpoint\":\"https://mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0.microvm.lambda.us-west-2.on.aws\",\"idlePolicy\":{\"autoResumeEnabled\":false,\"maxIdleDurationSeconds\":60,\"suspendedDurationSeconds\":0},\"imageArn\":\"arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web\",\"imageVersion\":\"1\",\"ingressNetworkConnectors\":[],\"maximumDurationInSeconds\":900,\"microvmId\":\"mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\",\"startedAt\":1763560800.0,\"state\":\"RUNNING\"}"
+    },
+    {
+      "service": "Lambda Microvms",
+      "operation": "GetMicrovm",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"egressNetworkConnectors\":[],\"endpoint\":\"https://mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0.microvm.lambda.us-west-2.on.aws\",\"idlePolicy\":{\"autoResumeEnabled\":false,\"maxIdleDurationSeconds\":60,\"suspendedDurationSeconds\":0},\"imageArn\":\"arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web\",\"imageVersion\":\"1\",\"ingressNetworkConnectors\":[],\"maximumDurationInSeconds\":900,\"microvmId\":\"mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\",\"startedAt\":1763560800.0,\"state\":\"RUNNING\"}"
+    },
+    {
+      "service": "Lambda Microvms",
+      "operation": "TerminateMicrovm",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": ""
+    },
+    {
+      "service": "Lambda Microvms",
+      "operation": "GetMicrovm",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"egressNetworkConnectors\":[],\"endpoint\":\"https://mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0.microvm.lambda.us-west-2.on.aws\",\"idlePolicy\":{\"autoResumeEnabled\":false,\"maxIdleDurationSeconds\":60,\"suspendedDurationSeconds\":0},\"imageArn\":\"arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web\",\"imageVersion\":\"1\",\"ingressNetworkConnectors\":[],\"maximumDurationInSeconds\":900,\"microvmId\":\"mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\",\"startedAt\":1763560800.0,\"state\":\"TERMINATING\"}"
+    },
+    {
+      "service": "Lambda Microvms",
+      "operation": "GetMicrovm",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"egressNetworkConnectors\":[],\"endpoint\":\"https://mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0.microvm.lambda.us-west-2.on.aws\",\"idlePolicy\":{\"autoResumeEnabled\":false,\"maxIdleDurationSeconds\":60,\"suspendedDurationSeconds\":0},\"imageArn\":\"arn:aws:lambda:us-west-2:123456789012:microvm-image:radius-rec-web\",\"imageVersion\":\"1\",\"ingressNetworkConnectors\":[],\"maximumDurationInSeconds\":900,\"microvmId\":\"mvm-0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0\",\"startedAt\":1763560800.0,\"state\":\"TERMINATED\",\"terminatedAt\":1763561100.0}"
+    }
+  ]
+}

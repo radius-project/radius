@@ -114,6 +114,8 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12 h1:lqSi8qvAnKC1vfosIm
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.12/go.mod h1:rqPQE2vqkW9YHx5+Gp55sx1wsTM4xtGQLl+TKMjxxrs=
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12 h1:uvX2yaL+aMjkmnrLPPlR/zwjoKFRMoNhhJfeGjfk6qc=
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.12/go.mod h1:dicT+2eNhHHqGkxHO7LoXw3QghIUGuzgdmFqaSTopgI=
+github.com/aws/aws-sdk-go-v2/service/amplify v1.49.7 h1:06oHZc0c2L1IKrOoeyBUB83oKPbXnq3dbdr/jjAe21k=
+github.com/aws/aws-sdk-go-v2/service/amplify v1.49.7/go.mod h1:j7ueYGBvPNGBBYBlv0G59HCM+pTZxIdgZuOG/V6n64Y=
 github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12 h1:90zEwFRGN9cg8rm3SPQiiz1QtiiLMTseSY9gaU+7Vcg=
 github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12/go.mod h1:r3YwLYWGc74fHcLyP5/L9oPbL3rWlIeLwT4SKzY+X5I=
 github.com/aws/aws-sdk-go-v2/service/chimesdkvoice v1.38.12 h1:/SG9WEuziqQCvwt4vplnMCACbyZuQYNVTJydIq/GVMs=
@@ -160,6 +162,8 @@ github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0 h1:IDPDfKcJyIhLZ
 github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0/go.mod h1:lMtldQgxwSZ00f2TRnTNwP+Db2SkNkysX3E30oqKmbY=
 github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0 h1:3eggSHnymdEyXlI7FvWBTnNtB+icbx0wynG37pPLsGA=
 github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0/go.mod h1:Bf6uHN804FAJ+yUro0QW65wEVJ68eKBIsSzY1SD5oDw=
+github.com/aws/aws-sdk-go-v2/service/lambdamicrovms v1.12.2 h1:J+l0t2GLReRzIAUxledyRaG+IbfzQ7v6+n+FSw21SYE=
+github.com/aws/aws-sdk-go-v2/service/lambdamicrovms v1.12.2/go.mod h1:GEnG9FBOraRH3j7GPz/wQmuBLI7d+yjDje4IriTgQ7o=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5 h1:ZoW0j6XRzzzcWEGsPRxZCuiEj0j281S1ACN1cxJ8Obo=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5/go.mod h1:DuktIBGJAIcDVjkXjUYY4jKjLUy3IISIteyikrHqqLI=
 github.com/aws/aws-sdk-go-v2/service/rds v1.133.0 h1:Ql0s3Iyo6Fy6W2ZIxVASXF/S5XKW4zaQ2+nFl4kpd7c=

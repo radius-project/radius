@@ -33,6 +33,7 @@ import (
 
 // iamPrefixes maps the AWS SDK service package a handler's client uses to the service's prefix in IAM actions.
 var iamPrefixes = map[string]string{
+	"amplify":                  "amplify",
 	"appsync":                  "appsync",
 	"chimesdkvoice":            "chime",
 	"cloudwatch":               "cloudwatch",
@@ -48,6 +49,7 @@ var iamPrefixes = map[string]string{
 	"iot":                      "iot",
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
+	"lambdamicrovms":           "lambda",
 	"medialive":                "medialive",
 	"rds":                      "rds",
 	"s3":                       "s3",

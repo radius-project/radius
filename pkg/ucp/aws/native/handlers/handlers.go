@@ -19,6 +19,7 @@ package handlers
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
+	amplifysdk "github.com/aws/aws-sdk-go-v2/service/amplify"
 	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
 	chimesdkvoicesdk "github.com/aws/aws-sdk-go-v2/service/chimesdkvoice"
 	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -34,6 +35,7 @@ import (
 	iotsdk "github.com/aws/aws-sdk-go-v2/service/iot"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
+	lambdamicrovmssdk "github.com/aws/aws-sdk-go-v2/service/lambdamicrovms"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
 	rdssdk "github.com/aws/aws-sdk-go-v2/service/rds"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -46,6 +48,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/amplify"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chime"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
@@ -61,6 +64,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iot"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lambda"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/rds"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
@@ -105,6 +109,8 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		amplify.NewBackendEnvironment(amplifysdk.NewFromConfig(cfg)),
+		lambda.NewMicrovm(lambdamicrovmssdk.NewFromConfig(cfg)),
 		rds.NewDBInstanceState(rdsAPI),
 		s3.NewBucketRequestPayment(s3API),
 		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
