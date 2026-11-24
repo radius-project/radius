@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::RDS::DBClusterActivityStream",
+  "identityScope": "region",
+  "onDelete": "reset",
+  "arnProperty": ""
+}
