@@ -1828,6 +1828,8 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 		moveUCP bool
 		// otherVolume, when set, is another ucp pod volume that still uses ucp-apiserver-tls after the rollout.
 		otherVolume *corev1.Volume
+		// editPod, when set, changes the rolled-out ucp pod template, such as to add a container env reference.
+		editPod func(*corev1.PodSpec)
 		// unmarked removes the Radius release annotations from ucp-apiserver-tls, as on a Secret another release or an
 		// operator wrote. rad refuses the rollback before Helm runs, so the Secret stays.
 		unmarked   bool
@@ -1841,6 +1843,14 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 		{name: "a projected UCP volume still uses the Secret", moveUCP: true, wantDelete: false, otherVolume: &corev1.Volume{
 			Name: "sidecar-tls", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{
 				{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}}}}},
+		{name: "a UCP container env still uses the Secret", moveUCP: true, wantDelete: false, editPod: func(spec *corev1.PodSpec) {
+			spec.Containers = append(spec.Containers, corev1.Container{Name: "sidecar", Env: []corev1.EnvVar{{Name: "TLS_KEY", ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}, Key: "tls.key"}}}}})
+		}},
+		{name: "a UCP init container envFrom still uses the Secret", moveUCP: true, wantDelete: false, editPod: func(spec *corev1.PodSpec) {
+			spec.InitContainers = append(spec.InitContainers, corev1.Container{Name: "init", EnvFrom: []corev1.EnvFromSource{
+				{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}})
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1875,6 +1885,9 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 					if tt.otherVolume != nil {
 						deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, *tt.otherVolume)
 					}
+					if tt.editPod != nil {
+						tt.editPod(&deployment.Spec.Template.Spec)
+					}
 					_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), deployment, metav1.UpdateOptions{})
 					require.NoError(t, err)
 				}
@@ -1891,7 +1904,7 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 			if tt.wantDelete {
 				require.True(t, apierrors.IsNotFound(err), "rollback must delete Secret %s, which neither a Certificate nor UCP uses, got %v", ucpAPIServerTLSSecretName, err)
 			} else {
-				require.NoError(t, err, "rollback must keep Secret %s while a ucp pod volume uses it or the Radius release did not issue it", ucpAPIServerTLSSecretName)
+				require.NoError(t, err, "rollback must keep Secret %s while the ucp pod template uses it or the Radius release did not issue it", ucpAPIServerTLSSecretName)
 			}
 			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
 			require.NoError(t, err)

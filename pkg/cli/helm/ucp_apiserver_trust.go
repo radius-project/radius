@@ -193,8 +193,8 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 }
 
 // ucpServesFromOtherSecret reports whether the Radius release's ucp Deployment has finished rolling out with its API
-// server certificate volume mounting a Secret other than secretName and no other volume naming secretName, so no UCP
-// pod, current or replacement, needs it.
+// server certificate volume mounting a Secret other than secretName and nothing else in its pod template naming
+// secretName, so no UCP pod, current or replacement, needs it.
 func ucpServesFromOtherSecret(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
 	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -205,13 +205,14 @@ func ucpServesFromOtherSecret(ctx context.Context, client kubernetes.Interface, 
 	}
 	mounted := ucpCertificateSecret(deployment)
 	return helmOwned(deployment, radiusNamespace, radiusReleaseName) && ucpRolledOut(deployment) &&
-		mounted != "" && mounted != secretName && !podTemplateMountsSecret(deployment, secretName), nil
+		mounted != "" && mounted != secretName && !podTemplateReferencesSecret(deployment, secretName), nil
 }
 
-// podTemplateMountsSecret reports whether a Secret volume or projected Secret source of deployment's pod template names
-// secretName.
-func podTemplateMountsSecret(deployment *appsv1.Deployment, secretName string) bool {
-	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+// podTemplateReferencesSecret reports whether deployment's pod template names secretName in a Secret volume, a
+// projected Secret source, or an env secretKeyRef or envFrom secretRef of a container or init container.
+func podTemplateReferencesSecret(deployment *appsv1.Deployment, secretName string) bool {
+	spec := deployment.Spec.Template.Spec
+	for _, volume := range spec.Volumes {
 		if volume.Secret != nil && volume.Secret.SecretName == secretName {
 			return true
 		}
@@ -220,6 +221,18 @@ func podTemplateMountsSecret(deployment *appsv1.Deployment, secretName string) b
 		}
 		for _, source := range volume.Projected.Sources {
 			if source.Secret != nil && source.Secret.Name == secretName {
+				return true
+			}
+		}
+	}
+	for _, container := range append(append([]corev1.Container{}, spec.InitContainers...), spec.Containers...) {
+		for _, env := range container.Env {
+			if env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil && env.ValueFrom.SecretKeyRef.Name == secretName {
+				return true
+			}
+		}
+		for _, envFrom := range container.EnvFrom {
+			if envFrom.SecretRef != nil && envFrom.SecretRef.Name == secretName {
 				return true
 			}
 		}
