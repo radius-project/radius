@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	dynamicfake "k8s.io/client-go/dynamic/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
@@ -34,7 +33,7 @@ import (
 func bootstrapStoreFixture(t *testing.T) *rotationStore {
 	t.Helper()
 	kube := kubefake.NewSimpleClientset()
-	client := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	client := fakeCertManagerDynamicClient(nil)
 	version := 0
 	metadata := func(action k8stesting.Action) (bool, runtime.Object, error) {
 		if action.GetVerb() != "create" && action.GetVerb() != "update" {

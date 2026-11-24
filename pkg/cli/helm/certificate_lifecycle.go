@@ -262,6 +262,8 @@ func (plane certificateLifecyclePlane) validate(name string, phase rotationPhase
 	kind, source := "ConfigMap", "radius-mtls-ca"
 	if name == "aggregation" {
 		kind, source = "Secret", "radius-apiserver-trust"
+	} else if plane.Source.Kind == "Secret" && plane.Signer != nil && plane.Source.UID == plane.Signer.UID {
+		kind, source = "Secret", plane.Signer.Name
 	}
 	if plane.Source.Kind != kind || plane.Source.Name != source || plane.Source.UID == "" ||
 		plane.Source.ResourceVersion == "" || plane.Source.SHA256 != fmt.Sprintf("%x", sha256.Sum256(plane.Source.Bundle)) {
@@ -417,6 +419,12 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 func (s *rotationStore) checkLifecycleProjection(ctx context.Context, journal *corev1.ConfigMap, state certificateLifecycle, name string, plane certificateLifecyclePlane) error {
 	var metadata metav1.Object
 	var bundle []byte
+	if name == "internal" && plane.Source.Kind == "Secret" {
+		if state.Mode != "selfSigned" || plane.Signer == nil || plane.Source.UID != plane.Signer.UID || plane.Source.Name != plane.Signer.Name {
+			return errors.New("internal source is not the recorded selfSigned signer")
+		}
+		return s.checkSignerTrust(ctx, plane.Signer, plane.Source.Bundle)
+	}
 	if name == "aggregation" {
 		object, err := s.kube.CoreV1().Secrets(state.Namespace).Get(ctx, plane.Source.Name, metav1.GetOptions{})
 		if err != nil {
@@ -436,6 +444,11 @@ func (s *rotationStore) checkLifecycleProjection(ctx context.Context, journal *c
 			return errors.New("internal trust source must contain only public ca.crt")
 		}
 		metadata, bundle = object, []byte(object.Data[caCertificateKey])
+		if state.Mode == "selfSigned" {
+			if err := s.checkSignerTrust(ctx, plane.Signer, bundle); err != nil {
+				return err
+			}
+		}
 	}
 	annotations := metadata.GetAnnotations()
 	if metadata.GetDeletionTimestamp() != nil || len(metadata.GetOwnerReferences()) != 0 ||

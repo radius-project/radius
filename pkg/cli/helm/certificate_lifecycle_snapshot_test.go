@@ -229,6 +229,7 @@ func TestLifecycleRecoveryUsesDurablePublicAndIssuerPins(t *testing.T) {
 							"radius.io/certificate-mode": state.Mode,
 							rotationJournalUID:           string(journal.UID), rotationRevision: state.ID + "/" + string(phase)}}
 					if name == "internal" {
+						secret.Data[caCertificateKey] = plane.Source.Bundle
 						coreObjects = append(coreObjects, &corev1.ConfigMap{ObjectMeta: metadata, Data: map[string]string{caCertificateKey: string(plane.Source.Bundle)}})
 					} else {
 						metadata.Annotations[allowDirectInjectionAnnotation] = "true"

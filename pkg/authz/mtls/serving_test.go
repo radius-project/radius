@@ -103,9 +103,6 @@ func TestServingGenerationRejectsStalePooledHandshake(t *testing.T) {
 				dir.update(t, renewed, root.pem)
 				if scenario == "pair replacement" {
 					request(http.StatusServiceUnavailable, true)
-					dir.update(t, oldLeaf, root.pem)
-					request(http.StatusServiceUnavailable, true)
-					transport.CloseIdleConnections()
 					request(http.StatusNoContent, false)
 					require.EqualValues(t, 2, served.Load())
 					return
@@ -130,6 +127,37 @@ func TestServingGenerationRejectsStalePooledHandshake(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestServingConfigRenewalPresentsCertificateWithSessionCache(t *testing.T) {
+	root := newCA(t)
+	old := root.issue(t, certOptions{dnsNames: []string{ucpServerName}})
+	dir := newKubeletDir(t, old, root.pem)
+	source, err := newSource(dir.root, dir.root, servingPairOnly)
+	require.NoError(t, err)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	server.TLS = source.ServerConfig()
+	server.StartTLS()
+	defer server.Close()
+	roots := x509.NewCertPool()
+	roots.AddCert(root.cert)
+	config := &tls.Config{RootCAs: roots, ServerName: ucpServerName, MinVersion: tls.VersionTLS12, ClientSessionCache: tls.NewLRUClientSessionCache(1)}
+	transport := &http.Transport{DisableKeepAlives: true, TLSClientConfig: config}
+	client := &http.Client{Transport: transport}
+	check := func(want *x509.Certificate) {
+		t.Helper()
+		resp, err := client.Get(server.URL)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		require.False(t, resp.TLS.DidResume)
+		require.True(t, resp.TLS.PeerCertificates[0].Equal(want))
+	}
+	check(old.cert)
+	next := root.issue(t, certOptions{dnsNames: []string{ucpServerName}})
+	dir.update(t, next, root.pem)
+	check(next.cert)
 }
 
 func TestServingConfig_TrustOverlapAndDelayedAggregator(t *testing.T) {

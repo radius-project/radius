@@ -43,6 +43,8 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- $pin := $record.source | default dict -}}
 {{- $kind := "ConfigMap" -}}{{- $name := "radius-mtls-ca" -}}
 {{- if eq $plane "aggregation" -}}{{- $kind = "Secret" -}}{{- $name = "radius-apiserver-trust" -}}{{- end -}}
+{{- $signerSource := and (eq $plane "internal") (eq $state.mode "selfSigned") (eq $pin.kind "Secret") -}}
+{{- if $signerSource -}}{{- $kind = "Secret" -}}{{- $name = $record.signer.name -}}{{- end -}}
 {{- if or (ne $pin.kind $kind) (ne $pin.name $name) (empty $pin.uid) (empty $pin.resourceVersion) (empty $record.newCA) -}}
 {{- fail "CA lifecycle public source pin is incomplete." -}}
 {{- end -}}
@@ -55,7 +57,11 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- $revision = $pin.revision | default "" -}}
 {{- $journalUID = $pin.journalUID | default "" -}}
 {{- end -}}
-{{- if or (ne $source.metadata.uid $pin.uid) (empty $source.metadata.resourceVersion)
+{{- if $signerSource -}}
+{{- if or (ne $pin.uid $record.signer.uid) (ne $source.metadata.uid $pin.uid) $source.metadata.deletionTimestamp (ne $source.type "kubernetes.io/tls") -}}
+{{- fail "Internal lifecycle source must remain the recorded signing Secret." -}}
+{{- end -}}
+{{- else if or (ne $source.metadata.uid $pin.uid) (empty $source.metadata.resourceVersion)
   (dig "metadata" "deletionTimestamp" "" $source) (dig "metadata" "ownerReferences" (list) $source)
   (ne (dig "metadata" "labels" "app.kubernetes.io/managed-by" "" $source) "Helm")
   (ne (index $annotations "meta.helm.sh/release-name") $.Release.Name)
@@ -67,8 +73,15 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- fail "CA lifecycle public source identity, ownership or contents changed." -}}
 {{- end -}}
 {{- $bundle := index $source.data "ca.crt" | default "" -}}
+{{- if and (not $signerSource) (eq $plane "internal") (eq $state.mode "selfSigned") -}}
+{{- $live := lookup "v1" "Secret" $.Release.Namespace $record.signer.name -}}
+{{- if or (not $live) (ne $live.metadata.uid $record.signer.uid) $live.metadata.deletionTimestamp
+    (ne (include "radius.caSet" $bundle) (include "radius.caSet" (dig "data" "ca.crt" "" $live | b64dec))) -}}
+{{- fail "Retained internal ConfigMap must exactly match its pinned signer Secret ca.crt; restore the recorded source." -}}
+{{- end -}}
+{{- end -}}
 {{- if eq $kind "Secret" -}}
-{{- if or (ne $source.type "Opaque") (ne (index $annotations "cert-manager.io/allow-direct-injection") "true") -}}
+{{- if and (not $signerSource) (or (ne $source.type "Opaque") (ne (index $annotations "cert-manager.io/allow-direct-injection") "true")) -}}
 {{- fail "Aggregation lifecycle source must remain public-only and injection-enabled." -}}
 {{- end -}}
 {{- $bundle = b64dec $bundle -}}

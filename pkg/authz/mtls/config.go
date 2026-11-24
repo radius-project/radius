@@ -55,6 +55,9 @@ func (s *Source) ServingConfig(base *tls.Config) *tls.Config {
 	}
 
 	outer := base.Clone()
+	// Resumption need not present a certificate. A connection attributed to
+	// this handshake's selected generation must have seen that certificate.
+	outer.SessionTicketsDisabled = true
 	outer.GetConfigForClient = func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
 		policy := base
 		if base.GetConfigForClient != nil {
@@ -81,6 +84,7 @@ func (s *Source) ServingConfig(base *tls.Config) *tls.Config {
 		}
 
 		config := policy.Clone()
+		config.SessionTicketsDisabled = true
 		config.GetConfigForClient = nil
 		config.GetCertificate = nil
 		if config.MinVersion < tls.VersionTLS12 {

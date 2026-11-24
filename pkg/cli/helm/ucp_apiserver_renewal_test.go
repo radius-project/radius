@@ -608,7 +608,7 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, chart.Values, stored, prepared, false, nil)
 					case "rollback":
 						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
-						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
+						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, nil, history, 1)
 					}
 
 					require.ErrorContains(t, err, "requires the certificate lifecycle")
@@ -645,7 +645,7 @@ func TestRollbackCertificateModeBeforeStaging(t *testing.T) {
 				called = true
 				return nil, fmt.Errorf("stage attempted trust client")
 			}
-			err := impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
+			err := impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, nil, history, 1)
 			if tt.refusedMode == "" {
 				require.ErrorIs(t, err, errCertificateObserverUnavailable)
 				require.False(t, called)
@@ -654,5 +654,27 @@ func TestRollbackCertificateModeBeforeStaging(t *testing.T) {
 			require.ErrorContains(t, err, "mode="+tt.refusedMode+" requires the certificate lifecycle")
 			require.False(t, called)
 		})
+	}
+}
+
+func TestMissingSignerAPIServicePin(t *testing.T) {
+	for _, name := range []string{"ucp-ca", ucpAPIServerCASecretName} {
+		ca := newTestCA(t, name)
+		api := ucpAPIService(base64.StdEncoding.EncodeToString(ca.pem), "True", "Passed")
+		client := kubefake.NewSimpleClientset()
+		impl := trustImpl(client, ucpAPIServiceDynamicClient(api))
+		rendered := false
+		err := impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeDryRun,
+			func(context.Context) (string, bool, error) { rendered = true; return "", false, nil })
+		if name == "ucp-ca" {
+			require.ErrorIs(t, err, errCertificateObserverUnavailable)
+			require.False(t, rendered)
+		} else {
+			require.ErrorContains(t, err, "restore the original signer")
+			require.False(t, rendered)
+		}
+		for _, a := range client.Actions() {
+			require.Equal(t, "get", a.GetVerb())
+		}
 	}
 }

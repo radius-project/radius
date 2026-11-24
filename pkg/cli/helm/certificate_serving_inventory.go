@@ -153,7 +153,7 @@ func readAggregationServingInventoryFromSource(ctx context.Context, kube kuberne
 			TLSProofTarget: TLSProofTarget{Namespace: namespace, PodName: pod.Name, PodUID: pod.UID, ContainerName: "ucp", Port: uint16(port)},
 			WorkloadUID:    deployment.UID, WorkloadGeneration: deployment.Generation,
 			ServiceAccount: account.Name, ServiceAccountUID: account.UID,
-			CA: servingCA, DNSName: "ucp." + namespace + ".svc",
+			CA: servingCA, DNSName: "ucp." + namespace + ".svc", offServing: source.Name == ucpOffCertificateSecretName,
 		})
 	}
 	endpoints, err := kube.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{
@@ -181,7 +181,7 @@ func readAggregationServingInventoryFromSource(ctx context.Context, kube kuberne
 			return inventory, errors.New("aggregation endpoint port differs from the Service target")
 		}
 		for _, endpoint := range slice.Endpoints {
-			if endpoint.Conditions.Ready == nil || !*endpoint.Conditions.Ready ||
+			if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready ||
 				endpoint.Conditions.Terminating != nil && *endpoint.Conditions.Terminating {
 				continue
 			}

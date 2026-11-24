@@ -674,6 +674,17 @@ func (w *certificateExecutionWriter) readSource(ctx context.Context, name string
 }
 
 func (w *certificateExecutionWriter) checkSource(ctx context.Context, name string, plane certificateLifecyclePlane) error {
+	if name == "internal" && plane.Source.Kind == "Secret" {
+		pin := plane.Previous.Signer
+		if plane.Signer != nil && plane.Source.UID == plane.Signer.UID {
+			pin = plane.Signer
+		}
+		if pin == nil || pin.Name != plane.Source.Name || pin.UID != plane.Source.UID ||
+			w.state.Phase != rotationComplete && pin.ResourceVersion != plane.Source.ResourceVersion {
+			return errors.New("internal source does not identify its recorded signing Secret")
+		}
+		return w.store.checkSignerTrust(ctx, pin, plane.Source.Bundle)
+	}
 	object, bundle, err := w.readSource(ctx, name)
 	if err != nil {
 		return err
@@ -691,6 +702,15 @@ func (w *certificateExecutionWriter) checkSource(ctx context.Context, name strin
 	mode := w.state.Mode
 	if expected.Revision == plane.Previous.Source.Revision && expected.JournalUID == plane.Previous.Source.JournalUID {
 		mode = plane.Previous.Mode
+	}
+	if name == "internal" && mode == "selfSigned" {
+		pin := plane.Signer
+		if expected.Revision == plane.Previous.Source.Revision && expected.JournalUID == plane.Previous.Source.JournalUID {
+			pin = plane.Previous.Signer
+		}
+		if err := w.store.checkSignerTrust(ctx, pin, bundle); err != nil {
+			return err
+		}
 	}
 	if pending := w.state.Execution.PendingSource; pending != nil && pending.Plane == name &&
 		bytes.Equal(bundle, pending.Bundle) &&
@@ -736,6 +756,9 @@ func (w *certificateExecutionWriter) save(ctx context.Context, next certificateL
 	}
 	var saved *corev1.ConfigMap
 	if w.journal == nil {
+		if plane, ok := next.Planes["internal"]; ok && next.Mode == "selfSigned" && plane.Source.Kind != "Secret" {
+			return errors.New("new selfSigned internal journals require a signer Secret source; use an authorized source handoff")
+		}
 		saved, err = client.Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
 			Name: rotationJournalName, Namespace: w.store.namespace, Labels: map[string]string{rotationOwner: w.store.release},
 		}, Data: map[string]string{rotationJournalKey: string(data)}}, metav1.CreateOptions{FieldManager: FieldManager})
@@ -964,6 +987,9 @@ func (w *certificateExecutionWriter) publishSource(ctx context.Context, name, re
 		bytes.Equal(plane.Source.Bundle, bundle) && w.state.Execution.PendingSource == nil {
 		return nil
 	}
+	if name == "internal" && (plane.Source.Kind == "Secret" || w.state.Mode == "selfSigned" || plane.Previous.Mode == "selfSigned") {
+		return errors.New("changing selfSigned internal trust requires an authorized signer-source handoff and loaded trust; retaining the recorded source")
+	}
 	if w.state.Execution.PendingSource == nil {
 		next, err := cloneCertificateLifecycle(w.state)
 		if err != nil {
@@ -1005,6 +1031,15 @@ func (w *certificateExecutionWriter) publishSource(ctx context.Context, name, re
 		}
 		annotations[rotationJournalUID], annotations[rotationRevision] = string(w.journal.UID), pending.Revision
 		annotations["radius.io/certificate-mode"] = w.state.Mode
+		if name == "aggregation" && w.state.Mode == "issuerRef" {
+			ref, err := json.Marshal(map[string]string{"group": plane.Issuer.Group, "kind": plane.Issuer.Kind, "name": plane.Issuer.Name})
+			if err != nil {
+				return err
+			}
+			annotations["radius.io/issuer-ref"] = string(ref)
+		} else {
+			delete(annotations, "radius.io/issuer-ref")
+		}
 		switch source := object.(type) {
 		case *corev1.ConfigMap:
 			copy := source.DeepCopy()

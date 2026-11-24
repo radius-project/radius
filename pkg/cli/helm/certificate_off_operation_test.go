@@ -19,6 +19,7 @@ package helm
 import (
 	"context"
 	"errors"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -176,7 +177,7 @@ func TestCertificateOffPublicEntryPointCannotBypassJournals(t *testing.T) {
 			}, metav1.CreateOptions{})
 			require.NoError(t, err)
 			before := len(cluster.clusterWrites())
-			require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, nil), name)
+			require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, nil, false), name)
 			require.Empty(t, cluster.clusterWrites()[before:], "even completed intent is rejected before Lease or trust writes")
 			require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, cluster.dynamic))
 		})
@@ -193,7 +194,7 @@ func TestCertificateOffPublicEntryPointComposesRetention(t *testing.T) {
 		calls++
 		return verb == "delete" && object.Name == ucpAPIServerTrustSecretName, nil
 	}
-	require.NoError(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, manifestObjectSet{manifestObjectKey("", "Secret", ucpOffCertificateSecretName): true}))
+	require.NoError(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, &releasev1.Release{Manifest: "apiVersion: v1\nkind: Secret\nmetadata: {name: ucp-cert}"}, false))
 	require.Positive(t, calls)
 	_, err := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.NoError(t, err, "retention does not bypass the operation guard")
@@ -216,7 +217,7 @@ func TestCertificateOffPublicEntryPointPinsServingSource(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	}
-	require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, manifestObjectSet{manifestObjectKey("", "Secret", ucpOffCertificateSecretName): true}), "Off serving source changed")
+	require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, &releasev1.Release{Manifest: "apiVersion: v1\nkind: Secret\nmetadata: {name: ucp-cert}"}, false), "Off serving source changed")
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, cluster.dynamic))
 	_, err := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
 	require.NoError(t, err)

@@ -36,6 +36,7 @@ type certificateOffOperation struct {
 	operation   *identityOperation
 	namespace   types.UID
 	postHelm    bool
+	fresh       bool
 	observe     func(context.Context) error
 	identities  map[string]types.UID
 }

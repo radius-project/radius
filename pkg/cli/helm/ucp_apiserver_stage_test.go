@@ -801,6 +801,18 @@ func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 	require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
 	require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
 	require.Equal(t, []string{"radius-apiserver-ca", "ucp-ca"}, apiServiceCABundle(t, c.dynamic), "the API server must trust both CAs while pods move")
+	// A non-merging cainjector reconciles again after the installer stops.
+	api, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	if ref := api.GetAnnotations()[injectCAFromSecretAnnotation]; ref != "" {
+		ns, name, _ := strings.Cut(ref, "/")
+		source, err := c.kube.CoreV1().Secrets(ns).Get(t.Context(), name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NoError(t, unstructured.SetNestedField(api.Object, base64.StdEncoding.EncodeToString(source.Data[caCertificateKey]), "spec", "caBundle"))
+		_, err = c.dynamic.Resource(apiServicesResource).Update(t.Context(), api, metav1.UpdateOptions{})
+		require.NoError(t, err)
+	}
+	c.requireTrusts(t, c.servedLeaf(t), "the Off leaf after a replacing injector reconciles")
 	deployed, err := u.helmClient.RunHelmGet(u.configuration, "radius")
 	require.NoError(t, err)
 	require.Equal(t, 1, deployed.Version, "rad must not call Helm")
@@ -890,7 +902,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 				m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
 					{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: manifestTestChart(t, offManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 					{Version: 2, Config: values, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
-				}, nil)
+				}, nil).Times(2)
 				m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 				rollbacks := 0
 				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
@@ -928,7 +940,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 		}
 		mock := func(rollbacks int, beforeHelm func()) *MockHelmClient {
 			m := NewMockHelmClient(gomock.NewController(t))
-			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil)
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil).Times(1 + rollbacks)
 			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 			m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Times(rollbacks).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
 				beforeHelm()

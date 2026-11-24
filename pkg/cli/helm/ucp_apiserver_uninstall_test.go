@@ -379,6 +379,7 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	})
 	staged := stagedUCPAPIServerObject("Issuer", radiusAPIServerIssuerName, radiusReleaseName, nil)
 	foreign := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, "", nil)
+	require.NoError(t, unstructured.SetNestedField(foreign.Object, ucpAPIServerCASecretName, "spec", "secretName"))
 	dynamicClient := fakeCertManagerDynamicClient(nil, staged, foreign)
 	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
 	options := NewDefaultClusterOptions()
@@ -431,10 +432,28 @@ func Test_RadiusUninstallLeftovers_ProviderGuard(t *testing.T) {
 
 // A retried uninstall lists the Secret of a staged radius-apiserver-ca Certificate with it, because deleting the
 // Certificate leaves the Secret unused, and deletes only what it listed: a Secret replaced while the user confirms
-// survives.
+// survives. A Certificate that Helm keeps still writes the Secret, so neither is listed.
 func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
-	for _, replaced := range []bool{false, true} {
-		t.Run(fmt.Sprintf("replaced=%t", replaced), func(t *testing.T) {
+	t.Run("Certificate kept", func(t *testing.T) {
+		secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
+			ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+		kubeClient := kubefake.NewSimpleClientset(secret)
+		certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, map[string]string{helmResourcePolicyAnnotation: "keep"})
+		require.NoError(t, unstructured.SetNestedField(certificate.Object, ucpAPIServerCASecretName, "spec", "secretName"))
+		dynamicClient := fakeCertManagerDynamicClient(nil, certificate)
+		impl := &Impl{
+			logger:                      func(string, ...any) {},
+			newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
+			newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
+		}
+
+		setupUninstallStore(t, impl)
+		leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), NewDefaultClusterOptions(), "test-context")
+		require.NoError(t, err)
+		require.Empty(t, leftovers)
+	})
+	for _, changed := range []string{"", "Secret", "Certificate"} {
+		t.Run("changed="+changed, func(t *testing.T) {
 			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
 				ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
 			kubeClient := kubefake.NewSimpleClientset(secret)
@@ -469,18 +488,24 @@ func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
 			late := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ucp-spiffe", Namespace: RadiusSystemNamespace, UID: "late", ResourceVersion: "2", Annotations: map[string]string{certificateNameAnnotation: "ucp-spiffe"}}}
 			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), late, metav1.CreateOptions{})
 			require.NoError(t, err)
-			if replaced {
+			switch changed {
+			case "Secret":
 				require.NoError(t, kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Delete(t.Context(), ucpAPIServerCASecretName, metav1.DeleteOptions{}))
 				secret.UID = "uid-2"
 				_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), secret, metav1.CreateOptions{})
 				require.NoError(t, err)
+			case "Certificate":
+				certificate := cert.DeepCopy()
+				certificate.SetResourceVersion("2")
+				require.NoError(t, unstructured.SetNestedField(certificate.Object, int64(2), "status", "revision"))
+				require.NoError(t, dynamicClient.Tracker().Update(certManagerCertificatesResource, certificate, RadiusSystemNamespace))
 			}
 			require.NoError(t, impl.DeleteRadiusUninstallLeftovers(t.Context(), "test-context", leftovers))
 			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), late.Name, metav1.GetOptions{})
 			require.NoError(t, err, "a newly eligible object was not confirmed")
-			require.False(t, stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
+			require.Equal(t, changed == "Certificate", stageObjectExists(t, dynamicClient, certManagerCertificatesResource, ucpAPIServerCASecretName))
 			_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
-			require.Equal(t, replaced, err == nil, "replaced Secret kept: %v", err)
+			require.Equal(t, changed != "", err == nil, "changed Secret or Secret behind a changed Certificate kept: %v", err)
 		})
 	}
 }

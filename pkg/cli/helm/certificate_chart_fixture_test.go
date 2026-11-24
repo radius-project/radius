@@ -76,9 +76,24 @@ func TestCertificateValuesSchema(t *testing.T) {
 // These tests run the real chart's REST-backed lookup against a read-only API
 // fixture. They observe issuer readiness, not issuance or approval.
 type certificateChartFixture struct {
+	upgrade       bool
 	objects       []*unstructured.Unstructured
 	values        map[string]any
 	forbiddenPath string
+}
+
+func TestNamespacedIssuerSharedSignerMount(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			f := newCertificateChartFixture(t)
+			f.objects[1].Object["spec"] = map[string]any{"ca": map[string]any{"secretName": "operator-key"}}
+			global := f.values["global"].(map[string]any)
+			global["rbac"].(map[string]any)["tls"] = map[string]any{"provider": provider}
+			global["targetCluster"] = map[string]any{"enabled": true, "secretName": "operator-key"}
+			_, err := f.renderChart(t)
+			require.ErrorContains(t, err, "operator-key")
+		})
+	}
 }
 
 func TestExternalIssuerReadiness(t *testing.T) {

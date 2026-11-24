@@ -11,6 +11,8 @@ global:
 
   # Configure global.imagePullSecrets for pulling images from private registries.
   # Secrets must be manually created in the namespace.
+  # With authorization on, a name must not be a receiver's SPIFFE Secret (ucp-spiffe,
+  # applications-rp-spiffe, or dynamic-rp-spiffe), which cert-manager writes.
   # Example:
   # imagePullSecrets:
   #   - name: myregistrykey
@@ -103,7 +105,9 @@ global:
     # With authorization on, must not be a Secret that holds an authorization private key (see global.rootCA.secretName).
     secretName: "target-kubeconfig"
     secretKey: "kubeconfig"
-    # Must not be an authorization mount path (see global.rootCA.mountPath).
+    # With authorization on, neither this path nor mountPath/secretKey may be an authorization
+    # mount path in applications-rp or dynamic-rp: /var/run/radius/spiffe, /var/run/radius/ca, or
+    # /var/run/radius/tokens/ucp.
     mountPath: "/etc/radius/target-kubeconfig"
 
   # Configure internal component authorization. Both settings are disabled by default.
@@ -184,16 +188,20 @@ global:
         kind: Issuer
         name: ""
     # SPIFFE server certificates and caller tokens for internal calls. Rendered only when the
-    # authorization mode is not off. ucp, applications-rp, and dynamic-rp each get Certificate
-    # "<receiver>-spiffe" from Issuer "radius-ca-issuer", stored in Secret "<receiver>-spiffe" and
+    # authorization mode is not off. With the radius TLS provider, ucp, applications-rp, and
+    # dynamic-rp each get Certificate "<receiver>-spiffe" from the selected internal issuer,
+    # stored in Secret "<receiver>-spiffe" and
     # mounted read-only at /var/run/radius/spiffe (tls.crt, tls.key). Its only SAN is the SPIFFE ID
-    # spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>. Keys are ECDSA P-256; certificates last
-    # 24h, renew 8h before expiry, and get a new key on each renewal. Callers mount 10-minute
+    # spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>. The chart requests 24h certificates,
+    # renewal 8h before expiry, and a fresh ECDSA P-256 key on renewal. The issuer determines
+    # the issued lifetime. Callers mount 10-minute
     # projected ServiceAccount tokens at /var/run/radius/tokens/<receiver>/token, with the
     # receiver's name as the audience. Receivers verify each caller's token offline; callers verify
     # the receiver's SPIFFE ID before sending a token. ucp, applications-rp, dynamic-rp, and
-    # controller also project only key ca.crt of Secret "radius-ca" to /var/run/radius/ca (never
-    # tls.key) as their Radius CA bundle; bicep-de mounts neither credential.
+    # controller project only ca.crt to /var/run/radius/ca with the radius TLS provider:
+    # Secret "radius-ca" in selfSigned mode, ConfigMap "radius-mtls-ca" in either BYO mode.
+    # With this provider, bicep-de mounts its own serving Secret and the public CA only when
+    # de.internalAuth.enabled is true. The external provider mounts neither TLS volume.
     spiffe:
       # SPIFFE trust domain of the Radius server certificates: lowercase letters, digits, '.', '-'
       # and '_', at most 255 characters. Rendering fails for any other value when the mode is not off.

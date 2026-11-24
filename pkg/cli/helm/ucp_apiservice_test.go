@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -27,6 +28,8 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,6 +37,7 @@ import (
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/radius-project/radius/pkg/authz"
 )
@@ -111,12 +115,12 @@ func Test_waitForUCPAPIService(t *testing.T) {
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return ucpAPIServiceDynamicClient(), nil },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
 	}
-	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil))
+	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil, false))
 	unreachable := &Impl{
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return nil, errors.New("no cluster") },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
 	}
-	require.ErrorContains(t, unreachable.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil), "no cluster")
+	require.ErrorContains(t, unreachable.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil, false), "no cluster")
 
 	tests := []struct {
 		name    string
@@ -158,7 +162,7 @@ func Test_waitForUCPAPIService(t *testing.T) {
 				return ucpAPIServiceDynamicClient(tt.objects...), nil
 			}}
 
-			err := impl.waitForAvailableUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace)
+			err := impl.waitForAvailableUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, nil)
 			if len(tt.wantErr) == 0 {
 				require.NoError(t, err)
 				return
@@ -226,6 +230,34 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 	defaults := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
 	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), defaults, nil, nil), `secrets "radius-apiserver-ca" not found`)
 	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, nil), `secrets "radius-apiserver-ca" not found`)
+}
+
+// A fresh install with authorization off has no staged radius-apiserver-ca chain to remove, so a user who cannot read
+// cert-manager Issuers and Certificates can install it. After an upgrade, rad still reads them and reports a failure.
+func Test_waitForInstalledUCPAPIService_FreshOffSkipsStageCleanup(t *testing.T) {
+	for _, version := range []int{1, 2} {
+		t.Run(fmt.Sprintf("revision=%d", version), func(t *testing.T) {
+			cluster := newStageCluster(t, nil, false)
+			_, err := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(),
+				tlsSecret(ucpOffCertificateSecretName, issueUCPCertificate(t, cluster.ucpCA), cluster.ucpCA.pem), metav1.CreateOptions{})
+			require.NoError(t, err)
+			client := cluster.dynamic
+			for _, resource := range []string{"issuers", "certificates"} {
+				client.PrependReactor("*", resource, func(action k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("not allowed"))
+				})
+			}
+			impl := cluster.impl(nil)
+			applied := &releasev1.Release{Version: version, Manifest: "apiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n"}
+
+			err = impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil)
+			if version == 1 {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, "is forbidden: not allowed")
+			}
+		})
+	}
 }
 
 // With a chart that enables authorization by default, rad stages radius-apiserver-ca from the rendered chart before
@@ -297,6 +329,66 @@ func Test_deployedAuthzMode(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestAppliedBYOTrust(t *testing.T) {
+	ca := newTestCA(t, "selected")
+	encoded := base64.StdEncoding.EncodeToString(ca.pem)
+	rel := &releasev1.Release{Version: 2, Chart: &chart.Chart{}, Manifest: `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ucp-cert
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-apiserver-trust
+  namespace: radius-system
+data:
+  ca.crt: ` + encoded}
+	for _, tt := range []struct {
+		name   string
+		change func(*unstructured.Unstructured)
+		want   string
+	}{
+		{"selected", nil, ""},
+		{"extra", func(api *unstructured.Unstructured) {
+			api.Object["spec"].(map[string]any)["caBundle"] = base64.StdEncoding.EncodeToString(append(newTestCA(t, "other").pem, ca.pem...))
+		}, "selected CA"},
+		{"malformed suffix", func(api *unstructured.Unstructured) {
+			api.Object["spec"].(map[string]any)["caBundle"] = base64.StdEncoding.EncodeToString([]byte(string(ca.pem) + "invalid"))
+		}, "selected CA"},
+		{"source", func(api *unstructured.Unstructured) { setAnnotation(api, injectCAFromSecretAnnotation, "elsewhere") }, "injection source"},
+		{"route", func(api *unstructured.Unstructured) {
+			require.NoError(t, unstructured.SetNestedField(api.Object, "other", "spec", "service", "name"))
+		}, "Service"},
+		{"ownership", func(api *unstructured.Unstructured) { api.SetLabels(nil) }, "Helm release"},
+		{"other port", func(api *unstructured.Unstructured) {
+			require.NoError(t, unstructured.SetNestedField(api.Object, int64(9444), "spec", "service", "port"))
+		}, "Service"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			api := ucpAPIService(encoded, "True", "Passed")
+			setAnnotation(api, injectCAFromSecretAnnotation, ucpAPIServerTrustSource(RadiusSystemNamespace))
+			if tt.change != nil {
+				tt.change(api)
+			}
+			client := ucpAPIServiceDynamicClient(api).(*dynamicfake.FakeDynamicClient)
+			impl := trustImpl(kubefake.NewSimpleClientset(), client)
+			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+			defer cancel()
+			err := impl.waitForAppliedBYOTrust(ctx, "test", RadiusSystemNamespace, rel)
+			if tt.want == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.want)
+			}
+			for _, a := range client.Actions() {
+				require.Equal(t, "get", a.GetVerb())
+			}
 		})
 	}
 }

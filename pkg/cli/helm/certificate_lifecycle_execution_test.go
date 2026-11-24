@@ -49,6 +49,8 @@ func lifecycleExecutionFixtureInStore(t *testing.T, store *rotationStore) *certi
 	t.Helper()
 	state, _ := lifecycleFixture(t)
 	state.Phase = certificatePrepare
+	// Exercise mutable BYO projections, not the immutable selfSigned signer source.
+	state.Mode = "caSecret"
 	namespace, err := store.kube.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: store.namespace},
 	}, metav1.CreateOptions{})
@@ -60,6 +62,7 @@ func lifecycleExecutionFixtureInStore(t *testing.T, store *rotationStore) *certi
 			Spec: map[string]any{"selfSigned": map[string]any{}}}},
 	}
 	for name, plane := range state.Planes {
+		plane.Previous.Mode = state.Mode
 		for _, previous := range []bool{true, false} {
 			ref, pin := plane.Issuer, plane.Signer
 			if previous {

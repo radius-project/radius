@@ -5,6 +5,10 @@ not an override of a subsequent CA lifecycle.
 */}}
 {{- define "radius.initialCertificateGuard" -}}
 {{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-certificate-bootstrap" -}}
+{{- $namespace := lookup "v1" "Namespace" "" .Release.Namespace -}}
+{{- if and (not $journal) (hasKey (dig "metadata" "annotations" (dict) $namespace) "radius.io/certificate-bootstrap") -}}
+{{- fail "Initial certificate bootstrap intent without its journal: retry the matching rad install before applying the chart." -}}
+{{- end -}}
 {{- if $journal -}}
 {{- if or (empty $journal.metadata.uid) (empty $journal.metadata.resourceVersion)
     $journal.metadata.deletionTimestamp (not (empty $journal.metadata.ownerReferences))
@@ -28,9 +32,20 @@ not an override of a subsequent CA lifecycle.
 {{- if and (eq (int $state.version) 2) (or (ne $state.phase "complete") (ne $state.mode "selfSigned")) -}}
 {{- fail "Renewable bootstrap schema requires completed selfSigned state." -}}
 {{- end -}}
-{{- $namespace := lookup "v1" "Namespace" "" .Release.Namespace -}}
 {{- if or (empty $namespace) (ne $namespace.metadata.uid $state.namespaceUID) -}}
 {{- fail "Initial certificate namespace identity changed." -}}
+{{- end -}}
+{{- if and (eq $state.phase "complete") (eq $state.mode "selfSigned") (eq (dig "internal" "kind" "" $state.sources) "ConfigMap") (not (lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation")) -}}
+{{- $pin := $state.sources.internal -}}
+{{- $source := lookup "v1" "ConfigMap" .Release.Namespace "radius-mtls-ca" -}}
+{{- $signer := $state.anchors.internal.signer -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace $signer.name -}}
+{{- if or (ne $pin.name "radius-mtls-ca") (not $pin.uid) (ne (dig "metadata" "uid" "" $source) $pin.uid)
+    (ne (dig "metadata" "uid" "" $secret) $signer.uid) (not $secret) (not $source)
+    (ne (dig "data" "ca.crt" "" $source) (b64dec $pin.bundle))
+    (ne (include "radius.caSet" (b64dec $pin.bundle)) (include "radius.caSet" (dig "data" "ca.crt" "" $secret | b64dec))) -}}
+{{- fail "Historical bootstrap ConfigMap or signer changed; restore the recorded internal trust source." -}}
+{{- end -}}
 {{- end -}}
 {{- if ne $state.phase "complete" -}}
 {{- if ne $state.phase "published" -}}
@@ -49,6 +64,20 @@ not an override of a subsequent CA lifecycle.
 {{- end -}}
 {{- range $plane := $planes -}}
 {{- $pin := index $state.sources $plane -}}
+{{- if and (eq $plane "internal") (eq $state.mode "selfSigned") -}}
+{{- $signer := (index $state.anchors $plane).signer -}}
+{{- $live := lookup "v1" "Secret" $.Release.Namespace $signer.name -}}
+{{- if or (not $live) (ne $live.metadata.uid $signer.uid) (ne $live.metadata.resourceVersion $signer.resourceVersion)
+    (ne (include "radius.caSet" (dig "data" "ca.crt" "" $live | b64dec)) (include "radius.caSet" (b64dec $pin.bundle))) -}}
+{{- fail "Initial internal trust must exactly match the pinned signer Secret ca.crt; restore the recorded source." -}}
+{{- end -}}
+{{- if eq $pin.kind "Secret" -}}
+{{- if or (ne $pin.name "radius-ca") (ne $pin.uid $signer.uid) (ne $pin.name $signer.name) (ne $pin.bundle (index $state.anchors $plane).ca) (ne (sha256sum (b64dec $pin.bundle)) $pin.sha256) -}}
+{{- fail "Initial internal trust source is not the recorded signer Secret." -}}
+{{- end -}}
+{{- continue -}}
+{{- end -}}
+{{- end -}}
 {{- $kind := "Secret" -}}{{- $name := "radius-apiserver-trust" -}}
 {{- if eq $plane "internal" -}}{{- $kind = "ConfigMap" -}}{{- $name = "radius-mtls-ca" -}}{{- end -}}
 {{- $source := lookup "v1" $kind $.Release.Namespace $name -}}
@@ -87,7 +116,8 @@ not an override of a subsequent CA lifecycle.
 {{- end -}}
 {{- end -}}
 {{- range $_, $pin := $state.issuers -}}
-{{- $object := lookup "cert-manager.io/v1" $pin.reference.kind $pin.namespace $pin.reference.name -}}
+{{- /* The persisted Go reference uses Kind and Name, unlike Helm values. */ -}}
+{{- $object := lookup "cert-manager.io/v1" $pin.reference.Kind $pin.namespace $pin.reference.Name -}}
 {{- if or (empty $object) (ne $object.metadata.uid $pin.uid) (ne $object.metadata.resourceVersion $pin.resourceVersion)
     (ne (sha256sum (toJson $object.spec)) $pin.specSHA256) -}}
 {{- fail "Initial external issuer identity or configuration changed." -}}

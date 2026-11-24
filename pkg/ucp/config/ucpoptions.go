@@ -68,9 +68,9 @@ func (o UCPOptions) WithRPIdentityHandler(next http.Handler, authorization authz
 // checks if the endpoint is provided and returns a direct connection, otherwise it returns a Kubernetes connection from
 // the provided config. It returns an error if the endpoint is not provided when the connection kind is direct.
 //
-// When the authorization mode is not off, a direct connection must use https, verifies UCP's SPIFFE server
-// certificate, and sends this component's projected ServiceAccount token for the "ucp" audience to UCP's internal
-// endpoint. A Kubernetes connection is unchanged.
+// When authorization is not off, a direct connection sends a projected token for the "ucp" audience.
+// The radius provider requires HTTPS and verifies UCP's SPIFFE server certificate. The external
+// provider requires HTTP and relies on operator-managed transport security. Kubernetes connections are unchanged.
 func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, authorization authz.Options) (sdk.Connection, error) {
 	if option.Kind == UCPConnectionKindDirect {
 		if option.Direct == nil || option.Direct.Endpoint == "" {

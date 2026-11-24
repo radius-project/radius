@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -25,17 +26,47 @@ import (
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/engine"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 )
 
+func TestPublishedIssuerJournalConnectedRender(t *testing.T) {
+	b, _ := initialControllerFixture(t, "issuerRef", "external")
+	b.applyFixture = func(ctx context.Context) error {
+		fixture := newCertificateChartFixture(t)
+		fixture.values = b.values
+		fixture.objects[0].SetUID(b.state.NamespaceUID)
+		issuer, err := b.store.dynamic.Resource(rotationIssuerResource).Namespace(b.store.namespace).Get(ctx, "operator-issuer", metav1.GetOptions{})
+		require.NoError(t, err)
+		issuer.SetGeneration(1)
+		issuer.Object["status"] = fixture.objects[1].Object["status"]
+		fixture.objects[1] = issuer
+		src, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+		require.NoError(t, err)
+		for kind, object := range map[string]any{"Secret": src, "ConfigMap": b.journal} {
+			data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
+			require.NoError(t, err)
+			data["apiVersion"], data["kind"] = "v1", kind
+			fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: data})
+		}
+		_, err = fixture.renderChart(t)
+		return err
+	}
+	require.NoError(t, b.run(t.Context()))
+}
+
 func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
 	t.Parallel()
-	for _, raw := range []string{"", "unresolved-intent"} {
-		t.Run(raw, func(t *testing.T) {
+	for _, intent := range []struct{ key, value string }{
+		{bootstrapNamespaceIntent, ""}, {bootstrapNamespaceIntent, "unresolved-intent"},
+		{initialCertificateIntent, "unresolved-intent"},
+	} {
+		t.Run(intent.key+"/"+intent.value, func(t *testing.T) {
 			t.Parallel()
 			fixture := newCertificateChartFixture(t)
-			fixture.objects[0].SetAnnotations(map[string]string{bootstrapNamespaceIntent: raw})
+			fixture.objects[0].SetAnnotations(map[string]string{intent.key: intent.value})
 			selected, err := loader.Load("../../../deploy/Chart")
 			require.NoError(t, err)
 			server := fixture.server(t)

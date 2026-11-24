@@ -18,6 +18,7 @@ package helm
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"strings"
@@ -353,5 +354,84 @@ func TestCertificatePublicSourceGuards(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSelfSignedInternalSource(t *testing.T) {
+	for _, matching := range []bool{false, true} {
+		f := newCertificateChartFixture(t)
+		nestedValue(f.values, "global", "rbac").(map[string]any)["certificates"] = map[string]any{"mode": "selfSigned"}
+		signer := newTestCA(t, "radius-ca").pem
+		copy := signer
+		if !matching {
+			copy = newTestCA(t, "previous").pem
+		}
+		for _, obj := range []map[string]any{
+			{"kind": "Secret", "type": "kubernetes.io/tls", "metadata": map[string]any{"name": "radius-ca", "annotations": map[string]any{
+				certificateNameAnnotation: "radius-ca", "cert-manager.io/issuer-name": radiusBootstrapIssuerName,
+				"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io",
+			}}, "data": map[string]any{"ca.crt": base64.StdEncoding.EncodeToString(signer), "tls.crt": base64.StdEncoding.EncodeToString(signer), "tls.key": "fixture"}},
+			{"kind": "ConfigMap", "metadata": map[string]any{"name": "radius-mtls-ca"}, "data": map[string]any{"ca.crt": string(copy)}},
+		} {
+			obj["apiVersion"] = "v1"
+			o := &unstructured.Unstructured{Object: obj}
+			o.SetNamespace(RadiusSystemNamespace)
+			f.objects = append(f.objects, o)
+		}
+		rendered, err := f.renderChart(t)
+		if !matching {
+			require.ErrorContains(t, err, "differs from the selected CA")
+			continue
+		}
+		require.NoError(t, err)
+		found := false
+		for _, obj := range chartObjects(t, rendered) {
+			if obj.GetKind() != "Deployment" || obj.GetName() != "controller" {
+				continue
+			}
+			for _, v := range nestedValue(obj.Object, "spec", "template", "spec", "volumes").([]any) {
+				vol := v.(map[string]any)
+				if vol["name"] == "radius-ca" {
+					require.Equal(t, "radius-ca", nestedValue(vol, "secret", "secretName"))
+					require.Equal(t, []any{map[string]any{"key": "ca.crt", "path": "ca.crt"}}, nestedValue(vol, "secret", "items"))
+					found = true
+				}
+			}
+		}
+		require.True(t, found)
+	}
+}
+
+func TestIssuerRefContinuity(t *testing.T) {
+	// Kept trust survives removal of the issuing Certificates on uninstall.
+	f := newCertificateChartFixture(t)
+	rendered, err := f.renderChart(t)
+	require.NoError(t, err)
+	for _, obj := range chartObjects(t, rendered) {
+		if obj.GetKind() == "Secret" && obj.GetName() == ucpAPIServerTrustSecretName {
+			f.objects = append(f.objects, obj)
+		}
+	}
+	issuer := f.objects[1].DeepCopy()
+	issuer.SetName("next-ca")
+	f.objects = append(f.objects, issuer)
+	nestedValue(f.values, "global", "rbac", "certificates", "issuerRef").(map[string]any)["name"] = "next-ca"
+	_, err = f.renderChart(t)
+	require.ErrorContains(t, err, "retained aggregation trust issuerRef differs")
+
+	for _, prior := range []string{"external-ca", "previous-ca"} {
+		f := newCertificateChartFixture(t)
+		f.upgrade = true
+		f.objects = append(f.objects, &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "cert-manager.io/v1", "kind": "Certificate",
+			"metadata": map[string]any{"namespace": RadiusSystemNamespace, "name": "ucp-cert"},
+			"spec":     map[string]any{"issuerRef": map[string]any{"group": "cert-manager.io", "kind": "Issuer", "name": prior}},
+		}})
+		_, err := f.renderChart(t)
+		if prior == "external-ca" {
+			require.NoError(t, err)
+		} else {
+			require.ErrorContains(t, err, "issuerRef differs")
+		}
 	}
 }

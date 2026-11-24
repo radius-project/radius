@@ -179,6 +179,15 @@ func (s *rotationStore) snapshotCertificatePlane(ctx context.Context, name, mode
 			return snapshot, err
 		}
 		source, snapshot.Source.Kind, snapshot.Source.Bundle = object, "Secret", bytes.Clone(object.Data[caCertificateKey])
+	} else if mode == "selfSigned" {
+		if len(validation.IsDNS1123Subdomain(issuer.SigningSecret)) != 0 {
+			return snapshot, errors.New("internal issuer does not identify a signing Secret")
+		}
+		secret, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, issuer.SigningSecret, metav1.GetOptions{})
+		if err != nil {
+			return snapshot, err
+		}
+		source, snapshot.Source.Kind, snapshot.Source.Bundle = secret, "Secret", bytes.Clone(secret.Data[caCertificateKey])
 	} else {
 		object, err := s.kube.CoreV1().ConfigMaps(s.namespace).Get(ctx, "radius-mtls-ca", metav1.GetOptions{})
 		if err != nil {
@@ -193,7 +202,7 @@ func (s *rotationStore) snapshotCertificatePlane(ctx context.Context, name, mode
 		}
 		source, snapshot.Source.Kind, snapshot.Source.Bundle = object, "ConfigMap", []byte(object.Data[caCertificateKey])
 	}
-	if source.GetAnnotations()["radius.io/certificate-mode"] != mode {
+	if !(name == "internal" && mode == "selfSigned") && source.GetAnnotations()["radius.io/certificate-mode"] != mode {
 		return snapshot, errors.New("public source mode differs from the selected certificate configuration")
 	}
 	certificates, err := parseCertificateBundlePEM(snapshot.Source.Bundle)
@@ -330,6 +339,23 @@ func (s *rotationStore) checkCertificateLifecycleRecovery(ctx context.Context, j
 		return errors.New("CA lifecycle journal changed during recovery validation")
 	}
 	return ctx.Err()
+}
+
+func (s *rotationStore) checkSignerTrust(ctx context.Context, pin *certificateObjectPin, bundle []byte) error {
+	if pin == nil {
+		return errors.New("selfSigned internal trust requires its pinned signer")
+	}
+	secret, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, pin.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("read pinned internal signer %s: %w", pin.Name, err)
+	}
+	if secret.UID != pin.UID || secret.DeletionTimestamp != nil {
+		return errors.New("internal signer identity changed; restore the recorded source")
+	}
+	if err := exactCertificateSet(secret.Data[caCertificateKey], bundle, s.now()); err != nil {
+		return fmt.Errorf("internal trust must exactly match pinned signer %s ca.crt: %w", pin.Name, err)
+	}
+	return nil
 }
 
 func (s *rotationStore) checkCertificateSignerSnapshot(ctx context.Context, pin *certificateObjectPin, phase rotationPhase) error {

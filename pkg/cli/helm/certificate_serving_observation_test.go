@@ -52,7 +52,7 @@ import (
 
 func TestAggregationServingInventory(t *testing.T) {
 	t.Parallel()
-	for _, scenario := range []string{"success", "overlap with new-only serving", "extra pod", "missing endpoint", "foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source", "Off public CA", "Off foreign source", "Off wrong type"} {
+	for _, scenario := range []string{"success", "overlap with new-only serving", "extra pod", "missing endpoint", "foreign endpoint", "unknown ready pod", "unknown ready foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source", "Off public CA", "Off foreign source", "Off wrong type"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
 			ca := newTestCA(t, "public")
@@ -85,6 +85,10 @@ func TestAggregationServingInventory(t *testing.T) {
 				endpoints.Endpoints = nil
 			case "foreign endpoint":
 				endpoints.Endpoints[0].TargetRef.UID = "other"
+			case "unknown ready pod":
+				endpoints.Endpoints[0].Conditions.Ready = nil
+			case "unknown ready foreign endpoint":
+				endpoints.Endpoints = append(endpoints.Endpoints, discoveryv1.Endpoint{Addresses: []string{"10.0.0.99"}})
 			case "wrong address":
 				endpoints.Endpoints[0].Addresses = []string{"10.0.0.99"}
 			case "wrong port":
@@ -119,7 +123,7 @@ func TestAggregationServingInventory(t *testing.T) {
 				require.Error(t, err, "fresh-bootstrap inventory still requires one CA")
 				inventory, err = readAggregationServingInventoryForCA(t.Context(), kube, RadiusSystemNamespace, source.Data[caCertificateKey], ca.pem)
 			}
-			if scenario != "success" && scenario != "overlap with new-only serving" && scenario != "Off public CA" {
+			if scenario != "success" && scenario != "unknown ready pod" && scenario != "overlap with new-only serving" && scenario != "Off public CA" {
 				require.Error(t, err)
 				return
 			}
@@ -137,8 +141,11 @@ func TestAggregationServingInventory(t *testing.T) {
 
 func TestObserveServingCertificate(t *testing.T) {
 	t.Parallel()
-	for _, profile := range []string{"DNS", "SPIFFE"} {
+	for _, profile := range []string{"DNS", "SPIFFE", "Off chart", "managed with Off chart"} {
 		for _, scenario := range []string{"success", "wrong CA", "wrong SAN", "client-only EKU", "not ready", "SA replaced", "workload replaced", "restarted", "cancel TLS", "driver replaced", "not mounted"} {
+			if strings.Contains(profile, "chart") && scenario != "success" {
+				continue
+			}
 			if profile == "DNS" && (scenario == "driver replaced" || scenario == "not mounted") {
 				continue
 			}
@@ -190,6 +197,25 @@ func TestObserveServingCertificate(t *testing.T) {
 						}
 						return nil, nil
 					}}
+				if strings.Contains(profile, "chart") {
+					f := newCertificateChartFixture(t)
+					f.values = nil
+					rendered, err := f.renderChart(t)
+					require.NoError(t, err)
+					var secret *corev1.Secret
+					for path, manifest := range rendered {
+						if strings.HasSuffix(path, "/ucp/apiservice.yaml") {
+							secret, err = renderedSecret(manifest, ucpOffCertificateSecretName)
+							require.NoError(t, err)
+						}
+					}
+					require.NotNil(t, secret)
+					pair, err := tls.X509KeyPair(secret.Data["tls.crt"], secret.Data["tls.key"])
+					require.NoError(t, err)
+					receiver.TLS.Certificates = []tls.Certificate{pair}
+					target.CA, target.offServing = secret.Data[caCertificateKey], profile == "Off chart"
+					der, leaf = pair.Certificate[0], pair.Leaf
+				}
 				receiver.StartTLS()
 				defer receiver.Close()
 				if scenario == "wrong CA" {
@@ -259,11 +285,16 @@ func TestObserveServingCertificate(t *testing.T) {
 				config := &rest.Config{Host: api.URL, BearerToken: "kube-api-only",
 					TLSClientConfig: rest.TLSClientConfig{CAData: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: api.Certificate().Raw})}}
 				result, err := ObserveServingCertificate(ctx, config, target)
-				if scenario == "success" {
+				if scenario == "success" && profile != "managed with Off chart" {
 					require.NoError(t, err)
 					require.Equal(t, fmt.Sprintf("%x", sha256.Sum256(der)), result.LeafSHA256)
 					require.Len(t, result.ChainSHA256, 2)
-					require.Equal(t, leaf.NotAfter, result.NotAfter)
+					anchor := mustParseCertificate(t, target.CA)
+					expiry := leaf.NotAfter
+					if anchor.NotAfter.Before(expiry) {
+						expiry = anchor.NotAfter
+					}
+					require.Equal(t, expiry, result.NotAfter)
 					require.Equal(t, target.PodUID, result.PodUID)
 					require.EqualValues(t, 2, reads.Load())
 				} else {

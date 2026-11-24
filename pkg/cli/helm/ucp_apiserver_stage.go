@@ -132,6 +132,9 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if mounted == "" {
 		return nil
 	}
+	if !helmOwned(deployment, radiusNamespace, releaseName) {
+		return foreignUCPDeploymentError(radiusNamespace, releaseName)
+	}
 	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
 	if err != nil || apiService == nil {
 		return err
@@ -148,7 +151,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if !ok {
 		return nil
 	}
-	rendered, err := renderedUCPOffCertificate(manifest)
+	rendered, err := renderedSecret(manifest, ucpOffCertificateSecretName)
 	if err != nil {
 		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
 	}
@@ -164,10 +167,32 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	}
 
 	output.LogInfo("Moving UCP to the certificate in Secret %s before authorization turns off...", ucpOffCertificateSecretName)
-	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, releaseName, radiusNamespace); err != nil {
+	overlap := unionCertificates(live, target)
+	for _, key := range ucpInjectAnnotations {
+		if _, injected := apiService.GetAnnotations()[key]; !injected {
+			continue
+		}
+		// A replacing injector writes the source verbatim. Make its desired
+		// bundle safe before changing either the serving Secret or the mount.
+		bundle, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, overlap)
+		if err != nil {
+			return err
+		}
+		source := radiusNamespace + "/" + ucpAPIServerTrustSecretName
+		annotations := map[string]any{injectCAFromSecretAnnotation: source,
+			"cert-manager.io/inject-ca-from": nil, "cert-manager.io/inject-apiserver-ca": nil}
+		if apiService.GetAnnotations()[injectCAFromSecretAnnotation] != source ||
+			apiService.GetAnnotations()["cert-manager.io/inject-ca-from"] != "" || apiService.GetAnnotations()["cert-manager.io/inject-apiserver-ca"] != "" {
+			if err := patchAppliedUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, apiService.GetUID(), annotations, bundle); err != nil {
+				return err
+			}
+		}
+		break
+	}
+	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), overlap); err != nil {
 		return err
 	}
-	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), unionCertificates(live, target)); err != nil {
+	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, releaseName, radiusNamespace); err != nil {
 		return err
 	}
 	if mounted != ucpOffCertificateSecretName {
@@ -302,8 +327,8 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 	return err
 }
 
-// renderedUCPOffCertificate returns Secret ucp-cert in manifest, or nil when manifest has none.
-func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
+// renderedSecret returns the named Secret in manifest, or nil when absent.
+func renderedSecret(manifest, name string) (*corev1.Secret, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
 	for {
 		var document map[string]any
@@ -315,7 +340,7 @@ func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
 			return nil, err
 		}
 		object := &unstructured.Unstructured{Object: document}
-		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != ucpOffCertificateSecretName {
+		if document == nil || object.GetAPIVersion() != "v1" || object.GetKind() != "Secret" || object.GetName() != name {
 			continue
 		}
 		secret := &corev1.Secret{}
@@ -645,4 +670,9 @@ func releaseActionManifest(rel *releasev1.Release, includeWorkloadHooks bool) st
 		}
 	}
 	return strings.Join(documents, "\n---\n")
+}
+
+func foreignUCPDeploymentError(radiusNamespace, releaseName string) error {
+	return fmt.Errorf("Deployment %s/ucp does not belong to Helm release %q, or was replaced after rad read it, so rad did not mount Secret %s in it. "+
+		"Helm has not changed Radius; check the Deployment, then run the command again", radiusNamespace, releaseName, ucpOffCertificateSecretName)
 }

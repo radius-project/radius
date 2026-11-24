@@ -292,6 +292,12 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, 
 		return nil
 	}
 	if deployed == authz.ModeOff {
+		kube, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
+		if err == nil {
+			if err := checkCurrentAggregationSource(ctx, kube, dynamicClient, namespace); err != nil {
+				return err
+			}
+		}
 		return errCertificateObserverUnavailable
 	}
 	kube, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
@@ -336,6 +342,11 @@ func checkCurrentAggregationSource(ctx context.Context, kube kubernetes.Interfac
 	if apiErr == nil {
 		source, err := aggregationPublicSource(ctx, kube, namespace)
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				if pinErr := validateUCPAPIServerAPIAnchors(nil, api); pinErr != nil {
+					return pinErr
+				}
+			}
 			return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
 		}
 		if source.Name == ucpAPIServerCASecretName {

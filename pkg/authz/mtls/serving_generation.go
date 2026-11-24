@@ -91,6 +91,11 @@ func (s *Source) GuardServingGeneration(server *http.Server) {
 		}
 		value, ok := s.serving.Load(r.Context().Value(servingConnectionKey{}))
 		if !ok {
+			// Retired connections cannot recover. net/http closes HTTP/1.1
+			// after the response and sends GOAWAY on HTTP/2.
+			if s.kind == servingPairOnly {
+				w.Header().Set("Connection", "close")
+			}
 			http.Error(w, "TLS handshake generation unavailable", http.StatusServiceUnavailable)
 			return
 		}
@@ -105,6 +110,7 @@ func (s *Source) GuardServingGeneration(server *http.Server) {
 		}
 
 		if !s.acceptsHandshake(handshake, current) {
+			w.Header().Set("Connection", "close")
 			http.Error(w, "TLS serving generation retired", http.StatusServiceUnavailable)
 			return
 		}

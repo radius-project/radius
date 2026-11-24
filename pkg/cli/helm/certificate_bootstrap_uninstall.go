@@ -165,6 +165,13 @@ func (b *initialCertificateInstaller) visitBootstrapPins(ctx context.Context, vi
 				return err
 			}
 			if err == nil {
+				targeted, err := liveCertificateTargets(ctx, b.store.dynamic, b.store.namespace, name)
+				if err != nil {
+					return err
+				}
+				if targeted {
+					return fmt.Errorf("preserving bootstrap signer %s: a live Certificate still targets it", name)
+				}
 				if err := validateBootstrapRenewal(secret, b.state.Anchors[plane], b.store.now()); err != nil {
 					return fmt.Errorf("preserving changed or foreign bootstrap signing Secret %s: %w", name, err)
 				}
@@ -176,6 +183,9 @@ func (b *initialCertificateInstaller) visitBootstrapPins(ctx context.Context, vi
 			}
 		}
 		pin := b.state.Sources[plane]
+		if plane == "internal" && pin.Kind == "Secret" {
+			continue // The pinned generated signer is already classified above.
+		}
 		var object metav1.Object
 		var bundle []byte
 		var remove func(metav1.DeleteOptions) error

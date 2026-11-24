@@ -646,7 +646,7 @@ func dialTo(t *testing.T, rt http.RoundTripper, host, addr string) {
 
 // TestClientTransport_RotationMidHandshake rotates the client's CA bundle to a new CA while
 // the server is handling the client hello. The connection must finish with the bundle it
-// started with, and the next connection must use the new bundle.
+// started with, but must not enter the HTTP pool after that bundle is retired.
 func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	oldCA, newCA := newCA(t), newCA(t)
 	options := clientOptions(t, oldCA.pem, authz.ModeEnforce)
@@ -669,8 +669,11 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	var received atomic.Int32
 	srv := &http.Server{
-		Handler:           http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			received.Add(1)
+		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() { _ = srv.Serve(ln) }()
@@ -685,12 +688,16 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	t.Cleanup(transport.CloseIdleConnections)
 	client := &http.Client{Transport: transport}
 
-	require.Equal(t, http.StatusOK, send(t, client, "https://applications-rp.radius-system.svc:5443/", ""))
+	resp, err := client.Get("https://applications-rp.radius-system.svc:5443/")
+	if resp != nil {
+		require.NoError(t, resp.Body.Close())
+	}
+	require.ErrorContains(t, err, "retired")
 
 	// A new connection uses the rotated bundle, which does not trust the old server.
-	transport.CloseIdleConnections()
 	_, err = client.Get("https://applications-rp.radius-system.svc:5443/")
 	require.ErrorContains(t, err, "unknown authority")
+	require.Zero(t, received.Load(), "neither request may reach the retired peer")
 }
 
 func expiringCA(t *testing.T, parent *testCA, notAfter time.Time) testCA {

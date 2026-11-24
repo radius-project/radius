@@ -21,6 +21,7 @@ package helm
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -46,6 +47,13 @@ import (
 )
 
 func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
+	for _, name := range []string{"radius", "external", "external-workload", "radius-historical"} {
+		t.Run(name, func(t *testing.T) { runInitialCertificateNativeFixture(t, name) })
+	}
+}
+
+func runInitialCertificateNativeFixture(t *testing.T, name string) {
+	t.Helper()
 	store, config, _, _ := newRotationTestStore(t)
 	require.NoError(t, store.dynamic.Resource(apiServiceResource).Delete(t.Context(), radiusAPIService, metav1.DeleteOptions{}))
 	installRotationTestCRDs(t, store)
@@ -70,141 +78,142 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 	t.Setenv("KUBECONFIG", kubeconfig)
 	selected, err := loader.Load("../../../deploy/Chart")
 	require.NoError(t, err)
-	for _, name := range []string{"radius", "external", "external-workload"} {
-		t.Run(name, func(t *testing.T) {
-			provider, _, _ := strings.Cut(name, "-")
-			local := *store
-			local.namespace = "initial-" + name
-			options := NewDefaultClusterOptions()
-			options.Radius.Namespace, options.Radius.Timeout = local.namespace, time.Minute
-			values := map[string]any{"global": map[string]any{
-				"rbac":       map[string]any{"enabled": true, "tls": map[string]any{"provider": provider}},
-				"prometheus": map[string]any{"enabled": true, "port": 9090},
-			}}
-			impl := &Impl{newRotationStore: func(string, string) (*rotationStore, error) { return &local, nil }}
-			target, plan, err := impl.prepareCertificateTarget(t.Context(), options, selected, values, "fixture")
-			require.NoError(t, err)
-			b, err := impl.prepareAggregationBootstrap(t.Context(), options, selected, nil, values, "fixture", plan, target)
-			require.NoError(t, err)
-			fixtures := map[string]*corev1.Secret{}
-			for _, plane := range b.planeNames() {
-				name := "radius-apiserver-ca"
-				if plane == "internal" {
-					name = "radius-ca"
+	provider, _, _ := strings.Cut(name, "-")
+	local := *store
+	local.namespace = "initial-" + name
+	options := NewDefaultClusterOptions()
+	options.Radius.Namespace, options.Radius.Timeout = local.namespace, time.Minute
+	values := map[string]any{"global": map[string]any{
+		"rbac":       map[string]any{"enabled": true, "tls": map[string]any{"provider": provider}},
+		"prometheus": map[string]any{"enabled": true, "port": 9090},
+	}}
+	impl := &Impl{newRotationStore: func(string, string) (*rotationStore, error) { return &local, nil }}
+	target, plan, err := impl.prepareCertificateTarget(t.Context(), options, selected, values, "fixture")
+	require.NoError(t, err)
+	b, err := impl.prepareAggregationBootstrap(t.Context(), options, selected, nil, values, "fixture", plan, target)
+	require.NoError(t, err)
+	fixtures := map[string]*corev1.Secret{}
+	for _, plane := range b.planeNames() {
+		name := "radius-apiserver-ca"
+		if plane == "internal" {
+			name = "radius-ca"
+		}
+		ca, key, _ := testSigningCA(t, nil, func(c *x509.Certificate) { c.Subject.CommonName = name }, nil, nil)
+		secret := caTLSSecret(name, ca, key)
+		secret.Namespace, secret.Data[caCertificateKey] = local.namespace, ca
+		secret.Annotations = map[string]string{"cert-manager.io/certificate-name": name,
+			"cert-manager.io/issuer-name": "radius-selfsigned-bootstrap", "cert-manager.io/issuer-kind": "Issuer",
+			"cert-manager.io/issuer-group": "cert-manager.io"}
+		if plane == "aggregation" {
+			secret.Annotations[allowDirectInjectionAnnotation] = "true"
+		}
+		fixtures[name] = secret
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	issued := make(chan error, 1)
+	// This is an explicit controller fixture using the isolated API server,
+	// not evidence of cert-manager issuance, CSI, or workload acceptance.
+	go func() {
+		issued <- wait.PollUntilContextCancel(ctx, 10*time.Millisecond, true, func(ctx context.Context) (bool, error) {
+			for name, secret := range fixtures {
+				client := local.dynamic.Resource(rotationCertificateResource).Namespace(local.namespace)
+				certificate, err := client.Get(ctx, name, metav1.GetOptions{})
+				if apierrors.IsNotFound(err) {
+					continue
 				}
-				ca, key, _ := testSigningCA(t, nil, func(c *x509.Certificate) { c.Subject.CommonName = name }, nil, nil)
-				secret := caTLSSecret(name, ca, key)
-				secret.Namespace, secret.Data[caCertificateKey] = local.namespace, ca
-				secret.Annotations = map[string]string{"cert-manager.io/certificate-name": name,
-					"cert-manager.io/issuer-name": "radius-selfsigned-bootstrap", "cert-manager.io/issuer-kind": "Issuer",
-					"cert-manager.io/issuer-group": "cert-manager.io"}
-				if plane == "aggregation" {
-					secret.Annotations[allowDirectInjectionAnnotation] = "true"
-				}
-				fixtures[name] = secret
-			}
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			issued := make(chan error, 1)
-			// This is an explicit controller fixture using the isolated API server,
-			// not evidence of cert-manager issuance, CSI, or workload acceptance.
-			go func() {
-				issued <- wait.PollUntilContextCancel(ctx, 10*time.Millisecond, true, func(ctx context.Context) (bool, error) {
-					for name, secret := range fixtures {
-						client := local.dynamic.Resource(rotationCertificateResource).Namespace(local.namespace)
-						certificate, err := client.Get(ctx, name, metav1.GetOptions{})
-						if apierrors.IsNotFound(err) {
-							continue
-						}
-						if err != nil {
-							return false, err
-						}
-						_, err = local.kube.CoreV1().Secrets(local.namespace).Create(ctx, secret, metav1.CreateOptions{})
-						if err != nil {
-							return false, err
-						}
-						certificate.Object["status"] = map[string]any{"conditions": []any{map[string]any{
-							"type": "Ready", "status": "True", "observedGeneration": certificate.GetGeneration(),
-						}}}
-						if _, err := client.UpdateStatus(ctx, certificate, metav1.UpdateOptions{}); err != nil {
-							return false, err
-						}
-						delete(fixtures, name)
-					}
-					return len(fixtures) == 0, nil
-				})
-			}()
-			if name == "external-workload" {
-				checkExternalBootstrapRetry(t, &local, kubeconfig)
-				require.NoError(t, <-issued)
-				return
-			}
-			b.applyFixture = func(ctx context.Context) error {
-				manifest, err := impl.renderBootstrapChart(ctx, selected, options, b.values, "fixture")
 				if err != nil {
-					return err
+					return false, err
 				}
-				bundle, err := renderedAggregationTrust(manifest, local.namespace)
-				require.Equal(t, b.state.Anchors["aggregation"].CA, bundle)
-				require.NoError(t, err)
-				changed := copyValues(b.values)
-				changed["fixture-change"] = true
-				_, err = impl.renderBootstrapChart(ctx, selected, options, changed, "fixture")
-				require.ErrorContains(t, err, "recorded values")
-				b.state.Phase = "preparing"
-				require.NoError(t, b.save(ctx))
-				_, err = impl.renderBootstrapChart(ctx, selected, options, b.values, "fixture")
-				require.ErrorContains(t, err, "Finish initial certificate public-source publication")
-				b.state.Phase = "published"
-				err = b.save(ctx)
-				return err
+				_, err = local.kube.CoreV1().Secrets(local.namespace).Create(ctx, secret, metav1.CreateOptions{})
+				if err != nil {
+					return false, err
+				}
+				certificate.Object["status"] = map[string]any{"conditions": []any{map[string]any{
+					"type": "Ready", "status": "True", "observedGeneration": certificate.GetGeneration(),
+				}}}
+				if _, err := client.UpdateStatus(ctx, certificate, metav1.UpdateOptions{}); err != nil {
+					return false, err
+				}
+				delete(fixtures, name)
 			}
-			b.verifyFixture = func(ctx context.Context) error { return b.checkMaterial(ctx) }
-			runErr := b.run(ctx)
-			cancel()
-			controllerErr := <-issued
-			require.NoError(t, controllerErr)
-			require.NoError(t, runErr)
-			require.Equal(t, "complete", b.state.Phase)
-			source, err := local.kube.CoreV1().Secrets(local.namespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
-			require.NoError(t, err)
-			require.Len(t, source.Data, 1)
-			for _, changed := range []string{"resourceVersion", "UID"} {
-				t.Run("cleanup rejects stale "+changed, func(t *testing.T) {
-					stale := source.DeepCopy()
-					if changed == "resourceVersion" {
-						stale.ResourceVersion = "1"
-					} else {
-						stale.UID = "another-object"
-					}
-					require.NoError(t, withIdentityOperation(t.Context(), local.kube, local.namespace, func(operation *identityOperation) error {
-						b.operation = operation
-						err := b.deleteBootstrapObject(t.Context(), stale, func(options metav1.DeleteOptions) error {
-							return local.kube.CoreV1().Secrets(local.namespace).Delete(t.Context(), source.Name, options)
-						})
-						require.True(t, apierrors.IsConflict(err), "%v", err)
-						return nil
-					}))
-					live, err := local.kube.CoreV1().Secrets(local.namespace).Get(t.Context(), source.Name, metav1.GetOptions{})
-					require.NoError(t, err)
-					require.Equal(t, source, live)
+			return len(fixtures) == 0, nil
+		})
+	}()
+	if name == "radius-historical" {
+		checkHistoricalBootstrapRetry(t, &local, kubeconfig)
+		require.NoError(t, <-issued)
+		return
+	}
+	if name == "external-workload" {
+		checkExternalBootstrapRetry(t, &local, kubeconfig)
+		require.NoError(t, <-issued)
+		return
+	}
+	b.applyFixture = func(ctx context.Context) error {
+		manifest, err := impl.renderBootstrapChart(ctx, selected, options, b.values, "fixture")
+		if err != nil {
+			return err
+		}
+		bundle, err := renderedAggregationTrust(manifest, local.namespace)
+		require.Equal(t, b.state.Anchors["aggregation"].CA, bundle)
+		require.NoError(t, err)
+		changed := copyValues(b.values)
+		changed["fixture-change"] = true
+		_, err = impl.renderBootstrapChart(ctx, selected, options, changed, "fixture")
+		require.ErrorContains(t, err, "recorded values")
+		b.state.Phase = "preparing"
+		require.NoError(t, b.save(ctx))
+		_, err = impl.renderBootstrapChart(ctx, selected, options, b.values, "fixture")
+		require.ErrorContains(t, err, "Finish initial certificate public-source publication")
+		b.state.Phase = "published"
+		err = b.save(ctx)
+		return err
+	}
+	b.verifyFixture = func(ctx context.Context) error { return b.checkMaterial(ctx) }
+	runErr := b.run(ctx)
+	cancel()
+	controllerErr := <-issued
+	require.NoError(t, controllerErr)
+	require.NoError(t, runErr)
+	require.Equal(t, "complete", b.state.Phase)
+	source, err := local.kube.CoreV1().Secrets(local.namespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Len(t, source.Data, 1)
+	for _, changed := range []string{"resourceVersion", "UID"} {
+		t.Run("cleanup rejects stale "+changed, func(t *testing.T) {
+			stale := source.DeepCopy()
+			if changed == "resourceVersion" {
+				stale.ResourceVersion = "1"
+			} else {
+				stale.UID = "another-object"
+			}
+			require.NoError(t, withIdentityOperation(t.Context(), local.kube, local.namespace, func(operation *identityOperation) error {
+				b.operation = operation
+				err := b.deleteBootstrapObject(t.Context(), stale, func(options metav1.DeleteOptions) error {
+					return local.kube.CoreV1().Secrets(local.namespace).Delete(t.Context(), source.Name, options)
 				})
-			}
-			initialUninstallFixture(t, b, nil)
-			uninstall := NewDefaultClusterOptions()
-			uninstall.Radius.Namespace, uninstall.Contour.Namespace = local.namespace, local.namespace
-			require.NoError(t, impl.UninstallRadius(t.Context(), uninstall, "fixture"))
-			namespace, err := local.kube.CoreV1().Namespaces().Get(t.Context(), local.namespace, metav1.GetOptions{})
+				require.True(t, apierrors.IsConflict(err), "%v", err)
+				return nil
+			}))
+			live, err := local.kube.CoreV1().Secrets(local.namespace).Get(t.Context(), source.Name, metav1.GetOptions{})
 			require.NoError(t, err)
-			require.NotContains(t, namespace.Annotations, initialCertificateIntent)
-			target, plan, err = impl.prepareCertificateTarget(t.Context(), options, selected, values, "fixture")
-			require.NoError(t, err)
-			fresh, err := impl.prepareAggregationBootstrap(t.Context(), options, selected, nil, values, "fixture", plan, target)
-			require.NoError(t, err)
-			require.NotNil(t, fresh)
-			require.NoError(t, fresh.checkFresh(t.Context()))
+			require.Equal(t, source, live)
 		})
 	}
+	initialUninstallFixture(t, b, nil)
+	uninstall := NewDefaultClusterOptions()
+	uninstall.Radius.Namespace, uninstall.Contour.Namespace = local.namespace, local.namespace
+	require.NoError(t, impl.UninstallRadius(t.Context(), uninstall, "fixture"))
+	namespace, err := local.kube.CoreV1().Namespaces().Get(t.Context(), local.namespace, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.NotContains(t, namespace.Annotations, initialCertificateIntent)
+	target, plan, err = impl.prepareCertificateTarget(t.Context(), options, selected, values, "fixture")
+	require.NoError(t, err)
+	fresh, err := impl.prepareAggregationBootstrap(t.Context(), options, selected, nil, values, "fixture", plan, target)
+	require.NoError(t, err)
+	require.NotNil(t, fresh)
+	require.NoError(t, fresh.checkFresh(t.Context()))
 }
 
 // Exercise the command boundary with live lookups, release storage and CRDs. Only
@@ -283,4 +292,101 @@ spec:
 	require.Equal(t, journal.UID, resumed.UID)
 	require.Equal(t, state.ID, again.ID)
 	require.Equal(t, "published", again.Phase)
+}
+
+func checkHistoricalBootstrapRetry(t *testing.T, store *rotationStore, kubeconfig string) {
+	t.Helper()
+	ctx := t.Context()
+	selected := certificateTestChart(t)
+	// No worker nodes are present to run readiness hooks.
+	selected.Templates = slices.DeleteFunc(selected.Templates, func(f *common.File) bool {
+		return strings.HasPrefix(f.Name, "templates/control-plane-readiness/") || strings.HasPrefix(f.Name, "templates/pre-upgrade/")
+	})
+	archive, err := chartutil.Save(selected, t.TempDir())
+	require.NoError(t, err)
+	options := NewDefaultClusterOptions()
+	options.Contour.Disabled = true
+	options.Radius.Namespace = store.namespace
+	options.Radius.ChartPath = archive
+	options.Radius.Wait = false
+	options.Radius.Timeout = time.Minute
+	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=radius"}
+	controller := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	impl := &Impl{Helm: NewHelmClient(), newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+		k, e := (fakeCertManagerCluster{crd: true, controller: controller}).clients()
+		return k, e, nil
+	}}
+	configuration := newTestHelmConfiguration(t, kubeconfig, store.namespace)
+	expireUCPAPIServiceWait(t)
+	err = impl.InstallRadius(ctx, options, "fixture")
+	require.ErrorContains(t, err, "aggregation deployment has not converged")
+	journal, state, err := readInitialCertificateJournal(ctx, store)
+	require.NoError(t, err)
+	require.Equal(t, "published", state.Phase)
+	require.Equal(t, 1, state.Version)
+	require.Equal(t, "selfSigned", state.Mode)
+	// Seed the publication witness recorded by historical schema-1 installers.
+	pin := state.Sources["internal"]
+	require.Equal(t, "Secret", pin.Kind)
+	cm, err := store.kube.CoreV1().ConfigMaps(store.namespace).Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "radius-mtls-ca", Namespace: store.namespace, Labels: map[string]string{helmManagedByLabel: helmManagedByValue}, Annotations: map[string]string{helmReleaseNameAnnotation: store.release, helmReleaseNamespaceAnnotation: store.namespace, initialCertificateIntent: string(journal.UID), "radius.io/certificate-mode": "selfSigned", "helm.sh/resource-policy": "keep"}}, Data: map[string]string{caCertificateKey: string(pin.Bundle)}}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	pin.Kind, pin.Name, pin.UID, pin.ResourceVersion = "ConfigMap", cm.Name, cm.UID, cm.ResourceVersion
+	state.Sources["internal"] = pin
+	payload, err := json.Marshal(state)
+	require.NoError(t, err)
+	journal.Data[rotationJournalKey] = string(payload)
+	journal, err = store.kube.CoreV1().ConfigMaps(store.namespace).Update(ctx, journal, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "radius-mtls-ca", state.Sources["internal"].Name)
+	recorded, err := impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
+	require.Equal(t, 1, recorded.Version)
+	require.Equal(t, state.ID, recorded.Labels[initialCertificateIntent])
+	actual, err := bootstrapDigest(recorded.Chart)
+	require.NoError(t, err)
+	require.Equal(t, state.ChartSHA256, actual)
+	options.RadiusInstalled, options.RadiusReleaseValues = true, recorded.Config
+	require.ErrorContains(t, impl.InstallRadius(ctx, options, "fixture"), "--reinstall")
+	options.Radius.Reinstall = true
+	err = impl.InstallRadius(ctx, options, "fixture")
+	require.ErrorContains(t, err, "aggregation deployment has not converged")
+	after, err := impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
+	require.Equal(t, 2, after.Version)
+	resumed, again, err := readInitialCertificateJournal(ctx, store)
+	require.NoError(t, err)
+	require.Equal(t, journal.UID, resumed.UID)
+	require.Equal(t, state.Sources["internal"], again.Sources["internal"])
+	objects, err := parsePendingProbeManifest(after.Manifest)
+	require.NoError(t, err)
+	found := false
+	for _, object := range objects {
+		if object.GetKind() != "Deployment" || object.GetName() != "ucp" {
+			continue
+		}
+		volumes, _, err := unstructured.NestedSlice(object.Object, "spec", "template", "spec", "volumes")
+		require.NoError(t, err)
+		for _, item := range volumes {
+			v := item.(map[string]any)
+			name, _, err := unstructured.NestedString(v, "secret", "secretName")
+			require.NoError(t, err)
+			if name == "radius-ca" {
+				found = true
+			}
+		}
+	}
+	require.True(t, found, "baseline control: committed revision 2 UCP Deployment uses the signer Secret (journal witness is distinct)")
+	t.Log("selfSigned/radius, initial journal v1 published, internal ConfigMap/radius-mtls-ca; labeled Helm revision 1; ordinary retry refused; identical --reinstall applied revision 2; journal and source identity unchanged; no serving convergence")
+}
+
+func parsePendingProbeManifest(manifest string) ([]unstructured.Unstructured, error) {
+	var result []unstructured.Unstructured
+	for _, doc := range strings.Split(manifest, "\n---\n") {
+		var obj unstructured.Unstructured
+		if err := yaml.Unmarshal([]byte(doc), &obj); err != nil {
+			return nil, err
+		}
+		result = append(result, obj)
+	}
+	return result, nil
 }
