@@ -179,11 +179,11 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 	ucpAPIServiceTimeout, ucpAPIServicePollInterval = 50*time.Millisecond, 10*time.Millisecond
 	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, interval })
 
-	chart := loadStageTestChart(t)
 	history := []*releasev1.Release{
-		{Version: 1, Chart: chart, Config: map[string]any{}},
-		{Version: 2, Chart: chart, Config: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}},
+		{Version: 1, Chart: certificateTestChart(t)},
+		{Version: 2, Chart: certificateTestChart(t)},
 	}
+	setValue(history[1].Chart.Values, true, "global", "rbac", "enabled")
 	impl := &Impl{
 		newUCPAPIServerTrustClient: uninstallTrustClient,
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {

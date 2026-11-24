@@ -442,6 +442,10 @@ func imageTag(image string) string {
 // storedValues and chartDefaults, the values.yaml of the Radius chart rad applies, turn it on. With authorization off
 // it returns without contacting the cluster.
 func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, chartDefaults, storedValues, userValues map[string]any, upgrade bool) error {
+	return i.ensureCertManagerForRender(ctx, options, kubeContext, chartDefaults, storedValues, userValues, upgrade, nil)
+}
+
+func (i *Impl) ensureCertManagerForRender(ctx context.Context, options ClusterOptions, kubeContext string, chartDefaults, storedValues, userValues map[string]any, upgrade bool, checkProvider func() error) error {
 	mode, err := resolveAuthzMode(chartDefaults, storedValues, userValues)
 	if err != nil {
 		return err
@@ -526,6 +530,17 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 			output.LogInfo("Repairing cert-manager installed by rad...")
 		} else {
 			output.LogInfo("Upgrading cert-manager...")
+		}
+		if checkProvider != nil {
+			existing, err := detect()
+			if err != nil && !errors.Is(err, errCertManagerControllerMissing) {
+				return err
+			}
+			if existing.Installed && err == nil {
+				if err := checkProvider(); err != nil {
+					return err
+				}
+			}
 		}
 		helmChart, helmConf, err := loadChart(ctx, helmAction, chartOptions, kubeContext)
 		if err != nil {
