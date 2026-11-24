@@ -170,6 +170,7 @@ jobs:
         id: build-contract
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          REQUIRE_BICEP_RECIPES: ${{ steps.plan.outputs.recipe-source-commit != '' }}
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
           INPUT_PLAN_FILE: ${{ runner.temp }}/release-plan.yaml
@@ -335,6 +336,7 @@ jobs:
           DE_COMMIT: ${{ steps.de-tag.outputs.commit }}
           DE_STATE: ${{ steps.de-tag.outputs.state }}
           DE_IMAGE_TAG: ${{ steps.plan.outputs.de-image-tag }}
+          RECIPE_SOURCE_COMMIT: ${{ steps.plan.outputs.recipe-source-commit }}
           RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
           DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
           BICEP_TYPES_AWS_COMMIT: >-
@@ -357,6 +359,9 @@ jobs:
                   "${DE_COMMIT}, image tag ${DE_IMAGE_TAG}"
               fi
               echo "- recipes: ${RECIPES_COMMIT}"
+              if [[ -n "${RECIPE_SOURCE_COMMIT}" ]]; then
+                echo "- Final Bicep recipes (resource-types-contrib): ${RECIPE_SOURCE_COMMIT}"
+              fi
               echo "- dashboard: ${DASHBOARD_COMMIT}"
               echo "- bicep-types-aws: ${BICEP_TYPES_AWS_COMMIT}"
             else

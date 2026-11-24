@@ -211,6 +211,7 @@ async function publishedRelease(github, context, version) {
   );
   if (matches.length !== 1)
     throw new Error(`${version} is not a published release`);
+  return matches[0];
 }
 
 export async function checkReleaseCandidate({ github, context, plan }) {
@@ -309,6 +310,7 @@ export async function coordinateTask({
   if (
     deployment.sha !== sourceSha ||
     deployment.payload?.version !== version ||
+    (task.id === "bicep-recipes" && deployment.payload?.ref !== task.ref) ||
     !isDeepStrictEqual(deployment.payload?.task, task)
   ) {
     throw new Error(
@@ -407,6 +409,8 @@ export async function coordinateTask({
     }
     if (task.id === "sample-tests" && !/^[a-f0-9]{40}$/.test(data.head_sha))
       throw new Error(`Sample-test run ${runID} has no valid source commit`);
+    if (task.runName && data.display_title !== task.runName)
+      throw new Error(`Run ${runID} does not match '${task.runName}'`);
     return data;
   };
   let run = await getRun();
@@ -545,6 +549,7 @@ export async function coordinateTask({
 export default async function coordinateRelease({
   github,
   remote = github.request,
+  recipeRemote,
   context,
   core,
   now = Date.now,
@@ -565,12 +570,44 @@ export default async function coordinateRelease({
   const sourceSha = core.getInput("SOURCE_SHA", { required: true });
   if (!/^[a-f0-9]{40}$/.test(sourceSha))
     throw new Error("SOURCE_SHA must be a full commit");
-  await publishedRelease(github, context, plan.version);
+  const release = await publishedRelease(github, context, plan.version);
   if ((await tagCommit(github, context, plan.version)) !== sourceSha)
     throw new Error("Release tag/source conflict");
+  const tasks = coordinationTasks(plan.releaseType, plan.version);
+  // Only new final plans opt in. Never infer a source for an older release.
+  if (Object.hasOwn(plan, "recipeSourceCommit")) {
+    if (
+      plan.releaseType !== "final" ||
+      !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.0$/.test(plan.version) ||
+      context.ref !== `refs/tags/${plan.version}` ||
+      release.draft !== false ||
+      release.prerelease !== false ||
+      !release.published_at
+    )
+      throw new Error("Bicep recipes require the verified public final tag");
+    if (
+      typeof plan.recipeSourceCommit !== "string" ||
+      !/^[a-f0-9]{40}$/.test(plan.recipeSourceCommit)
+    )
+      throw new Error("Invalid recipeSourceCommit in the approved final plan");
+    if (!recipeRemote) throw new Error("Missing Bicep recipe dispatch client");
+    const identifier = `${plan.version}-${sourceSha}`;
+    tasks.push({
+      id: "bicep-recipes",
+      repo: "resource-types-contrib",
+      workflow: "publish-bicep-recipes.yaml",
+      ref: "main",
+      runName: `bicep-recipes / ${identifier}`,
+      inputs: {
+        release_version: plan.version.slice(1),
+        recipe_source_commit: plan.recipeSourceCommit,
+        release_identifier: identifier
+      }
+    });
+  }
   const deadline = now() + 2400000;
   const results = [];
-  for (const task of coordinationTasks(plan.releaseType, plan.version)) {
+  for (const task of tasks) {
     try {
       if (
         plan.releaseType === "rc" &&
@@ -588,7 +625,7 @@ export default async function coordinateRelease({
       results.push(
         await coordinateTask({
           github,
-          remote,
+          remote: task.id === "bicep-recipes" ? recipeRemote : remote,
           context,
           task,
           version: plan.version,

@@ -340,6 +340,20 @@ main() {
 
     expect "release commit does not exist" "unknown release commit" refs/heads/missing
 
+    write_pipeline
+    mkdir -p "${REPO}/.github/scripts"
+    cp "${ROOT}/.github/scripts/coordinate-release.mjs" "${REPO}/.github/scripts/"
+    REQUIRE_BICEP_RECIPES=true expect pass "new finals require the recipe coordinator" HEAD --require-sibling-releases
+
+    rm "${REPO}/.github/scripts/coordinate-release.mjs"
+    REQUIRE_BICEP_RECIPES=true expect "does not coordinate the Bicep recipe publisher" \
+        "new final cannot use an old coordination script"
+    yq -i 'del(.jobs."coordinate-release".steps[].env.RECIPE_TOKEN)' \
+        "${WORKFLOWS}/build-release.yaml"
+    expect pass "existing plans need no recipe coordinator"
+    REQUIRE_BICEP_RECIPES=true expect "has no final Bicep recipe coordinator" \
+        "new final cannot use an old tagged workflow"
+
     if ((FAIL > 0)); then
         echo "Release build contract tests failed: ${PASS} passed, ${FAIL} failed"
         exit 1
