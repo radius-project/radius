@@ -473,7 +473,7 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	}
 	trust := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "uid-trust", ResourceVersion: "1",
-			Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+			Annotations: trustSecretAnnotations()},
 		Data: map[string][]byte{caCertificateKey: []byte("ca")},
 	}
 	kubeClient := kubefake.NewSimpleClientset(issued(ucpAPIServerCASecretName, ucpAPIServerCASecretName), issued(ucpAPIServerTLSSecretName, ucpAPIServerCertificateName),

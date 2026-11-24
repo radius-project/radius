@@ -252,7 +252,8 @@ func (i *Impl) warnForeignUCPOffSecrets(kubeContext, radiusNamespace string, fou
 		owner := fmt.Sprintf("cert-manager did not issue for Certificate %s of Helm release %q, as its annotations %s and %s show",
 			f.certificate, radiusReleaseName, releaseNameAnnotation, releaseNamespaceAnnotation)
 		if f.certificate == "" {
-			owner = fmt.Sprintf("does not hold only a non-empty %s with annotation %s=true as rad writes it", caCertificateKey, allowDirectInjectionAnnotation)
+			owner = fmt.Sprintf("does not hold only a non-empty %s with annotations %s=true, %s=%s and %s=%s as rad writes it", caCertificateKey,
+				allowDirectInjectionAnnotation, releaseNameAnnotation, radiusReleaseName, releaseNamespaceAnnotation, radiusNamespace)
 		}
 		i.logInfo("Warning: rad did not delete Secret %s/%s, which %s. Authorization off does not use it; if nothing else does, delete it with %s",
 			radiusNamespace, f.secret, owner, kubectlCommand(kubeContext, radiusNamespace, "delete secret "+f.secret))
@@ -312,8 +313,8 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 
 // ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when its Certificate does
 // not exist and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
-// only ca.crt and the allow-direct-injection annotation, which is what rad and the chart README's plain-Helm steps
-// write.
+// only ca.crt, the allow-direct-injection annotation and the release annotations, which is what rad and the chart
+// README's plain-Helm steps write.
 func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
 	found := ucpOffLeftoverFound{ucpOffLeftoverSecret: leftover}
 	secret, err := kubeClient.CoreV1().Secrets(radiusNamespace).Get(ctx, leftover.secret, metav1.GetOptions{})
@@ -350,7 +351,7 @@ func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool
 			secret.Annotations[releaseNameAnnotation] == radiusReleaseName &&
 			secret.Annotations[releaseNamespaceAnnotation] == secret.Namespace
 	}
-	return ownsUCPAPIServerTrust(secret)
+	return ownsUCPAPIServerTrust(secret, secret.Namespace)
 }
 
 // waitForUCPOffCertificate waits until every UCP pod serves the certificate in Secret ucp-cert, issued by one of

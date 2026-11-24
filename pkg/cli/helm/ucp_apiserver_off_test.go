@@ -82,7 +82,7 @@ func (c *stageCluster) putTrustSecret(t *testing.T, plainHelm bool) {
 	}
 	_, err = secrets.Create(t.Context(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace,
-			Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+			Annotations: trustSecretAnnotations()},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{caCertificateKey: c.ucpCA.pem},
 	}, metav1.CreateOptions{})

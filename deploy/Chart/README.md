@@ -39,12 +39,13 @@ Turning authorization on or off, and upgrading from an edge build that authentic
 
 A plain `helm upgrade --wait` waits only for the workloads; check the APIService with `kubectl get apiservice v1alpha3.api.ucp.dev` before resuming.
 
-With authorization on, a fresh plain Helm install needs no extra step. When upgrading from authorization off with plain Helm, keep the Helm-generated `ucp-ca` trusted while UCP rolls. Put only public CA certificates in the trust Secret, never the `ca.crt` of `ucp-apiserver-tls`:
+With authorization on, a fresh plain Helm install needs no extra step. When upgrading from authorization off with plain Helm, keep the Helm-generated `ucp-ca` trusted while UCP rolls. Put only public CA certificates in the trust Secret, never the `ca.crt` of `ucp-apiserver-tls`. The chart and `rad` use the Secret only when its annotations name the release, `radius` in `radius-system` below:
 
 ```bash
 kubectl get apiservice v1alpha3.api.ucp.dev -o jsonpath='{.spec.caBundle}' | base64 -d > ca.crt
 kubectl create secret generic radius-apiserver-trust -n radius-system --from-file=ca.crt
-kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/allow-direct-injection=true
+kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/allow-direct-injection=true \
+  radapp.io/release-name=radius radapp.io/release-namespace=radius-system
 ```
 
 Then run `helm upgrade`. UCP serves its new certificate only after cert-manager issues `radius-apiserver-ca`, and the `radius-api-readiness` post-upgrade hook fails the revision if the API server still cannot reach UCP, so append the `tls.crt` of `radius-apiserver-ca` to the Secret's `ca.crt` while Helm waits. In a second terminal, as soon as `helm upgrade` starts, run:
@@ -53,7 +54,8 @@ Then run `helm upgrade`. UCP serves its new certificate only after cert-manager 
 until kubectl get secret radius-apiserver-ca -n radius-system >/dev/null 2>&1; do sleep 2; done
 kubectl get secret radius-apiserver-ca -n radius-system -o jsonpath='{.data.tls\.crt}' | base64 -d >> ca.crt
 kubectl create secret generic radius-apiserver-trust -n radius-system --from-file=ca.crt --dry-run=client -o yaml | kubectl replace -f -
-kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/allow-direct-injection=true
+kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/allow-direct-injection=true \
+  radapp.io/release-name=radius radapp.io/release-namespace=radius-system
 ```
 
 If the hook fails anyway, run the same `helm upgrade` again once the Secret holds both CAs. After the `ucp` Deployment rolls out, finally delete the `radius-apiserver-trust` Secret and run `helm upgrade` again, so the APIService trusts only `radius-apiserver-ca` and follows its renewals. cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.

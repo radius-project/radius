@@ -211,7 +211,7 @@ func trustedSubjects(t *testing.T, client kubernetes.Interface) []string {
 	t.Helper()
 	secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.NoError(t, err)
-	require.Equal(t, "true", secret.Annotations[allowDirectInjectionAnnotation])
+	require.Equal(t, trustSecretAnnotations(), secret.Annotations)
 	require.Equal(t, []string{caCertificateKey}, keys(secret.Data))
 	return pemSubjects(t, secret.Data[caCertificateKey])
 }
@@ -487,7 +487,7 @@ func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T)
 	kubeClient := kubefake.NewSimpleClientset(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace,
-				Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+				Annotations: trustSecretAnnotations()},
 			Data: map[string][]byte{caCertificateKey: ucpCA.pem},
 		},
 		apiServerCASecret(apiServerCA),
@@ -505,7 +505,7 @@ func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T)
 func Test_deleteUCPAPIServerTrust(t *testing.T) {
 	kubeClient := kubefake.NewSimpleClientset(&corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace,
-			Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+			Annotations: trustSecretAnnotations()},
 		Data: map[string][]byte{caCertificateKey: newTestCA(t, "ucp-ca").pem},
 	})
 	impl := trustImpl(kubeClient, ucpAPIServiceDynamicClient())
@@ -515,6 +515,15 @@ func Test_deleteUCPAPIServerTrust(t *testing.T) {
 	require.Error(t, err)
 	// A missing Secret is not an error.
 	require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+}
+
+// trustSecretAnnotations are the annotations rad sets on the trust Secret of the Radius release in radius-system.
+func trustSecretAnnotations() map[string]string {
+	return map[string]string{
+		allowDirectInjectionAnnotation: "true",
+		releaseNameAnnotation:          radiusReleaseName,
+		releaseNamespaceAnnotation:     RadiusSystemNamespace,
+	}
 }
 
 // foreignTrustSecret is a Secret named radius-apiserver-trust that neither rad nor the chart README's plain-Helm
@@ -606,13 +615,50 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 	})
 }
 
+// A trust Secret in the shape rad writes, but marked for another release, holds a CA that this release must not trust.
+func Test_UCPAPIServerTrust_SecretOfAnotherRelease(t *testing.T) {
+	otherReleaseTrust := func(ca testCA) *corev1.Secret {
+		annotations := trustSecretAnnotations()
+		annotations[releaseNameAnnotation] = "other"
+		return &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "other-release", ResourceVersion: "1", Annotations: annotations},
+			Data:       map[string][]byte{caCertificateKey: ca.pem},
+		}
+	}
+
+	t.Run("reconcile does not trust its CA", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		apiServerCA, otherCA := newTestCA(t, "radius-apiserver-ca"), newTestCA(t, "other-ca")
+		kubeClient := kubefake.NewSimpleClientset(otherReleaseTrust(otherCA), apiServerCASecret(apiServerCA), apiServerTLSSecret(t, apiServerCA), ucpDeployment(true))
+		dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
+
+		require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+		secret, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+		require.NoError(t, err, "rad must not delete a radius-apiserver-trust Secret of another release")
+		require.Equal(t, otherCA.pem, secret.Data[caCertificateKey])
+	})
+
+	t.Run("writer refuses it", func(t *testing.T) {
+		otherCA := newTestCA(t, "other-ca")
+		kubeClient := kubefake.NewSimpleClientset(otherReleaseTrust(otherCA))
+
+		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, caCertificates(newTestCA(t, "ucp-ca").pem))
+		require.ErrorContains(t, err, "radapp.io/release-name=radius")
+		secret, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, otherCA.pem, secret.Data[caCertificateKey])
+	})
+}
+
 // An annotated Secret whose only ca.crt is empty is not in the shape rad or the plain-Helm steps write, so rad
 // leaves it alone, as the chart does.
 func Test_UCPAPIServerTrust_EmptyCACertificate(t *testing.T) {
 	emptyTrustSecret := func() *corev1.Secret {
 		return &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "empty-object", ResourceVersion: "1",
-				Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+				Annotations: trustSecretAnnotations()},
 			Data: map[string][]byte{caCertificateKey: {}},
 		}
 	}
@@ -625,7 +671,7 @@ func Test_UCPAPIServerTrust_EmptyCACertificate(t *testing.T) {
 	}
 
 	t.Run("is not owned", func(t *testing.T) {
-		require.False(t, ownsUCPAPIServerTrust(emptyTrustSecret()))
+		require.False(t, ownsUCPAPIServerTrust(emptyTrustSecret(), RadiusSystemNamespace))
 		require.False(t, ownsUCPOffSecret(emptyTrustSecret(), ucpOffLeftoverSecrets[0]))
 	})
 

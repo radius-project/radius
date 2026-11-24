@@ -122,7 +122,7 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 	if err != nil {
 		return nil, err
 	}
-	if trust != nil && ownsUCPAPIServerTrust(trust) {
+	if trust != nil && ownsUCPAPIServerTrust(trust, radiusNamespace) {
 		add("Secret", secretsResource, trust)
 	}
 	for _, leftover := range ucpUninstallLeftoverSecrets {

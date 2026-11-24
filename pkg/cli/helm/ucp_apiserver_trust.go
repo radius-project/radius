@@ -127,7 +127,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		return err
 	}
 	// rad neither changes nor deletes a Secret of that name that it does not own, and does not trust its CAs.
-	overlap := trust != nil && ownsUCPAPIServerTrust(trust)
+	overlap := trust != nil && ownsUCPAPIServerTrust(trust, radiusNamespace)
 	if trust != nil && !overlap {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 	}
@@ -358,7 +358,7 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 	if err != nil || secret == nil {
 		return err
 	}
-	if !ownsUCPAPIServerTrust(secret) {
+	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 		return nil
 	}
@@ -374,7 +374,7 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 	if err != nil || secret == nil {
 		return err
 	}
-	if !ownsUCPAPIServerTrust(secret) {
+	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 		return nil
 	}
@@ -384,16 +384,19 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 }
 
 // ownsUCPAPIServerTrust reports whether secret, the trust Secret, has the shape rad writes and the chart README's
-// plain-Helm steps create: only a non-empty ca.crt, with annotation cert-manager.io/allow-direct-injection=true. rad writes,
-// trusts and deletes only such a Secret; the chart renders the APIService from it only then too.
-func ownsUCPAPIServerTrust(secret *corev1.Secret) bool {
-	return len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
+// plain-Helm steps create: only a non-empty ca.crt, with annotation cert-manager.io/allow-direct-injection=true and the
+// release annotations that name the Radius release in radiusNamespace. rad writes, trusts and deletes only such a
+// Secret; the chart renders the APIService from it only then too.
+func ownsUCPAPIServerTrust(secret *corev1.Secret, radiusNamespace string) bool {
+	return len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true" &&
+		secret.Annotations[releaseNameAnnotation] == radiusReleaseName && secret.Annotations[releaseNamespaceAnnotation] == radiusNamespace
 }
 
 // foreignUCPAPIServerTrustProblem describes a trust Secret that rad does not own.
 func foreignUCPAPIServerTrustProblem(radiusNamespace string) string {
-	return fmt.Sprintf("Secret %s/%s does not hold only a non-empty %s with annotation %s=true as rad writes it",
-		radiusNamespace, ucpAPIServerTrustSecretName, caCertificateKey, allowDirectInjectionAnnotation)
+	return fmt.Sprintf("Secret %s/%s does not hold only a non-empty %s with annotations %s=true, %s=%s and %s=%s as rad writes it",
+		radiusNamespace, ucpAPIServerTrustSecretName, caCertificateKey, allowDirectInjectionAnnotation,
+		releaseNameAnnotation, radiusReleaseName, releaseNamespaceAnnotation, radiusNamespace)
 }
 
 // warnForeignUCPAPIServerTrust warns that rad left a trust Secret it does not own unchanged.
@@ -564,7 +567,7 @@ func readUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, rad
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
 	}
-	if !ownsUCPAPIServerTrust(secret) {
+	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
 		return nil, secret, nil
 	}
 	return caCertificates(secret.Data[caCertificateKey]), secret, nil
@@ -599,10 +602,14 @@ func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretI
 	if apierrors.IsNotFound(err) {
 		_, err = secrets.Create(ctx, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        ucpAPIServerTrustSecretName,
-				Namespace:   radiusNamespace,
-				Labels:      map[string]string{"app.kubernetes.io/name": "ucp", "app.kubernetes.io/part-of": "radius"},
-				Annotations: map[string]string{allowDirectInjectionAnnotation: "true"},
+				Name:      ucpAPIServerTrustSecretName,
+				Namespace: radiusNamespace,
+				Labels:    map[string]string{"app.kubernetes.io/name": "ucp", "app.kubernetes.io/part-of": "radius"},
+				Annotations: map[string]string{
+					allowDirectInjectionAnnotation: "true",
+					releaseNameAnnotation:          radiusReleaseName,
+					releaseNamespaceAnnotation:     radiusNamespace,
+				},
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{caCertificateKey: bundle},
@@ -612,7 +619,7 @@ func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretI
 	if err != nil {
 		return false, err
 	}
-	if !ownsUCPAPIServerTrust(secret) {
+	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
 		return true, nil
 	}
 	if bytes.Equal(secret.Data[caCertificateKey], bundle) {

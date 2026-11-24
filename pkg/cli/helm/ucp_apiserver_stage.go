@@ -194,7 +194,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if err != nil {
 		return err
 	}
-	if trust != nil && !ownsUCPAPIServerTrust(trust) {
+	if trust != nil && !ownsUCPAPIServerTrust(trust, radiusNamespace) {
 		return fmt.Errorf("%s, so rad cannot use it to keep the API server trusting UCP while UCP moves to %s. Helm has not changed Radius. "+
 			"If nothing else uses the Secret, delete it with %s, then run the command again",
 			foreignUCPAPIServerTrustProblem(radiusNamespace), ucpAPIServerCASecretName,
@@ -358,7 +358,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if err != nil {
 		return err
 	}
-	if trust != nil && !ownsUCPAPIServerTrust(trust) {
+	if trust != nil && !ownsUCPAPIServerTrust(trust, radiusNamespace) {
 		return fmt.Errorf("%s, so rad cannot use it to keep the API server trusting UCP while UCP moves to Secret %s. Helm has not changed Radius. "+
 			"If nothing else uses the Secret, delete it with %s, then run the command again",
 			foreignUCPAPIServerTrustProblem(radiusNamespace), ucpOffCertificateSecretName,

@@ -262,6 +262,8 @@ tests:
             namespace: radius-system
             annotations:
               cert-manager.io/allow-direct-injection: "true"
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
           data:
             ca.crt: dHJ1c3QtY2E=
         - apiVersion: v1
@@ -318,6 +320,43 @@ tests:
           value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         documentIndex: 1
 
+  - it: ignores a radius-apiserver-trust Secret marked for another release
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
+              radapp.io/release-name: other
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: dHJ1c3QtY2E=
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.caBundle
+          value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+        documentIndex: 1
+
   - it: ignores an annotated radius-apiserver-trust Secret with an empty ca.crt
     template: ucp/apiservice.yaml
     set:
@@ -331,6 +370,8 @@ tests:
             namespace: radius-system
             annotations:
               cert-manager.io/allow-direct-injection: "true"
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
           data:
             ca.crt: ""
         - apiVersion: v1
