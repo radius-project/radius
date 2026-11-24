@@ -26,6 +26,10 @@ on:
         description: Branch to run the workflow on
         required: true
         default: main
+      ucp-profiling:
+        description: Enable the UCP profiling listener for this diagnostic run
+        type: boolean
+        default: false
   schedule:
     # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
     - cron: 0 1,13,19 * * *
@@ -959,6 +963,7 @@ jobs:
 
       - name: Install Radius
         env:
+          UCP_PROFILING: ${{ inputs.ucp-profiling && 'true' || 'false' }}
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
           AZURE_SP_TESTS_APPID: ${{ secrets.AZURE_SP_TESTS_APPID }}
           AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -971,6 +976,7 @@ jobs:
           echo "*** Installing Radius to Kubernetes ***"
           rad install kubernetes \
             --chart "${RADIUS_CHART_LOCATION}" \
+            --set "ucp.profilerEnabled=${UCP_PROFILING}" \
             --set "rp.image=${CONTAINER_REGISTRY}/applications-rp,rp.tag=${REL_VERSION}" \
             --set "dynamicrp.image=${CONTAINER_REGISTRY}/dynamic-rp,dynamicrp.tag=${REL_VERSION}" \
             --set "controller.image=${CONTAINER_REGISTRY}/controller,controller.tag=${REL_VERSION}" \

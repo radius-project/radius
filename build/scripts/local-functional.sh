@@ -120,6 +120,9 @@ create_cluster() {
 }
 
 install_radius() {
+    if [[ "${LOCAL_FUNCTIONAL_UCP_PROFILING:-false}" == true ]]; then
+        set -- "$@" --set ucp.profilerEnabled=true
+    fi
     rad install kubernetes --chart "${RADIUS_CHART_LOCATION}" \
         --set "global.imageRegistry=${DOCKER_REGISTRY}" \
         --set "global.imageTag=${TAG}" \

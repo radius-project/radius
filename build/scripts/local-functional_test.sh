@@ -432,6 +432,7 @@ export MOCK_DOCKER_PLATFORM=linux/x86_64
 for suite in "" database multicluster upgrade dynamicrp; do
     export LOCAL_FUNCTIONAL_SUITE="${suite}"
     run_runner 0 install
+    assert_not_contains "${calls}" "ucp.profilerEnabled=true"
     assert_contains "${calls}" \
         "rad deploy ./test/infra/radius/legacy-test-environment.bicep --parameters name=kind-radius --parameters namespace=default"
     assert_contains "${calls}" \
@@ -445,6 +446,8 @@ for suite in "" database multicluster upgrade dynamicrp; do
     assert_not_contains "${calls}" "rad env "
 done
 export LOCAL_FUNCTIONAL_SUITE=""
+LOCAL_FUNCTIONAL_UCP_PROFILING=true run_runner 0 install
+assert_contains "${calls}" "--set ucp.profilerEnabled=true"
 export MOCK_GATEWAY_DISCOVERY=delayed
 run_runner 0 install
 assert_contains "${output}" "Waiting for Gateway API discovery (1/36)"
