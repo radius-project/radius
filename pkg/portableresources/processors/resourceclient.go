@@ -404,14 +404,17 @@ func AWSOwnerFromContext(ctx context.Context) string {
 }
 
 func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID) error {
-	// NOTE: the API version passed in here is ignored.
-	//
-	// We're using a generated client that understands Radius' currently supported API version.
-	//
-	// For AWS resources, the server does not yet validate the API version.
-	//
-	// In the future we should change this to look up API versions dynamically like we do for ARM.
-	client, err := generated.NewGenericResourcesClient(id.Type(), id.RootScope(), &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	options := sdk.NewClientOptions(c.connection)
+	if strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "radius/") {
+		apiVersion, err := sdkclients.ResolveAPIVersion(ctx, c.connection, id)
+		if err != nil {
+			return err
+		}
+
+		options.APIVersion = apiVersion
+	}
+
+	client, err := generated.NewGenericResourcesClient(id.Type(), id.RootScope(), &aztoken.AnonymousCredential{}, options)
 	if err != nil {
 		return err
 	}

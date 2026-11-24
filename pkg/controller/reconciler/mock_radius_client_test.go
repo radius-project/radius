@@ -31,6 +31,7 @@ import (
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
 // This file contains mocks for the RadiusClient interface.
@@ -43,6 +44,8 @@ func NewMockRadiusClient() *mockRadiusClient {
 		groups:       map[string]ucpv20231001preview.ResourceGroupResource{},
 		resources:    map[string]generated.GenericResource{},
 		operations:   map[string]*sdkclients.OperationState{},
+		apiVersions:  map[string]string{},
+		apiErrors:    map[string]error{},
 
 		lock: &sync.Mutex{},
 	}
@@ -57,6 +60,8 @@ type mockRadiusClient struct {
 	groups       map[string]ucpv20231001preview.ResourceGroupResource
 	resources    map[string]generated.GenericResource
 	operations   map[string]*sdkclients.OperationState
+	apiVersions  map[string]string
+	apiErrors    map[string]error
 
 	lock *sync.Mutex
 }
@@ -93,6 +98,22 @@ func (rc *mockRadiusClient) Groups(scope string) ResourceGroupClient {
 
 func (rc *mockRadiusClient) Resources(scope string, resourceType string) ResourceClient {
 	return &mockResourceClient{mock: rc, scope: scope, resourceType: resourceType}
+}
+
+func (rc *mockRadiusClient) ResolveAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+	rc.lock.Lock()
+	defer rc.lock.Unlock()
+
+	key := strings.ToLower(id.Type())
+	if err, ok := rc.apiErrors[key]; ok {
+		return "", err
+	}
+
+	if version, ok := rc.apiVersions[key]; ok {
+		return version, nil
+	}
+
+	return "2023-10-01-preview", nil
 }
 
 func (rc *mockRadiusClient) CompleteOperation(operationID string, update func(state *sdkclients.OperationState)) {

@@ -18,14 +18,20 @@ package reconciler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/sdk"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
@@ -417,3 +423,433 @@ func Test_DeploymentResource_OutputIdentityStatusSubresource(t *testing.T) {
 	require.NoError(t, caller.Update(ctx, template))
 	require.Equal(t, coordinatorIdle, template.Status.Coordinator.Phase)
 }
+
+func newDeletingTemplateReconciler(t *testing.T, providerConfig string, outputID string, conn sdk.Connection) (*DeploymentTemplateReconciler, k8sClient.Client, k8sClient.ObjectKey) {
+	t.Helper()
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	require.NoError(t, radappiov1alpha3.AddToScheme(s))
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}}
+	owner := &radappiov1alpha3.DeploymentTemplate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:       "dt-test",
+			Namespace:  "default",
+			UID:        "owner-uid",
+			Finalizers: []string{DeploymentTemplateFinalizer},
+		},
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{
+			Template:       `{"resources":{}}`,
+			ProviderConfig: providerConfig,
+		},
+		Status: radappiov1alpha3.DeploymentTemplateStatus{
+			OutputResources: []string{outputID},
+			Coordinator: &radappiov1alpha3.DeploymentCoordinatorStatus{
+				Phase:   coordinatorIdle,
+				Outputs: []radappiov1alpha3.DeploymentOutputStatus{{ID: outputID, State: outputPendingDelete}},
+			},
+		},
+	}
+	c := fake.NewClientBuilder().WithScheme(s).WithObjects(ns, owner).WithStatusSubresource(owner, &radappiov1alpha3.DeploymentResource{}).Build()
+	key := k8sClient.ObjectKeyFromObject(owner)
+	require.NoError(t, c.Delete(t.Context(), owner))
+
+	deploymentsClient, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
+		Cred:             &aztoken.AnonymousCredential{},
+		BaseURI:          conn.Endpoint(),
+		ARMClientOptions: sdk.NewClientOptions(conn),
+	})
+	require.NoError(t, err)
+
+	r := &DeploymentTemplateReconciler{
+		Client:                    c,
+		Scheme:                    s,
+		EventRecorder:             record.NewFakeRecorder(20),
+		Radius:                    NewRadiusClient(conn),
+		ResourceDeploymentsClient: deploymentsClient,
+		DelayInterval:             time.Millisecond,
+	}
+	return r, c, key
+}
+
+func Test_DeploymentTemplateReconciler_DeleteOutput_ResolvesRadiusAPIVersion(t *testing.T) {
+	t.Parallel()
+
+	providerConfigJSON := `{"deployments":{"value":{"scope":"/planes/radius/local/resourceGroups/test-rg"}}}`
+
+	tests := []struct {
+		name         string
+		resourceID   string
+		providerPath string
+		typeName     string
+		versions     map[string]any
+		defaultVer   string
+		deleteStatus int
+		wantVersion  string
+	}{
+		{
+			name:         "Radius.Core modern API version",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev",
+			providerPath: "/planes/radius/local/providers/Radius.Core",
+			typeName:     "environments",
+			versions:     map[string]any{"2025-08-01-preview": map[string]any{}},
+			deleteStatus: http.StatusOK,
+			wantVersion:  "2025-08-01-preview",
+		},
+		{
+			name:         "Applications.Core legacy API version",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/app",
+			providerPath: "/planes/radius/local/providers/Applications.Core",
+			typeName:     "containers",
+			versions:     map[string]any{"2023-10-01-preview": map[string]any{}},
+			deleteStatus: http.StatusOK,
+			wantVersion:  "2023-10-01-preview",
+		},
+		{
+			name:         "UDT non-date version",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/MyCompany.Custom/widgets/w1",
+			providerPath: "/planes/radius/local/providers/MyCompany.Custom",
+			typeName:     "widgets",
+			versions:     map[string]any{"v1alpha1": map[string]any{}},
+			deleteStatus: http.StatusOK,
+			wantVersion:  "v1alpha1",
+		},
+		{
+			name:         "DELETE returns 404 after version lookup",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev",
+			providerPath: "/planes/radius/local/providers/Radius.Core",
+			typeName:     "environments",
+			versions:     map[string]any{"2025-08-01-preview": map[string]any{}},
+			deleteStatus: http.StatusNotFound,
+			wantVersion:  "2025-08-01-preview",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotDeleteAPIVersion string
+			deleteCalled := false
+			mux := http.NewServeMux()
+			mux.HandleFunc(tt.providerPath, func(w http.ResponseWriter, req *http.Request) {
+				require.Equal(t, http.MethodGet, req.Method)
+				w.Header().Set("Content-Type", "application/json")
+				rt := map[string]any{"apiVersions": tt.versions}
+				if tt.defaultVer != "" {
+					rt["defaultApiVersion"] = tt.defaultVer
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"name": "test",
+					"resourceTypes": map[string]any{
+						tt.typeName: rt,
+					},
+				})
+			})
+			mux.HandleFunc(tt.resourceID, func(w http.ResponseWriter, req *http.Request) {
+				require.Equal(t, http.MethodDelete, req.Method)
+				deleteCalled = true
+				gotDeleteAPIVersion = req.URL.Query().Get("api-version")
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.deleteStatus)
+				if tt.deleteStatus == http.StatusNotFound {
+					_ = json.NewEncoder(w).Encode(v1.ErrorResponse{
+						Error: &v1.ErrorDetails{Code: v1.CodeNotFound, Message: "not found"},
+					})
+					return
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{})
+			})
+
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+
+			conn, err := sdk.NewDirectConnection(srv.URL)
+			require.NoError(t, err)
+
+			r, c, key := newDeletingTemplateReconciler(t, providerConfigJSON, tt.resourceID, conn)
+			for range 5 {
+				_, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+				require.NoError(t, err)
+				err = c.Get(t.Context(), key, &radappiov1alpha3.DeploymentTemplate{})
+				if apierrors.IsNotFound(err) {
+					break
+				}
+			}
+
+			require.True(t, deleteCalled)
+			require.Equal(t, tt.wantVersion, gotDeleteAPIVersion)
+			require.True(t, apierrors.IsNotFound(c.Get(t.Context(), key, &radappiov1alpha3.DeploymentTemplate{})))
+		})
+	}
+}
+
+func Test_DeploymentTemplateReconciler_DeleteOutput_AsyncResumeSkipsRediscovery(t *testing.T) {
+	t.Parallel()
+
+	const (
+		resourceID    = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev"
+		providerPath  = "/planes/radius/local/providers/Radius.Core"
+		operationPath = "/planes/radius/local/providers/Radius.Core/locations/global/operationStatuses/op-1"
+	)
+	providerConfigJSON := `{"deployments":{"value":{"scope":"/planes/radius/local/resourceGroups/test-rg"}}}`
+
+	var providerCalls, deleteCalls, pollCalls atomic.Int32
+	var srvURL string
+	mux := http.NewServeMux()
+	mux.HandleFunc(providerPath, func(w http.ResponseWriter, req *http.Request) {
+		count := providerCalls.Add(1)
+		if count > 1 {
+			http.Error(w, "unexpected provider summary call during resume", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"name": "Radius.Core",
+			"resourceTypes": map[string]any{
+				"environments": map[string]any{
+					"apiVersions": map[string]any{"2025-08-01-preview": map[string]any{}},
+				},
+			},
+		})
+	})
+	mux.HandleFunc(resourceID, func(w http.ResponseWriter, req *http.Request) {
+		require.Equal(t, http.MethodDelete, req.Method)
+		require.Equal(t, "2025-08-01-preview", req.URL.Query().Get("api-version"))
+		deleteCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Azure-AsyncOperation", srvURL+operationPath+"?api-version=2025-08-01-preview")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]any{})
+	})
+	mux.HandleFunc(operationPath, func(w http.ResponseWriter, req *http.Request) {
+		count := pollCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		status := "InProgress"
+		if count >= 2 {
+			status = "Succeeded"
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": status})
+	})
+
+	srv := httptest.NewServer(mux)
+	srvURL = srv.URL
+	defer srv.Close()
+
+	conn, err := sdk.NewDirectConnection(srv.URL)
+	require.NoError(t, err)
+
+	r, c, key := newDeletingTemplateReconciler(t, providerConfigJSON, resourceID, conn)
+
+	_, err = r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+	require.NoError(t, err)
+
+	owner := &radappiov1alpha3.DeploymentTemplate{}
+	require.NoError(t, c.Get(t.Context(), key, owner))
+	require.Equal(t, coordinatorDeleteRunning, owner.Status.Coordinator.Phase)
+	require.NotNil(t, owner.Status.Operation)
+	require.NotEmpty(t, owner.Status.Operation.ResumeToken)
+	require.Equal(t, int32(1), providerCalls.Load())
+	require.Equal(t, int32(1), deleteCalls.Load())
+
+	for range 5 {
+		_, err = r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+		require.NoError(t, err)
+		if apierrors.IsNotFound(c.Get(t.Context(), key, owner)) {
+			break
+		}
+	}
+
+	require.Equal(t, int32(1), providerCalls.Load(), "async resume must not re-run provider summary discovery")
+	require.Equal(t, int32(1), deleteCalls.Load())
+	require.True(t, apierrors.IsNotFound(c.Get(t.Context(), key, owner)))
+}
+
+func Test_DeploymentTemplateReconciler_DeleteOutput_FailsWhenAPIVersionCannotBeResolved(t *testing.T) {
+	t.Parallel()
+
+	const (
+		resourceID   = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev"
+		providerPath = "/planes/radius/local/providers/Radius.Core"
+	)
+	providerConfigJSON := `{"deployments":{"value":{"scope":"/planes/radius/local/resourceGroups/test-rg"}}}`
+
+	tests := []struct {
+		name        string
+		summaryCode int
+		summaryBody any
+	}{
+		{
+			name:        "provider summary returns 404",
+			summaryCode: http.StatusNotFound,
+			summaryBody: v1.ErrorResponse{
+				Error: &v1.ErrorDetails{Code: v1.CodeNotFound, Message: "provider not found"},
+			},
+		},
+		{
+			name:        "provider summary has empty API versions",
+			summaryCode: http.StatusOK,
+			summaryBody: map[string]any{
+				"name": "Radius.Core",
+				"resourceTypes": map[string]any{
+					"environments": map[string]any{
+						"apiVersions": map[string]any{},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			deleteCalled := false
+			mux := http.NewServeMux()
+			mux.HandleFunc(providerPath, func(w http.ResponseWriter, req *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.summaryCode)
+				_ = json.NewEncoder(w).Encode(tt.summaryBody)
+			})
+			mux.HandleFunc(resourceID, func(w http.ResponseWriter, req *http.Request) {
+				deleteCalled = true
+				w.WriteHeader(http.StatusOK)
+			})
+
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+
+			conn, err := sdk.NewDirectConnection(srv.URL)
+			require.NoError(t, err)
+
+			r, c, key := newDeletingTemplateReconciler(t, providerConfigJSON, resourceID, conn)
+			res, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+			require.NoError(t, err)
+			require.Greater(t, res.RequeueAfter, time.Duration(0))
+			require.False(t, deleteCalled)
+
+			owner := &radappiov1alpha3.DeploymentTemplate{}
+			require.NoError(t, c.Get(t.Context(), key, owner))
+			require.Contains(t, owner.Finalizers, DeploymentTemplateFinalizer)
+			require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseFailed, owner.Status.Phrase)
+			require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
+			require.Len(t, owner.Status.Coordinator.Outputs, 1)
+		})
+	}
+}
+
+func Test_DeploymentTemplateReconciler_DeleteOutput_NonRadiusRoutesPreserveDefaultAPIVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		resourceID     string
+		providerConfig string
+	}{
+		{
+			name:           "Azure resource uses default API version without provider summary lookup",
+			resourceID:     "/planes/azure/azurecloud/subscriptions/sub-1/resourceGroups/rg-1/providers/Microsoft.Storage/storageAccounts/sa1",
+			providerConfig: `{"deployments":{"value":{"scope":"/planes/azure/azurecloud/subscriptions/sub-1/resourceGroups/rg-1"}}}`,
+		},
+		{
+			name:           "AWS resource uses default API version without provider summary lookup",
+			resourceID:     "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Kinesis/Stream/stream-1",
+			providerConfig: `{"deployments":{"value":{"scope":"/planes/aws/aws/accounts/123456789012/regions/us-west-2"}}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotDeleteAPIVersion string
+			providerQueries := 0
+			mux := http.NewServeMux()
+			mux.HandleFunc("/planes/radius/", func(w http.ResponseWriter, req *http.Request) {
+				providerQueries++
+				w.WriteHeader(http.StatusInternalServerError)
+			})
+			mux.HandleFunc(tt.resourceID, func(w http.ResponseWriter, req *http.Request) {
+				require.Equal(t, http.MethodDelete, req.Method)
+				gotDeleteAPIVersion = req.URL.Query().Get("api-version")
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]any{})
+			})
+
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+
+			conn, err := sdk.NewDirectConnection(srv.URL)
+			require.NoError(t, err)
+
+			r, c, key := newDeletingTemplateReconciler(t, tt.providerConfig, tt.resourceID, conn)
+			for range 5 {
+				_, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+				require.NoError(t, err)
+				if apierrors.IsNotFound(c.Get(t.Context(), key, &radappiov1alpha3.DeploymentTemplate{})) {
+					break
+				}
+			}
+
+			require.Equal(t, 0, providerQueries)
+			require.Equal(t, "2023-10-01-preview", gotDeleteAPIVersion)
+			require.True(t, apierrors.IsNotFound(c.Get(t.Context(), key, &radappiov1alpha3.DeploymentTemplate{})))
+		})
+	}
+}
+
+func Test_DeploymentTemplateReconciler_DeleteOutput_ScopeEligibilityPrecedesAPIVersionDiscovery(t *testing.T) {
+	t.Parallel()
+
+	providerConfigJSON := `{"deployments":{"value":{"scope":"/planes/radius/local/resourceGroups/test-rg"}}}`
+
+	for _, tc := range []struct {
+		name       string
+		resourceID string
+	}{
+		{
+			name:       "different Radius resource group is skipped before API version discovery",
+			resourceID: "/planes/radius/local/resourceGroups/other-rg/providers/Radius.Core/environments/dev",
+		},
+		{
+			name:       "remote Kubernetes plane is skipped before API version discovery",
+			resourceID: "/planes/kubernetes/remote/namespaces/default/providers/core/ConfigMap/cm",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			providerQueries := 0
+			deleteCalled := false
+			mux := http.NewServeMux()
+			mux.HandleFunc("/planes/radius/", func(w http.ResponseWriter, req *http.Request) {
+				if req.Method == http.MethodDelete {
+					deleteCalled = true
+				} else {
+					providerQueries++
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+			})
+
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+
+			conn, err := sdk.NewDirectConnection(srv.URL)
+			require.NoError(t, err)
+
+			r, c, key := newDeletingTemplateReconciler(t, providerConfigJSON, tc.resourceID, conn)
+			for range 5 {
+				_, err := r.Reconcile(t.Context(), ctrl.Request{NamespacedName: key})
+				require.NoError(t, err)
+				if apierrors.IsNotFound(c.Get(t.Context(), key, &radappiov1alpha3.DeploymentTemplate{})) {
+					break
+				}
+			}
+
+			require.Equal(t, 0, providerQueries)
+			require.False(t, deleteCalled)
+			require.True(t, apierrors.IsNotFound(c.Get(t.Context(), key, &radappiov1alpha3.DeploymentTemplate{})))
+		})
+	}
+}
+

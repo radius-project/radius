@@ -491,6 +491,7 @@ func (r *DeploymentTemplateReconciler) dispatchDelete(ctx context.Context, owner
 	if err != nil {
 		return r.blockCoordinator(ctx, owner, err.Error())
 	}
+	apiVersion := "2023-10-01-preview"
 	if plane := id.FindScope(resources_kubernetes.PlaneTypeKubernetes); plane != "" {
 		if !strings.EqualFold(plane, resources_kubernetes.PlaneNameTODO) {
 			return r.skipOutput(ctx, owner, outputID)
@@ -506,6 +507,12 @@ func (r *DeploymentTemplateReconciler) dispatchDelete(ctx context.Context, owner
 		}
 		if !within {
 			return r.skipOutput(ctx, owner, outputID)
+		}
+		if strings.HasPrefix(strings.ToLower(id.PlaneNamespace()), "radius/") {
+			apiVersion, err = r.Radius.ResolveAPIVersion(ctx, id)
+			if err != nil {
+				return r.failCoordinator(ctx, owner, err)
+			}
 		}
 	}
 	state := owner.Status.Coordinator
@@ -527,7 +534,7 @@ func (r *DeploymentTemplateReconciler) dispatchDelete(ctx context.Context, owner
 		})
 	}
 	mutationContext := policy.WithRetryOptions(ctx, policy.RetryOptions{MaxRetries: -1})
-	poller, err := r.ResourceDeploymentsClient.Delete(mutationContext, outputID, "2023-10-01-preview")
+	poller, err := r.ResourceDeploymentsClient.Delete(mutationContext, outputID, apiVersion)
 	return r.finishDispatch(ctx, owner, func(current *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 		if err != nil {
 			if clients.Is404Error(err) {
