@@ -154,8 +154,8 @@ tests:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
           data:
-            ca.crt: YXBpLWNh
-            tls.crt: YXBpLWNh
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
             tls.key: a2V5
     asserts:
       - equal:
@@ -164,7 +164,7 @@ tests:
         documentIndex: 1
       - equal:
           path: spec.caBundle
-          value: YXBpLWNh
+          value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         documentIndex: 1
 
   - it: refuses a radius-apiserver-ca Secret marked for another release
@@ -209,6 +209,46 @@ tests:
       - failedTemplate:
           errorPattern: "kubectl delete secret radius-apiserver-ca -n radius-system"
 
+  - it: refuses a radius-apiserver-ca whose ca.crt holds a non-certificate block
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KLS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCkFBQUEKLS0tLS1FTkQgUFJJVkFURSBLRVktLS0tLQo=
+    asserts:
+      - failedTemplate:
+          errorPattern: "ca.crt of Secret radius-system/radius-apiserver-ca holds something other than PEM certificates"
+
+  - it: refuses a radius-apiserver-ca whose ca.crt holds trailing text
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KdHJhaWxpbmcgdGV4dAo=
+    asserts:
+      - failedTemplate:
+          errorPattern: "ca.crt of Secret radius-system/radius-apiserver-ca holds something other than PEM certificates"
+
   - it: injects and renders the caBundle from the trust Secret during the upgrade overlap
     template: ucp/apiservice.yaml
     set:
@@ -233,7 +273,7 @@ tests:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
           data:
-            ca.crt: YXBpLWNh
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -267,7 +307,7 @@ tests:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
           data:
-            ca.crt: YXBpLWNh
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -275,7 +315,7 @@ tests:
         documentIndex: 1
       - equal:
           path: spec.caBundle
-          value: YXBpLWNh
+          value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         documentIndex: 1
 
   - it: ignores an annotated radius-apiserver-trust Secret with an empty ca.crt
@@ -302,7 +342,7 @@ tests:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
           data:
-            ca.crt: YXBpLWNh
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -310,7 +350,7 @@ tests:
         documentIndex: 1
       - equal:
           path: spec.caBundle
-          value: YXBpLWNh
+          value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         documentIndex: 1
 
   - it: does not copy the ca.crt of UCP's certificate Secrets into the caBundle

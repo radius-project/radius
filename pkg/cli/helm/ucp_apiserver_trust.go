@@ -457,7 +457,7 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 	}
 	bundle := secret.Data[caCertificateKey]
 	cas := caCertificates(bundle)
-	if len(cas) == 0 || len(cas) != countCertificates(bundle) {
+	if len(cas) == 0 || len(cas) != countCertificates(bundle) || !onlyCertificateBlocks(bundle) {
 		return nil, nil, "its ca.crt does not hold only CA certificates", nil
 	}
 	if len(unionCertificates(cas, []*x509.Certificate{cert})) != len(cas) {
@@ -466,7 +466,22 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 	if secret.Annotations[allowDirectInjectionAnnotation] != "true" {
 		return nil, nil, fmt.Sprintf("it does not have annotation %s: \"true\", which the Certificate's secretTemplate sets", allowDirectInjectionAnnotation), nil
 	}
-	return cert, bundle, "", nil
+	// cainjector copies ca.crt as it is, so it was checked above to hold nothing else; rad writes only the certificates.
+	return cert, encodeCertificates(cas), "", nil
+}
+
+// onlyCertificateBlocks reports whether bundle holds only PEM CERTIFICATE blocks and whitespace. pem.Decode skips
+// text between blocks, so the check also requires that nothing but whitespace surrounds them.
+func onlyCertificateBlocks(bundle []byte) bool {
+	rest := bytes.TrimSpace(bundle)
+	for len(rest) > 0 {
+		block, next := pem.Decode(rest)
+		if block == nil || block.Type != "CERTIFICATE" || len(block.Headers) != 0 || !bytes.HasPrefix(rest, []byte("-----BEGIN")) {
+			return false
+		}
+		rest = bytes.TrimSpace(next)
+	}
+	return true
 }
 
 // ucpServingCertificate returns UCP's API server certificate in Secret secretName once the ucp Deployment has rolled

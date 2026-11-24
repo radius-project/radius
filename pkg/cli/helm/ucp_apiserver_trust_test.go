@@ -367,6 +367,10 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 	}{
 		{name: "tls.crt is a leaf", secret: tlsSecret(ucpAPIServerCASecretName, leaf, ca.pem), want: "its tls.crt is not a CA certificate"},
 		{name: "ca.crt holds a leaf", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, append(append([]byte{}, ca.pem...), leaf...)), want: "its ca.crt does not hold only CA certificates"},
+		{name: "ca.crt holds a non-certificate block", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem,
+			append(append([]byte{}, ca.pem...), "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n"...)), want: "its ca.crt does not hold only CA certificates"},
+		{name: "ca.crt holds trailing text", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, append(append([]byte{}, ca.pem...), "not a certificate\n"...)),
+			want: "its ca.crt does not hold only CA certificates"},
 		{name: "ca.crt is another CA", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, other.pem), want: "its ca.crt does not hold the CA certificate in tls.crt"},
 		{name: "cainjector may not copy ca.crt", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem), want: "cert-manager.io/allow-direct-injection"},
 		{name: "not marked for a release", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem), want: "it does not have annotations radapp.io/release-name",
