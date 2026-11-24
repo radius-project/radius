@@ -1,0 +1,28 @@
+suite: test UCP profiling
+templates:
+  - ucp/configmaps.yaml
+  - ucp/deployment.yaml
+tests:
+  - it: disables the profiler by default
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'profilerProvider:\n  enabled: false\n  port: 6060\n'
+        template: ucp/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "false"
+        template: ucp/deployment.yaml
+
+  - it: starts a new UCP pod with profiling enabled on explicit opt-in
+    set:
+      ucp.profilerEnabled: true
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'profilerProvider:\n  enabled: true\n  port: 6060\n'
+        template: ucp/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["radius.io/profiler-enabled"]
+          value: "true"
+        template: ucp/deployment.yaml

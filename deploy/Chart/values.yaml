@@ -194,6 +194,8 @@ de:
       memory: "300Mi"
 
 ucp:
+  # Enable the unauthenticated profiling listener only for temporary diagnostics.
+  profilerEnabled: false
   # Stable issuer for users/groups verified through this cluster's front proxy.
   # Choose a distinct trust domain when policies distinguish multiple clusters.
   kubernetesIssuer: kubernetes:local

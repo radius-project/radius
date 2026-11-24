@@ -18,7 +18,6 @@ package profilerservice
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -65,7 +64,7 @@ func (s *Service) Run(ctx context.Context) error {
 		_ = server.Shutdown(ctx)
 	}()
 
-	logger.Info(fmt.Sprintf("profiler Server listening on localhost port: '%s'...", profilerPort))
+	logger.Info("Starting profiler server", "address", server.Addr)
 	err := server.ListenAndServe()
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.

@@ -45,7 +45,7 @@ data:
         namespace: "radius-system"
 
     profilerProvider:
-      enabled: true
+      enabled: {{ .Values.ucp.profilerEnabled | default false }}
       port: 6060
     initialization:
       planes:
