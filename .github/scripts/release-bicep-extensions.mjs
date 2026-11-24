@@ -121,14 +121,6 @@ export function releaseBicepConfig(plan, sourceSha, version) {
   };
 }
 
-export function bicepExtensionMirrors(plan, sourceSha, lock) {
-  validateBicepExtensionLock(plan, sourceSha, lock);
-  return lock.artifacts.map((record) => ({
-    ...record,
-    reference: `biceptypes.azurecr.io/${record.name === "aws-bicep-types" ? "aws" : "radius"}:${record.version}`
-  }));
-}
-
 export function validateBicepExtensionLock(plan, sourceSha, lock) {
   const expected = plannedBicepExtensions(plan, sourceSha);
   assert.equal(
