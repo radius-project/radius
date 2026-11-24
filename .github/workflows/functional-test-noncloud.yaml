@@ -26,8 +26,8 @@ on:
         description: Branch to run the workflow on
         required: true
         default: main
-      ucp-profiling:
-        description: Enable the UCP profiling listener for this diagnostic run
+      control-plane-profiling:
+        description: Enable the profiling listener on all control plane services for this diagnostic run
         type: boolean
         default: false
       test-profile:
@@ -533,7 +533,7 @@ jobs:
 
       - name: Install Radius
         env:
-          UCP_PROFILING: ${{ inputs.ucp-profiling && 'true' || 'false' }}
+          PROFILING: ${{ inputs.control-plane-profiling && 'true' || 'false' }}
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control
         # plane), so the shared install is skipped for it.
@@ -558,7 +558,10 @@ jobs:
 
           RAD_COMMAND="rad install kubernetes \
                  --chart ${RADIUS_CHART_LOCATION} \
-                 --set ucp.profilerEnabled=${UCP_PROFILING} \
+                 --set ucp.profilerEnabled=${PROFILING} \
+                 --set rp.profilerEnabled=${PROFILING} \
+                 --set dynamicrp.profilerEnabled=${PROFILING} \
+                 --set controller.profilerEnabled=${PROFILING} \
                  --set rp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/applications-rp,rp.tag=${REL_VERSION} \
                  --set dynamicrp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/dynamic-rp,dynamicrp.tag=${REL_VERSION} \
                  --set controller.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/controller,controller.tag=${REL_VERSION} \
