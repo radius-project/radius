@@ -1,0 +1,136 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_OPENSEARCH_DOMAIN_ARN": "arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs",
+    "RADIUS_REC_SUBNET_ID": "subnet-0aaa1111bbbb2222c",
+    "RADIUS_REC_SECURITY_GROUP_ID": "sg-0web1111aaaa2222b"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "CreateVpcEndpoint",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpoint\": {\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"CREATING\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0web1111aaaa2222b\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"CREATING\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0web1111aaaa2222b\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"ACTIVE\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0web1111aaaa2222b\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"ACTIVE\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0web1111aaaa2222b\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"ACTIVE\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0web1111aaaa2222b\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeSecurityGroups",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeSecurityGroupsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1a2b3c4d-0000-4000-8000-000000000001</requestId><securityGroupInfo><item><ownerId>123456789012</ownerId><groupId>sg-0default111122223</groupId><groupName>default</groupName><groupDescription>default VPC security group</groupDescription><vpcId>vpc-0123456789abcdef0</vpcId></item></securityGroupInfo></DescribeSecurityGroupsResponse>"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "UpdateVpcEndpoint",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpoint\": {\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"UPDATING\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0default111122223\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"UPDATING\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0default111122223\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"ACTIVE\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0default111122223\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"ACTIVE\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0default111122223\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"ACTIVE\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0default111122223\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DeleteVpcEndpoint",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointSummary\": {\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"DELETING\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\"}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [], \"VpcEndpoints\": [{\"DomainArn\": \"arn:aws:es:us-west-2:123456789012:domain/radius-rec-logs\", \"Status\": \"DELETING\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\", \"VpcEndpointOwner\": \"123456789012\", \"VpcOptions\": {\"AvailabilityZones\": [\"us-west-2a\"], \"SecurityGroupIds\": [\"sg-0default111122223\"], \"SubnetIds\": [\"subnet-0aaa1111bbbb2222c\"], \"VPCId\": \"vpc-0123456789abcdef0\"}, \"Endpoint\": \"vpc-radius-rec-logs-aos-0a1b2c3d4e5f6a7b8.us-west-2.es.amazonaws.com\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeVpcEndpoints",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"VpcEndpointErrors\": [{\"ErrorCode\": \"ENDPOINT_NOT_FOUND\", \"ErrorMessage\": \"VPC endpoint aos-0a1b2c3d4e5f6a7b8 not found\", \"VpcEndpointId\": \"aos-0a1b2c3d4e5f6a7b8\"}], \"VpcEndpoints\": []}"
+    }
+  ]
+}

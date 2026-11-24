@@ -49,6 +49,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"opensearch":               "es",
 	"rds":                      "rds",
 	"s3":                       "s3",
 	"s3control":                "s3",
@@ -192,6 +193,15 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 	// AWS checks the caller for this on a Chime streaming Put with a MediaInsightsConfiguration.
 	implied["create"] = append(implied["create"], "chime:GetMediaInsightsPipelineConfiguration")
 	implied["update"] = append(implied["update"], "chime:GetMediaInsightsPipelineConfiguration")
+	// AWS checks these EC2 permissions when OpenSearch Service creates, changes, or deletes the interface VPC
+	// endpoint it manages in the caller's VPC.
+	opensearchEC2 := []string{
+		"ec2:CreateVpcEndpoint", "ec2:DescribeVpcEndpoints", "ec2:ModifyVpcEndpoint", "ec2:DeleteVpcEndpoints", "ec2:CreateTags",
+		"ec2:DescribeTags", "ec2:DescribeSubnets", "ec2:DescribeSecurityGroups", "ec2:DescribeVpcs",
+	}
+	for _, op := range []string{"create", "update", "delete"} {
+		implied[op] = append(implied[op], opensearchEC2...)
+	}
 	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}

@@ -1,0 +1,72 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_OPENSEARCH_DOMAIN": "radius-rec-logs",
+    "RADIUS_REC_OTHER_ACCOUNT_ID": "210987654321"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "ListVpcEndpointAccess",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"AuthorizedPrincipalList\": []}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "AuthorizeVpcEndpointAccess",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"AuthorizedPrincipal\": {\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListVpcEndpointAccess",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListVpcEndpointAccess",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListVpcEndpointAccess",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"AuthorizedPrincipalList\": [{\"Principal\": \"210987654321\", \"PrincipalType\": \"AWS Account\"}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "RevokeVpcEndpointAccess",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "ListVpcEndpointAccess",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"AuthorizedPrincipalList\": []}"
+    }
+  ]
+}
