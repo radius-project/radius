@@ -918,7 +918,11 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   for (receiptSha of [a, m]) {
     await assert.rejects(checkFinal(), /Conflicting coordination receipt/);
   }
-  const publicationCore = coreFixture({ VERSION: version, SOURCE_SHA: c });
+  const publicationCore = coreFixture({
+    VERSION: version,
+    SOURCE_SHA: c,
+    PUBLISHED: "true"
+  });
   const runs = async (query) => {
     assert.equal(query.head_sha, c);
     return [

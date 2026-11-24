@@ -28,6 +28,7 @@ readonly -a REQUIRED_JOBS=(
 )
 COMMIT=""
 REQUIRE_SIBLING_RELEASES=false
+FROZEN_FIRST_RC=false
 BICEP_DUAL_PIPELINE=false
 GHCR_ONLY=false
 REQUIRE_CURRENT_BICEP=false
@@ -260,6 +261,13 @@ verify_bicep_contract() {
         ' >/dev/null || reject "has an invalid Bicep release contract"
         ghcr="$(git show "${COMMIT}:${targets}" | jq 'has("bicepExtensionsContract")')"
     fi
+    # The GHCR publisher validates its tag using the validator at that same
+    # commit. Older validators only understand the main squash or a backport.
+    if [[ "${ghcr}" == true && "${FROZEN_FIRST_RC}" == true ]]; then
+        git grep -q -F 'frozen product commit plus approved release metadata' \
+            "${COMMIT}" -- .github/scripts/validate-release-controller-plan.sh ||
+            reject "cannot validate a frozen first RC in its tagged Bicep publisher"
+    fi
     if yq_true "${BUILD_WORKFLOW}" '.jobs | has("publish-radius-bicep-extension")'; then
         BICEP_DUAL_PIPELINE=true
         git cat-file -e "${COMMIT}:.github/workflows/__publish-release-bicep.yaml" 2>/dev/null ||
@@ -480,13 +488,14 @@ verify_historical_bicep_resume_gate() {
 main() {
     local job name
 
-    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep]"
+    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--frozen-first-rc] [--expected-targets <json>] [--require-current-bicep]"
     local revision="$1"
     shift
     EXPECTED_TARGETS=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true; shift ;;
+            --frozen-first-rc) FROZEN_FIRST_RC=true; shift ;;
             --require-current-bicep) REQUIRE_CURRENT_BICEP=true; shift ;;
             --expected-targets)
                 [[ $# -ge 2 && -f "$2" ]] || fail "expected targets JSON is required"

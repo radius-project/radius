@@ -195,6 +195,8 @@ export async function verifyReleaseBuildSource({ github, core, run = tool }) {
   ];
   if (plan.changelogPolicy === "stable-only")
     args.push("--require-sibling-releases");
+  if (plan.source.productRef === "refs/heads/main")
+    args.push("--frozen-first-rc");
   if (!manifest) args.push("--require-current-bicep");
   await run(args);
   core.setOutput("published", String(Boolean(manifest)));
