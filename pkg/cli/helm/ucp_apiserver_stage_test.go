@@ -1182,6 +1182,60 @@ func Test_StageUCPOffCertificate_RefusesForeignLiveCertificate(t *testing.T) {
 	}
 }
 
+// An interrupted switch to authorization off can leave ucp-cert mounted and the rollout complete. When the next attempt
+// restores a ucp-cert from another CA, the Deployment template would not change, so its rollout counters would still
+// say complete while every pod serves the earlier certificate, and Helm would then drop the CA those pods need. rad
+// changes a pod-template annotation with the certificate's hash, so the stage waits for a new rollout.
+func Test_StageUCPOffCertificate_RollsOutAChangedCertificate(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	c := newStageCluster(t, nil, true)
+	c.onUCP(t)
+	first := renderStageTestManifest(t, map[string]any{})
+	require.NoError(t, c.impl(nil).stageUCPOffCertificate(t.Context(), "test-context", RadiusSystemNamespace, "radius",
+		func(context.Context) (string, bool, error) { return first, true, nil }))
+	servedCA := caCertificates(c.stagedOffCertificate(t).Data[caCertificateKey])
+	require.Len(t, servedCA, 1)
+	require.Equal(t, ucpOffCertificateSecretName, ucpCertificateSecret(c.deployment(t)))
+
+	// The Deployment controller raises the generation for each template change and reports the new generation only
+	// after its pods roll out; this one never does.
+	tracker := c.kube.Tracker()
+	c.kube.PrependReactor("patch", "deployments", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		handled, object, err := clienttesting.ObjectReaction(tracker)(action)
+		if !handled || err != nil {
+			return handled, object, err
+		}
+		deployment := object.(*appsv1.Deployment)
+		deployment.Generation++
+		return true, deployment, tracker.Update(appsv1.SchemeGroupVersion.WithResource("deployments"), deployment, RadiusSystemNamespace)
+	})
+	expireUCPAPIServiceWait(t)
+	second := renderStageTestManifest(t, map[string]any{})
+	restored, _ := renderedOffCertificate(t, second)
+	require.NotEqual(t, first, second)
+
+	stageErr := c.impl(nil).stageUCPOffCertificate(t.Context(), "test-context", RadiusSystemNamespace, "radius",
+		func(context.Context) (string, bool, error) { return second, true, nil })
+	require.ErrorContains(t, stageErr, "UCP does not serve the certificate in Secret ucp-cert")
+	require.Equal(t, ucpCertificateHash(restored), c.deployment(t).Spec.Template.Annotations[ucpCertificateHashAnnotation])
+	require.Contains(t, apiServiceCACertificatesOf(t, c), servedCA[0].Subject.CommonName+"/"+string(servedCA[0].SubjectKeyId),
+		"the API server must keep trusting the CA of the certificate that UCP still serves")
+}
+
+// apiServiceCACertificatesOf returns the CommonName and key ID of each CA in the caBundle of the UCP APIService.
+func apiServiceCACertificatesOf(t *testing.T, c *stageCluster) []string {
+	t.Helper()
+	apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	cas, err := apiServiceCACertificates(apiService)
+	require.NoError(t, err)
+	var ids []string
+	for _, ca := range cas {
+		ids = append(ids, ca.Subject.CommonName+"/"+string(ca.SubjectKeyId))
+	}
+	return ids
+}
+
 func (c *stageCluster) deployment(t *testing.T) *appsv1.Deployment {
 	t.Helper()
 	deployment, err := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})

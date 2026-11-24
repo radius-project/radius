@@ -19,9 +19,11 @@ package helm
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -385,7 +387,12 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, releaseName, radiusNamespace); err != nil {
 		return err
 	}
-	if mounted != ucpOffCertificateSecretName {
+	// UCP reads its certificate only when it starts, and the rollout counters of a Deployment whose template already
+	// mounts ucp-cert say nothing about which ucp-cert its pods read. A pod-template annotation with the hash of the
+	// certificate rad applied makes the Deployment roll out again whenever that certificate changes, so the wait below
+	// passes only once every pod started with it.
+	certificateHash := ucpCertificateHash(rendered)
+	if mounted != ucpOffCertificateSecretName || deployment.Spec.Template.Annotations[ucpCertificateHashAnnotation] != certificateHash {
 		// The waits above let the Deployment's status change, so rad reads it again and patches only the Deployment it
 		// inspected, at the resourceVersion it checked.
 		current, err := deployments.Get(ctx, "ucp", metav1.GetOptions{})
@@ -397,9 +404,12 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		}
 		patch, err := json.Marshal(map[string]any{
 			"metadata": map[string]any{"uid": current.UID, "resourceVersion": current.ResourceVersion},
-			"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
-				"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
-			}}},
+			"spec": map[string]any{"template": map[string]any{
+				"metadata": map[string]any{"annotations": map[string]any{ucpCertificateHashAnnotation: certificateHash}},
+				"spec": map[string]any{
+					"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
+				},
+			}},
 		})
 		if err != nil {
 			return err
@@ -424,6 +434,13 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	return nil
+}
+
+// ucpCertificateHash returns the SHA-256 of the certificate chain in secret, which rad sets as annotation
+// ucpCertificateHashAnnotation on the pod template of the ucp Deployment.
+func ucpCertificateHash(secret *corev1.Secret) string {
+	sum := sha256.Sum256(secret.Data[corev1.TLSCertKey])
+	return hex.EncodeToString(sum[:])
 }
 
 // releaseUCPOffCertificate returns the live Secret ucp-cert, or nil if it does not exist, or an error if it does not

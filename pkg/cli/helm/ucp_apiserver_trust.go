@@ -67,6 +67,10 @@ const (
 	// ucpCertificateVolumeName is the volume of the ucp Deployment that mounts UCP's aggregated API certificate.
 	ucpCertificateVolumeName = "cert"
 
+	// ucpCertificateHashAnnotation on the pod template of the ucp Deployment holds the hash of the ucp-cert certificate
+	// that rad applied before authorization turns off, so the Deployment rolls out again when that certificate changes.
+	ucpCertificateHashAnnotation = "radapp.io/ucp-cert-sha256"
+
 	// allowDirectInjectionAnnotation lets cert-manager's cainjector copy ca.crt of a Secret into an APIService.
 	allowDirectInjectionAnnotation = "cert-manager.io/allow-direct-injection"
 
