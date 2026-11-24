@@ -176,9 +176,18 @@ verify_planned_siblings() {
             "${head}" 2> /dev/null \
                                   || fail "planned ${name} commit ${source_commit} is not reachable from ${source_ref} at ${head}"
         if [[ "${name}" == "bicep-types-aws" ]]; then
-            bash "${SCRIPT_DIR}/verify-bicep-types-aws-radius-pin.sh" \
-                "${scratch}" "${source_commit}" \
-                "$(plan_value '.source.productCommit')" < /dev/null
+            if jq -e 'any(.[]; has("radiusPin"))' "${planned}" >/dev/null; then
+                node "${SCRIPT_DIR}/aws-pin-plan.mjs" verify "${scratch}" \
+                    "$(plan_value '.source.productCommit')" \
+                    "$(jq -ce '.[] | select(.name == "bicep-types-aws")' "${planned}")" \
+                    < /dev/null
+                bash "${SCRIPT_DIR}/verify-aws-pin-readers.sh" \
+                    "$(plan_value '.source.productCommit')"
+            else
+                bash "${SCRIPT_DIR}/verify-bicep-types-aws-radius-pin.sh" \
+                    "${scratch}" "${source_commit}" \
+                    "$(plan_value '.source.productCommit')" < /dev/null
+            fi
         fi
     done < <(jq -r '.[] | [.name, .sourceRef, .sourceCommit] | @tsv' \
         "${planned}")

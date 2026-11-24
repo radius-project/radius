@@ -8,18 +8,30 @@ DIRECTORY="${RELEASE_VERIFY_DIR:-${ROOT}/dist/verification}"
 MODE="${1:-verify}"
 VERSION="${REL_VERSION:?REL_VERSION is required}"
 SOURCE_SHA="${RELEASE_SOURCE_SHA:-$(git -C "${ROOT}" rev-parse HEAD)}"
-PLAN="${ROOT}/.github/release-plans/v${VERSION}.yaml"
 [[ "${MODE}" == "verify" || "${MODE}" == "recheck" ]] || exit 1
 [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$ ]] || exit 1
 [[ "${SOURCE_SHA}" =~ ^[a-f0-9]{40}$ ]] || exit 1
 [[ "$(git -C "${ROOT}" rev-parse HEAD)" == "${SOURCE_SHA}" ]] || exit 1
 mkdir -p "${DIRECTORY}"
 DIRECTORY="$(cd "${DIRECTORY}" && pwd)"
-yq -o=json '.' "${PLAN}" > "${DIRECTORY}/plan.json"
+# Keep the committed plan in the verification evidence, not the temporary
+# receipt-resolved plan. A recheck resolves its own plan after approval.
+git -C "${ROOT}" show "${SOURCE_SHA}:.github/release-plans/v${VERSION}.yaml" \
+    | yq -o=json '.' - > "${DIRECTORY}/plan.json"
+PLAN="${RELEASE_VERIFY_PLAN_FILE:-${DIRECTORY}/plan.json}"
+if [[ -z "${RELEASE_VERIFY_PLAN_FILE:-}" ]]; then
+    # Standalone verification can still use a legacy plan. Never substitute
+    # the frozen base for a pin when the tag reader has not run.
+    jq -e 'all(.siblingRepositories[] | select(.name == "bicep-types-aws");
+        has("radiusPin") | not)' "${PLAN}" > /dev/null || {
+        echo "Verification requires the receipt-resolved AWS plan." >&2
+        exit 1
+    }
+fi
 yq -o=json '.' "${ROOT}/versions.yaml" > "${DIRECTORY}/versions.json"
 cp "${ROOT}/.github/release-parity/targets.json" "${DIRECTORY}/targets.json"
 jq -e --slurpfile targets "${DIRECTORY}/targets.json" \
-    '.expectedOutputs == $targets[0]' "${DIRECTORY}/plan.json" > /dev/null
+    '.expectedOutputs == $targets[0]' "${PLAN}" > /dev/null
 jq -n --arg sourceSha "${SOURCE_SHA}" \
     --arg parentSha "$(git -C "${ROOT}" rev-parse HEAD^)" \
     --arg goVersion "$(go env GOVERSION)" \
@@ -74,7 +86,8 @@ bash "${ROOT}/.github/scripts/release-attestations.sh" verify \
     --version "${VERSION}" --source-sha "${SOURCE_SHA}" \
     --targets "${DIRECTORY}/targets.json" --assets-dir "${DIRECTORY}/assets" \
     --chart-digest "${chart_digest}"
-node "${ROOT}/.github/scripts/verify-release-manifest.mjs" "${DIRECTORY}" "${MODE}"
+node "${ROOT}/.github/scripts/verify-release-manifest.mjs" \
+    "${DIRECTORY}" "${MODE}" "${PLAN}"
 
 if [[ "${MODE}" == "verify" ]]; then
     retry_helm_pull \

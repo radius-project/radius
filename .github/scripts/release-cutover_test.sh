@@ -99,7 +99,8 @@ test_publication_gate() {
         # of the staged draft needs contents write; it must still not publish.
         ."verify-release".permissions.contents == "write" and
         ."verify-release".permissions.packages == "read" and
-        (."verify-release".steps | any(.run == "make verify-release-publication")) and
+        (."verify-release".steps | any(.run == "make verify-release-publication" and
+            .env.RELEASE_VERIFY_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}")) and
         ."approve-publication".environment == "release" and
         (."approve-publication".if | contains("!contains(github.ref_name")) and
         (."finalize-release".if | contains("needs.verify-release.result == '\''success'\''")) and
@@ -110,6 +111,8 @@ test_publication_gate() {
         (."finalize-release".steps | map(.name) |
           index("Recheck outputs after approval") < index("Recheck RC prerequisites after approval") and
           index("Recheck RC prerequisites after approval") < index("Select release aliases")) and
+        (."finalize-release".steps | any(.run == "make recheck-release-publication" and
+            .env.RELEASE_VERIFY_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}")) and
         (."finalize-release".steps | any(.env.INPUT_MODE == "check-rc")) and
         (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json")) and
         (."finalize-release".steps | map(.name) |
@@ -320,7 +323,8 @@ test_sibling_release_publication_is_gated_and_resumable() {
         $job.permissions.contents == "read" and
         ($job.steps | [.[] | select(.id == "sibling-token" or .id == "engine-token")] |
             length == 2 and all(.[]; .with."permission-workflows" == "write")) and
-        ($job.steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json")) and
+        ($job.steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
+            .env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}")) and
         (.["build-summary"].needs | index("publish-sibling-releases") != null)
     ' > /dev/null; then
         fail_test "sibling GitHub Releases bypass publication, serialization or resume reporting"

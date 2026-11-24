@@ -52,22 +52,7 @@ Stop if the update is missing or incomplete. Publishing namespaces and recipe pa
 
 ### Pin Radius in bicep-types-aws
 
-`bicep-types-aws` builds the AWS Bicep extension from the Radius schemas at the commit its `radius` submodule pins. Release plan validation fails unless the `radius` submodule at the planned `bicep-types-aws` commit pins the plan's `source.productCommit`. The release controller runs the same check before approval, so nothing is tagged on a mismatch even if the release PR merged without a passing plan check. In that case the merged plan can't change: follow [break-glass recovery](#break-glass-recovery). A `bicep-types-aws` commit from before the submodule was added passes both checks with a notice. Nothing sets the pin automatically yet, so set it by hand:
-
-1. Find the product commit. For a later RC, a final, or a patch, it's the head of Radius `release/X.Y` after its backports merge, so you can set the pin before preparation. For a first RC, it's the `main` commit that preparation freezes: run Prepare Release, then read `source.productCommit` from the release PR's plan.
-2. In `radius-project/bicep-types-aws`, create `release/X.Y` from `main` if it doesn't exist (`git push origin origin/main:refs/heads/release/X.Y` after the clone below). Then set the `radius` submodule on `release/X.Y` to the product commit through a pull request, and merge it:
-
-   ```bash
-   git clone https://github.com/radius-project/bicep-types-aws.git
-   cd bicep-types-aws
-   git switch -c pin-radius-X.Y origin/release/X.Y
-   git update-index --cacheinfo "160000,<product-commit>,radius"
-   git commit -s -m "chore: pin Radius to <product-commit>"
-   git push origin pin-radius-X.Y
-   gh pr create --repo radius-project/bicep-types-aws --base release/X.Y --fill
-   ```
-
-3. Rerun Prepare Release with the same inputs. Preparation captures `bicep-types-aws` from `release/X.Y`. For a first RC, if Radius `main` moved since the last run, the new plan freezes a newer commit and the check fails again. Repeat these steps with the new product commit.
+The AWS types must use the Radius product commit, not the later release metadata commit. A legacy plan without a pin intent must already reference a matching AWS commit. Rerunning a frozen first RC cannot replace its selected sibling. Never repair a merged plan by editing it or moving a tag.
 
 ### Approve the plan
 
@@ -263,6 +248,18 @@ Resume revalidates the committed plan and source, verifies Deployment Engine aga
 Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) with the same approved version and source only when the automatic merge event did not start reconciliation. If there is no controller summary, [get the inputs from the merged PRs](#controller-never-started-after-merge). Both gateways dispatch the default-branch controller, and neither accepts a replacement plan. Neither gateway holds release credentials, so running one from another branch cannot change the controller code that uses them. This protects the controller code path, not the credentials: the release and publisher App keys are repository secrets, so any workflow a writer pushes can still read them.
 
 ## Verification
+
+### Verify the approved AWS source
+
+Prepare Release does **not** write to the AWS repository. The plan records the frozen AWS base (`sourceCommit`), the raw Radius `source.productCommit` that the `radius` submodule must point to, and the expected AWS Git tree after that single change. The release PR and controller independently recompute the tree. A metadata backport must preserve the plan file byte for byte: even reformatting the YAML changes the Git blob the receipt identifies. Review the tree in the controller summary before approving the `release` environment. A final must preserve the product code and AWS generator inputs tested by its last RC; a change beyond generated release metadata or an equivalent schema pin requires another RC.
+
+Only after approval does the release App create a missing `release/X.Y` from the reviewed base, then open or reuse a signed pin-only PR when needed. It verifies the actual AWS build at the proposal SHA, waits for the protected rebase merge, and checks the landed tree and parent. An already matching base needs no pin commit. Before tagging, the controller creates a signed record in Radius at `automation/release-state-aws-<version-without-v>`, bound to the committed plan blob. The tag, AWS types publisher, manifest and sibling release all use the recorded SHA, not a later branch tip.
+
+Before rollout, backport the receipt-aware tagged workflows to existing Radius release branches and the AWS build workflow to applicable AWS branches. Require **Validate release plan** on Radius `main` and **Build and test** on the applicable AWS `release/X.Y`, both from GitHub Actions. Allow initial channel creation without a status check. Protect `automation/release-state-aws-*` in Radius against updates and deletions, allowing the release App to create records. Give the App Contents and Pull requests write and Checks read on `bicep-types-aws`, not administration or branch-protection bypass.
+
+Resume the same version and source after an interruption. If a merge succeeded but its response was lost, the controller can adopt only the exact signed proposal and matching landed tree and parent. If a concurrent backport changed that parent, the pin may already have landed, but no receipt or tag is authorized: stop and follow [break-glass recovery](#break-glass-recovery) with a newly reviewed base. A removed or malformed submodule fails; a historical source that never had it passes with a notice.
+
+### Verify release outputs
 
 - The summary identifies the approved version/source, every mandatory stage, elapsed duration, expected and observed outputs, downstream run URLs, and the exact resume command. Keep the summary and release-thread links as the release record.
 - The manifest binds the approved plan to binaries, checksums, Go/linker metadata, SBOMs, image digests and platforms, full-version chart references, and downstream outputs. The isolated kind installation uses the staged CLI and chart with digest overrides. Its same-version upgrade disables only the version-transition check; it is not evidence of a cross-version upgrade.

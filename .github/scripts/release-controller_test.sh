@@ -182,6 +182,23 @@ test_stage_order() {
     assert_json "${CONTROLLER}" '.jobs."create-radius-tag".needs' \
         '["validate","publish-deployment-engine","reconcile-siblings"]' \
         "Radius tag creation must be the last mutation stage"
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        '([.jobs[].steps[] | select(.with.repositories == "bicep-types-aws")] | length == 0) and
+        ([.jobs[].steps[] | select(.env.INPUT_MODE == "pin" or .env.INPUT_MODE == "lock")] | length == 0)' \
+        "preparation must never request a sibling write token or reconcile an AWS pin"
+    assert_yq "${CONTROLLER}" \
+        '([.jobs.validate.steps[] | select(.env.INPUT_MODE == "inspect")] | length == 1) and
+        ([.jobs.validate.steps[] | select(.env.INPUT_MODE == "pin" or .env.INPUT_MODE == "lock")] | length == 0)' \
+        "approval must cover a read-only AWS tree inspection"
+    if yq -o=json '.jobs."reconcile-siblings".steps' "${CONTROLLER}" |
+        jq -e '[.[] | .id // .name] |
+            [index("land-aws"), index("lock-aws"),
+             index("Reconcile radius-project/bicep-types-aws")] |
+            all(.[]; type == "number") and .[0] < .[1] and .[1] < .[2]' >/dev/null; then
+        ((++PASS))
+    else
+        fail_test "the landed AWS pin must be recorded before its tag"
+    fi
     assert_yq "${CONTROLLER}" \
         '.jobs."create-radius-tag"."timeout-minutes" == 12' \
         "Radius tag creation must allow five minutes for build discovery"
