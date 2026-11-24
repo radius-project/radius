@@ -42,9 +42,66 @@ import (
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
+	"github.com/radius-project/radius/pkg/sdk"
 )
 
 const testToken = "test-token"
+
+type requestRecorder []string
+
+func (r *requestRecorder) RoundTrip(req *http.Request) (*http.Response, error) {
+	*r = append(*r, req.URL.String())
+	return &http.Response{StatusCode: http.StatusNoContent, Header: http.Header{}, Body: http.NoBody}, nil
+}
+
+func TestRPIdentityUnavailablePreservesBusinessConnection(t *testing.T) {
+	t.Setenv("RADIUS_POD_UID", "2806f94b-e497-4b9e-9af0-16864031818f")
+	for _, tt := range []struct {
+		kind, host, component string
+		mode                  authz.Mode
+	}{
+		{UCPConnectionKindKubernetes, "https://kube:6443", "applications-rp", authz.ModeEnforce},
+		// Even a matching authority does not make the API server's transport a direct UCP client.
+		{UCPConnectionKindKubernetes, "https://ucp.radius-system.svc:9444", "dynamic-rp", authz.ModeDryRun},
+		{UCPConnectionKindDirect, "https://other.example:9444", "applications-rp", authz.ModeDryRun},
+	} {
+		t.Run(tt.component+"/"+tt.kind, func(t *testing.T) {
+			authorization := authz.Options{Mode: tt.mode, Namespace: "radius-system"}
+			options := UCPOptions{Kind: tt.kind}
+			var calls requestRecorder
+			var conn sdk.Connection
+			var err error
+			if tt.kind == UCPConnectionKindKubernetes {
+				conn, err = NewConnectionFromUCPConfig(&options, &rest.Config{Host: tt.host, Transport: &calls}, authorization)
+			} else {
+				conn, err = sdk.NewDirectConnectionWithTransport(tt.host, &calls)
+			}
+			require.NoError(t, err)
+			business := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				resp, err := conn.Client().Get(conn.Endpoint())
+				require.NoError(t, err)
+				require.NoError(t, resp.Body.Close())
+				w.WriteHeader(resp.StatusCode)
+			})
+			handler, err := options.WithRPIdentityHandler(business, authorization, tt.component, conn)
+			require.NoError(t, err)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/business", nil))
+			require.Equal(t, http.StatusNoContent, w.Code)
+
+			req := httptest.NewRequest(http.MethodGet, "https://rp"+mtls.InternalIdentityPath+"?challenge=f4acf1fc-cd83-481e-bfad-6ad706746aa3", nil)
+			w = httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			require.Equal(t, http.StatusUnauthorized, w.Code)
+			req = req.WithContext(authz.WithIdentity(req.Context(), authz.Identity{Namespace: authorization.Namespace, Component: "ucp"}))
+			w = httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			require.Equal(t, http.StatusServiceUnavailable, w.Code)
+			require.Equal(t, "no-store", w.Header().Get("Cache-Control"))
+			require.Equal(t, requestRecorder{conn.Endpoint()}, calls, "only the business request may use the transport")
+		})
+	}
+}
 
 func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
 	_, tokenDir, _ := writeCertificate(t, "ucp")

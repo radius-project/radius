@@ -239,6 +239,13 @@ func TestRenderRadiusRollbackKeepsLiveUCPCert_APIServer(t *testing.T) {
 		{Name: radiusReleaseName, Namespace: namespace, Version: 1, Config: map[string]any{}, Manifest: stored, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 		{Name: radiusReleaseName, Namespace: namespace, Version: 2, Config: authzOnValues, Manifest: renderStageTestManifest(t, authzOnValues), Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
+	_, err = client.CoreV1().ConfigMaps(namespace).Create(t.Context(), &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "ucp-config", Namespace: namespace,
+			Labels: map[string]string{helmManagedByLabel: helmManagedByValue},
+			Annotations: map[string]string{helmReleaseNameAnnotation: radiusReleaseName,
+				helmReleaseNamespaceAnnotation: namespace, "radius.io/tls-provider": "radius"}},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
 	impl := &Impl{contourCluster: lookupRenderCluster{
 		fakeContourCluster: &fakeContourCluster{},
 		configuration: func() *helm.Configuration {

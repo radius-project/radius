@@ -185,7 +185,7 @@ func (f *certificateChartFixture) renderChart(t *testing.T, extraTemplates ...*c
 
 	return eng.RenderWithContext(t.Context(), chart, common.Values{
 		"Values": values, "Capabilities": caps,
-		"Release": map[string]any{"Name": "radius", "Namespace": "radius-system", "Service": "Helm"},
+		"Release": map[string]any{"Name": "radius", "Namespace": "radius-system", "Service": "Helm", "IsUpgrade": f.upgrade},
 	})
 }
 

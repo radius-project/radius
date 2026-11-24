@@ -70,11 +70,11 @@ func decodeCertificateProof(data []byte, evidence any, required []string) error 
 			return errors.New("invalid TLS startup proof response")
 		}
 		name, ok := token.(string)
-		if !ok || names[name] {
-			return errors.New("duplicate TLS startup proof field")
-		}
-		if !slices.Contains(required, name) {
+		if !ok || !slices.Contains(required, name) {
 			return errors.New("unknown TLS startup proof field")
+		}
+		if names[name] {
+			return errors.New("duplicate TLS startup proof field")
 		}
 		names[name] = true
 		var value json.RawMessage

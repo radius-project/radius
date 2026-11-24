@@ -831,6 +831,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 	options.ResetValues = true
 	// The deployed chart ignored this provider override. A reset must neither
 	// validate it against the target chart nor reuse its enabled mode.
+	options.RadiusReleaseChart = &chart.Chart{Metadata: &chart.Metadata{Name: "radius"}}
 	options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{
 		"enabled": true, "tls": map[string]any{"provider": "external"},
 	}}}
@@ -1365,7 +1366,7 @@ func TestRollbackRejectsUnsupportedEngineProviderBeforeTrustChanges(t *testing.T
 		Config: map[string]any{"global": map[string]any{"rbac": map[string]any{
 			"enabled": true, "tls": map[string]any{"provider": "external"},
 		}}},
-	}}
+	}, {Version: 2, Chart: manifestTestChart(t, ""), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}}
 	client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
 	impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore}
 	require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), "selected Radius chart does not support global.rbac.tls")

@@ -1,0 +1,52 @@
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- if or (hasKey $rbac "providerGeneration") (hasKey $rbac "providerReplicas") -}}
+{{- fail "providerGeneration and providerReplicas belong to deferred provider execution and are unsupported; all five workloads, including the trust-only controller, require verified coverage." -}}
+{{- end -}}
+{{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-provider-transition" -}}
+{{- if $journal -}}
+{{- $state := mustFromJson (dig "data" "state.json" "" $journal) -}}
+{{- if ne (toString $state.version) "2" -}}
+{{- fail "Legacy provider journal cannot be reinterpreted as token provider protocol v2. Preserve it for an explicit supported migration." -}}
+{{- end -}}
+{{- fail "Provider transition finalization is unavailable: production loaded-trust reporting and authorized observation, including controller coverage and aggregation caches, are incomplete." -}}
+{{- end -}}
+{{/* This guards ordinary reconciliation, not a writer that also rewrites the live provider record. */}}
+{{- $config := lookup "v1" "ConfigMap" .Release.Namespace "ucp-config" -}}
+{{- if $config -}}
+{{- $annotations := $config.metadata.annotations | default dict -}}
+{{- if or (empty $config.metadata.uid) (empty $config.metadata.resourceVersion)
+    $config.metadata.deletionTimestamp (not (empty $config.metadata.ownerReferences))
+    (ne (index ($config.metadata.labels | default dict) "app.kubernetes.io/managed-by" | default "") "Helm")
+    (ne (index $annotations "meta.helm.sh/release-name" | default "") .Release.Name)
+    (ne (index $annotations "meta.helm.sh/release-namespace" | default "") .Release.Namespace) -}}
+{{- fail "Cannot establish the installed TLS provider: ucp-config has foreign ownership or incomplete identity." -}}
+{{- end -}}
+{{- $previous := index $annotations "radius.io/tls-provider" | default "" -}}
+{{- $legacyOff := false -}}
+{{- if not (hasKey $annotations "radius.io/tls-provider") -}}
+{{- $raw := index ($config.data | default dict) "ucp-config.yaml" | default "" -}}
+{{- $settings := fromYaml $raw -}}
+{{- if or (empty $raw) (empty $settings) (hasKey $settings "Error") -}}
+{{- fail "Cannot establish the installed TLS provider from legacy ucp-config; preserve the release for a supported migration." -}}
+{{- end -}}
+{{- if not (hasKey $settings "authorization") -}}
+{{/* Old Off configurations carried neither internal TLS nor component tokens. */}}
+{{- $legacyOff = true -}}
+{{- else -}}
+{{- if or (not (kindIs "map" $settings.authorization)) (not (has $settings.authorization.mode (list "dryRun" "enforce"))) -}}
+{{- fail "Cannot establish the installed TLS provider from legacy ucp-config; preserve the release for a supported migration." -}}
+{{- end -}}
+{{- $previous = $settings.authorization.tlsProvider -}}
+{{- end -}}
+{{- end -}}
+{{- if not $legacyOff -}}
+{{- if not (has $previous (list "radius" "external")) -}}
+{{- fail "Cannot establish the installed TLS provider: ucp-config has an invalid provider record." -}}
+{{- end -}}
+{{- if ne $previous (include "radius.authz.tls.provider" .) -}}
+{{- fail "TLS provider transition blocked before rendering workloads: production loaded-trust observation is unavailable; preserve the installed provider." -}}
+{{- end -}}
+{{- end -}}
+{{- else if and .Release.IsUpgrade (lookup "v1" "Namespace" "" .Release.Namespace) -}}
+{{- fail "Cannot establish the installed TLS provider: ucp-config is missing; preserve the release for a supported migration." -}}
+{{- end -}}

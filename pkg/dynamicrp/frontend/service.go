@@ -24,6 +24,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
@@ -110,6 +111,12 @@ func (s *Service) initialize(ctx context.Context) (*http.Server, error) {
 	// TODO: This is the workaround to fix the high cardinality of otelhttp.
 	// Remove this once otelhttp middleware is fixed - https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
 	app = middleware.RemoveRemoteAddr(app)
+	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
+		app, err = s.options.Config.UCP.WithRPIdentityHandler(app, s.options.Config.Authorization, "dynamic-rp", s.options.UCP)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", s.options.Config.Server.Host, s.options.Config.Server.Port),

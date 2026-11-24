@@ -19,6 +19,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -52,6 +53,15 @@ type UCPOptions struct {
 type UCPDirectConnectionOptions struct {
 	// Endpoint is the URL endpoint for the connection.
 	Endpoint string `yaml:"endpoint"`
+}
+
+// WithRPIdentityHandler only uses a direct business connection for UCP identity
+// evidence. Kubernetes connections authenticate to the API server, not to UCP.
+func (o UCPOptions) WithRPIdentityHandler(next http.Handler, authorization authz.Options, component string, conn sdk.Connection) (http.Handler, error) {
+	if o.Kind == UCPConnectionKindDirect && conn != nil {
+		return mtls.WithInternalIdentityClient(next, authorization, component, conn.Client(), conn.Endpoint())
+	}
+	return mtls.WithInternalIdentityClient(next, authorization, component, nil, "")
 }
 
 // NewConnectionFromUCPConfig creates a Connection for UCP endpoint. It checks if the connection kind is direct and if so,

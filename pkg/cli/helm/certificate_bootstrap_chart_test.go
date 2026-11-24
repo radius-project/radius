@@ -79,6 +79,110 @@ func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
 	}
 }
 
+func TestProviderContinuityConnectedUpgrade(t *testing.T) {
+	for _, old := range []string{"radius", "external"} {
+		for _, next := range []string{"radius", "external"} {
+			for _, mode := range []string{"enforce", "dryRun", "off"} {
+				t.Run(old+"/"+next+"/"+mode, func(t *testing.T) {
+					fixture := newCertificateChartFixture(t)
+					selected, err := loader.Load("../../../deploy/Chart")
+					require.NoError(t, err)
+					values := copyValues(fixture.values)
+					setValue(values, mode == "enforce", "global", "rbac", "enabled")
+					setValue(values, mode == "dryRun", "global", "rbac", "dryRun")
+					setValue(values, next, "global", "rbac", "tls", "provider")
+					values, err = valuesutil.CoalesceValues(selected, values)
+					require.NoError(t, err)
+					fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+						"apiVersion": "v1", "kind": "ConfigMap",
+						"metadata": map[string]any{"name": "ucp-config", "namespace": RadiusSystemNamespace,
+							"uid": "config-uid", "resourceVersion": "1",
+							"labels": map[string]any{"app.kubernetes.io/managed-by": "Helm"},
+							"annotations": map[string]any{"meta.helm.sh/release-name": radiusReleaseName,
+								"meta.helm.sh/release-namespace": RadiusSystemNamespace, "radius.io/tls-provider": old}},
+						"data": map[string]any{"ucp-config.yaml": "authorization:\n  mode: enforce\n  tlsProvider: " + old + "\n"},
+					}})
+					server := fixture.server(t)
+					renderer := engine.New(&rest.Config{Host: server.URL})
+					rendered, err := renderer.RenderWithContext(t.Context(), selected, common.Values{
+						"Values": values, "Chart": selected.Metadata, "Capabilities": common.DefaultCapabilities,
+						"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace, "Service": "Helm", "IsUpgrade": true},
+					})
+					if old != next {
+						require.ErrorContains(t, err, "TLS provider transition")
+						require.Empty(t, rendered)
+					} else {
+						require.NoError(t, err)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestProviderContinuityLegacyAndOwnership(t *testing.T) {
+	for _, tc := range []struct {
+		name, raw, record, want string
+	}{
+		{name: "legacy radius", raw: "authorization:\n  mode: enforce\n  tlsProvider: radius\n"},
+		{name: "legacy external", raw: "authorization:\n  mode: dryRun\n  tlsProvider: external\n", want: "TLS provider transition"},
+		{name: "legacy Off", raw: "server:\n  port: 9443\n"},
+		{name: "legacy Off to external", raw: "server:\n  port: 9443\n"},
+		{name: "legacy null", raw: "authorization: null\n", want: "legacy ucp-config"},
+		{name: "legacy invalid", raw: "authorization: [", want: "legacy ucp-config"},
+		{name: "legacy absent", want: "legacy ucp-config"},
+		{name: "invalid record", record: "unknown", want: "invalid provider record"},
+		{name: "foreign release", record: "radius", want: "foreign ownership"},
+		{name: "foreign namespace", record: "radius", want: "foreign ownership"},
+		{name: "terminating", record: "radius", want: "foreign ownership"},
+		{name: "missing identity", record: "radius", want: "incomplete identity"},
+		{name: "missing config", want: "ucp-config is missing"},
+		{name: "forbidden lookup", record: "radius", want: "forbidden"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newCertificateChartFixture(t)
+			f.upgrade = true
+			config := &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "v1", "kind": "ConfigMap",
+				"metadata": map[string]any{"name": "ucp-config", "namespace": RadiusSystemNamespace,
+					"uid": "config-uid", "resourceVersion": "1",
+					"labels":      map[string]any{"app.kubernetes.io/managed-by": "Helm"},
+					"annotations": map[string]any{"meta.helm.sh/release-name": radiusReleaseName, "meta.helm.sh/release-namespace": RadiusSystemNamespace}},
+				"data": map[string]any{"ucp-config.yaml": tc.raw},
+			}}
+			annotations := config.GetAnnotations()
+			if tc.record != "" {
+				annotations["radius.io/tls-provider"] = tc.record
+			}
+			switch tc.name {
+			case "legacy Off to external":
+				setValue(f.values, "external", "global", "rbac", "tls", "provider")
+			case "foreign release":
+				annotations["meta.helm.sh/release-name"] = "another"
+			case "foreign namespace":
+				annotations["meta.helm.sh/release-namespace"] = "another"
+			case "terminating":
+				require.NoError(t, unstructured.SetNestedField(config.Object, "2026-11-23T00:00:00Z", "metadata", "deletionTimestamp"))
+			case "missing identity":
+				config.SetUID("")
+			case "missing config":
+				config.SetName("unrelated")
+			case "forbidden lookup":
+				f.forbiddenPath = "/api/v1/namespaces/radius-system/configmaps/ucp-config"
+			}
+			config.SetAnnotations(annotations)
+			f.objects = append(f.objects, config)
+			rendered, err := f.renderChart(t)
+			if tc.want != "" {
+				require.ErrorContains(t, err, tc.want)
+				require.Empty(t, rendered)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestLegacyBootstrapJournalRejectedBySelectedChart(t *testing.T) {
 	const bootstrapInvocationValue = "aggregationBootstrapInvocation"
 	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
