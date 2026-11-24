@@ -863,15 +863,18 @@ chmod -R 777 "${REPO_PATH}"
 	require.NoErrorf(t, err, "failed to initialize repository %s on git server", repoName)
 	t.Logf("Initialized git repository %s on git HTTP backend pod %s (root: %s)", repoName, podName, repoRoot)
 
+	// The returned function runs from t.Cleanup, after the test context is canceled.
 	return func() {
-		cleanupPod := getGitHTTPServerPodName(ctx, t, opts)
-		cleanupRoot := getGitHTTPServerRepoRoot(ctx, t, opts, cleanupPod)
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+		defer cancel()
+		cleanupPod := getGitHTTPServerPodName(cleanupCtx, t, opts)
+		cleanupRoot := getGitHTTPServerRepoRoot(cleanupCtx, t, opts, cleanupPod)
 		cleanupCmd := fmt.Sprintf(`set -euo pipefail
 REPO_ROOT=%q
 REPO_PATH="${REPO_ROOT}/%s.git"
 rm -rf "${REPO_PATH}"
 `, cleanupRoot, repoName)
-		_, err := execGitHTTPCommand(ctx, opts, cleanupPod, []string{"/bin/sh", "-c", cleanupCmd})
+		_, err := execGitHTTPCommand(cleanupCtx, opts, cleanupPod, []string{"/bin/sh", "-c", cleanupCmd})
 		require.NoErrorf(t, err, "failed to clean up repository %s on git server", repoName)
 		t.Logf("Cleaned up git repository %s from git HTTP backend pod %s (root: %s)", repoName, cleanupPod, cleanupRoot)
 	}
