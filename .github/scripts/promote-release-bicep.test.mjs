@@ -227,6 +227,59 @@ test("unapproved manifest and substituted exact pair fail before writes", async 
   }
 });
 
+test("both locked full-version tags must be anonymously readable before authenticated alias writes", async (t) => {
+  for (const failure of [
+    "none",
+    "aws denied",
+    "radius denied",
+    "radius moved"
+  ]) {
+    const f = await fixture(t);
+    await verifyPair(f.plan, sourceSha, f.lock, f.run);
+    const anonymousTags = new Set();
+    const run = async (args, options) => {
+      const configIndex = args.indexOf("--registry-config");
+      if (configIndex !== -1) {
+        assert.deepEqual(
+          JSON.parse(await readFile(args[configIndex + 1], "utf8")),
+          { auths: {} }
+        );
+        const tag = f.lock.artifacts.find(
+          (entry) => entry.reference === args.at(-1)
+        );
+        if (tag) {
+          anonymousTags.add(tag.name);
+          if (failure === "aws denied" && tag.name === "aws-bicep-types")
+            throw new Error("anonymous AWS read denied");
+          if (failure === "radius denied" && tag.name === "radius-bicep-types")
+            throw new Error("anonymous Radius read denied");
+          if (failure === "radius moved" && tag.name === "radius-bicep-types")
+            return JSON.stringify({ digest: hash("other manifest") });
+        }
+      }
+      if (args[1] === "cp") {
+        assert.equal(configIndex, -1, "Writes must retain GHCR login");
+        assert.deepEqual([...anonymousTags].sort(), [
+          "aws-bicep-types",
+          "radius-bicep-types"
+        ]);
+      }
+      return f.run(args, options);
+    };
+    if (failure === "none") {
+      await f.finalize("true", "true", { run });
+      assert.equal(f.copies.length, 4);
+    } else {
+      await assert.rejects(
+        f.finalize("true", "true", { run }),
+        /anonymous|tag changed/
+      );
+      assert.equal(f.copies.length, 0);
+      assert.notEqual(JSON.parse(await readFile(f.file)).status, "complete");
+    }
+  }
+});
+
 test("finalization auth errors and budget exhaustion retain failures without ACR fallback", async (t) => {
   for (const mode of ["auth", "budget"]) {
     const f = await fixture(t);

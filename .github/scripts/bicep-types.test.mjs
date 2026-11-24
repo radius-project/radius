@@ -397,6 +397,8 @@ test("GHCR-only publication requires uploaded digest, public visibility and anon
     "upload failure",
     "digest failure",
     "anonymous digest failure",
+    "edge moved",
+    "edge removed",
     "summary failure",
     "stale"
   ])
@@ -467,7 +469,12 @@ test("GHCR-only publication requires uploaded digest, public visibility and anon
           assert.deepEqual(JSON.parse(await readFile(args[4], "utf8")), {
             auths: {}
           });
-          calls.push("anonymous");
+          const tagRead = args.at(-1) === targets.ghcr;
+          calls.push(tagRead ? "anonymous edge" : "anonymous digest");
+          if (failing && tagRead && outcome === "edge moved")
+            return "different manifest";
+          if (failing && tagRead && outcome === "edge removed")
+            throw new Error("edge not found");
           if (failing && outcome === "anonymous failure")
             throw new Error("anonymous denied");
           if (failing && outcome === "anonymous digest failure")
@@ -491,7 +498,8 @@ test("GHCR-only publication requires uploaded digest, public visibility and anon
             "upload",
             "digest",
             "visibility",
-            "anonymous"
+            "anonymous digest",
+            "anonymous edge"
           ]);
       } else {
         await assert.rejects(publish({ github, core }, source, directory, run));
@@ -499,6 +507,13 @@ test("GHCR-only publication requires uploaded digest, public visibility and anon
         const partial = JSON.parse(
           await readFile(join(directory, "receipt.json"))
         );
+        if (["edge moved", "edge removed"].includes(outcome)) {
+          assert.deepEqual(calls.slice(-2), [
+            "anonymous digest",
+            "anonymous edge"
+          ]);
+          assert.equal(partial.ghcr.digest, receiptFixture().manifestDigest);
+        }
         assert.equal(
           partial.status,
           ["upload failure", "digest failure"].includes(outcome) ? "partial"

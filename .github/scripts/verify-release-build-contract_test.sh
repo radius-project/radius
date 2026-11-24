@@ -44,6 +44,10 @@ write_pipeline() {
     cp "${ROOT}/.github/workflows/__publish-release-bicep.yaml" "${WORKFLOWS}/__publish-release-bicep.yaml"
     mkdir -p "${REPO}/.github/release-parity"
     cp "${ROOT}/.github/release-parity/targets.json" "${REPO}/.github/release-parity/targets.json"
+    mkdir -p "${REPO}/.github/scripts"
+    cp "${ROOT}/.github/scripts/release-parity-manifest.sh" \
+        "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        "${ROOT}/.github/scripts/promote-release-bicep.mjs" "${REPO}/.github/scripts/"
     # Both run on tag pushes without publishing a release.
     printf '%s\n' 'on:' '  push:' '    paths: [setup.yaml]' > "${WORKFLOWS}/setup.yml"
     printf '%s\n' 'on: [push, pull_request]' > "${WORKFLOWS}/lint.yaml"
@@ -116,6 +120,40 @@ main() {
     TEST_EXPECTED_TARGETS="${intended}" expect "source targets differ" "legacy source rejects intended GHCR plan"
     cp "${REPO}/.github/release-parity/targets.json" "${intended}"
     TEST_EXPECTED_TARGETS="${intended}" expect pass "same legacy source accepts matching legacy plan"
+    TEST_EXPECTED_TARGETS="${intended}" expect "retired Bicep ACR writer" \
+        "matching selector-free source cannot start new publication" HEAD --require-current-bicep
+    write_pipeline
+    TEST_EXPECTED_TARGETS="${intended}" expect "source targets differ" \
+        "GHCR-only source rejects selector-free approved plan before publication" HEAD --require-current-bicep
+    # shellcheck disable=SC2016 # Literal workflow expressions under test.
+    for mutation in \
+        '.jobs."build-and-push-bicep-types".needs = []' \
+        'del(.jobs."release-preflight".outputs."release-state")' \
+        '.jobs."release-preflight".outputs."release-state" = "${{ steps.other.outputs.result }}"' \
+        '(.jobs."release-preflight".steps[] | select(.id == "release-state")).if = "false"'; do
+        write_pipeline
+        use_legacy_contract
+        yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
+        expect "published Bicep resume gate" "historical resume rejects missing state wiring: ${mutation}"
+    done
+    local script
+    for script in release-parity-manifest.sh collect-release-bicep.mjs promote-release-bicep.mjs; do
+        write_pipeline
+        case "${script}" in
+            release-parity-manifest.sh)
+                # shellcheck disable=SC2016 # Literal tagged script, never executed.
+                printf '\nnode "${SCRIPT_DIR}/collect-release-bicep.mjs" verify-mirrors\n' >>"${REPO}/.github/scripts/${script}" ;;
+            collect-release-bicep.mjs)
+                printf '\nexport async function verifyMirrors() { throw new Error("old mirror verifier"); }\n' >>"${REPO}/.github/scripts/${script}" ;;
+            promote-release-bicep.mjs)
+                printf '\nimport { promotionRequests } from "./promote-bicep-types.mjs";\n' >>"${REPO}/.github/scripts/${script}" ;;
+        esac
+        expect "still requires the retired Bicep ACR writer" \
+            "new workflow with mirror-dependent ${script} rejects before tagging" HEAD --require-current-bicep
+        write_pipeline
+        rm "${REPO}/.github/scripts/${script}"
+        expect "has no GHCR-only entry point" "partial backport missing ${script}" HEAD --require-current-bicep
+    done
     write_pipeline
     rm "${WORKFLOWS}/__publish-release-bicep.yaml"
     expect "has no reusable Radius Bicep producer workflow" "missing reusable workflow rejects partial backport"

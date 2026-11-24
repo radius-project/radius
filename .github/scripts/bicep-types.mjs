@@ -449,11 +449,18 @@ export async function publish({ github, core }, source, directory, run = tool) {
           "public",
           `Package visibility is ${receipt.visibility}`
         );
+        const registryConfig = await anonymousConfig(directory);
         await verifyDigest(
           `${targets.ghcr.split(":")[0]}@${receipt.manifestDigest}`,
           receipt.manifestDigest,
           run,
-          await anonymousConfig(directory)
+          registryConfig
+        );
+        await verifyDigest(
+          targets.ghcr,
+          receipt.manifestDigest,
+          run,
+          registryConfig
         );
         receipt.status = "published";
       } catch (error) {

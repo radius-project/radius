@@ -7,13 +7,79 @@ import resolveReleaseController, {
 import { mandatoryChecks } from "./publish-draft-release.mjs";
 import stage from "./stage-release-bicep.mjs";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tool } from "./bicep-types.mjs";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const repository = "radius-project/radius";
 const sourceCommit = "a".repeat(40);
 const backportCommit = "b".repeat(40);
+
+test("absent and draft releases reject selector-free approved plans against actual GHCR-only source targets", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "selector-free-admission-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const root = fileURLToPath(new URL("../../", import.meta.url));
+  for (const path of [
+    ".goreleaser.yaml",
+    ".github/workflows/build-release.yaml",
+    ".github/workflows/__publish-release-bicep.yaml",
+    ".github/release-parity/targets.json"
+  ]) {
+    await mkdir(join(directory, path, ".."), { recursive: true });
+    await cp(join(root, path), join(directory, path));
+  }
+  const git = (...args) =>
+    execFileSync("git", args, { cwd: directory, encoding: "utf8" }).trim();
+  git("init", "-q", "-b", "main");
+  git("config", "user.name", "Radius Test");
+  git("config", "user.email", "test@example.com");
+  git("config", "commit.gpgsign", "false");
+  git("add", ".");
+  git("commit", "-qm", "GHCR-only source");
+  const sha = git("rev-parse", "HEAD");
+  const expectedOutputs = JSON.parse(
+    await readFile(join(directory, ".github/release-parity/targets.json"))
+  );
+  delete expectedOutputs.bicepExtensionsContract;
+  for (const artifact of expectedOutputs.ociArtifacts)
+    artifact.repository = `biceptypes.azurecr.io/${artifact.name === "aws-bicep-types" ? "aws" : "radius"}`;
+  const planFile = join(directory, "approved-plan.json");
+  await writeFile(
+    planFile,
+    JSON.stringify({ version: "v0.62.1", expectedOutputs })
+  );
+  for (const state of ["absent", "draft"]) {
+    const inputs = { VERSION: "v0.62.1", SOURCE_SHA: sha, PLAN_FILE: planFile };
+    await assert.rejects(
+      verifyReleaseBuildSource({
+        github: {
+          rest: { repos: { listReleases: "list" } },
+          paginate: async () =>
+            state === "absent" ?
+              []
+            : [{ tag_name: inputs.VERSION, draft: true }]
+        },
+        core: {
+          getInput: (name) => inputs[name],
+          setOutput: () => assert.fail("No admission output")
+        },
+        run: (args) => {
+          if (args[0] === "bash") {
+            assert.ok(args.includes("--require-current-bicep"));
+            assert.ok(args.includes("--expected-targets"));
+            return tool(["bash", join(root, args[1]), ...args.slice(2)], {
+              cwd: directory
+            });
+          }
+          return tool(args, { cwd: directory });
+        }
+      }),
+      /source targets differ from the intended release contract/
+    );
+  }
+});
 
 test("published historical sources retain validation and recovery; unpublished sources require GHCR-only writers", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "approved-build-contract-"));
@@ -203,15 +269,24 @@ test("published workflow gates skip Bicep producers/finalizers without disabling
     "build-and-push-bicep-types",
     "finalize-release"
   ]) {
-    const condition = jobs[name].if
-      .replace(/needs\.[\w-]+(?:\.outputs)?\.[\w-]+/g, (value) =>
-        value.endsWith(".release-state") ? "'published'" : "'success'"
-      )
-      .replace("!cancelled()", "true")
-      .replace("github.repository", "'radius-project/radius'")
-      .replace("startsWith(github.ref, 'refs/tags/v')", "true")
-      .replace("contains(github.ref_name, '-rc.')", "false");
-    assert.equal(Function(`return (${condition})`)(), false, name);
+    for (const state of ["draft", "published"]) {
+      const condition = jobs[name].if
+        .replace(/needs\.[\w-]+(?:\.outputs)?\.[\w-]+/g, (value) => {
+          if (value.endsWith(".release-state")) return JSON.stringify(state);
+          if (value.endsWith(".ghcr-bicep")) return "'true'";
+          if (value.endsWith(".bicep-locked")) return "'false'";
+          return "'success'";
+        })
+        .replace("!cancelled()", "true")
+        .replace("github.repository", "'radius-project/radius'")
+        .replace("startsWith(github.ref, 'refs/tags/v')", "true")
+        .replace("contains(github.ref_name, '-rc.')", "false");
+      assert.equal(
+        Function(`return (${condition})`)(),
+        state === "draft",
+        `${name}: ${state}`
+      );
+    }
   }
   for (const name of [
     "verify-release",
@@ -225,10 +300,11 @@ test("published workflow gates skip Bicep producers/finalizers without disabling
     (step) => step.name === "Reconcile radius-project/bicep-types-aws"
   );
   assert.equal(aws.if, "needs.validate.outputs.published != 'true'");
-  assert.ok(
-    controller["create-radius-tag"].steps.some((step) =>
+  assert.equal(
+    controller["create-radius-tag"].steps.find((step) =>
       step.with?.script?.includes("resumeReleasePublication")
-    )
+    ).env.INPUT_PUBLISHED,
+    "${{ needs.validate.outputs.published }}"
   );
 });
 

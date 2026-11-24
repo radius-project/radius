@@ -273,6 +273,7 @@ verify_bicep_contract() {
         any_c(.name == "Promote locked Bicep extensions")'; then
         [[ "${ghcr}" == true ]] || reject "has an invalid Bicep release contract"
         verify_ghcr_only_bicep
+        verify_ghcr_only_entrypoints
         GHCR_ONLY=true
         return
     fi
@@ -417,6 +418,33 @@ verify_ghcr_only_bicep() {
     ' >/dev/null || reject "does not enforce the publication gate for GHCR-only Bicep"
 }
 
+verify_ghcr_only_entrypoints() {
+    local path content
+    for path in \
+        .github/scripts/release-parity-manifest.sh \
+        .github/scripts/collect-release-bicep.mjs \
+        .github/scripts/promote-release-bicep.mjs; do
+        content="$(git show "${COMMIT}:${path}")" ||
+            reject "has no GHCR-only entry point ${path}"
+        if grep -Eq 'verify-mirrors|verifyMirrors|bicepExtensionMirrors|stageMirrors|stageExtensionMirrors|releaseCopyRequests|promotionRequests|dispatchPromotion|monitor-remote-workflow|promote-bicep-types\.mjs|radius-publisher' <<<"${content}"; then
+            reject "GHCR-only entry point ${path} still requires the retired Bicep ACR writer"
+        fi
+        case "${path}" in
+            */release-parity-manifest.sh)
+                grep -Fq 'release-bicep-extensions.mjs" verify' <<<"${content}" ||
+                    reject "GHCR-only parity entry point does not verify the locked pair" ;;
+            */collect-release-bicep.mjs)
+                grep -Fq 'verifyBicepExtensionOutput(record, observed)' <<<"${content}" ||
+                    reject "GHCR-only collector does not verify source-bound manifests" ;;
+            */promote-release-bicep.mjs)
+                if ! grep -Fq 'validatePublicationManifest(manifest, plan.version, sourceSha)' <<<"${content}" ||
+                    ! grep -Fq 'receipt.ghcr = await promoteExtensions(' <<<"${content}"; then
+                    reject "GHCR-only finalizer does not promote the approved pair"
+                fi ;;
+        esac
+    done
+}
+
 verify_historical_bicep_resume_gate() {
     [[ "${GHCR_ONLY}" != true ]] || return 0
     local condition="github.repository == 'radius-project/radius' &&
@@ -431,10 +459,21 @@ verify_historical_bicep_resume_gate() {
                needs.release-preflight.outputs.bicep-locked == 'true')))"
     fi
     git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' |
-        jq -e --arg condition "${condition}" '
-            .jobs."build-and-push-bicep-types" |
-            (.if | gsub("\\s"; "")) == ($condition | gsub("\\s"; "")) and
-            (."continue-on-error" // false) == false
+        jq -e --arg condition "${condition}" --argjson dual "${BICEP_DUAL_PIPELINE}" '
+            .jobs as $jobs |
+            $jobs."release-preflight".outputs."release-state" ==
+                "${{ steps.release-state.outputs.result }}" and
+            ([$jobs."release-preflight".steps[] | select(.id == "release-state")] |
+                length == 1 and all(.[]; .if == null and
+                    (."continue-on-error" // false) == false and
+                    .with."result-encoding" == "string")) and
+            (["build-and-push-bicep-types", "finalize-release"] +
+                (if $dual then ["publish-radius-bicep-extension", "publish-legacy-bicep-types"] else [] end) |
+                all(.[]; . as $name | $jobs[$name].needs |
+                    type == "array" and index("release-preflight") != null)) and
+            ($jobs."build-and-push-bicep-types" |
+                (.if | gsub("\\s"; "")) == ($condition | gsub("\\s"; "")) and
+                (."continue-on-error" // false) == false)
         ' >/dev/null || reject "does not enforce the published Bicep resume gate"
 }
 

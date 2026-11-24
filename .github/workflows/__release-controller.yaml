@@ -999,6 +999,7 @@ jobs:
         env:
           INPUT_VERSION: ${{ needs.validate.outputs.version }}
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_PUBLISHED: ${{ needs.validate.outputs.published }}
         with:
           retries: 5
           script: |

@@ -241,7 +241,16 @@ export async function finalizeExtensions({
       manifest.observed.downstream.ociArtifacts
     );
     promotionTargets(plan, lock, channel, latest);
-    await verifyPair(plan, sourceSha, lock, (args) => execute(args));
+    const registryConfig = join(directory, "anonymous-registry.json");
+    await writeFile(registryConfig, JSON.stringify({ auths: {} }));
+    await verifyPair(plan, sourceSha, lock, (args) =>
+      execute([
+        ...args.slice(0, -1),
+        "--registry-config",
+        registryConfig,
+        args.at(-1)
+      ])
+    );
     receipt.status = "partial";
     await save();
     receipt.ghcr = await promoteExtensions(
