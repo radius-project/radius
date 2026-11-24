@@ -259,6 +259,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		if state.RadiusBootstrapPending {
 			return fmt.Errorf("certificate bootstrap is unfinished; retry the identical install with --reinstall")
 		}
+		if r.TLS.Provider != "" {
+			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged TLS provider settings. Provider changes require coordinated migration")
+		}
 		if r.Certificates.Specified() {
 			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged certificate settings. Certificate mode or CA changes require coordinated migration")
 		}
