@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -192,6 +193,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // depending on the "Reinstall" flag. If no installation is found, it installs the version of Radius corresponding
 // to the cli version. It then returns any errors that occur during the installation.
 func (r *Runner) Run(ctx context.Context) error {
+	kubeContext, err := clikubernetes.ResolveKubeContext(r.KubeContext)
+	if err != nil {
+		return err
+	}
+	r.KubeContext = kubeContext
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.ChartOptions{
 			Reinstall:   r.Reinstall,

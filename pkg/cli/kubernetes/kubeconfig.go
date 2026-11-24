@@ -44,6 +44,20 @@ func loadCLIConfig() (*api.Config, error) {
 	return cfg, nil
 }
 
+// ResolveKubeContext captures the current context when contextName is omitted. Callers must
+// pass the result to every step of a command so a current-context switch cannot retarget it.
+// No named context remains empty, preserving client-go's in-cluster fallback.
+func ResolveKubeContext(contextName string) (string, error) {
+	if contextName != "" {
+		return contextName, nil
+	}
+	config, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve kubeconfig context: %w", err)
+	}
+	return config.CurrentContext, nil
+}
+
 // NewCLIClientConfig builds a Kubernetes client config for the rad CLI with the CLI QPS and Burst defaults. It selects
 // the kubeconfig files the same way as loadCLIConfig and uses contextName, or the current context when contextName is
 // empty.

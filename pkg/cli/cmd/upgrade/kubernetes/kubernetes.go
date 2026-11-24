@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/upgrade/preflight"
 	"github.com/radius-project/radius/pkg/version"
@@ -186,6 +187,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the `rad upgrade kubernetes` command.
 func (r *Runner) Run(ctx context.Context) error {
+	kubeContext, err := clikubernetes.ResolveKubeContext(r.KubeContext)
+	if err != nil {
+		return err
+	}
+	r.KubeContext = kubeContext
 	// Get current installation state
 	state, err := r.Helm.CheckRadiusInstall(r.KubeContext)
 	if err != nil {

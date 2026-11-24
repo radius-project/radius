@@ -1741,7 +1741,7 @@ func Test_ApplyHelmChart_TimeoutPropagation(t *testing.T) {
 					Return(existingRelease, nil).Times(1)
 			}
 
-			err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+			applied, _, err := helmAction.applyHelmChartRelease("", helmChart, helmConf, ChartOptions{
 				ReleaseName: "myrelease",
 				Namespace:   "myns",
 				Wait:        true,
@@ -1749,6 +1749,7 @@ func Test_ApplyHelmChart_TimeoutPropagation(t *testing.T) {
 				Timeout:     tt.timeout,
 			}, vals)
 			require.NoError(t, err)
+			require.True(t, applied)
 		})
 	}
 }
@@ -1810,13 +1811,14 @@ func Test_ApplyHelmChart_ReinstallPath(t *testing.T) {
 		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true, gomock.Any()).
 		Return(existingRelease, nil).Times(1)
 
-	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+	applied, _, err := helmAction.applyHelmChartRelease("", helmChart, helmConf, ChartOptions{
 		ReleaseName: "myrelease",
 		Namespace:   "myns",
 		Wait:        true,
 		Reinstall:   true,
 	}, vals)
 	require.NoError(t, err)
+	require.True(t, applied)
 }
 
 func Test_ApplyHelmChart_ReinstallError(t *testing.T) {
@@ -1879,13 +1881,14 @@ func Test_ApplyHelmChart_AlreadyInstalled_NoReinstall(t *testing.T) {
 		Return(existingRelease, nil).Times(1)
 
 	// No install or upgrade should be called
-	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+	applied, _, err := helmAction.applyHelmChartRelease("", helmChart, helmConf, ChartOptions{
 		ReleaseName: "myrelease",
 		Namespace:   "myns",
 		Wait:        true,
 		Reinstall:   false,
 	}, vals)
 	require.NoError(t, err)
+	require.False(t, applied)
 }
 
 func Test_ApplyHelmChart_QueryReleaseError(t *testing.T) {

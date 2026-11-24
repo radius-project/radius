@@ -98,6 +98,11 @@ tests:
           any: true
         template: controller/deployment.yaml
 
+  - it: mounts a SPIFFE server certificate volume in each receiver in enforce mode
+    set:
+      global.rbac.enabled: true
+    asserts: *receivers
+
   - it: does not mount the old mTLS Secrets
     set:
       global.rbac.enabled: true
@@ -259,15 +264,54 @@ tests:
           errorMessage: "global.targetCluster.mountPath must not be \"/var/run/radius/tokens/ucp\": Radius authorization mounts a projected ServiceAccount token there"
         template: ucp/deployment.yaml
 
+  - it: fails when global.targetCluster.mountPath and secretKey resolve to a projected token mount path in enforce mode
+    set:
+      global.rbac.enabled: true
+      global.targetCluster.enabled: true
+      global.targetCluster.mountPath: /var/run/radius/tokens
+      global.targetCluster.secretKey: ucp
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.targetCluster.mountPath and secretKey must not resolve to \"/var/run/radius/tokens/ucp\": Radius authorization mounts a projected ServiceAccount token there"
+        template: ucp/deployment.yaml
+
+  - it: allows a target kubeconfig under the token directory when the file is not a token mount path
+    set:
+      global.rbac.enabled: true
+      global.targetCluster.enabled: true
+      global.targetCluster.mountPath: /var/run/radius/tokens
+      global.targetCluster.secretKey: kubeconfig
+    asserts:
+      - notFailedTemplate: {}
+        template: rp/deployment.yaml
+      - notFailedTemplate: {}
+        template: dynamic-rp/deployment.yaml
+
+  - it: allows global.targetCluster.mountPath at a token mount path only UCP uses
+    set:
+      global.rbac.dryRun: true
+      global.targetCluster.enabled: true
+      global.targetCluster.mountPath: /var/run/radius/tokens/applications-rp
+    asserts:
+      - notFailedTemplate: {}
+        template: ucp/deployment.yaml
+      - notFailedTemplate: {}
+        template: rp/deployment.yaml
+      - notFailedTemplate: {}
+        template: dynamic-rp/deployment.yaml
+
   - it: allows authorization mount paths for shared settings when authorization is off
     set:
       global.rootCA.cert: test-ca
       global.rootCA.mountPath: /var/run/radius/spiffe
       global.targetCluster.enabled: true
-      global.targetCluster.mountPath: /var/run/radius/tokens/ucp
+      global.targetCluster.mountPath: /var/run/radius/tokens
+      global.targetCluster.secretKey: ucp
     asserts:
       - notFailedTemplate: {}
         template: ucp/deployment.yaml
+      - notFailedTemplate: {}
+        template: rp/deployment.yaml
 
   - it: fails when global.rootCA.mountPath is the Radius CA bundle mount path in dryRun
     set:

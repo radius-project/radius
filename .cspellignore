@@ -562,6 +562,7 @@ buildctl
 buildkitd
 buildx
 caBundle
+cainjector
 camelCased
 cancelled
 carte
