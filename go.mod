@@ -46,6 +46,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iot v1.84.12
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12
 	github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0
+	github.com/aws/aws-sdk-go-v2/service/kms v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0
 	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5
 	github.com/aws/aws-sdk-go-v2/service/neptune v1.55.0

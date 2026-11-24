@@ -160,6 +160,8 @@ github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12 h1:X7dFutoB5DIS+7qMoKYju4Itq
 github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12/go.mod h1:tHdGXu9YEgMNUqFLkoxVDSPQJ4Y0us8iaoojamrhldI=
 github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0 h1:IDPDfKcJyIhLZNvGnLk4zADq1lhdrUZ3HOe4AoF8WZc=
 github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0/go.mod h1:lMtldQgxwSZ00f2TRnTNwP+Db2SkNkysX3E30oqKmbY=
+github.com/aws/aws-sdk-go-v2/service/kms v1.63.0 h1:Ovjb0ZSWfm+hPYFgU9BX0Oy7C/ob3EXbCrUUHo9Is98=
+github.com/aws/aws-sdk-go-v2/service/kms v1.63.0/go.mod h1:VMuZyNobzmV/0SRCH5p+0dziD4U5AktOi3TzFMXq1rg=
 github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0 h1:3eggSHnymdEyXlI7FvWBTnNtB+icbx0wynG37pPLsGA=
 github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0/go.mod h1:Bf6uHN804FAJ+yUro0QW65wEVJ68eKBIsSzY1SD5oDw=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5 h1:ZoW0j6XRzzzcWEGsPRxZCuiEj0j281S1ACN1cxJ8Obo=

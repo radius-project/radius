@@ -34,6 +34,7 @@ import (
 	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
 	iotsdk "github.com/aws/aws-sdk-go-v2/service/iot"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
+	kmssdk "github.com/aws/aws-sdk-go-v2/service/kms"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
 	neptunesdk "github.com/aws/aws-sdk-go-v2/service/neptune"
@@ -63,6 +64,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iot"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/neptune"
@@ -123,6 +125,7 @@ func All(cfg aws.Config) []native.Handler {
 		chime.NewStreamingConfiguration(chimeAPI),
 		chime.NewOrigination(chimeAPI),
 		chime.NewTermination(chimeAPI),
+		kms.NewGrant(kmssdk.NewFromConfig(cfg)),
 	}
 }
 
