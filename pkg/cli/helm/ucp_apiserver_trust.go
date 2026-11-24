@@ -491,11 +491,12 @@ func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, rad
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, secretName, err)
 	}
-	leaf, err := firstCertificate(secret.Data[corev1.TLSCertKey])
+	chain, err := certificateChain(secret.Data[corev1.TLSCertKey])
 	if err != nil {
 		return nil, "Secret " + secretName + " has no certificate", nil
 	}
-	if !verifiesUCPCertificate(leaf, ca, radiusNamespace) {
+	leaf := chain[0]
+	if !verifiesUCPCertificate(leaf, chain[1:], ca, radiusNamespace) {
 		return nil, "the certificate in Secret " + secretName + " is not issued by " + caName, nil
 	}
 	return leaf, "", nil
@@ -512,14 +513,20 @@ func ucpCertificateSecret(deployment *appsv1.Deployment) string {
 	return ""
 }
 
-// verifiesUCPCertificate reports whether ca issued leaf for UCP's Service name and it is valid now.
-func verifiesUCPCertificate(leaf, ca *x509.Certificate, radiusNamespace string) bool {
+// verifiesUCPCertificate reports whether leaf chains to ca, through intermediates if any, for UCP's Service name and is
+// valid now. intermediates are the certificates after the leaf in tls.crt, which UCP serves with it; only ca is trusted.
+func verifiesUCPCertificate(leaf *x509.Certificate, intermediates []*x509.Certificate, ca *x509.Certificate, radiusNamespace string) bool {
 	roots := x509.NewCertPool()
 	roots.AddCert(ca)
+	pool := x509.NewCertPool()
+	for _, cert := range intermediates {
+		pool.AddCert(cert)
+	}
 	_, err := leaf.Verify(x509.VerifyOptions{
-		Roots:     roots,
-		DNSName:   "ucp." + radiusNamespace + ".svc",
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		Roots:         roots,
+		Intermediates: pool,
+		DNSName:       "ucp." + radiusNamespace + ".svc",
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	})
 	return err == nil
 }
@@ -638,6 +645,31 @@ func countCertificates(bundle []byte) int {
 			count++
 		}
 	}
+}
+
+// certificateChain returns every certificate in bundle, the leaf first, or an error if it has none or one that does
+// not parse.
+func certificateChain(bundle []byte) ([]*x509.Certificate, error) {
+	var chain []*x509.Certificate
+	for {
+		var block *pem.Block
+		block, bundle = pem.Decode(bundle)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		chain = append(chain, cert)
+	}
+	if len(chain) == 0 {
+		return nil, fmt.Errorf("no PEM certificate")
+	}
+	return chain, nil
 }
 
 func firstCertificate(bundle []byte) (*x509.Certificate, error) {

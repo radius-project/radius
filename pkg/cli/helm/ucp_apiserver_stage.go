@@ -388,19 +388,23 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	return nil
 }
 
-// ucpOffCertificateIssuer returns the CA of cas that issued the certificate in rendered, the Secret ucp-cert that Helm
-// applies, for UCP's Service name, or an error if its tls.key does not match it or no CA of cas issued it.
+// ucpOffCertificateIssuer returns the CA of cas that the certificate in rendered, the Secret ucp-cert that Helm applies,
+// chains to for UCP's Service name, through the intermediates after it in tls.crt, or an error if its tls.key does not match it or no CA of cas issued it.
 func ucpOffCertificateIssuer(rendered *corev1.Secret, cas []*x509.Certificate, radiusNamespace string) (*x509.Certificate, error) {
 	pair, err := tls.X509KeyPair(rendered.Data[corev1.TLSCertKey], rendered.Data[corev1.TLSPrivateKeyKey])
 	if err != nil {
 		return nil, fmt.Errorf("the rendered Secret %s does not hold a valid key pair: %w", ucpOffCertificateSecretName, err)
 	}
-	leaf, err := x509.ParseCertificate(pair.Certificate[0])
-	if err != nil {
-		return nil, fmt.Errorf("the rendered Secret %s does not hold a valid certificate: %w", ucpOffCertificateSecretName, err)
+	chain := make([]*x509.Certificate, 0, len(pair.Certificate))
+	for _, der := range pair.Certificate {
+		cert, err := x509.ParseCertificate(der)
+		if err != nil {
+			return nil, fmt.Errorf("the rendered Secret %s does not hold a valid certificate: %w", ucpOffCertificateSecretName, err)
+		}
+		chain = append(chain, cert)
 	}
 	for _, ca := range cas {
-		if verifiesUCPCertificate(leaf, ca, radiusNamespace) {
+		if verifiesUCPCertificate(chain[0], chain[1:], ca, radiusNamespace) {
 			return ca, nil
 		}
 	}

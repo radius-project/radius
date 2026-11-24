@@ -495,7 +495,7 @@ func requireStagedOffCertificate(t *testing.T, secret *corev1.Secret) {
 	require.NoError(t, err)
 	cas := caCertificates(secret.Data[caCertificateKey])
 	require.Len(t, cas, 1)
-	require.True(t, verifiesUCPCertificate(leaf, cas[0], RadiusSystemNamespace))
+	require.True(t, verifiesUCPCertificate(leaf, nil, cas[0], RadiusSystemNamespace))
 }
 
 // renderedOffCertificate returns Secret ucp-cert and the APIService caBundle in a manifest with authorization off.
@@ -1006,6 +1006,27 @@ func Test_UpgradeRadius_StageUCPOffCertificateRefusesForeignDeployment(t *testin
 	}
 }
 
+// issueIntermediateCA returns a CA that root issued, whose PEM holds only its own certificate.
+func issueIntermediateCA(t *testing.T, root testCA, name string) testCA {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	template := &x509.Certificate{
+		SerialNumber:          big.NewInt(time.Now().UnixNano()),
+		Subject:               pkix.Name{CommonName: name},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, root.cert, &key.PublicKey, root.key)
+	require.NoError(t, err)
+	cert, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+	return testCA{cert: cert, key: key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
+}
+
 // ucpKeyPair returns a PEM serving certificate for UCP's Service name issued by ca and its PEM private key.
 func ucpKeyPair(t *testing.T, ca testCA) ([]byte, []byte) {
 	t.Helper()
@@ -1041,6 +1062,14 @@ func Test_StageUCPOffCertificate_VerifiesRenderedKeyPair(t *testing.T) {
 			secret: func(c *stageCluster, unrelated testCA) map[string][]byte {
 				crt, key := ucpKeyPair(t, c.ucpCA)
 				return map[string][]byte{corev1.TLSCertKey: crt, corev1.TLSPrivateKeyKey: key, caCertificateKey: append(append([]byte{}, unrelated.pem...), c.ucpCA.pem...)}
+			},
+		},
+		{
+			name: "certificate issued by an intermediate in tls.crt",
+			secret: func(c *stageCluster, unrelated testCA) map[string][]byte {
+				intermediate := issueIntermediateCA(t, c.ucpCA, "ucp-intermediate")
+				crt, key := ucpKeyPair(t, intermediate)
+				return map[string][]byte{corev1.TLSCertKey: append(crt, intermediate.pem...), corev1.TLSPrivateKeyKey: key, caCertificateKey: c.ucpCA.pem}
 			},
 		},
 		{
