@@ -559,7 +559,7 @@ func Test_UninstallRadius_KeepsSecretOfForeignCertificate(t *testing.T) {
 	for _, secretName := range []string{"", "other-ca"} {
 		t.Run("secretName="+secretName, func(t *testing.T) {
 			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
-				ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+				ResourceVersion: "1", Annotations: issuedSecretAnnotations(ucpAPIServerCASecretName)}}
 			kubeClient := kubefake.NewSimpleClientset(secret)
 			foreign := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, "", nil)
 			if secretName != "" {
@@ -594,7 +594,7 @@ func Test_UninstallRadius_KeepsSecretOfForeignCertificate(t *testing.T) {
 // still signs from radius-apiserver-ca, so uninstall keeps that CA key and does not list it for a resumed uninstall.
 func Test_UninstallRadius_KeepsCASecretOfKeptIssuer(t *testing.T) {
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
-		ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+		ResourceVersion: "1", Annotations: issuedSecretAnnotations(ucpAPIServerCASecretName)}}
 	kubeClient := kubefake.NewSimpleClientset(secret)
 	keep := map[string]string{helmResourcePolicyAnnotation: "keep"}
 	certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, keep)
@@ -632,7 +632,7 @@ func Test_UninstallRadius_KeepsCASecretOfKeptIssuer(t *testing.T) {
 func Test_RadiusUninstallLeftovers_ListsCertificateSecret(t *testing.T) {
 	t.Run("Certificate kept", func(t *testing.T) {
 		secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
-			ResourceVersion: "1", Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCASecretName}}}
+			ResourceVersion: "1", Annotations: issuedSecretAnnotations(ucpAPIServerCASecretName)}}
 		kubeClient := kubefake.NewSimpleClientset(secret)
 		certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCASecretName, radiusReleaseName, map[string]string{helmResourcePolicyAnnotation: "keep"})
 		require.NoError(t, unstructured.SetNestedField(certificate.Object, ucpAPIServerCASecretName, "spec", "secretName"))
