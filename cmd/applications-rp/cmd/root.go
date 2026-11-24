@@ -90,6 +90,10 @@ var rootCmd = &cobra.Command{
 			server.NewAsyncWorker(options, builders),
 		)
 
+		if !options.Config.SHA256Migration.Disabled {
+			services = append(services, server.NewHashMigrationService(options))
+		}
+
 		host := &hosting.Host{
 			Services: services,
 		}

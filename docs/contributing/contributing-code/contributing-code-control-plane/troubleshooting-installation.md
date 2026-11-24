@@ -192,3 +192,7 @@ A cert-manager that `rad` did not install is never removed.
     issuers.cert-manager.io clusterissuers.cert-manager.io \
     orders.acme.cert-manager.io challenges.acme.cert-manager.io
   ```
+
+### Server certificates and the Radius CA bundle
+
+When authorization is enabled, ucp, applications-rp, and dynamic-rp read their server certificate from Secret `<component>-spiffe`, mounted at `/var/run/radius/spiffe`, and ucp, applications-rp, dynamic-rp, and controller read the Radius CA bundle from `ca.crt` of Secret `radius-ca`, mounted at `/var/run/radius/ca`. Both are required volumes, so a pod that waits on volume `spiffe` or `radius-ca`, or a component that fails to load `/var/run/radius/spiffe/tls.crt` or `/var/run/radius/ca/ca.crt`, means cert-manager has not issued that Certificate yet. Check it, for example with `kubectl get certificate radius-ca ucp-spiffe applications-rp-spiffe dynamic-rp-spiffe -n radius-system`, and look at the cert-manager controller logs for the reason.
