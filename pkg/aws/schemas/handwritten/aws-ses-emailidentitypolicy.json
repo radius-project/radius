@@ -1,0 +1,57 @@
+{
+  "typeName": "AWS::SES::EmailIdentityPolicy",
+  "description": "A sending authorization policy of an Amazon SES email identity, which lets other accounts or users send email from the identity. Set it with the SES v2 API's CreateEmailIdentityPolicy and UpdateEmailIdentityPolicy. Deleting the resource deletes the policy. The SES v1 identity policy calls manage the same policies, so this type covers them too.",
+  "additionalProperties": false,
+  "properties": {
+    "EmailIdentity": {
+      "type": "string",
+      "description": "The email address or domain of the identity, such as the EmailIdentity of an AWS::SES::EmailIdentity. It is case-sensitive, and SES takes no ARN here.",
+      "minLength": 1,
+      "pattern": "^[^:|]+$"
+    },
+    "PolicyName": {
+      "type": "string",
+      "description": "The name of the policy. Up to 64 letters, digits, dashes, and underscores.",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "Policy": {
+      "type": "string",
+      "description": "The policy, as JSON, up to 4 KB. SES stores it in its own form, such as an account ID as the account's root ARN, a list of one value as the value, and Version 2008-10-17 when the policy has none; a value in either form counts as the same.",
+      "minLength": 1
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["EmailIdentity", "PolicyName", "Policy"],
+  "createOnlyProperties": [
+    "/properties/EmailIdentity",
+    "/properties/PolicyName"
+  ],
+  "primaryIdentifier": ["/properties/EmailIdentity", "/properties/PolicyName"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ses:CreateEmailIdentityPolicy",
+        "ses:GetEmailIdentityPolicies"
+      ]
+    },
+    "read": {
+      "permissions": ["ses:GetEmailIdentityPolicies"]
+    },
+    "update": {
+      "permissions": [
+        "ses:UpdateEmailIdentityPolicy",
+        "ses:GetEmailIdentityPolicies"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "ses:DeleteEmailIdentityPolicy",
+        "ses:GetEmailIdentityPolicies"
+      ]
+    }
+  }
+}

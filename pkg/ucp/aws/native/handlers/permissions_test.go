@@ -55,6 +55,8 @@ var iamPrefixes = map[string]string{
 	"s3tables":                 "s3tables",
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
+	"ses":                      "ses",
+	"sesv2":                    "ses",
 	"sts":                      "sts",
 	"transfer":                 "transfer",
 }

@@ -1,0 +1,62 @@
+{
+  "typeName": "AWS::SES::IdentityNotificationTopic",
+  "description": "The Amazon SNS topic an Amazon SES identity publishes one type of notification to: bounces, complaints, or deliveries, and whether the notifications include the original email headers. Set it with the SES v1 API's SetIdentityNotificationTopic and SetIdentityHeadersInNotificationsEnabled. Deleting the resource turns headers off and clears the topic, which stops the notifications. SES needs a Bounce and a Complaint topic while email feedback forwarding is off, so turn forwarding on before you delete one, such as with FeedbackAttributes of the AWS::SES::EmailIdentity.",
+  "additionalProperties": false,
+  "properties": {
+    "Identity": {
+      "type": "string",
+      "description": "The email address or domain of the identity, such as the EmailIdentity of an AWS::SES::EmailIdentity. It is case-sensitive. Use the name, not the identity's ARN.",
+      "minLength": 1,
+      "pattern": "^[^:|]+$"
+    },
+    "NotificationType": {
+      "type": "string",
+      "description": "The type of notification.",
+      "enum": ["Bounce", "Complaint", "Delivery"]
+    },
+    "SnsTopic": {
+      "type": "string",
+      "description": "The ARN of the SNS topic, in the identity's region.",
+      "pattern": "^arn:[a-z0-9-]+:sns:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_.-]+$"
+    },
+    "HeadersInNotificationsEnabled": {
+      "type": "boolean",
+      "description": "Whether the notifications include the original email headers. False when left out."
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["Identity", "NotificationType", "SnsTopic"],
+  "createOnlyProperties": [
+    "/properties/Identity",
+    "/properties/NotificationType"
+  ],
+  "primaryIdentifier": ["/properties/Identity", "/properties/NotificationType"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ses:SetIdentityNotificationTopic",
+        "ses:SetIdentityHeadersInNotificationsEnabled",
+        "ses:GetIdentityNotificationAttributes"
+      ]
+    },
+    "read": {
+      "permissions": ["ses:GetIdentityNotificationAttributes"]
+    },
+    "update": {
+      "permissions": [
+        "ses:SetIdentityNotificationTopic",
+        "ses:SetIdentityHeadersInNotificationsEnabled",
+        "ses:GetIdentityNotificationAttributes"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "ses:SetIdentityNotificationTopic",
+        "ses:SetIdentityHeadersInNotificationsEnabled",
+        "ses:GetIdentityNotificationAttributes"
+      ]
+    }
+  }
+}

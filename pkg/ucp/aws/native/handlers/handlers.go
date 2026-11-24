@@ -41,6 +41,8 @@ import (
 	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
+	sessdk "github.com/aws/aws-sdk-go-v2/service/ses"
+	sesv2sdk "github.com/aws/aws-sdk-go-v2/service/sesv2"
 	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
 	transfersdk "github.com/aws/aws-sdk-go-v2/service/transfer"
 
@@ -67,6 +69,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/ses"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/transfer"
 )
 
@@ -79,6 +82,7 @@ func All(cfg aws.Config) []native.Handler {
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
 	rdsAPI := rdssdk.NewFromConfig(cfg)
 	s3API := s3sdk.NewFromConfig(cfg)
+	sesv2API := sesv2sdk.NewFromConfig(cfg)
 	stsAPI := stssdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
@@ -117,6 +121,9 @@ func All(cfg aws.Config) []native.Handler {
 		chime.NewStreamingConfiguration(chimeAPI),
 		chime.NewOrigination(chimeAPI),
 		chime.NewTermination(chimeAPI),
+		ses.NewEmailIdentityPolicy(sesv2API),
+		ses.NewIdentityNotificationTopic(sessdk.NewFromConfig(cfg)),
+		ses.NewDedicatedIPAssignment(sesv2API),
 	}
 }
 

@@ -1,0 +1,160 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_SES_IDENTITY": "radius-rec-02802@example.com",
+    "RADIUS_REC_SES_OTHER_TOPIC": "arn:aws:sns:us-west-2:123456789012:radius-rec-02802-b",
+    "RADIUS_REC_SES_TOPIC": "arn:aws:sns:us-west-2:123456789012:radius-rec-02802-a"
+  },
+  "interactions": [
+    {
+      "service": "SES",
+      "operation": "SetIdentityNotificationTopic",
+      "request": "Action=SetIdentityNotificationTopic\u0026Identity=radius-rec-02802%40example.com\u0026NotificationType=Bounce\u0026SnsTopic=arn%3Aaws%3Asns%3Aus-west-2%3A123456789012%3Aradius-rec-02802-a\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cSetIdentityNotificationTopicResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cSetIdentityNotificationTopicResult/\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e24a0a827-0152-491e-a712-12eccef0768a\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/SetIdentityNotificationTopicResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-a\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e528b4c16-6974-49cd-8f7b-dfb55a800fd7\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-a\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eec8d51d5-923b-4e99-bc34-fc0ea0c6c9ab\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-a\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e4079613e-d224-43aa-909f-0c9436fe24b8\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-a\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e91c9644c-674b-4eb6-bf74-05b97eaf4e7a\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "SetIdentityNotificationTopic",
+      "request": "Action=SetIdentityNotificationTopic\u0026Identity=radius-rec-02802%40example.com\u0026NotificationType=Bounce\u0026SnsTopic=arn%3Aaws%3Asns%3Aus-west-2%3A123456789012%3Aradius-rec-02802-b\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cSetIdentityNotificationTopicResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cSetIdentityNotificationTopicResult/\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ec859e9ec-72c2-4c6d-b760-dd4cd54f3a28\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/SetIdentityNotificationTopicResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-b\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e6bc6e71f-6fbd-4243-8d5e-97201fe8bbbc\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "SetIdentityHeadersInNotificationsEnabled",
+      "request": "Action=SetIdentityHeadersInNotificationsEnabled\u0026Enabled=true\u0026Identity=radius-rec-02802%40example.com\u0026NotificationType=Bounce\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cSetIdentityHeadersInNotificationsEnabledResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cSetIdentityHeadersInNotificationsEnabledResult/\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e8c21556f-0618-4494-bbf6-00c211e55698\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/SetIdentityHeadersInNotificationsEnabledResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-b\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003etrue\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e30f74a1d-ed43-4574-a249-714b770175ba\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-b\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003etrue\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ef4b643e0-8e3e-46c0-8a73-8c90cd0ef27c\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-b\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003etrue\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eea327b07-4d6d-4c2b-9744-c0534af20511\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "SetIdentityHeadersInNotificationsEnabled",
+      "request": "Action=SetIdentityHeadersInNotificationsEnabled\u0026Enabled=false\u0026Identity=radius-rec-02802%40example.com\u0026NotificationType=Bounce\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cSetIdentityHeadersInNotificationsEnabledResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cSetIdentityHeadersInNotificationsEnabledResult/\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e5a9d9d24-9a68-48c0-b334-615fa9167e25\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/SetIdentityHeadersInNotificationsEnabledResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cBounceTopic\u003earn:aws:sns:us-west-2:123456789012:radius-rec-02802-b\u003c/BounceTopic\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e7395a083-264d-4902-9984-45999d8069bd\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "SetIdentityNotificationTopic",
+      "request": "Action=SetIdentityNotificationTopic\u0026Identity=radius-rec-02802%40example.com\u0026NotificationType=Bounce\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cSetIdentityNotificationTopicResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cSetIdentityNotificationTopicResult/\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ed4f6639f-8a78-4306-98d5-9f018752af0c\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/SetIdentityNotificationTopicResponse\u003e\n"
+    },
+    {
+      "service": "SES",
+      "operation": "GetIdentityNotificationAttributes",
+      "request": "Action=GetIdentityNotificationAttributes\u0026Identities.member.1=radius-rec-02802%40example.com\u0026Version=2010-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetIdentityNotificationAttributesResponse xmlns=\"http://ses.amazonaws.com/doc/2010-12-01/\"\u003e\n  \u003cGetIdentityNotificationAttributesResult\u003e\n    \u003cNotificationAttributes\u003e\n      \u003centry\u003e\n        \u003ckey\u003eradius-rec-02802@example.com\u003c/key\u003e\n        \u003cvalue\u003e\n          \u003cHeadersInBounceNotificationsEnabled\u003efalse\u003c/HeadersInBounceNotificationsEnabled\u003e\n          \u003cHeadersInDeliveryNotificationsEnabled\u003efalse\u003c/HeadersInDeliveryNotificationsEnabled\u003e\n          \u003cHeadersInComplaintNotificationsEnabled\u003efalse\u003c/HeadersInComplaintNotificationsEnabled\u003e\n          \u003cForwardingEnabled\u003etrue\u003c/ForwardingEnabled\u003e\n        \u003c/value\u003e\n      \u003c/entry\u003e\n    \u003c/NotificationAttributes\u003e\n  \u003c/GetIdentityNotificationAttributesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ee46dee70-1a32-4a7d-9fa5-244c3a2762c7\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetIdentityNotificationAttributesResponse\u003e\n"
+    }
+  ]
+}

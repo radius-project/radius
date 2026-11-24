@@ -174,6 +174,10 @@ github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1 h1:0TqCogYKHXNpt4NCb3XS1
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1/go.mod h1:/dImqp6jl/qhHSRk72jA4GYFvCOjMQvUguHC07Q4jIs=
 github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.50.0 h1:HVu9kMBQj+75TmFyNtJgL2REzbP1HSgg+/SHIyRmKsg=
 github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.50.0/go.mod h1:HXY+4CgWJM5uIB9uFwPNibvT/GRU7awTCEqYPwdr7ek=
+github.com/aws/aws-sdk-go-v2/service/ses v1.43.0 h1:MaVnbohvht/HDIcSidq1m18iEnUKblMEYxIz9WbrT0k=
+github.com/aws/aws-sdk-go-v2/service/ses v1.43.0/go.mod h1:Iw4M6nz1IeTyf8XwQO5yuwDv+QoFwPTR03xiWbnaYgA=
+github.com/aws/aws-sdk-go-v2/service/sesv2 v1.80.0 h1:mLIq9hTyLnyFKknPzH/by2Ce4sErNfb+pZ/TKEt/X2I=
+github.com/aws/aws-sdk-go-v2/service/sesv2 v1.80.0/go.mod h1:ziEBvrfwkEgl8AhOyjeV8tSXWqKjFYxp84peBxxMVlg=
 github.com/aws/aws-sdk-go-v2/service/signin v1.13.1 h1:ssrDA6AKfXEc3h0Pf4EI4vQ8sN5Zd136SrU9Tjr0XPc=
 github.com/aws/aws-sdk-go-v2/service/signin v1.13.1/go.mod h1:LdwHjKqPE9VCC7sTlWcOAizZx3ZJYjmfwC/EW2tIIAE=
 github.com/aws/aws-sdk-go-v2/service/sso v1.39.5 h1:ANAoa+qt3/9kXnvQVgUyxcTzhzZf4DqaBS+M2DQrELU=
