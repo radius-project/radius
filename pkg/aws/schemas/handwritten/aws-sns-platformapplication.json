@@ -1,0 +1,124 @@
+{
+  "typeName": "AWS::SNS::PlatformApplication",
+  "description": "An Amazon SNS platform application: the credentials Amazon SNS uses to send push notifications to an app's devices through a push notification service, such as Apple Push Notification service (APNs) or Firebase Cloud Messaging (GCM). Create it with CreatePlatformApplication. AWS checks the credentials with the push notification service when you create or change them.",
+  "additionalProperties": false,
+  "properties": {
+    "Name": {
+      "type": "string",
+      "description": "The name of the application, unique within a platform in a region. Generated when left out.",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "Platform": {
+      "type": "string",
+      "description": "The push notification service, such as APNS, APNS_SANDBOX, GCM (Firebase Cloud Messaging), or ADM (Amazon Device Messaging).",
+      "pattern": "^[A-Z_]+$"
+    },
+    "PlatformCredential": {
+      "type": "string",
+      "description": "The credential from the push notification service, such as the private key of an APNs certificate, the signing key of an APNs token, or the Firebase Cloud Messaging service account key in JSON. A secret: AWS never returns it."
+    },
+    "PlatformPrincipal": {
+      "type": "string",
+      "description": "The principal from the push notification service, such as the APNs SSL certificate, or the APNs signing key ID. Firebase Cloud Messaging has none. AWS never returns it."
+    },
+    "ApplePlatformTeamID": {
+      "type": "string",
+      "description": "The Apple developer team ID, for APNs token credentials."
+    },
+    "ApplePlatformBundleID": {
+      "type": "string",
+      "description": "The bundle ID of the iOS app, for APNs token credentials."
+    },
+    "EventEndpointCreated": {
+      "type": "string",
+      "description": "The ARN of the Amazon SNS topic that gets a notification when an endpoint is added to the application."
+    },
+    "EventEndpointDeleted": {
+      "type": "string",
+      "description": "The ARN of the Amazon SNS topic that gets a notification when an endpoint is deleted from the application."
+    },
+    "EventEndpointUpdated": {
+      "type": "string",
+      "description": "The ARN of the Amazon SNS topic that gets a notification when an endpoint of the application changes."
+    },
+    "EventDeliveryFailure": {
+      "type": "string",
+      "description": "The ARN of the Amazon SNS topic that gets a notification when a direct publish to an endpoint of the application fails permanently."
+    },
+    "SuccessFeedbackRoleArn": {
+      "type": "string",
+      "description": "The ARN of the IAM role Amazon SNS uses to log successful deliveries to Amazon CloudWatch Logs."
+    },
+    "FailureFeedbackRoleArn": {
+      "type": "string",
+      "description": "The ARN of the IAM role Amazon SNS uses to log failed deliveries to Amazon CloudWatch Logs."
+    },
+    "SuccessFeedbackSampleRate": {
+      "type": "string",
+      "description": "The percentage of successful deliveries to log, from 0 to 100. AWS can't clear it once set.",
+      "pattern": "^(100|[1-9]?[0-9])$"
+    },
+    "PlatformApplicationArn": {
+      "type": "string",
+      "description": "The ARN of the application."
+    },
+    "Enabled": {
+      "type": "string",
+      "description": "Whether Amazon SNS sends to the application's endpoints, true or false. Amazon SNS turns it off when the push notification service rejects the credentials."
+    },
+    "AuthenticationMethod": {
+      "type": "string",
+      "description": "How the application authenticates with the push notification service: Token or Certificate for APNs, and Token or Key for Firebase Cloud Messaging."
+    },
+    "AppleCertificateExpirationDate": {
+      "type": "string",
+      "description": "When the APNs certificate expires, for APNs certificate credentials."
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["Platform", "PlatformCredential"],
+  "createOnlyProperties": ["/properties/Name", "/properties/Platform"],
+  "readOnlyProperties": [
+    "/properties/PlatformApplicationArn",
+    "/properties/Enabled",
+    "/properties/AuthenticationMethod",
+    "/properties/AppleCertificateExpirationDate"
+  ],
+  "writeOnlyProperties": [
+    "/properties/PlatformCredential",
+    "/properties/PlatformPrincipal"
+  ],
+  "primaryIdentifier": ["/properties/Platform", "/properties/Name"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "sns:CreatePlatformApplication",
+        "sns:ListPlatformApplications",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["sns:ListPlatformApplications"]
+    },
+    "update": {
+      "permissions": [
+        "sns:SetPlatformApplicationAttributes",
+        "sns:ListPlatformApplications",
+        "iam:PassRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "sns:DeletePlatformApplication",
+        "sns:ListPlatformApplications"
+      ]
+    },
+    "list": {
+      "permissions": ["sns:ListPlatformApplications"]
+    }
+  }
+}

@@ -33,6 +33,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.83.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.75.7
 	github.com/aws/aws-sdk-go-v2/service/codebuild v1.79.0
+	github.com/aws/aws-sdk-go-v2/service/connect v1.219.0
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.75.9
 	github.com/aws/aws-sdk-go-v2/service/dax v1.38.15
 	github.com/aws/aws-sdk-go-v2/service/docdb v1.59.0
@@ -53,6 +54,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3tables v1.26.0
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1
 	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.50.0
+	github.com/aws/aws-sdk-go-v2/service/sns v1.48.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0
 	github.com/aws/aws-sdk-go-v2/service/transfer v1.86.8
 	github.com/aws/smithy-go v1.28.9

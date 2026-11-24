@@ -23,6 +23,7 @@ import (
 	chimesdkvoicesdk "github.com/aws/aws-sdk-go-v2/service/chimesdkvoice"
 	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	codebuildsdk "github.com/aws/aws-sdk-go-v2/service/codebuild"
+	connectsdk "github.com/aws/aws-sdk-go-v2/service/connect"
 	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
 	daxsdk "github.com/aws/aws-sdk-go-v2/service/dax"
 	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
@@ -41,6 +42,7 @@ import (
 	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
+	snssdk "github.com/aws/aws-sdk-go-v2/service/sns"
 	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
 	transfersdk "github.com/aws/aws-sdk-go-v2/service/transfer"
 
@@ -50,6 +52,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chime"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/connect"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
@@ -67,6 +70,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sns"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/transfer"
 )
 
@@ -117,6 +121,8 @@ func All(cfg aws.Config) []native.Handler {
 		chime.NewStreamingConfiguration(chimeAPI),
 		chime.NewOrigination(chimeAPI),
 		chime.NewTermination(chimeAPI),
+		sns.NewPlatformApplication(snssdk.NewFromConfig(cfg)),
+		connect.NewPhoneNumberContactFlowAssociation(connectsdk.NewFromConfig(cfg)),
 	}
 }
 

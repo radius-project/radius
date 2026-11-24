@@ -37,6 +37,7 @@ var iamPrefixes = map[string]string{
 	"chimesdkvoice":            "chime",
 	"cloudwatch":               "cloudwatch",
 	"codebuild":                "codebuild",
+	"connect":                  "connect",
 	"databasemigrationservice": "dms",
 	"dax":                      "dax",
 	"docdb":                    "rds",
@@ -55,6 +56,7 @@ var iamPrefixes = map[string]string{
 	"s3tables":                 "s3tables",
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
+	"sns":                      "sns",
 	"sts":                      "sts",
 	"transfer":                 "transfer",
 }

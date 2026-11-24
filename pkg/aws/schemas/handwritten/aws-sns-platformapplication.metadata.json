@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::SNS::PlatformApplication",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": "PlatformApplicationArn"
+}
