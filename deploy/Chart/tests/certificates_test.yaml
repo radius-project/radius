@@ -4,6 +4,9 @@ templates:
 release:
   name: radius
   namespace: radius-system
+capabilities:
+  apiVersions:
+    - admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy
 tests:
   - it: renders nothing when authorization is off
     asserts:
@@ -209,21 +212,21 @@ tests:
           path: spec.secretName
           pattern: '-mtls$'
 
-  - it: fails for caSecret mode
+  - it: fails for caSecret without explicit public trust
     set:
       global.rbac.enabled: true
       global.rbac.certificates.mode: caSecret
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=caSecret is not supported yet. Use selfSigned."
+          errorMessage: "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain."
 
-  - it: fails for issuerRef mode
+  - it: fails for issuerRef without explicit public trust
     set:
       global.rbac.enabled: true
       global.rbac.certificates.mode: issuerRef
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=issuerRef is not supported yet. Use selfSigned."
+          errorMessage: "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain."
 
   - it: fails for an unknown mode
     set:
@@ -231,7 +234,7 @@ tests:
       global.rbac.certificates.mode: bogus
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: renders a SPIFFE server certificate for each receiver
     set:
@@ -372,7 +375,7 @@ tests:
       global.rbac.certificates.mode: false
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"false\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"false\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: fails for a zero mode instead of defaulting
     set:
@@ -380,7 +383,7 @@ tests:
       global.rbac.certificates.mode: 0
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"0\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"0\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: fails for an empty mode instead of defaulting
     set:
@@ -388,7 +391,7 @@ tests:
       global.rbac.certificates.mode: ""
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: ignores the certificate mode when authorization is off
     set:

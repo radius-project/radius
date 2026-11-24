@@ -55,6 +55,13 @@ type testCA struct {
 	pem  []byte
 }
 
+func testCACertificates(t *testing.T, bundle []byte) []*x509.Certificate {
+	t.Helper()
+	certs, err := caCertificates(bundle)
+	require.NoError(t, err)
+	return certs
+}
+
 func newTestCA(t *testing.T, name string) testCA {
 	t.Helper()
 	return mustTestCA(name)
@@ -116,7 +123,11 @@ func tlsSecret(name string, crt, caCrt []byte) *corev1.Secret {
 // whose ca.crt is the CA certificate itself, annotated by secretTemplate so cainjector may copy it.
 func apiServerCASecret(ca testCA) *corev1.Secret {
 	secret := tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem)
-	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true", "cert-manager.io/certificate-name": ucpAPIServerCASecretName}
+	secret.Annotations = map[string]string{
+		allowDirectInjectionAnnotation: "true", certificateNameAnnotation: ucpAPIServerCASecretName,
+		"cert-manager.io/issuer-name": radiusBootstrapIssuerName, "cert-manager.io/issuer-kind": "Issuer",
+		"cert-manager.io/issuer-group": "cert-manager.io",
+	}
 	return secret
 }
 
@@ -167,8 +178,7 @@ var issuedUCPAPIServerCA = sync.OnceValue(func() []byte { return mustTestCA("rad
 // issuedUCPAPIServerTrustClient returns a client for a fresh install where cert-manager has issued
 // radius-apiserver-ca.
 func issuedUCPAPIServerTrustClient(string) (kubernetes.Interface, error) {
-	secret := tlsSecret(ucpAPIServerCASecretName, issuedUCPAPIServerCA(), issuedUCPAPIServerCA())
-	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+	secret := apiServerCASecret(testCA{pem: issuedUCPAPIServerCA()})
 	return kubefake.NewSimpleClientset(secret), nil
 }
 
@@ -336,9 +346,18 @@ func Test_extraCertificates(t *testing.T) {
 	require.NoError(t, err)
 	expiredPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 
-	require.Equal(t, 0, extraCertificates(ca.pem, ca.pem))
-	require.Equal(t, 0, extraCertificates(append(append([]byte{}, ca.pem...), expiredPEM...), ca.pem))
-	require.Equal(t, 1, extraCertificates(append(append([]byte{}, ca.pem...), other.pem...), ca.pem))
+	for _, tt := range []struct {
+		bundle []byte
+		extra  int
+	}{
+		{ca.pem, 0},
+		{append(append([]byte{}, ca.pem...), expiredPEM...), 0},
+		{append(append([]byte{}, ca.pem...), other.pem...), 1},
+	} {
+		count, err := extraCertificates(tt.bundle, ca.pem)
+		require.NoError(t, err)
+		require.Equal(t, tt.extra, count)
+	}
 }
 
 func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
@@ -357,8 +376,9 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expireUCPAPIServiceWait(t)
-			if tt.want != "cert-manager.io/allow-direct-injection" {
-				tt.secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+			tt.secret.Annotations = apiServerCASecret(ca).Annotations
+			if tt.want == "cert-manager.io/allow-direct-injection" {
+				delete(tt.secret.Annotations, allowDirectInjectionAnnotation)
 			}
 			kubeClient := kubefake.NewSimpleClientset(tt.secret)
 			dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
@@ -494,7 +514,7 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 		ucpCA := newTestCA(t, "ucp-ca")
 		kubeClient := kubefake.NewSimpleClientset(foreignTrustSecret())
 
-		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, caCertificates(ucpCA.pem))
+		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, testCACertificates(t, ucpCA.pem))
 		require.ErrorContains(t, err, "radius-apiserver-trust")
 		requireForeignTrustSecretKept(t, kubeClient)
 	})
@@ -574,7 +594,7 @@ func Test_UCPAPIServerTrust_EmptyCACertificate(t *testing.T) {
 
 	t.Run("writer refuses it and keeps it", func(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset(emptyTrustSecret())
-		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, caCertificates(newTestCA(t, "ucp-ca").pem))
+		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, testCACertificates(t, newTestCA(t, "ucp-ca").pem))
 		require.ErrorContains(t, err, "radius-apiserver-trust")
 		requireKept(t, kubeClient)
 	})
@@ -609,6 +629,10 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 	for name, change := range map[string]func(*corev1.Secret){
 		"changed":   func(s *corev1.Secret) { s.ResourceVersion = "2" },
 		"recreated": func(s *corev1.Secret) { s.UID = "trust-2" },
+		"retained as a lifecycle pin": func(s *corev1.Secret) {
+			s.ResourceVersion = "2"
+			s.Annotations["radius.io/certificate-mode"] = "selfSigned"
+		},
 	} {
 		t.Run("keeps a Secret "+name+" after rad reads it", func(t *testing.T) {
 			c := newStageCluster(t, nil, false)
@@ -670,7 +694,7 @@ func Test_writeUCPAPIServerTrust_RetriesConflict(t *testing.T) {
 		return true, nil, apierrors.NewConflict(corev1.Resource("secrets"), ucpAPIServerTrustSecretName, errors.New("the object has been modified"))
 	})
 
-	_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, caCertificates(append(append([]byte{}, c.ucpCA.pem...), apiServerCA.pem...)))
+	_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, testCACertificates(t, append(append([]byte{}, c.ucpCA.pem...), apiServerCA.pem...)))
 	require.NoError(t, err)
 	require.Equal(t, 1, conflicts)
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, c.kube))

@@ -17,12 +17,10 @@ limitations under the License.
 package helm
 
 import (
-	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"strings"
 
@@ -135,7 +133,10 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if err != nil {
 		return fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpOffCertificateSecretName, err)
 	}
-	offCAs := caCertificates(offSecret.Data[caCertificateKey])
+	offCAs, err := caCertificates(offSecret.Data[caCertificateKey])
+	if err != nil {
+		return fmt.Errorf("invalid Secret %s/%s ca.crt: %w", radiusNamespace, ucpOffCertificateSecretName, err)
+	}
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
 	}
@@ -254,34 +255,24 @@ func ucpOffTrustClean(apiService *unstructured.Unstructured, offCAs []*x509.Cert
 			return false, nil
 		}
 	}
-	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	encoded, _, err := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	if err != nil {
+		return false, err
+	}
 	bundle, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
+		return false, err
 	}
-	live, ok := exactCertificates(bundle)
-	return ok && containsCertificates(live, offCAs) && containsCertificates(offCAs, live), nil
-}
-
-// exactCertificates returns every certificate in a PEM bundle and whether the bundle holds nothing else: each block
-// is a parseable CERTIFICATE and no data follows the last block.
-func exactCertificates(bundle []byte) ([]*x509.Certificate, bool) {
-	var certs []*x509.Certificate
-	for {
-		var block *pem.Block
-		block, bundle = pem.Decode(bundle)
-		if block == nil {
-			return certs, len(bytes.TrimSpace(bundle)) == 0
-		}
-		if block.Type != "CERTIFICATE" {
-			return nil, false
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, false
-		}
-		certs = append(certs, cert)
+	if len(bundle) == 0 {
+		return false, nil
 	}
+	live, err := parseCertificateBundlePEM(bundle)
+	if err != nil {
+		// Treat malformed content as unclean. The caller replaces it with the
+		// validated Off CA; it must never incorporate bytes from this bundle.
+		return false, nil
+	}
+	return containsCertificates(live, offCAs) && containsCertificates(offCAs, live), nil
 }
 
 // ucpOffLeftovers returns the state of each Secret of leftovers.
@@ -338,6 +329,9 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool {
 	if leftover.certificate != "" {
 		return secret.Annotations[certificateNameAnnotation] == leftover.certificate
+	}
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
+		return false
 	}
 	return ownsUCPAPIServerTrust(secret)
 }
