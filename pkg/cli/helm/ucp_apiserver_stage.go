@@ -167,6 +167,11 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if len(live) == 0 {
 		return nil
 	}
+	// cert-manager would issue the staged Certificate into a Secret of that name that another owner created, and the
+	// chart refuses to trust one that the release does not own, so stop before writing anything.
+	if err := refuseForeignUCPAPIServerCA(ctx, kubeContext, kubeClient, radiusNamespace); err != nil {
+		return err
+	}
 	// Decide from what the API server trusts, not from the inject-ca-from-secret annotation: Helm's switch to
 	// authorization off keeps the annotation rad set, and a run that stopped before ReconcileUCPOffAPIServerTrust, or an
 	// older rad, leaves it while UCP serves a ucp-ca certificate again.
@@ -235,6 +240,25 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return err
 	}
 	return trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), trusted, "both the current CA of UCP and "+ucpAPIServerCASecretName)
+}
+
+// refuseForeignUCPAPIServerCA returns an error when Secret radius-apiserver-ca exists without the markers of the Radius
+// release, as ownsUCPAPIServerCA describes.
+func refuseForeignUCPAPIServerCA(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string) error {
+	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerCASecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerCASecretName, err)
+	}
+	if ownsUCPAPIServerCA(secret, radiusNamespace) {
+		return nil
+	}
+	return fmt.Errorf("Secret %s/%s is not marked for Helm release %s/%s (%s), so rad will not trust its CA. Helm has not changed Radius. "+
+		"If nothing else uses the Secret, delete it with %s, then run the command again",
+		radiusNamespace, ucpAPIServerCASecretName, radiusNamespace, radiusReleaseName, foreignUCPAPIServerCAProblem(radiusNamespace),
+		kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerCASecretName))
 }
 
 // stageUCPOffCertificate moves UCP to the certificate that Helm applies when authorization turns off, before Helm

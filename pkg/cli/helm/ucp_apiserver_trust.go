@@ -430,8 +430,9 @@ func (i *Impl) ucpAPIServerTrustClients(kubeContext string) (kubernetes.Interfac
 }
 
 // readUCPAPIServerCA returns the CA certificate in tls.crt of radius-apiserver-ca and the ca.crt cainjector copies
-// into the APIService, or describes why they are not usable. ca.crt must hold only CA certificates, including the
-// one in tls.crt, and the Secret must allow cainjector to copy it.
+// into the APIService, or describes why they are not usable. The Secret must carry the release markers that the
+// Certificate's secretTemplate sets, as ownsUCPAPIServerCA describes; ca.crt must hold only CA certificates, including
+// the one in tls.crt, and the Secret must allow cainjector to copy it.
 func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radiusNamespace string) (*x509.Certificate, []byte, string, error) {
 	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerCASecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -439,6 +440,9 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 	}
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerCASecretName, err)
+	}
+	if !ownsUCPAPIServerCA(secret, radiusNamespace) {
+		return nil, nil, foreignUCPAPIServerCAProblem(radiusNamespace), nil
 	}
 	cert, err := firstCertificate(secret.Data[corev1.TLSCertKey])
 	if err != nil {
@@ -709,4 +713,16 @@ func encodeCertificates(certs []*x509.Certificate) []byte {
 		_ = pem.Encode(&buf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw})
 	}
 	return buf.Bytes()
+}
+
+// ownsUCPAPIServerCA reports whether secret, Secret radius-apiserver-ca, carries the annotations that the
+// secretTemplate of the Radius release's Certificate sets. rad trusts the CA of no other Secret of that name.
+func ownsUCPAPIServerCA(secret *corev1.Secret, radiusNamespace string) bool {
+	return secret.Annotations[releaseNameAnnotation] == radiusReleaseName &&
+		secret.Annotations[releaseNamespaceAnnotation] == radiusNamespace
+}
+
+func foreignUCPAPIServerCAProblem(radiusNamespace string) string {
+	return fmt.Sprintf("it does not have annotations %s: %q and %s: %q, which the Certificate's secretTemplate sets for the Radius release",
+		releaseNameAnnotation, radiusReleaseName, releaseNamespaceAnnotation, radiusNamespace)
 }

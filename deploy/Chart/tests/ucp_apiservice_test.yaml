@@ -150,6 +150,9 @@ tests:
           metadata:
             name: radius-apiserver-ca
             namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
           data:
             ca.crt: YXBpLWNh
             tls.crt: YXBpLWNh
@@ -163,6 +166,48 @@ tests:
           path: spec.caBundle
           value: YXBpLWNh
         documentIndex: 1
+
+  - it: refuses a radius-apiserver-ca Secret marked for another release
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
+              radapp.io/release-name: other
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: Zm9yZWlnbg==
+            tls.crt: Zm9yZWlnbg==
+            tls.key: a2V5
+    asserts:
+      - failedTemplate:
+          errorPattern: "Secret radius-system/radius-apiserver-ca is not marked for Helm release radius-system/radius"
+
+  - it: refuses an unmarked radius-apiserver-ca Secret
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+          data:
+            ca.crt: Zm9yZWlnbg==
+            tls.crt: Zm9yZWlnbg==
+            tls.key: a2V5
+    asserts:
+      - failedTemplate:
+          errorPattern: "kubectl delete secret radius-apiserver-ca -n radius-system"
 
   - it: injects and renders the caBundle from the trust Secret during the upgrade overlap
     template: ucp/apiservice.yaml
@@ -184,6 +229,9 @@ tests:
           metadata:
             name: radius-apiserver-ca
             namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
           data:
             ca.crt: YXBpLWNh
     asserts:
@@ -215,6 +263,9 @@ tests:
           metadata:
             name: radius-apiserver-ca
             namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
           data:
             ca.crt: YXBpLWNh
     asserts:
@@ -247,6 +298,9 @@ tests:
           metadata:
             name: radius-apiserver-ca
             namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
           data:
             ca.crt: YXBpLWNh
     asserts:
