@@ -80,8 +80,8 @@ env:
   LOCAL_REGISTRY_SERVER: localhost
   # Local Docker registry port
   LOCAL_REGISTRY_PORT: "5000"
-  # bicep-types ACR url for pulling public AWS Bicep types
-  BICEP_TYPES_REGISTRY: biceptypes.azurecr.io
+  # Public production AWS extension.
+  BICEP_TYPES_REGISTRY: ghcr.io/radius-project
   # Git HTTP server URL
   GIT_HTTP_SERVER_URL: http://localhost:30080
   # Git username used for pushing commits during tests
@@ -344,10 +344,11 @@ jobs:
         run: make install-bicep
 
       - name: Publish bicep types
+        # OCI publishing treats loopback names as HTTP; use the existing TLS alias.
         env:
           BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
@@ -358,9 +359,10 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
+            "experimentalFeaturesEnabled": {"ociEnabled": true},
             "extensions": {
-              "radius": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
-              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
+              "radius": "br:${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/bicep-types-aws:edge"
             }
           }
           EOF
@@ -678,7 +680,7 @@ jobs:
         env:
           BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
 
       - name: Publish UDT types
         env:
@@ -686,7 +688,7 @@ jobs:
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/testresources:${BICEP_TYPES_VERSION}" --force
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target "br:${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/testresources:${BICEP_TYPES_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
@@ -697,10 +699,11 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
+            "experimentalFeaturesEnabled": {"ociEnabled": true},
             "extensions": {
-              "radius": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
-              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest",
-              "testresources": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/testresources:$RADIUS_VERSION"
+              "radius": "br:${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/bicep-types-aws:edge",
+              "testresources": "br:${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/testresources:$RADIUS_VERSION"
             }
           }
           EOF
@@ -714,7 +717,7 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           make publish-test-bicep-recipes
         env:
-          BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
+          BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
           SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
@@ -765,11 +768,9 @@ jobs:
           # local registry; ignored by other legs.
           RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
-      - name: Run authz mTLS boundary tests in enforce mode
+      - name: Run authz boundary tests in enforce mode
         # The authz leg installs dryRun above. Switch the same installation to enforce and rerun
-        # only the tests that call applications-rp directly from rogue pods, so the enforce
-        # branches of the mTLS boundary tests run in CI. Other tests are not rerun because, until
-        # clients present certificates, enforce breaks UCP->RP calls.
+        # the internal authentication boundary tests, whose enforce branches differ from dryRun.
         id: authz-enforce-tests
         if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
         run: |
@@ -779,7 +780,7 @@ jobs:
           rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" \
             --set global.rbac.dryRun=false --set global.rbac.enabled=true
           kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)\$\$'"
+          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedCaller|TokenReplay|WrongServerSPIFFEID)\$\$'"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}

@@ -98,6 +98,17 @@ func Test_Options_UnmarshalYAML(t *testing.T) {
 	}
 }
 
+func Test_Options_EffectiveCADirectory(t *testing.T) {
+	t.Parallel()
+
+	var opts Options
+	require.NoError(t, yaml.Unmarshal([]byte("certificateDirectory: /var/run/radius/spiffe\ncaDirectory: /var/run/radius/ca"), &opts))
+	require.Equal(t, "/var/run/radius/ca", opts.EffectiveCADirectory())
+
+	opts.CADirectory = ""
+	require.Equal(t, "/var/run/radius/spiffe", opts.EffectiveCADirectory(), "falls back to certificateDirectory")
+}
+
 func Test_LogMode(t *testing.T) {
 	t.Parallel()
 
