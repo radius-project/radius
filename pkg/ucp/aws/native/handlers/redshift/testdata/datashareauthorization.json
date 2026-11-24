@@ -1,0 +1,129 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CONSUMER_ACCOUNT": "444455556666",
+    "RADIUS_REC_DATASHARE_ARN": "arn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "AuthorizeDataShare",
+      "request": "Action=AuthorizeDataShare\u0026AllowWrites=false\u0026ConsumerIdentifier=444455556666\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cAuthorizeDataShareResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cAuthorizeDataShareResult\u003e\n    \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n    \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n    \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n    \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n    \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n    \u003cDataShareAssociations\u003e\n      \u003cmember\u003e\n        \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n        \u003cStatusChangeDate\u003e2026-11-22T19:48:38.621Z\u003c/StatusChangeDate\u003e\n        \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n        \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n        \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n      \u003c/member\u003e\n    \u003c/DataShareAssociations\u003e\n  \u003c/AuthorizeDataShareResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ecee2b949-1e51-43ad-ae9a-d98d511c4910\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/AuthorizeDataShareResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:38.621Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ec86e754e-7dd7-4921-a7aa-44a014a74460\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:38.621Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eca44d01e-d5e4-43ea-b69b-b7e542444b7f\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:38.621Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e76385195-e3ad-4079-980f-486300b7aa14\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:38.621Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ea3eed661-8338-4f26-b0ed-1bb5ebff1184\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "AuthorizeDataShare",
+      "request": "Action=AuthorizeDataShare\u0026AllowWrites=true\u0026ConsumerIdentifier=444455556666\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cAuthorizeDataShareResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cAuthorizeDataShareResult\u003e\n    \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n    \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n    \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n    \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n    \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n    \u003cDataShareAssociations\u003e\n      \u003cmember\u003e\n        \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n        \u003cStatusChangeDate\u003e2026-11-22T19:48:39.205Z\u003c/StatusChangeDate\u003e\n        \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n        \u003cProducerAllowedWrites\u003etrue\u003c/ProducerAllowedWrites\u003e\n        \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n      \u003c/member\u003e\n    \u003c/DataShareAssociations\u003e\n  \u003c/AuthorizeDataShareResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003efa84df90-c83b-4135-bef1-95dce5c1c125\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/AuthorizeDataShareResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:39.205Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003etrue\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e94d0ae94-99a0-4358-8779-a6ce4684aeb2\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:39.205Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003etrue\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003efa583afe-3c5c-4057-b9a2-37e7a33dc7a0\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:39.205Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003etrue\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e63e564f4-a078-4a59-9d81-8cd3ac9c4ee4\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:39.205Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003etrue\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e8dcc6c35-5c03-4487-a94b-2711af4f3f4a\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DeauthorizeDataShare",
+      "request": "Action=DeauthorizeDataShare\u0026ConsumerIdentifier=444455556666\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDeauthorizeDataShareResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDeauthorizeDataShareResult\u003e\n    \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n    \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n    \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n    \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n    \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n    \u003cDataShareAssociations\u003e\n      \u003cmember\u003e\n        \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n        \u003cStatusChangeDate\u003e2026-11-22T19:48:39.787Z\u003c/StatusChangeDate\u003e\n        \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n        \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n        \u003cStatus\u003eDEAUTHORIZED\u003c/Status\u003e\n      \u003c/member\u003e\n    \u003c/DataShareAssociations\u003e\n  \u003c/DeauthorizeDataShareResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ed52385b1-ecf7-4004-bbc9-54bb1d9a566d\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DeauthorizeDataShareResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeDataShares",
+      "request": "Action=DescribeDataShares\u0026DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A176adb03-4206-4a45-99a4-0495f63e80c4%2Fradius_rec_auth\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeDataSharesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeDataSharesResult\u003e\n    \u003cDataShares\u003e\n      \u003cmember\u003e\n        \u003cDataShareId\u003e107293\u003c/DataShareId\u003e\n        \u003cProducerNamespaceArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerNamespaceArn\u003e\n        \u003cAllowPubliclyAccessibleConsumers\u003efalse\u003c/AllowPubliclyAccessibleConsumers\u003e\n        \u003cProducerArn\u003earn:aws:redshift-serverless:us-west-2:123456789012:namespace/176adb03-4206-4a45-99a4-0495f63e80c4\u003c/ProducerArn\u003e\n        \u003cDataShareArn\u003earn:aws:redshift:us-west-2:123456789012:datashare:176adb03-4206-4a45-99a4-0495f63e80c4/radius_rec_auth\u003c/DataShareArn\u003e\n        \u003cDataShareAssociations\u003e\n          \u003cmember\u003e\n            \u003cConsumerIdentifier\u003e444455556666\u003c/ConsumerIdentifier\u003e\n            \u003cStatusChangeDate\u003e2026-11-22T19:48:39.787Z\u003c/StatusChangeDate\u003e\n            \u003cCreatedDate\u003e2026-11-22T19:48:04.623Z\u003c/CreatedDate\u003e\n            \u003cProducerAllowedWrites\u003efalse\u003c/ProducerAllowedWrites\u003e\n            \u003cStatus\u003eDEAUTHORIZED\u003c/Status\u003e\n          \u003c/member\u003e\n        \u003c/DataShareAssociations\u003e\n      \u003c/member\u003e\n    \u003c/DataShares\u003e\n  \u003c/DescribeDataSharesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eb6e70507-d9a6-4856-ad8d-446541abd012\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeDataSharesResponse\u003e\n"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "typeName": "AWS::Redshift::DataShareAuthorization",
+  "description": "A producer account's authorization of an Amazon Redshift data share for one consumer, made with Redshift's AuthorizeDataShare. The producer must first grant the data share to the consumer in SQL, such as GRANT USAGE ON DATASHARE sales TO ACCOUNT '111122223333'. The consumer then accepts it separately in its own account, such as with AWS::Redshift::DataShareConsumerAssociation.",
+  "properties": {
+    "DataShareArn": {
+      "type": "string",
+      "description": "The ARN of the data share, such as arn:aws:redshift:us-west-2:123456789012:datashare:<namespace ID>/sales.",
+      "maxLength": 2048
+    },
+    "ConsumerIdentifier": {
+      "type": "string",
+      "description": "The AWS account ID of the consumer to authorize.",
+      "minLength": 12,
+      "maxLength": 12,
+      "pattern": "^[0-9]{12}$"
+    },
+    "AllowWrites": {
+      "type": "boolean",
+      "description": "Whether the consumer may write to the data share. AWS uses false when it is left out."
+    },
+    "ProducerArn": {
+      "type": "string",
+      "description": "The ARN of the producer namespace."
+    },
+    "Status": {
+      "type": "string",
+      "description": "AUTHORIZED until the consumer associates the data share, and ACTIVE once it has."
+    }
+  },
+  "required": ["DataShareArn", "ConsumerIdentifier"],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/DataShareArn",
+    "/properties/ConsumerIdentifier"
+  ],
+  "createOnlyProperties": [
+    "/properties/DataShareArn",
+    "/properties/ConsumerIdentifier"
+  ],
+  "readOnlyProperties": ["/properties/ProducerArn", "/properties/Status"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "redshift:AuthorizeDataShare",
+        "redshift:DescribeDataShares",
+        "redshift:DescribeDataSharesForProducer"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "redshift:DescribeDataShares",
+        "redshift:DescribeDataSharesForProducer"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "redshift:AuthorizeDataShare",
+        "redshift:DescribeDataShares",
+        "redshift:DescribeDataSharesForProducer"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift:DeauthorizeDataShare",
+        "redshift:DescribeDataShares",
+        "redshift:DescribeDataSharesForProducer"
+      ]
+    },
+    "list": {
+      "permissions": ["redshift:DescribeDataSharesForProducer"]
+    }
+  }
+}

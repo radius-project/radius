@@ -332,6 +332,11 @@ type Failure struct {
 	// ClientError is true when the request caused the failure, such as an invalid property value, rather than AWS.
 	ClientError bool
 
+	// Conflict is true when AWS can't make the change now because the resource, or the one it belongs to, is busy
+	// with another change that ends on its own, such as an RDS instance changing another tenant database. UCP
+	// answers a start call's Conflict failure with 409, so the caller deploys again later.
+	Conflict bool
+
 	// Outcome is how much of the operation AWS applied. The zero value, OutcomeUnknown, keeps the pending values as
 	// possibly applied.
 	Outcome Outcome

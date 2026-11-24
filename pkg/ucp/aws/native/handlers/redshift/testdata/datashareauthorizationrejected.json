@@ -1,0 +1,18 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_DATASHARE_ARN": "arn:aws:redshift:us-west-2:123456789012:datashare:99bb655c-5538-4fc0-b161-0774338456a2/radius_rec_auth"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "AuthorizeDataShare",
+      "request": "Action=AuthorizeDataShare&AllowWrites=false&ConsumerIdentifier=111122223333&DataShareArn=arn%3Aaws%3Aredshift%3Aus-west-2%3A123456789012%3Adatashare%3A99bb655c-5538-4fc0-b161-0774338456a2%2Fradius_rec_auth&Version=2012-12-01",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<ErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\">\n  <Error>\n    <Type>Sender</Type>\n    <Code>InvalidDataShareFault</Code>\n    <Message>The data share isn't available because it doesn't exist.</Message>\n  </Error>\n  <RequestId>3dc31a45-3b87-47b1-9184-9c18599bf8b0</RequestId>\n</ErrorResponse>\n"
+    }
+  ]
+}
