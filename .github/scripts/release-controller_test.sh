@@ -338,9 +338,9 @@ test_unknown_dispatch_summary() {
 
 test_release_build_contract() {
     assert_json "${CONTROLLER}" \
-        '[.jobs.validate.steps[] | select((.run // "") |
-        contains("verify-release-build-contract.sh")) |
-        [.if, .env.RELEASE_COMMIT]]' \
+        '[.jobs.validate.steps[] | select((.with.script // "") |
+        contains("verifyReleaseBuildSource")) |
+        [.if, .env.INPUT_SOURCE_SHA]]' \
         "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\"]]" \
         "validation must check the tag workflows of the exact release commit"
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \
@@ -349,11 +349,11 @@ test_release_build_contract() {
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \
         '--expected-targets .github/release-parity/targets.json' \
         "preparation must bind intended targets to the source contract"
-    assert_contains "${CONTROLLER}" \
-        "args+=(--expected-targets \"\${RUNNER_TEMP}/approved-targets.json\")" \
+    assert_contains "${ROOT}/.github/scripts/resolve-release-controller.mjs" \
+        '"--expected-targets"' \
         "controller must bind approved targets before mutation"
-    assert_contains "${CONTROLLER}" \
-        "yq -o=json '.expectedOutputs'" \
+    assert_contains "${ROOT}/.github/scripts/resolve-release-controller.mjs" \
+        'writeFile(targetsFile, JSON.stringify(plan.expectedOutputs))' \
         "controller targets must come from the approved plan"
 }
 
