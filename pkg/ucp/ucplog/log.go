@@ -133,12 +133,12 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 
 // buildLogger builds cfg, applying its sampling to every message except
 // AuthorizationRequestMessage.
-func buildLogger(cfg zap.Config) (*zap.Logger, error) {
+func buildLogger(cfg zap.Config, options ...zap.Option) (*zap.Logger, error) {
 	sampling := cfg.Sampling
 	cfg.Sampling = nil
-	logger, err := cfg.Build(zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+	logger, err := cfg.Build(append(options, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
 		return sampleExcept(core, sampling, AuthorizationRequestMessage)
-	}))
+	}))...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize zap logger: %v", err)
 	}

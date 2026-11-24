@@ -17,11 +17,13 @@ limitations under the License.
 package ucplog
 
 import (
+	"bytes"
 	"encoding/json"
-	"os"
-	"path/filepath"
+	"net/url"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/go-logr/zapr"
 	"github.com/stretchr/testify/require"
@@ -122,10 +124,13 @@ func (c *testCore) Sync() error {
 func Test_BuildLoggerDoesNotSampleAuthorizationRequests(t *testing.T) {
 	cfg := zap.NewProductionConfig()
 	require.NotNil(t, cfg.Sampling)
-	path := filepath.Join(t.TempDir(), "log.json")
-	cfg.OutputPaths = []string{path}
-	logger, err := buildLogger(cfg)
+	// An in-memory sink leaves no open file behind, and a fixed clock keeps
+	// the whole burst in one sampling interval.
+	sink := registerMemorySink(t)
+	cfg.OutputPaths = []string{memorySinkScheme + ":"}
+	logger, err := buildLogger(cfg, zap.WithClock(fixedClock{}))
 	require.NoError(t, err)
+	logger = logger.With(zap.String("request", "fields"))
 
 	const burst = 200
 	for range burst {
@@ -137,19 +142,69 @@ func Test_BuildLoggerDoesNotSampleAuthorizationRequests(t *testing.T) {
 	logger.Info(AuthorizationRequestMessage, zap.String("result", "wouldDeny"))
 	require.NoError(t, logger.Sync())
 
-	data, err := os.ReadFile(path)
-	require.NoError(t, err)
 	counts := map[string]int{}
-	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(sink.String()), "\n") {
 		var entry struct {
 			Message string `json:"msg"`
 			Result  string `json:"result"`
+			Request string `json:"request"`
 		}
 		require.NoError(t, json.Unmarshal([]byte(line), &entry))
+		require.Equal(t, "fields", entry.Request, "logger.With fields apply to both paths")
 		counts[entry.Message+"/"+entry.Result]++
 	}
-	// Production sampling still applies to other messages in the same second.
-	require.Less(t, counts["Other message/"], burst)
+	// Production sampling keeps the first 100 other messages, then every 100th.
+	require.Equal(t, 101, counts["Other message/"])
 	require.Equal(t, burst, counts[AuthorizationRequestMessage+"/allow"])
 	require.Equal(t, 1, counts[AuthorizationRequestMessage+"/wouldDeny"])
 }
+
+const memorySinkScheme = "ucplogtest"
+
+var memorySink = sync.OnceValues(func() (*memoryBuffer, error) {
+	buffer := &memoryBuffer{}
+	return buffer, zap.RegisterSink(memorySinkScheme, func(*url.URL) (zap.Sink, error) {
+		return buffer, nil
+	})
+})
+
+// registerMemorySink returns the process-wide test sink, emptied for this test.
+func registerMemorySink(t *testing.T) *memoryBuffer {
+	t.Helper()
+	sink, err := memorySink()
+	require.NoError(t, err)
+	sink.Reset()
+	return sink
+}
+
+type memoryBuffer struct {
+	mu     sync.Mutex
+	buffer bytes.Buffer
+}
+
+func (b *memoryBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buffer.Write(p)
+}
+
+func (b *memoryBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buffer.String()
+}
+
+func (b *memoryBuffer) Reset() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buffer.Reset()
+}
+
+func (*memoryBuffer) Sync() error  { return nil }
+func (*memoryBuffer) Close() error { return nil }
+
+type fixedClock struct{}
+
+func (fixedClock) Now() time.Time { return time.Unix(0, 0) }
+
+func (fixedClock) NewTicker(d time.Duration) *time.Ticker { return time.NewTicker(d) }
