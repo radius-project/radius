@@ -48,10 +48,18 @@ test("absent and draft releases reject selector-free approved plans against actu
   const planFile = join(directory, "approved-plan.json");
   await writeFile(
     planFile,
-    JSON.stringify({ version: "v0.62.1", expectedOutputs })
+    JSON.stringify({
+      version: "v0.62.0-rc.1",
+      source: { productRef: "refs/heads/main", productCommit: sha },
+      expectedOutputs
+    })
   );
   for (const state of ["absent", "draft"]) {
-    const inputs = { VERSION: "v0.62.1", SOURCE_SHA: sha, PLAN_FILE: planFile };
+    const inputs = {
+      VERSION: "v0.62.0-rc.1",
+      SOURCE_SHA: sha,
+      PLAN_FILE: planFile
+    };
     await assert.rejects(
       verifyReleaseBuildSource({
         github: {
@@ -67,6 +75,7 @@ test("absent and draft releases reject selector-free approved plans against actu
         },
         run: (args) => {
           if (args[0] === "bash") {
+            assert.ok(args.includes("--frozen-first-rc"));
             assert.ok(args.includes("--require-current-bicep"));
             assert.ok(args.includes("--expected-targets"));
             return tool(["bash", join(root, args[1]), ...args.slice(2)], {
@@ -102,6 +111,7 @@ test("published historical sources retain validation and recovery; unpublished s
       version,
       channel: "0.61",
       releaseType: "patch",
+      source: { productRef: "refs/remotes/origin/release/0.61" },
       changelogPolicy: "stable-only",
       expectedOutputs: {
         ociArtifacts: [{ repository: "biceptypes.azurecr.io/radius" }]
@@ -182,6 +192,7 @@ test("published historical sources retain validation and recovery; unpublished s
         sourceCommit
       ]);
       assert.ok(args.includes("--require-sibling-releases"));
+      assert.ok(!args.includes("--frozen-first-rc"));
       assert.ok(args.includes("--expected-targets"));
       assert.deepEqual(
         JSON.parse(

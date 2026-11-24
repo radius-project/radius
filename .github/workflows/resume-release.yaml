@@ -27,7 +27,7 @@ on:
         required: true
         type: string
       source-commit:
-        description: Exact commit that the Radius tag must reference
+        description: Release commit from the failed summary; never the raw product cutoff
         required: true
         type: string
 
