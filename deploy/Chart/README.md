@@ -60,6 +60,8 @@ kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/
 
 If the hook fails anyway, run the same `helm upgrade` again once the Secret holds both CAs. After the `ucp` Deployment rolls out, finally delete the `radius-apiserver-trust` Secret and run `helm upgrade` again, so the APIService trusts only `radius-apiserver-ca` and follows its renewals. cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.
 
+Do not `helm rollback` to the first of these upgrades. Helm recorded that revision's APIService with the `radius-apiserver-trust` Secret, which you have since deleted and which held only the earlier CA when Helm rendered it, so the rollback restores a `caBundle` that UCP may not serve. To return to that configuration, run `helm upgrade` with the target chart and your saved values instead, or, for a release that `rad` manages, use `rad rollback kubernetes`, which stages the CAs itself.
+
 ### Upgrading the controller rollout strategy
 
 The controller now uses `Recreate` to prevent old and new dispatchers from running concurrently during an upgrade. Existing installations, including v0.62.0, used the API-defaulted `RollingUpdate` strategy. Helm 4 server-side apply cannot remove those defaulted fields merely by applying `rollingUpdate: null`, so an unprepared upgrade fails with `rollingUpdate: Forbidden: may not be specified when strategy type is Recreate`.
