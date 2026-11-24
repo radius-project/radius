@@ -37,6 +37,7 @@ import (
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	lambdamicrovmssdk "github.com/aws/aws-sdk-go-v2/service/lambdamicrovms"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	rdssdk "github.com/aws/aws-sdk-go-v2/service/rds"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	s3controlsdk "github.com/aws/aws-sdk-go-v2/service/s3control"
 	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
@@ -65,6 +66,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lambda"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/rds"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
@@ -79,6 +81,7 @@ func All(cfg aws.Config) []native.Handler {
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
+	rdsAPI := rdssdk.NewFromConfig(cfg)
 	s3API := s3sdk.NewFromConfig(cfg)
 	stsAPI := stssdk.NewFromConfig(cfg)
 	return []native.Handler{
@@ -93,6 +96,7 @@ func All(cfg aws.Config) []native.Handler {
 		ec2.NewNetworkAclEntry(ec2API),
 		ec2.NewNetworkInterfacePermission(ec2API),
 		ec2.NewVPNGatewayRoutePropagation(ec2API),
+		ec2.NewInstanceState(ec2API),
 		elbv2.NewListenerCertificate(elbv2sdk.NewFromConfig(cfg)),
 		lakeformation.NewDataLakeSettings(lakeformationAPI),
 		lakeformation.NewPermissions(lakeformationAPI, stsAPI),
@@ -107,6 +111,7 @@ func All(cfg aws.Config) []native.Handler {
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
 		amplify.NewBackendEnvironment(amplifysdk.NewFromConfig(cfg)),
 		lambda.NewMicrovm(lambdamicrovmssdk.NewFromConfig(cfg)),
+		rds.NewDBInstanceState(rdsAPI),
 		s3.NewBucketRequestPayment(s3API),
 		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),

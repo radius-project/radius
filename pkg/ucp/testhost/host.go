@@ -202,6 +202,9 @@ func StartWithOptions(t *testing.T, options *ucp.Options) *TestHost {
 	options.Config.UCP.Kind = config.UCPConnectionKindDirect
 	options.Config.UCP.Direct = &config.UCPDirectConnectionOptions{Endpoint: baseURL}
 
+	// The migration would record its status in whatever cluster the local kubeconfig selects.
+	options.Config.SHA256Migration.Disabled = true
+
 	// Instantiate the UCP client now that we know the URL.
 	var err error
 	options.UCP, err = sdk.NewDirectConnection(baseURL)

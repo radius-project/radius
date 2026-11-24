@@ -74,6 +74,8 @@ recipePacks:
 
 `make update-recipe-packs RECIPE_PACKS_NAME=<pack>` resolves the SHA for you. The **Verify resource type copies are in sync** check validates the entry: `ref` must be a full SHA and `recipe-packs/<pack>/` must exist at that ref.
 
+The vendored Kubernetes pack is compiled with the pinned Bicep CLI and an isolated config using `br:ghcr.io/radius-project/bicep-types-radius:edge` with OCI enabled. This extension dependency does not change the recipe registries or version pins inside the pack.
+
 ### 6. Release the pack
 
 Release the pack with the other packs in [the namespace and recipe-pack release step](./contributing-releases/README.md#release-resource-type-namespaces-and-recipe-packs). Its first release is `v0.1.0`. The **Notify Radius** job then moves the `defaults.yaml` pin from the edge commit to the stable tag through the `bot/update-resource-types` PR.

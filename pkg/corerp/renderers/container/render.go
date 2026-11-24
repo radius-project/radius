@@ -614,6 +614,9 @@ func (r Renderer) makeDeployment(
 	// The solution to this is to embed the hash of the secret as an annotation in the deployment. This way when the
 	// secret changes we also change the content of the deployment and thus trigger a new revision. This is a very
 	// common solution to this problem, and not a bizarre workaround that we invented.
+	//
+	// NewSecretHashTransformer keeps a hash that an older version of Radius computed with SHA-1 while the secret is
+	// unchanged, so that upgrading Radius does not roll out the workload.
 	if len(secretData) > 0 {
 		hash := kubernetes.HashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
