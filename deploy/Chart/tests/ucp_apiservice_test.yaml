@@ -189,8 +189,8 @@ tests:
               radapp.io/release-name: other
               radapp.io/release-namespace: radius-system
           data:
-            ca.crt: Zm9yZWlnbg==
-            tls.crt: Zm9yZWlnbg==
+            ca.crt: b3RoZXI=
+            tls.crt: b3RoZXI=
             tls.key: a2V5
     asserts:
       - failedTemplate:
@@ -208,8 +208,8 @@ tests:
             name: radius-apiserver-ca
             namespace: radius-system
           data:
-            ca.crt: Zm9yZWlnbg==
-            tls.crt: Zm9yZWlnbg==
+            ca.crt: b3RoZXI=
+            tls.crt: b3RoZXI=
             tls.key: a2V5
     asserts:
       - failedTemplate:
