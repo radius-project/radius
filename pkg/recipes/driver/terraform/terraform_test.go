@@ -638,6 +638,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										Type:         "aws_subnet",
 										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
@@ -645,6 +646,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 										},
 									},
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										Type:         "aws_subnet",
 										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
@@ -652,6 +654,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 										},
 									},
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										ProviderName: "registry.terraform.io/hashicorp/azurerm",
 										AttributeValues: map[string]any{
 											"id": "/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
@@ -659,12 +662,14 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 									},
 									// resource with id value not in the ARM resource format
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										ProviderName: "registry.terraform.io/hashicorp/azurerm",
 										AttributeValues: map[string]any{
 											"id": "outputResourceId2",
 										},
 									},
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										Type:         "kubernetes_deployment",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
@@ -677,6 +682,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 										},
 									},
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										Type:         "kubernetes_service_account",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
@@ -689,6 +695,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 										},
 									},
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										Type:         "kubernetes_manifest",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
@@ -737,6 +744,83 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 		},
 		{
+			desc: "data sources are not output resources",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Mode:         tfjson.DataResourceMode,
+								Type:         "kubernetes_config_map",
+								ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+								AttributeValues: map[string]any{
+									"metadata": []any{
+										map[string]any{
+											"name":      "sentinel",
+											"namespace": "default",
+										},
+									},
+								},
+							},
+							{
+								Mode:         tfjson.DataResourceMode,
+								Type:         "azurerm_key_vault",
+								ProviderName: "registry.terraform.io/hashicorp/azurerm",
+								AttributeValues: map[string]any{
+									"id": "/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/shared/providers/Microsoft.KeyVault/vaults/shared-vault",
+								},
+							},
+							{
+								Mode:         tfjson.DataResourceMode,
+								Type:         "aws_caller_identity",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "179022619019",
+									"arn": "arn:aws:iam::179022619019:user/deployer",
+								},
+							},
+							{
+								Mode:         tfjson.ManagedResourceMode,
+								Type:         "kubernetes_config_map",
+								ProviderName: "registry.terraform.io/hashicorp/kubernetes",
+								AttributeValues: map[string]any{
+									"metadata": []any{
+										map[string]any{
+											"name":      "owned-cache",
+											"namespace": "default",
+										},
+									},
+								},
+							},
+						},
+						ChildModules: []*tfjson.StateModule{
+							{
+								Resources: []*tfjson.StateResource{
+									{
+										Mode:         tfjson.DataResourceMode,
+										Type:         "aws_vpc",
+										ProviderName: "registry.terraform.io/hashicorp/aws",
+										AttributeValues: map[string]any{
+											"id":  "vpc-0ddfaa93733f98002",
+											"arn": "arn:aws:ec2:us-east-2:179022619019:vpc/vpc-0ddfaa93733f98002",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/kubernetes/local/namespaces/default/providers/core/configmap/owned-cache"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
 			desc: "invalid AWS ARN",
 			state: &tfjson.State{
 				Values: &tfjson.StateValues{
@@ -752,6 +836,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
 											"arn": "arn:aws:ec2:us-east-2:179022619019",
@@ -780,6 +865,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								Type:         "aws_sns_topic",
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
@@ -810,6 +896,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								Type:         "aws_cloudwatch_log_group",
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
@@ -840,6 +927,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								Type:         "aws_cloudwatch_log_group",
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
@@ -877,6 +965,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								Type:         "aws_s3_bucket",
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
@@ -909,6 +998,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								Type:         "aws_s3_bucket",
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
@@ -939,6 +1029,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								Type:         "aws_ecs_task_definition",
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
@@ -969,6 +1060,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								Type:         "aws_ecs_task_definition",
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
@@ -998,6 +1090,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					RootModule: &tfjson.StateModule{
 						Resources: []*tfjson.StateResource{
 							{
+								Mode:         tfjson.ManagedResourceMode,
 								ProviderName: "registry.terraform.io/hashicorp/aws",
 								AttributeValues: map[string]any{
 									"arn": "arn:aws:s3:::my-bucket",
@@ -1026,6 +1119,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										Type:         "kubernetes_manifest",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
@@ -1063,6 +1157,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										Mode:         tfjson.ManagedResourceMode,
 										Type:         "kubernetes_deployment",
 										ProviderName: "registry.terraform.io/hashicorp/kubernetes",
 										AttributeValues: map[string]any{
