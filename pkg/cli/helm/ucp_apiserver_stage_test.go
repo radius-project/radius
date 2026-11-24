@@ -1825,11 +1825,18 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 	tests := []struct {
 		name string
 		// moveUCP makes the mock rollback also roll the ucp Deployment out with Secret ucp-mtls mounted.
-		moveUCP    bool
-		wantDelete bool
+		moveUCP bool
+		// otherVolume, when set, is another ucp pod volume that still uses ucp-apiserver-tls after the rollout.
+		otherVolume *corev1.Volume
+		wantDelete  bool
 	}{
 		{name: "UCP still mounts the Secret", moveUCP: false, wantDelete: false},
 		{name: "UCP rolled out with another Secret", moveUCP: true, wantDelete: true},
+		{name: "another UCP Secret volume still uses the Secret", moveUCP: true, wantDelete: false, otherVolume: &corev1.Volume{
+			Name: "sidecar-tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpAPIServerTLSSecretName}}}},
+		{name: "a projected UCP volume still uses the Secret", moveUCP: true, wantDelete: false, otherVolume: &corev1.Volume{
+			Name: "sidecar-tls", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{
+				{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}}}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1849,6 +1856,9 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 					deployment, err := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
 					require.NoError(t, err)
 					deployment.Spec.Template.Spec.Volumes[0].Secret.SecretName = "ucp-mtls"
+					if tt.otherVolume != nil {
+						deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, *tt.otherVolume)
+					}
 					_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), deployment, metav1.UpdateOptions{})
 					require.NoError(t, err)
 				}
@@ -1860,7 +1870,7 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 			if tt.wantDelete {
 				require.True(t, apierrors.IsNotFound(err), "rollback must delete Secret %s, which neither a Certificate nor UCP uses, got %v", ucpAPIServerTLSSecretName, err)
 			} else {
-				require.NoError(t, err, "rollback must keep Secret %s while the ucp Deployment mounts it", ucpAPIServerTLSSecretName)
+				require.NoError(t, err, "rollback must keep Secret %s while a ucp pod volume uses it", ucpAPIServerTLSSecretName)
 			}
 			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
 			require.NoError(t, err)

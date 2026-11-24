@@ -193,7 +193,8 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 }
 
 // ucpServesFromOtherSecret reports whether the Radius release's ucp Deployment has finished rolling out with its API
-// server certificate volume mounting a Secret other than secretName, so no UCP pod, current or replacement, needs it.
+// server certificate volume mounting a Secret other than secretName and no other volume naming secretName, so no UCP
+// pod, current or replacement, needs it.
 func ucpServesFromOtherSecret(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
 	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -204,7 +205,26 @@ func ucpServesFromOtherSecret(ctx context.Context, client kubernetes.Interface, 
 	}
 	mounted := ucpCertificateSecret(deployment)
 	return helmOwned(deployment, radiusNamespace, radiusReleaseName) && ucpRolledOut(deployment) &&
-		mounted != "" && mounted != secretName, nil
+		mounted != "" && mounted != secretName && !podTemplateMountsSecret(deployment, secretName), nil
+}
+
+// podTemplateMountsSecret reports whether a Secret volume or projected Secret source of deployment's pod template names
+// secretName.
+func podTemplateMountsSecret(deployment *appsv1.Deployment, secretName string) bool {
+	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+		if volume.Secret != nil && volume.Secret.SecretName == secretName {
+			return true
+		}
+		if volume.Projected == nil {
+			continue
+		}
+		for _, source := range volume.Projected.Sources {
+			if source.Secret != nil && source.Secret.Name == secretName {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ucpRolledOut reports whether every pod of deployment runs its current template.
