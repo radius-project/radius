@@ -384,7 +384,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 			return err
 		}
 	}
-	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, releaseName, radiusNamespace); err != nil {
+	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, after, releaseName, radiusNamespace); err != nil {
 		return err
 	}
 	// UCP reads its certificate only when it starts, and the rollout counters of a Deployment whose template already
@@ -608,22 +608,28 @@ func renderedUCPOffCertificate(manifest string) (*corev1.Secret, error) {
 	}
 }
 
-// applyHelmOwnedSecret is applyHelmOwnedObject for a Secret, whose content is in data rather than spec.
-func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubernetes.Interface, rendered *corev1.Secret, releaseName, releaseNamespace string) error {
+// applyHelmOwnedSecret is applyHelmOwnedObject for a Secret, whose content is in data rather than spec. It writes over
+// existing, the Secret as rad read it before rendering, or creates the Secret when existing is nil, so it fails rather
+// than replace a Secret that changed since, such as a newer key pair of the same release.
+func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubernetes.Interface, rendered, existing *corev1.Secret, releaseName, releaseNamespace string) error {
 	secrets := client.CoreV1().Secrets(releaseNamespace)
-	existing, err := secrets.Get(ctx, rendered.Name, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
+	changed := func() error {
+		return fmt.Errorf("Secret %s/%s changed after rad rendered the Radius chart. Helm has not changed Radius; run the command again",
+			releaseNamespace, rendered.Name)
+	}
+	if existing == nil {
 		desired := rendered.DeepCopy()
 		desired.Namespace = releaseNamespace
 		desired.ResourceVersion = ""
 		setHelmOwnership(&desired.ObjectMeta, releaseName, releaseNamespace)
-		if _, err := secrets.Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager}); err != nil {
+		_, err := secrets.Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager})
+		if apierrors.IsAlreadyExists(err) {
+			return changed()
+		}
+		if err != nil {
 			return fmt.Errorf("failed to create Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 		}
 		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 	}
 	if existing.Labels[helmManagedByLabel] != helmManagedByValue || existing.Annotations[helmReleaseNameAnnotation] != releaseName ||
 		existing.Annotations[helmReleaseNamespaceAnnotation] != releaseNamespace {
@@ -639,9 +645,21 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 	maps.Copy(updated.Labels, rendered.Labels)
 	setHelmOwnership(&updated.ObjectMeta, releaseName, releaseNamespace)
 	if equality.Semantic.DeepEqual(existing, updated) {
+		// The pair is unchanged since rad read it; a later change would have failed the update below, so check it now.
+		current, err := secrets.Get(ctx, rendered.Name, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to read Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
+		}
+		if current.UID != existing.UID || current.ResourceVersion != existing.ResourceVersion {
+			return changed()
+		}
 		return nil
 	}
-	if _, err := secrets.Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager}); err != nil {
+	_, err := secrets.Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager})
+	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
+		return changed()
+	}
+	if err != nil {
 		return fmt.Errorf("failed to update Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 	}
 	return nil

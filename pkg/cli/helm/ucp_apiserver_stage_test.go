@@ -1222,6 +1222,55 @@ func Test_StageUCPOffCertificate_RollsOutAChangedCertificate(t *testing.T) {
 		"the API server must keep trusting the CA of the certificate that UCP still serves")
 }
 
+// A newer ucp-cert of the same release that appears after rad rendered the chart must survive: rad applies the
+// rendered pair only over the version it rendered from.
+func Test_StageUCPOffCertificate_KeepsANewerCertificate(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	c := newStageCluster(t, nil, true)
+	c.onUCP(t)
+	first := renderStageTestManifest(t, map[string]any{})
+	require.NoError(t, c.impl(nil).stageUCPOffCertificate(t.Context(), "test-context", RadiusSystemNamespace, "radius",
+		func(context.Context) (string, bool, error) { return first, true, nil }))
+	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
+	staged := c.stagedOffCertificate(t)
+	staged.ResourceVersion = "1"
+	_, err := secrets.Update(t.Context(), staged, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	// The API server rejects an update whose resourceVersion is not the current one; the fake clientset does not.
+	tracker := c.kube.Tracker()
+	secretsResource := corev1.SchemeGroupVersion.WithResource("secrets")
+	c.kube.PrependReactor("update", "secrets", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		update := action.(clienttesting.UpdateAction).GetObject().(*corev1.Secret)
+		current, err := tracker.Get(secretsResource, update.Namespace, update.Name)
+		if err == nil && update.ResourceVersion != current.(*corev1.Secret).ResourceVersion {
+			return true, nil, apierrors.NewConflict(secretsResource.GroupResource(), update.Name, errors.New("the object has been modified"))
+		}
+		return false, nil, nil
+	})
+	// cert-manager or another rad run replaces ucp-cert with a newer pair of the same release after rad rendered the
+	// chart, while rad moves the API server's trust.
+	newer, _ := renderedOffCertificate(t, renderStageTestManifest(t, map[string]any{}))
+	newer.Namespace, newer.ResourceVersion = RadiusSystemNamespace, "2"
+	setHelmOwnership(&newer.ObjectMeta, "radius", RadiusSystemNamespace)
+	rendered, replaced := false, false
+	c.dynamic.PrependReactor("get", "apiservices", func(clienttesting.Action) (bool, runtime.Object, error) {
+		if rendered && !replaced {
+			replaced = true
+			require.NoError(t, tracker.Update(secretsResource, newer.DeepCopy(), RadiusSystemNamespace))
+		}
+		return false, nil, nil
+	})
+	expireUCPAPIServiceWait(t)
+	second := renderStageTestManifest(t, map[string]any{})
+
+	stageErr := c.impl(nil).stageUCPOffCertificate(t.Context(), "test-context", RadiusSystemNamespace, "radius",
+		func(context.Context) (string, bool, error) { rendered = true; return second, true, nil })
+	require.True(t, replaced)
+	require.ErrorContains(t, stageErr, "Secret radius-system/ucp-cert changed after rad rendered the Radius chart")
+	require.Equal(t, newer.Data, c.stagedOffCertificate(t).Data, "rad must not overwrite a newer ucp-cert")
+}
+
 // apiServiceCACertificatesOf returns the CommonName and key ID of each CA in the caBundle of the UCP APIService.
 func apiServiceCACertificatesOf(t *testing.T, c *stageCluster) []string {
 	t.Helper()
