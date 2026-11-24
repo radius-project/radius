@@ -80,12 +80,24 @@ require_trusted_main_commit() {
     fi
 }
 
+read_publisher_file() {
+    local commit="$1" path="$2" media_type="$3"
+    if ! "${GH}" api "repos/${REPOSITORY}/contents/${path}?ref=${commit}" \
+        -H "Accept: ${media_type}" 2>"${LOOKUP_ERROR}"; then
+        cat "${LOOKUP_ERROR}" >&2
+        if grep -Fq '(HTTP 404)' "${LOOKUP_ERROR}"; then
+            fail "${path} is missing at ${commit}; select a reviewed release source before tagging"
+        fi
+        fail "could not read ${path} at ${commit}; check Contents access and retry the same commit once the API error clears"
+    fi
+}
+
 write_outputs() {
     local commit="$1"
     local state="$2"
 
     if [[ "${REQUIRE_PUBLISHER}" == true ]]; then
-        local path=".github/workflows/build-and-push.yaml" publish_prefix workflow
+        local workflow publish_prefix helper=".github/scripts/require-unused-tag.sh" metadata
         # Match executable control flow through the push, not a command that
         # could be unreachable. The producer may report its digest afterward.
         publish_prefix="$(cat <<'BASH'
@@ -96,14 +108,7 @@ export BUILDX_METADATA_FILE="$RUNNER_TEMP/build-metadata.json"
 make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"
 BASH
 )"
-        if ! workflow="$("${GH}" api "repos/${REPOSITORY}/contents/${path}?ref=${commit}" \
-            -H 'Accept: application/vnd.github.raw+json' 2>"${LOOKUP_ERROR}")"; then
-            cat "${LOOKUP_ERROR}" >&2
-            if grep -Fq '(HTTP 404)' "${LOOKUP_ERROR}"; then
-                fail "${path} is missing at ${commit}; select a reviewed release source before tagging"
-            fi
-            fail "could not read ${path} at ${commit}; check Contents access and retry the same commit once the API error clears"
-        fi
+        workflow="$(read_publisher_file "${commit}" .github/workflows/build-and-push.yaml application/vnd.github.raw+json)" || exit 1
         yq -o=json '.' <<<"${workflow}" |
             jq -e \
                 --arg build "github.repository == '${REPOSITORY}' && !github.event.deleted" \
@@ -121,7 +126,7 @@ BASH
                      ($c[0].value | mandatory and
                       (.uses | test("^actions/checkout@[0-9a-f]{40}$")) and
                       ((.with // {} | keys) - ["fetch-depth","persist-credentials","ref"] == []) and
-                      (.with.ref == null or .with.ref == "${{ github.sha }}" or .with.ref == "${{ github.ref }}")) and
+                      (.with.ref == null or .with.ref == "${{ github.sha }}")) and
                      all(.[] | select(.value.run != null or (.value.uses // "" | startswith("./")));
                          .key > $c[0].key));
                 .permissions as $defaults |
@@ -131,7 +136,9 @@ BASH
                 .jobs.build.needs == null and .jobs.build.if == $build and
                 (.jobs.build | checks_out_source($defaults)) and ($job | checks_out_source($defaults)) and
                 $job.needs == "build" and $job.if == $container and
-                $job.permissions.packages == "write" and $job.env.REGISTRY == null and
+                (($job.permissions // $defaults) |
+                    if type == "object" then .packages == "write" else . == "write-all" end) and
+                $job.env.REGISTRY == null and
                 ([$job.steps | to_entries[] | select(.value.id == "version")] as $v |
                  [$job.steps | to_entries[] | select(.value.name == "Publish image")] as $p |
                  ($v | length) == 1 and ($p | length) == 1 and $v[0].key < $p[0].key and
@@ -140,6 +147,10 @@ BASH
                     .env.REGISTRY == null and (.run == $push or (.run | startswith($push + "\n")))))
             ' >/dev/null ||
             fail "${commit} lacks the active direct GHCR tag publisher; select a reviewed release source before tagging"
+        metadata="$(read_publisher_file "${commit}" "${helper}" application/vnd.github+json)" || exit 1
+        jq -e '.type == "file" and (.size | type == "number" and . > 0)' \
+            <<<"${metadata}" >/dev/null ||
+            fail "${helper} is not a nonempty file at ${commit}; select a reviewed release source before tagging"
     fi
 
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

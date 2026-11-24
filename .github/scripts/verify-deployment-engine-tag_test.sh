@@ -53,6 +53,14 @@ write_fake_gh() {
 #!/bin/bash
 set -euo pipefail
 case "$*" in
+    *"/contents/.github/scripts/require-unused-tag.sh?ref="*)
+        [[ "$2" == *"ref=${FAKE_BASE_COMMIT:?}" ]] || exit 1
+        if [[ -n "${FAKE_HELPER_ERROR:-}" ]]; then
+            echo "gh: ${FAKE_HELPER_ERROR}" >&2
+            exit 1
+        fi
+        printf '%s\n' '{"type":"file","size":1165}'
+        ;;
     *"/contents/.github/workflows/build-and-push.yaml?ref="*)
         [[ "$2" == *"ref=${FAKE_BASE_COMMIT:?}" ]] || exit 1
         if [[ -n "${FAKE_WORKFLOW_ERROR:-}" ]]; then
@@ -289,6 +297,28 @@ YAML
     FAKE_PUBLISHER="${workflow}"
     run_script --require-publisher --allow-absent main v0.61.0
     expect_outputs "${COMMIT_B}" absent "new tag at transferred publisher" || return
+    local error expected
+    for error in 'Not Found (HTTP 404)' 'Service Unavailable (HTTP 503)'; do
+        export FAKE_HELPER_ERROR="${error}"
+        run_script --require-publisher --allow-absent main v0.61.0
+        unset FAKE_HELPER_ERROR
+        expected="require-unused-tag.sh is missing at ${COMMIT_B}"
+        if [[ "${error}" == *503* ]]; then
+            expected="retry the same commit"
+        fi
+        expect_failure "${expected}" "helper lookup: ${error}" || return
+        if [[ "${OUTPUT}" != *"${error}"* || -s "${TEST_ROOT}/outputs" ]]; then
+            fail_test "helper lookup lost its error or emitted tag outputs"
+            return
+        fi
+    done
+    # shellcheck disable=SC2016
+    FAKE_PUBLISHER="$(yq '.jobs.build.steps[0].with.ref = "${{ github.sha }}" | .jobs.container.steps[0].with.ref = "${{ github.sha }}"' <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "both jobs check out the push SHA" || return
+    FAKE_PUBLISHER="$(yq '.permissions = {"contents":"read","packages":"write"} | del(.jobs.container.permissions)' <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "container inherits workflow Packages write" || return
     FAKE_PUBLISHER="$(yq '(.jobs.container.steps[] | select(.id == "version")).run |= (. + "\n" | ... style="literal")' <<< "${workflow}")"
     run_script --require-publisher --allow-absent main v0.61.0
     expect_outputs "${COMMIT_B}" absent "literal-block version command" || return
@@ -302,6 +332,9 @@ YAML
         'del(.jobs.container.steps[0])' \
         '.jobs.build.permissions = {} | .permissions.contents = "read"' \
         'del(.jobs.container.permissions.contents) | .permissions.contents = "read"' \
+        'del(.jobs.container.permissions.packages) | .permissions.packages = "write"' \
+        '.jobs.build.steps[0].with.ref = "${{ github.ref }}"' \
+        '.jobs.container.steps[0].with.ref = "${{ github.ref }}"' \
         '.jobs.build.steps[0].with.ref = "main"' \
         '.jobs.container.steps[0].with.repository = "radius-project/radius"' \
         '.jobs.container.steps = ([{"run":"make test"}] + .jobs.container.steps)' \
