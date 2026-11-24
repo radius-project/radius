@@ -19,6 +19,7 @@ IMAGES_DIR := $(DIST_DIR)/images
 METRICS_DIR := $(DIST_DIR)/metrics
 RELEASE_PARITY_VERSION ?=
 RELEASE_PARITY_OUTPUT ?= $(DIST_DIR)/release-parity/v$(RELEASE_PARITY_VERSION).json
+RELEASE_PARITY_PLAN_FILE ?=
 GORELEASER ?= goreleaser
 GORELEASER_ARGS ?=
 GORELEASER_DIST_DIR ?= $(DIST_DIR)/goreleaser
@@ -45,7 +46,8 @@ release-parity-manifest: ## Capture observable outputs for RELEASE_PARITY_VERSIO
 	fi
 	@bash ./.github/scripts/release-parity-manifest.sh \
 		--version "$(RELEASE_PARITY_VERSION)" \
-		--output "$(RELEASE_PARITY_OUTPUT)"
+		--output "$(RELEASE_PARITY_OUTPUT)" \
+		$(if $(RELEASE_PARITY_PLAN_FILE),--plan-file "$(RELEASE_PARITY_PLAN_FILE)")
 
 .PHONY: goreleaser-check
 .PHONY: verify-release-publication recheck-release-publication
