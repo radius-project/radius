@@ -211,7 +211,7 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 .PHONY: test-release-publication
 test-release-publication: ## Tests mandatory publication gates, staged installation, provenance, coordination, and reporting
 	@node --test ./.github/scripts/promote-release-bicep.test.mjs ./.github/scripts/publish-release-bicep.test.mjs
-	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs ./.github/scripts/publish-sibling-releases_test.mjs
+	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/publish-sibling-releases_test.mjs
 	@bash ./.github/scripts/release-verification_test.sh
 	@bash ./.github/scripts/release-attestations_test.sh
 

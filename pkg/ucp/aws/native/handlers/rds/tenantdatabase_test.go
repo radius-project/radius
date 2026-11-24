@@ -242,7 +242,6 @@ func Test_TenantDatabase_Update(t *testing.T) {
 		err = h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: tenantID, Current: current, Desired: tenant})
 		require.ErrorIs(t, err, native.ErrNotFound)
 	})
-
 	t.Run("a failed read before any change applied none of the update", func(t *testing.T) {
 		for name, readErr := range map[string]error{
 			"server error": &smithyhttp.ResponseError{

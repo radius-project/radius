@@ -4,10 +4,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { bicepExtensionLockName } from "./release-bicep-extensions.mjs";
+import { validatePublicationManifest } from "./publish-draft-release.mjs";
 
 import {
   waitForRelease,
-  waitForReleaseState
+  waitForReleaseState,
+  findRelease,
+  listReleases
 } from "./release-reconciliation.mjs";
 
 /** @param {unknown} value */
@@ -112,6 +115,35 @@ export async function readBicepExtensionLock(
       "utf8"
     )
   );
+}
+
+export async function readPublishedReleaseManifest(github, tag, sourceSha) {
+  const owner = "radius-project";
+  const repo = "radius";
+  const release = findRelease(await listReleases(github, owner, repo), tag);
+  if (!release || release.draft === true) return undefined;
+  if (release.draft !== false)
+    throw new Error("Release publication state is unknown");
+  const { data: commit } = await github.rest.repos.getCommit({
+    owner,
+    repo,
+    ref: `refs/tags/${tag}`
+  });
+  if (commit.sha !== sourceSha)
+    throw new Error("Published release tag differs from the approved source");
+  const asset = findAsset(
+    await listAssets(github, owner, repo, release.id),
+    "release-manifest.json"
+  );
+  if (!asset || asset.state !== "uploaded")
+    throw new Error(
+      "Published release is missing its completed release manifest"
+    );
+  const manifest = JSON.parse(
+    (await downloadAsset(github, owner, repo, asset.id)).toString("utf8")
+  );
+  validatePublicationManifest(manifest, tag, sourceSha);
+  return manifest;
 }
 
 /** @param {Buffer} data @param {string} name */

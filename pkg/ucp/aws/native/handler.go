@@ -341,7 +341,6 @@ type Failure struct {
 	// call's Throttled failure with 429 and the code Throttled, so the caller deploys again later. Outcome still says
 	// how much of the operation AWS applied.
 	Throttled bool
-
 	// Outcome is how much of the operation AWS applied. The zero value, OutcomeUnknown, keeps the pending values as
 	// possibly applied.
 	Outcome Outcome

@@ -151,6 +151,10 @@ jobs:
               - pkg/corerp/backend/deployment/**
               - pkg/corerp/frontend/controller/applications/**
               - pkg/corerp/frontend/controller/environments/**
+              - pkg/corerp/frontend/controller/secretstores/**
+              - pkg/corerp/api/*/*secretstore*
+              - pkg/corerp/datamodel/secretstore.go
+              - typespec/Applications.Core/secretStores.tsp
               - pkg/kubeutil/namespace*.go
               - pkg/cli/helm/cert_manager*.go
               - pkg/ucp/proxy/**
@@ -159,6 +163,10 @@ jobs:
               - cmd/*/cmd/**
               - deploy/Chart/**
               - test/functional-portable/authz/**
+              - test/functional-portable/corerp/*.go
+              - test/functional-portable/corerp/noncloud/regression_test.go
+              - test/functional-portable/upgrade/secretstores_test.go
+              - test/secretstore/**
               - hack/authz/**
               - .github/scripts/authz-*
               - .github/scripts/run-with-authz-logs*

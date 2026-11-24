@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::Neptune::DBClusterEndpoint",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": "DBClusterEndpointArn"
+}

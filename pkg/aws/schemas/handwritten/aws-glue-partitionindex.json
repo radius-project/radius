@@ -1,0 +1,102 @@
+{
+  "typeName": "AWS::Glue::PartitionIndex",
+  "description": "A partition index on an AWS Glue Data Catalog table, made with CreatePartitionIndex. AWS has no call that changes an index, so every property is create-only. Glue builds or deletes one index on a table at a time, so a deploy that creates an index while another index on the table is being built or deleted fails with 409 Conflict. Give indexes on one table dependsOn on each other so they are created in turn.",
+  "definitions": {
+    "PartitionIndex": {
+      "type": "object",
+      "description": "The index: its name and the partition keys it indexes, in order.",
+      "properties": {
+        "IndexName": {
+          "type": "string",
+          "description": "The name of the partition index.",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "Keys": {
+          "type": "array",
+          "description": "The partition keys of the table the index covers, in the order the index concatenates them.",
+          "minItems": 1,
+          "insertionOrder": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        }
+      },
+      "required": ["IndexName", "Keys"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "CatalogId": {
+      "type": "string",
+      "description": "The ID of the Data Catalog the table is in, such as the AWS account ID.",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "DatabaseName": {
+      "type": "string",
+      "description": "The name of the database the table is in. AWS Glue stores it in lowercase.",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "TableName": {
+      "type": "string",
+      "description": "The name of the table to index. AWS Glue stores it in lowercase.",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "PartitionIndex": {
+      "$ref": "#/definitions/PartitionIndex"
+    },
+    "IndexStatus": {
+      "type": "string",
+      "description": "The status of the index: CREATING, ACTIVE, or DELETING. AWS keeps an index it failed to build in the table's history as FAILED, where it can't be deleted, and Radius creates the index again on the next deploy.",
+      "enum": ["CREATING", "ACTIVE", "DELETING"]
+    }
+  },
+  "required": ["CatalogId", "DatabaseName", "TableName", "PartitionIndex"],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/CatalogId",
+    "/properties/DatabaseName",
+    "/properties/TableName",
+    "/properties/PartitionIndex/IndexName"
+  ],
+  "createOnlyProperties": [
+    "/properties/CatalogId",
+    "/properties/DatabaseName",
+    "/properties/TableName",
+    "/properties/PartitionIndex"
+  ],
+  "readOnlyProperties": ["/properties/IndexStatus"],
+  "propertyTransform": {
+    "/properties/DatabaseName": "$lowercase(DatabaseName)",
+    "/properties/TableName": "$lowercase(TableName)"
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "glue:CreatePartitionIndex",
+        "glue:UpdateTable",
+        "glue:GetPartitionIndexes",
+        "glue:GetTable"
+      ]
+    },
+    "read": {
+      "permissions": ["glue:GetPartitionIndexes", "glue:GetTable"]
+    },
+    "update": {
+      "permissions": ["glue:GetPartitionIndexes", "glue:GetTable"]
+    },
+    "delete": {
+      "permissions": [
+        "glue:DeletePartitionIndex",
+        "glue:UpdateTable",
+        "glue:GetPartitionIndexes",
+        "glue:GetTable"
+      ]
+    }
+  }
+}

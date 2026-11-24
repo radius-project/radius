@@ -839,13 +839,6 @@ test("uses one total timeout budget for discovery and completion", async () => {
 test("all publisher callers use stable identifiers without time-window discovery", async () => {
   const cases = [
     {
-      file: "__build-bicep-types.yaml",
-      identifier:
-        "INPUT_RELEASE_IDENTIFIER: ${{ steps.release-metadata.outputs.release_version }}-${{ github.sha }}",
-      eventType: "INPUT_EVENT_TYPE: bicep-types",
-      timeout: "timeout-minutes: 18"
-    },
-    {
       file: "publish-de-image.yaml",
       identifier:
         "INPUT_RELEASE_IDENTIFIER: ${{ steps.payload.outputs.tag }}-${{ github.run_id }}",

@@ -955,9 +955,6 @@ main() {
             "${PLAN_FILE}" "${source_commit}" \
             "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json" \
             "${oci_artifacts_json}"
-        node "${SCRIPT_DIR}/collect-release-bicep.mjs" verify-mirrors \
-            "${PLAN_FILE}" "${source_commit}" \
-            "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json"
     fi
 
     mkdir -p "$(dirname "${OUTPUT_PATH}")"
