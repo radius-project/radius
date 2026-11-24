@@ -17,7 +17,6 @@ limitations under the License.
 package helm
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -29,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"slices"
 	"strings"
 
 	helm "helm.sh/helm/v4/pkg/action"
@@ -47,7 +47,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
 
@@ -98,240 +97,6 @@ func renderOnce(render renderRadiusManifest) renderRadiusManifest {
 	}
 }
 
-// stageUCPAPIServerCA makes the Kubernetes API server trust both the CA that the running UCP pods serve, such as the
-// Helm-generated ucp-ca, and radius-apiserver-ca before Helm reissues ucp-cert from radius-apiserver-issuer.
-//
-// Helm creates radius-apiserver-ca and reissues ucp-cert in the same call, and UCP reloads its certificate within
-// seconds, so the API server would reject UCP until rad trusted the new CA after Helm returned. Instead, rad writes
-// the earlier CAs to the trust Secret and points the inject-ca-from-secret annotation of the APIService at it together with the caBundle, so a
-// cainjector that replaces the caBundle keeps the earlier CAs, applies the radius-apiserver-ca chain with the metadata Helm needs to adopt it into the
-// release, waits for cert-manager to issue the CA, and writes the earlier CAs and the new one to the trust Secret and the APIService
-// caBundle. The chart then renders the APIService from the trust Secret, and reconcileUCPAPIServerTrust removes the
-// earlier CAs after Helm once UCP serves the new certificate.
-//
-// The APIService is cluster-scoped, so before it writes anything rad requires that the Radius release owns it and that
-// it routes to UCP in radiusNamespace (see releaseUCPAPIService).
-//
-// It does nothing when the APIService does not exist, as on a fresh install, or the APIService caBundle already holds
-// only the key of radius-apiserver-ca. When manifest has no radius-apiserver-ca Certificate, as in charts before it, it
-// only records the CAs of the live caBundle in the trust Secret. If cert-manager does not issue the CA in time, it
-// returns an error before Helm changes anything; running the command again resumes. When authorization will be off,
-// or the rendered chart serves UCP from the Secret ucp-cert of authorization off whatever its values say, as charts
-// before radius-apiserver-ca do, and the deployed release, in the mode deployed returns, has it on, or deployed returns
-// "" because history does not show which certificate UCP serves, it stages the certificate of that release instead,
-// as stageUCPOffCertificate describes; when UCP already serves that certificate, that stage writes nothing.
-func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace, releaseName string, deployed func() (authz.Mode, error), mode authz.Mode, render renderRadiusManifest) error {
-	render = renderOnce(render)
-	stageOff := func() error {
-		current, err := deployed()
-		if err != nil {
-			return err
-		}
-		// With authorization off in the deployed release too, UCP already serves the certificate of the off chart.
-		if current == authz.ModeOff {
-			return nil
-		}
-		return i.stageUCPOffCertificate(ctx, kubeContext, radiusNamespace, releaseName, render)
-	}
-	if mode == authz.ModeOff {
-		return stageOff()
-	}
-	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
-	if err != nil {
-		return err
-	}
-	current, _, _, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace, releaseName)
-	if err != nil {
-		return err
-	}
-	if current == nil {
-		retained, err := retainedUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, releaseName)
-		if err != nil {
-			return err
-		}
-		if retained != nil {
-			return fmt.Errorf("retained selfSigned aggregation trust Secret %s/%s exists without a usable %s signer. Restore the original signer from its backup with %s. For an intentional fresh install, first verify the previous release is removed and explicitly discard its historical pin with %s as certificate lifecycle cleanup. Helm has not changed Radius",
-				radiusNamespace, ucpAPIServerTrustSecretName, ucpAPIServerCASecretName,
-				kubectlCommand(kubeContext, radiusNamespace, "apply -f radius-apiserver-ca-backup.yaml"),
-				kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTrustSecretName))
-		}
-	}
-
-	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
-	if err != nil || apiService == nil {
-		return err
-	}
-
-	if err := validateUCPAPIServerAPIAnchors(current, apiService); err != nil {
-		return err
-	}
-	manifest, ok, err := render(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to render the Radius chart to stage %s: %w", ucpAPIServerCASecretName, err)
-	}
-	if !ok {
-		return nil
-	}
-	kind, err := ucpServingCertificateKind(manifest)
-	if err != nil {
-		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
-	}
-	if kind == "Secret" {
-		return stageOff()
-	}
-	live, err := apiServiceCACertificates(apiService)
-	if err != nil {
-		return err
-	}
-	if len(live) == 0 {
-		return nil
-	}
-	// cert-manager would issue the staged Certificate into a Secret of that name that another owner created, and the
-	// chart refuses to trust one that the release does not own, so stop before writing anything.
-	if err := refuseForeignUCPAPIServerCA(ctx, kubeContext, kubeClient, radiusNamespace); err != nil {
-		return err
-	}
-	// Decide from what the API server trusts, not from the inject-ca-from-secret annotation: Helm's switch to
-	// authorization off keeps the annotation rad set, and a run that stopped before ReconcileUCPOffAPIServerTrust, or an
-	// older rad, leaves it while UCP serves a ucp-ca certificate again.
-	if current != nil && onlyKey(live, current) {
-		return nil
-	}
-	// cert-manager keeps a ucp-apiserver-tls whose leaf still matches Certificate ucp-cert, without checking which CA
-	// signed it, so UCP would serve it once Helm applies ucp-cert.
-	servingTLS, err := releaseUCPAPIServerTLS(ctx, kubeContext, kubeClient, radiusNamespace)
-	if err != nil {
-		return err
-	}
-
-	objects, err := ucpAPIServerCAStage(manifest)
-	if err != nil {
-		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
-	}
-
-	trusted, trust, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
-	if err != nil {
-		return err
-	}
-	if trust != nil && !ownsUCPAPIServerTrust(trust, radiusNamespace) {
-		return overlapTrustError(trust, kubeContext, radiusNamespace, ucpAPIServerCASecretName)
-	}
-	trusted = unionCertificates(trusted, live)
-	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {
-		return err
-	}
-	if len(objects) == 0 {
-		return nil
-	}
-	output.LogInfo("Creating %s before UCP moves to it...", ucpAPIServerCASecretName)
-	// An inject-ca-from-secret annotation left on radius-apiserver-ca, by an earlier switch to authorization off, makes
-	// a cainjector that replaces the caBundle drop the current CA of UCP as soon as cert-manager issues
-	// radius-apiserver-ca. Point the annotation at the trust Secret before the issuers exist.
-	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), radiusNamespace, releaseName, trusted, "the current CA of UCP"); err != nil {
-		return err
-	}
-
-	for _, object := range objects {
-		if err := applyHelmOwnedObject(ctx, kubeContext, dynamicClient, object.resource, object.object, releaseName, radiusNamespace); err != nil {
-			return err
-		}
-	}
-
-	var ca *x509.Certificate
-	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
-		var problem string
-		var err error
-		ca, _, problem, err = readUCPAPIServerCA(ctx, kubeClient, radiusNamespace, releaseName)
-		return problem, err
-	})
-	if err != nil {
-		if wait.Interrupted(err) {
-			return fmt.Errorf("Secret %s/%s is not usable after %s: %s. Helm has not changed Radius and UCP still serves its current certificate. "+
-				"Check the CA certificate with %s, then run the command again",
-				radiusNamespace, ucpAPIServerCASecretName, ucpAPIServiceTimeout, problem,
-				kubectlCommand(kubeContext, radiusNamespace, "describe certificate "+ucpAPIServerCASecretName))
-		}
-		return err
-	}
-
-	if err := validateUCPAPIServerAPIAnchors(ca, apiService); err != nil {
-		return err
-	}
-	if err := deleteStaleUCPAPIServerTLS(ctx, kubeContext, kubeClient, radiusNamespace, servingTLS, ca); err != nil {
-		return err
-	}
-
-	trusted = unionCertificates(trusted, []*x509.Certificate{ca})
-	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {
-		return err
-	}
-	return trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), radiusNamespace, releaseName, trusted, "both the current CA of UCP and "+ucpAPIServerCASecretName)
-}
-
-// releaseUCPAPIServerTLS returns Secret ucp-apiserver-tls, or nil when it does not exist. It returns an error when the
-// Secret exists without the markers that Certificate ucp-cert of the Radius release sets, as ownsUCPOffSecret
-// describes, because rad must neither let UCP serve that key pair nor delete it.
-func releaseUCPAPIServerTLS(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string) (*corev1.Secret, error) {
-	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTLSSecretName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
-	}
-	if ownsUCPOffSecret(secret, ucpOffLeftoverSecret{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}) {
-		return secret, nil
-	}
-	return nil, fmt.Errorf("Secret %s/%s is not marked for Certificate %s of Helm release %s/%s (it needs annotations %s: %q, %s: %q and %s: %q), "+
-		"so rad will not let UCP serve it. Helm has not changed Radius. "+
-		"If nothing else uses the Secret, delete it with %s, then run the command again",
-		radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCertificateName, radiusNamespace, radiusReleaseName,
-		certificateNameAnnotation, ucpAPIServerCertificateName, releaseNameAnnotation, radiusReleaseName, releaseNamespaceAnnotation, radiusNamespace,
-		kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTLSSecretName))
-}
-
-// deleteStaleUCPAPIServerTLS deletes secret, the release's ucp-apiserver-tls that releaseUCPAPIServerTLS returned,
-// when its leaf does not verify for UCP against ca, so cert-manager issues a new one from ca once Helm applies
-// Certificate ucp-cert. The delete is pinned to the uid and resourceVersion rad read; it keeps a Secret that verifies.
-func deleteStaleUCPAPIServerTLS(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string, secret *corev1.Secret, ca *x509.Certificate) error {
-	if secret == nil {
-		return nil
-	}
-	if chain, err := certificateChain(secret.Data[corev1.TLSCertKey]); err == nil && verifiesUCPCertificate(chain[0], chain[1:], ca, radiusNamespace) {
-		return nil
-	}
-	output.LogInfo("Deleting Secret %s/%s, which %s did not issue, so cert-manager issues it again...", radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName)
-	err := client.CoreV1().Secrets(radiusNamespace).Delete(ctx, ucpAPIServerTLSSecretName, metav1.DeleteOptions{Preconditions: secretPreconditions(secret)})
-	if err == nil || apierrors.IsNotFound(err) {
-		return nil
-	}
-	if apierrors.IsConflict(err) {
-		return fmt.Errorf("Secret %s/%s changed after rad read it, so rad did not delete it. Helm has not changed Radius. "+
-			"Check it with %s, then run the command again",
-			radiusNamespace, ucpAPIServerTLSSecretName, kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerTLSSecretName+" -o yaml"))
-	}
-	return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
-}
-
-// refuseForeignUCPAPIServerCA returns an error when Secret radius-apiserver-ca exists without the markers of the Radius
-// release, as ownsUCPAPIServerCA describes.
-func refuseForeignUCPAPIServerCA(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string) error {
-	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerCASecretName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerCASecretName, err)
-	}
-	if ownsUCPAPIServerCA(secret, radiusNamespace) {
-		return nil
-	}
-	return fmt.Errorf("Secret %s/%s is not marked for Helm release %s/%s (%s), so rad will not trust its CA. Helm has not changed Radius. "+
-		"If nothing else uses the Secret, delete it with %s, then run the command again",
-		radiusNamespace, ucpAPIServerCASecretName, radiusNamespace, radiusReleaseName, foreignUCPAPIServerCAProblem(radiusNamespace),
-		kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerCASecretName))
-}
-
 // stageUCPOffCertificate moves UCP to the certificate that Helm applies when authorization turns off, before Helm
 // applies it, while the Kubernetes API server trusts both the CA UCP serves now and the CA of that certificate.
 //
@@ -351,6 +116,7 @@ func refuseForeignUCPAPIServerCA(ctx context.Context, kubeContext string, client
 // Helm changes anything, with both CAs trusted; running the command again checks the same stage and waits again, and
 // writes nothing that already holds.
 func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNamespace, releaseName string, render renderRadiusManifest) error {
+	ctx = withUCPMutationGuard(ctx, i.ucpMutationGuard)
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
@@ -452,6 +218,8 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 			"both the current CA of UCP and the CA in Secret "+ucpOffCertificateSecretName); err != nil {
 			return err
 		}
+	} else if err := settleStagedUCPTrust(ctx, kubeContext, dynamicClient, apiService.GetUID(), radiusNamespace, releaseName, overlap, "the Off CA", false); err != nil {
+		return err
 	}
 	if err := applyHelmOwnedSecret(ctx, kubeContext, kubeClient, rendered, after, releaseName, radiusNamespace); err != nil {
 		return err
@@ -481,6 +249,9 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 			}},
 		})
 		if err != nil {
+			return err
+		}
+		if _, err := checkUCPMutation(ctx, "patch", "Deployment", current); err != nil {
 			return err
 		}
 		if _, err := deployments.Patch(ctx, "ucp", types.StrategicMergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
@@ -615,6 +386,10 @@ func foreignUCPAPIServiceProblem(apiService *unstructured.Unstructured, radiusNa
 	if namespace != radiusNamespace || name != "ucp" {
 		return fmt.Sprintf("routes to Service %s/%s rather than %s/%s", namespace, name, radiusNamespace, "ucp")
 	}
+	port, found, err := unstructured.NestedInt64(apiService.Object, "spec", "service", "port")
+	if err != nil || (found && port != 443) {
+		return "does not route to the ucp Service on port 443"
+	}
 	return ""
 }
 
@@ -626,6 +401,10 @@ func foreignUCPAPIServiceProblem(apiService *unstructured.Unstructured, radiusNa
 // no longer routes to Service ucp in radiusNamespace. Each patch carries the uid and resourceVersion rad read, so the
 // API server rejects it if the APIService changed in between, and rad reads it again.
 func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, uid types.UID, radiusNamespace, releaseName string, cas []*x509.Certificate, trusts string) error {
+	return settleStagedUCPTrust(ctx, kubeContext, dynamicClient, uid, radiusNamespace, releaseName, cas, trusts, true)
+}
+
+func settleStagedUCPTrust(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, uid types.UID, radiusNamespace, releaseName string, cas []*x509.Certificate, trusts string, inject bool) error {
 	source := ucpAPIServerTrustSource(radiusNamespace)
 	caBundle := base64.StdEncoding.EncodeToString(encodeCertificates(cas))
 	check := kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml")
@@ -647,20 +426,30 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 		if err != nil {
 			return false, err
 		}
-		if apiService.GetAnnotations()[injectCAFromSecretAnnotation] == source && containsCertificates(live, cas) {
+		wantSource := source
+		if !inject {
+			wantSource = ""
+		}
+		if apiService.GetAnnotations()[injectCAFromSecretAnnotation] == wantSource && apiService.GetAnnotations()["cert-manager.io/inject-ca-from"] == "" && apiService.GetAnnotations()["cert-manager.io/inject-apiserver-ca"] == "" && containsCertificates(live, cas) {
 			held++
 			return held >= ucpAPIServerCASettleChecks, nil
 		}
 		held = 0
+		if !inject {
+			return false, fmt.Errorf("APIService %s trust changed while staging the Off certificate; check it with %s, then run the command again", ucpAPIServiceName, check)
+		}
 		patch, err := json.Marshal(map[string]any{
 			"metadata": map[string]any{
 				"uid":             uid,
 				"resourceVersion": apiService.GetResourceVersion(),
-				"annotations":     map[string]any{injectCAFromSecretAnnotation: source},
+				"annotations":     map[string]any{injectCAFromSecretAnnotation: source, "cert-manager.io/inject-ca-from": nil, "cert-manager.io/inject-apiserver-ca": nil},
 			},
 			"spec": map[string]any{"caBundle": caBundle},
 		})
 		if err != nil {
+			return false, err
+		}
+		if _, err := checkUCPMutation(ctx, "patch", "APIService", apiService); err != nil {
 			return false, err
 		}
 		_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
@@ -718,6 +507,9 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 		desired.Namespace = releaseNamespace
 		desired.ResourceVersion = ""
 		setHelmOwnership(&desired.ObjectMeta, releaseName, releaseNamespace)
+		if _, err := checkUCPMutation(ctx, "create", "Secret", desired); err != nil {
+			return err
+		}
 		_, err := secrets.Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager})
 		if apierrors.IsAlreadyExists(err) {
 			return changed()
@@ -725,7 +517,7 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 		if err != nil {
 			return fmt.Errorf("failed to create Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 		}
-		return nil
+		return ctx.Err()
 	}
 	if existing.Labels[helmManagedByLabel] != helmManagedByValue || existing.Annotations[helmReleaseNameAnnotation] != releaseName ||
 		existing.Annotations[helmReleaseNamespaceAnnotation] != releaseNamespace {
@@ -751,6 +543,9 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 		}
 		return nil
 	}
+	if _, err := checkUCPMutation(ctx, "update", "Secret", existing); err != nil {
+		return err
+	}
 	_, err := secrets.Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager})
 	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 		return changed()
@@ -758,7 +553,7 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 	if err != nil {
 		return fmt.Errorf("failed to update Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 	}
-	return nil
+	return ctx.Err()
 }
 
 // setHelmOwnership sets the metadata Helm checks before it adopts an existing object into release releaseName.
@@ -772,17 +567,6 @@ func setHelmOwnership(meta *metav1.ObjectMeta, releaseName, releaseNamespace str
 	}
 	meta.Annotations[helmReleaseNameAnnotation] = releaseName
 	meta.Annotations[helmReleaseNamespaceAnnotation] = releaseNamespace
-}
-
-// onlyKey reports whether every CA in certs uses the key of ca, as when the caBundle holds only radius-apiserver-ca,
-// including copies that cert-manager reissued with the same key.
-func onlyKey(certs []*x509.Certificate, ca *x509.Certificate) bool {
-	for _, cert := range certs {
-		if !bytes.Equal(cert.RawSubjectPublicKeyInfo, ca.RawSubjectPublicKeyInfo) {
-			return false
-		}
-	}
-	return true
 }
 
 type stagedObject struct {
@@ -849,6 +633,9 @@ func applyHelmOwnedObject(ctx context.Context, kubeContext string, client dynami
 	objects := client.Resource(resource).Namespace(releaseNamespace)
 	existing, err := objects.Get(ctx, desired.GetName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
+		if _, err := checkUCPMutation(ctx, "create", rendered.GetKind(), desired); err != nil {
+			return err
+		}
 		if _, err := objects.Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager}); err != nil {
 			return fmt.Errorf("failed to create %s %s/%s: %w", desired.GetKind(), releaseNamespace, desired.GetName(), err)
 		}
@@ -872,6 +659,9 @@ func applyHelmOwnedObject(ctx context.Context, kubeContext string, client dynami
 	mergedAnnotations := updated.GetAnnotations()
 	maps.Copy(mergedAnnotations, desired.GetAnnotations())
 	updated.SetAnnotations(mergedAnnotations)
+	if _, err := checkUCPMutation(ctx, "update", rendered.GetKind(), existing); err != nil {
+		return err
+	}
 	if _, err := objects.Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager}); err != nil {
 		return fmt.Errorf("failed to update %s %s/%s: %w", desired.GetKind(), releaseNamespace, desired.GetName(), err)
 	}
@@ -946,7 +736,7 @@ func (i *Impl) dryRunRadiusUpgrade(ctx context.Context, kubeContext string, hist
 	if err != nil {
 		return "", err
 	}
-	return rendered.Manifest, nil
+	return releaseActionManifest(rendered, !disableHooks), nil
 }
 
 // renderRadiusInstall renders what ApplyHelmChart applies: a fresh install, or with Reinstall an upgrade that reuses
@@ -979,7 +769,7 @@ func (i *Impl) renderRadiusInstall(kubeContext string, helmAction HelmAction, he
 		if err != nil {
 			return "", false, err
 		}
-		return rendered.Manifest, true, nil
+		return releaseActionManifest(rendered, true), true, nil
 	}
 }
 
@@ -1010,4 +800,34 @@ func releaseRevision(history []*releasev1.Release, revision int) *releasev1.Rele
 		}
 	}
 	return nil
+}
+
+type renderRadiusRelease func(context.Context) (*releasev1.Release, error)
+
+func (render renderRadiusRelease) manifest(includeWorkloadHooks bool) renderRadiusManifest {
+	return func(ctx context.Context) (string, bool, error) {
+		rel, err := render(ctx)
+		if err != nil || rel == nil {
+			return "", false, err
+		}
+		return releaseActionManifest(rel, includeWorkloadHooks), true, nil
+	}
+}
+
+func releaseActionManifest(rel *releasev1.Release, includeWorkloadHooks bool) string {
+	if !includeWorkloadHooks {
+		return rel.Manifest
+	}
+	// Helm stores hook Pods and Jobs separately from the workload manifest.
+	pre, post := releasev1.HookPreUpgrade, releasev1.HookPostUpgrade
+	if rel.Version == 1 {
+		pre, post = releasev1.HookPreInstall, releasev1.HookPostInstall
+	}
+	documents := []string{rel.Manifest}
+	for _, hook := range rel.Hooks {
+		if slices.Contains(hook.Events, pre) || slices.Contains(hook.Events, post) {
+			documents = append(documents, hook.Manifest)
+		}
+	}
+	return strings.Join(documents, "\n---\n")
 }

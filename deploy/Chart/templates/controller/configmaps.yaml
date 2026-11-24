@@ -35,7 +35,7 @@ data:
       serviceName: "controller"
       prometheus:
         path: "/metrics"
-        port: 9090
+        port: {{ .Values.global.prometheus.port }}
 
     workerServer:
       port: 3000

@@ -129,6 +129,15 @@ func Test_Run_CertificateFlags(t *testing.T) {
 	}
 }
 
+func Test_Run_PendingBootstrapIsNotInstalledSuccess(t *testing.T) {
+	mock := helm.NewMockInterface(gomock.NewController(t))
+	mock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{RadiusInstalled: true, RadiusBootstrapPending: true}, nil)
+	runner := &Runner{Helm: mock, Output: &output.MockOutput{}, KubeContext: "test-context"}
+	err := runner.Run(t.Context())
+	require.ErrorContains(t, err, "--reinstall")
+	require.ErrorContains(t, err, "pending Helm operation or abandoned lock")
+}
+
 func Test_Run_CertificateFlagsInstalledRequiresReinstall(t *testing.T) {
 	t.Parallel()
 	mock := helm.NewMockInterface(gomock.NewController(t))

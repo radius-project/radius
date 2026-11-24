@@ -218,7 +218,7 @@ tests:
             tls.key: a2V5
     asserts:
       - failedTemplate:
-          errorPattern: "kubectl delete secret radius-apiserver-ca -n radius-system"
+          errorPattern: "Preserve the signer and verify its ownership"
 
   - it: refuses a radius-apiserver-ca whose ca.crt holds a non-certificate block
     template: ucp/deployment.yaml

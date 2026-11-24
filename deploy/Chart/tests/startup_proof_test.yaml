@@ -1,0 +1,53 @@
+suite: reject retired client certificate proof configuration
+templates:
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - ucp/deployment.yaml
+  - controller/deployment.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: leaves normal installations unchanged
+    asserts: &disabled
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_STARTUP_PROOF_ENABLED
+          any: true
+  - it: leaves normal enforce mode unchanged
+    set:
+      global.rbac.enabled: true
+    asserts: *disabled
+  - it: supports saved values with no proof settings
+    set:
+      global.rbac.startupProof: null
+    asserts: *disabled
+  - it: rejects old enabled proof in enforce mode
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.enabled: true
+      global.rbac.startupProof.enabled: true
+    asserts: &rejected
+      - failedTemplate:
+          errorMessage: legacy certificate startup proof configuration is unsupported; authenticated lifecycle observation is not available
+  - it: rejects old enabled proof in Off mode
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.startupProof.enabled: true
+    asserts: *rejected
+  - it: rejects dormant trust settings
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.startupProof.expectedTrustSHA256: "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+    asserts: *rejected
+  - it: rejects nonboolean opt-in
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.startupProof.enabled: "false"
+    asserts: *rejected
+  - it: rejects the retired aggregation proof listener
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.aggregationProof.enabled: true
+    asserts: *rejected

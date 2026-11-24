@@ -69,7 +69,7 @@ func radiusActionMode(selected *chart.Chart, current, stored map[string]any, opt
 	// Use the chart's own mode and engine gates without running hooks, lookups or Secret templates.
 	c := &chart.Chart{Metadata: selected.Metadata}
 	for _, file := range selected.Templates {
-		if filepath.Ext(file.Name) == ".tpl" {
+		if filepath.Ext(file.Name) == ".tpl" || file.Name == "templates/global/validate-metrics-port.yaml" {
 			c.Templates = append(c.Templates, file)
 		}
 	}

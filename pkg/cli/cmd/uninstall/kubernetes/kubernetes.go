@@ -165,7 +165,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	err = r.Helm.UninstallRadius(ctx, helm.NewDefaultClusterOptions(), r.KubeContext)
+	options := helm.NewDefaultClusterOptions()
+	options.Purge = r.Purge
+	err = r.Helm.UninstallRadius(ctx, options, r.KubeContext)
 	if err != nil {
 		// Helm already removed Radius, and a retry finds no release and never purges, so purge what the user confirmed
 		// now. The namespace purge also removes the Radius objects whose cleanup failed.

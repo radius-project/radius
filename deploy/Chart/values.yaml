@@ -23,7 +23,7 @@ global:
   rootCA:
     cert: ""
     # With authorization on, must not be a Secret that holds an authorization private key
-    # (<receiver>-spiffe, radius-ca, radius-apiserver-ca, ucp-apiserver-tls).
+    # (<receiver>-spiffe, a signing CA, or UCP's current serving Secret, including a retained rotation target).
     secretName: "root-ca-cert"
     # Must not be a pod volume name the authorization settings add (spiffe, radius-ca, token-<receiver>).
     volumeName: "root-ca-vol"
@@ -44,6 +44,7 @@ global:
   prometheus:
     enabled: true
     path: "/metrics"
+    # The metrics listener binds this port even if scraping is disabled. Choose a free port in every Radius pod.
     port: 9090
   #
   # Configure global.zipkin.url to send distributed traces to a user-managed

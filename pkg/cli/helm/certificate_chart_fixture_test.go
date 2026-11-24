@@ -82,6 +82,20 @@ type certificateChartFixture struct {
 	forbiddenPath string
 }
 
+func TestNamespacedIssuerSharedSignerMount(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			f := newCertificateChartFixture(t)
+			f.objects[1].Object["spec"] = map[string]any{"ca": map[string]any{"secretName": "operator-key"}}
+			global := f.values["global"].(map[string]any)
+			global["rbac"].(map[string]any)["tls"] = map[string]any{"provider": provider}
+			global["targetCluster"] = map[string]any{"enabled": true, "secretName": "operator-key"}
+			_, err := f.renderChart(t)
+			require.ErrorContains(t, err, "operator-key")
+		})
+	}
+}
+
 func TestExternalIssuerReadiness(t *testing.T) {
 	for _, tt := range []struct {
 		name, kind, namespace string
@@ -160,9 +174,24 @@ func newCertificateChartFixture(t *testing.T) *certificateChartFixture {
 // CLI preflight, without installing anything or executing a CertificateRequest.
 func (f *certificateChartFixture) renderChart(t *testing.T, extraTemplates ...*common.File) (map[string]string, error) {
 	t.Helper()
-	resources := map[string]metav1.APIResource{
-		"apiregistration.k8s.io/v1/APIService": {Name: "apiservices", Kind: "APIService"},
-	}
+	server := f.server(t)
+	chart, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
+	require.NoError(t, err)
+	chart.Templates = append(chart.Templates, extraTemplates...)
+	values, err := chartutil.CoalesceValues(chart, f.values)
+	require.NoError(t, err)
+	eng := engine.New(&rest.Config{Host: server.URL})
+	caps := common.DefaultCapabilities.Copy()
+
+	return eng.RenderWithContext(t.Context(), chart, common.Values{
+		"Values": values, "Capabilities": caps,
+		"Release": map[string]any{"Name": "radius", "Namespace": "radius-system", "Service": "Helm", "IsInstall": !f.upgrade, "IsUpgrade": f.upgrade},
+	})
+}
+
+func (f *certificateChartFixture) server(t *testing.T) *httptest.Server {
+	t.Helper()
+	resources := map[string]metav1.APIResource{"apiregistration.k8s.io/v1/APIService": {Name: "apiservices", Kind: "APIService"}}
 	for _, obj := range f.objects {
 		plural := strings.ToLower(obj.GetKind()) + "s"
 		resources[obj.GetAPIVersion()+"/"+obj.GetKind()] = metav1.APIResource{
@@ -230,16 +259,5 @@ func (f *certificateChartFixture) renderChart(t *testing.T, extraTemplates ...*c
 		write(metav1.Status{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Status"}, Status: "Failure", Reason: metav1.StatusReasonNotFound, Code: 404})
 	}))
 	t.Cleanup(server.Close)
-	chart, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
-	require.NoError(t, err)
-	chart.Templates = append(chart.Templates, extraTemplates...)
-	values, err := chartutil.CoalesceValues(chart, f.values)
-	require.NoError(t, err)
-	eng := engine.New(&rest.Config{Host: server.URL})
-	caps := common.DefaultCapabilities.Copy()
-
-	return eng.RenderWithContext(t.Context(), chart, common.Values{
-		"Values": values, "Capabilities": caps,
-		"Release": map[string]any{"Name": "radius", "Namespace": "radius-system", "Service": "Helm", "IsUpgrade": f.upgrade, "IsInstall": !f.upgrade},
-	})
+	return server
 }

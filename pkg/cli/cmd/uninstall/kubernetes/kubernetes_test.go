@@ -71,6 +71,12 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
+func confirmedPurgeOptions() helm.ClusterOptions {
+	options := helm.NewDefaultClusterOptions()
+	options.Purge = true
+	return options
+}
+
 func Test_Run(t *testing.T) {
 	t.Run("Success: Installed -> Uninstalled", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -175,7 +181,7 @@ func Test_Run(t *testing.T) {
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
-		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, confirmedPurgeOptions(), "test-context").
 			Return(nil).
 			Times(1)
 
@@ -298,7 +304,7 @@ func Test_Run(t *testing.T) {
 			Return(prompt.ConfirmYes, nil).
 			Times(1)
 
-		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, confirmedPurgeOptions(), "test-context").
 			Return(nil).
 			Times(1)
 
@@ -494,7 +500,7 @@ func Test_Run(t *testing.T) {
 			Return(false, nil).
 			Times(1)
 
-		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, confirmedPurgeOptions(), "test-context").
 			Return(nil).
 			Times(1)
 
@@ -594,7 +600,7 @@ func Test_Run(t *testing.T) {
 		appManagementClient.EXPECT().ListEnvironmentsAll(ctx).
 			Return([]corerpv20231001.EnvironmentResource{}, nil).
 			Times(1)
-		helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+		helmMock.EXPECT().UninstallRadius(ctx, confirmedPurgeOptions(), "test-context").
 			Return(nil).
 			Times(1)
 
@@ -830,7 +836,7 @@ func Test_Run_Purge_UCPCleanupFailsAfterHelm(t *testing.T) {
 	helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{RadiusInstalled: true}, nil)
 	helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)
 	appManagementClient.EXPECT().ListEnvironmentsAll(ctx).Return(nil, nil)
-	helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+	helmMock.EXPECT().UninstallRadius(ctx, confirmedPurgeOptions(), "test-context").
 		Return(&helm.RadiusRemovedError{Err: errors.New("delete failed")})
 	k8sMock.EXPECT().PerformRadiusCleanup(ctx, "test-context", kubernetes.CleanupPlan{
 		Namespaces:  []string{helm.RadiusSystemNamespace},

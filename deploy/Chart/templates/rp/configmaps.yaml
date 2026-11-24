@@ -35,7 +35,7 @@ data:
       serviceName: "applications-rp"
       prometheus:
         path: "/metrics"
-        port: 9090
+        port: {{ .Values.global.prometheus.port }}
     profilerProvider:
       enabled: true
       port: 6060

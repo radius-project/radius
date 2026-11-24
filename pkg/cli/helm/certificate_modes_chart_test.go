@@ -104,7 +104,7 @@ func TestTokenCertificateModesChart(t *testing.T) {
 						require.NotNil(t, leaf)
 						spec := leaf.Object["spec"].(map[string]any)
 						require.Equal(t, receiver+"-spiffe", spec["secretName"])
-						require.Equal(t, []any{"spiffe://radius.internal/ns/radius-system/sa/"+receiver}, spec["uris"])
+						require.Equal(t, []any{"spiffe://radius.internal/ns/radius-system/sa/" + receiver}, spec["uris"])
 						require.NotContains(t, spec, "dnsNames")
 						require.Equal(t, []any{"digital signature", "server auth"}, spec["usages"])
 						name := "radius-ca-issuer"
@@ -305,7 +305,7 @@ func TestCertificatePublicSourceGuards(t *testing.T) {
 		{name: "unfinished or unknown journal", object: &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "radius-ca-rotation", "namespace": "radius-system"},
 			"data": map[string]any{"state.json": "{}"},
-		}}, err: "radius-ca-rotation exists"},
+		}}, err: "CA lifecycle journal has foreign or incomplete ownership"},
 		{name: "public source carries extra data", object: &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "radius-mtls-ca", "namespace": "radius-system"},
 			"data": map[string]any{"ca.crt": selected, "tls.key": "must not be copied"},
@@ -367,7 +367,10 @@ func TestSelfSignedInternalSource(t *testing.T) {
 			copy = newTestCA(t, "previous").pem
 		}
 		for _, obj := range []map[string]any{
-			{"kind": "Secret", "metadata": map[string]any{"name": "radius-ca"}, "data": map[string]any{"ca.crt": base64.StdEncoding.EncodeToString(signer)}},
+			{"kind": "Secret", "type": "kubernetes.io/tls", "metadata": map[string]any{"name": "radius-ca", "annotations": map[string]any{
+				certificateNameAnnotation: "radius-ca", "cert-manager.io/issuer-name": radiusBootstrapIssuerName,
+				"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io",
+			}}, "data": map[string]any{"ca.crt": base64.StdEncoding.EncodeToString(signer), "tls.crt": base64.StdEncoding.EncodeToString(signer), "tls.key": "fixture"}},
 			{"kind": "ConfigMap", "metadata": map[string]any{"name": "radius-mtls-ca"}, "data": map[string]any{"ca.crt": string(copy)}},
 		} {
 			obj["apiVersion"] = "v1"

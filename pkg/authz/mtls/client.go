@@ -19,6 +19,7 @@ package mtls
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -153,15 +154,18 @@ type clientTransport struct {
 	spiffeID string
 	token    *tokenFile
 
-	mu      sync.Mutex
-	current *http.Transport
-	retired map[*http.Transport]struct{}
-	conns   map[*trackedConn]connectionValidity
+	mu           sync.Mutex
+	current      *http.Transport
+	poolMaterial *material
+	retired      map[*http.Transport]struct{}
+	conns        map[*trackedConn]connectionValidity
 }
 
 type connectionValidity struct {
 	notBefore time.Time
 	notAfter  time.Time
+	trust     [sha256.Size]byte
+	epoch     uint64
 }
 
 // trackedConn is a connection that clientTransport stops tracking when it is closed.
@@ -233,7 +237,7 @@ func (t *clientTransport) newPool() *http.Transport {
 
 func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, pool *http.Transport) (net.Conn, error) {
 	var validity connectionValidity
-	config, err := t.source.clientConfig(t.spiffeID, func(chain []*x509.Certificate) {
+	config, snapshot, err := t.source.clientSnapshot(t.spiffeID, func(chain []*x509.Certificate) {
 		validity = chainValidity(chain)
 	})
 	if err != nil {
@@ -255,13 +259,24 @@ func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, poo
 		_ = raw.Close()
 		return nil, err
 	}
+	validity.trust, validity.epoch = snapshot.trust, snapshot.epoch
+	if snapshot.notBefore.After(validity.notBefore) {
+		validity.notBefore = snapshot.notBefore
+	}
+	if snapshot.notAfter.Before(validity.notAfter) {
+		validity.notAfter = snapshot.notAfter
+	}
 
 	t.mu.Lock()
-	t.conns[tracked] = validity
-	// A request that started before its pool was retired can still dial on it.
-	if pool != nil && pool != t.current {
-		t.retired[pool] = struct{}{}
+	// Verification used only snapshot. Before exposing the connection to
+	// net/http, check that neither its trust nor its destination pool retired.
+	live, err := t.source.loadCurrent()
+	if err != nil || live != snapshot || pool != nil && (pool != t.current || snapshot != t.poolMaterial) {
+		t.mu.Unlock()
+		_ = raw.Close()
+		return nil, errors.New("TLS trust generation retired during dial")
 	}
+	t.conns[tracked] = validity
 	t.mu.Unlock()
 	return conn, nil
 }
@@ -299,7 +314,14 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		closeBody(req)
 		return nil, err
 	}
-	pool := t.transportForRequest()
+	current, err := t.source.load()
+	pool := t.transportForRequest(current)
+	if err != nil {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
+		return nil, err
+	}
 
 	req = req.WithContext(req.Context())
 	req.Header = bearerHeader(req.Header, token)
@@ -350,13 +372,14 @@ func (t *clientTransport) poolsLocked() []*http.Transport {
 	return pools
 }
 
-func (t *clientTransport) transportForRequest() *http.Transport {
+func (t *clientTransport) transportForRequest(material *material) *http.Transport {
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
-	replace := t.current == nil
+	replace := t.current == nil || t.poolMaterial != material
 	for conn, validity := range t.conns {
-		if now.Before(validity.notBefore) || now.After(validity.notAfter) {
+		if material == nil || validity.trust != material.trust || validity.epoch != material.epoch ||
+			now.Before(validity.notBefore) || now.After(validity.notAfter) {
 			expired = append(expired, conn)
 			// An expired connection in a retired pool cannot serve this request, so closing
 			// it is enough.
@@ -370,6 +393,7 @@ func (t *clientTransport) transportForRequest() *http.Transport {
 			t.retired[t.current] = struct{}{}
 		}
 		t.current = t.newPool()
+		t.poolMaterial = material
 	}
 	// Close idle connections in retired pools, including connections that finished their
 	// requests since the pool was retired, and forget pools with no connections left.

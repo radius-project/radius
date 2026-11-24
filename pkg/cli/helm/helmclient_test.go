@@ -654,6 +654,11 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 	loadChart := func(t *testing.T) *chart.Chart {
 		c, err := loader.Load("../../../deploy/Chart")
 		require.NoError(t, err)
+		// This offline test exercises Helm value/history merging, not live
+		// aggregation bootstrap, which needs REST-backed identity and trust.
+		c.Templates = slices.DeleteFunc(c.Templates, func(file *common.File) bool {
+			return file.Name == "templates/ucp/apiservice.yaml"
+		})
 		c.Files = slices.DeleteFunc(c.Files, func(file *common.File) bool {
 			return strings.HasPrefix(file.Name, "crds/")
 		})
@@ -693,13 +698,15 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				client.EXPECT().LoadChart(gomock.Any()).AnyTimes().
 					DoAndReturn(func(string) (*chart.Chart, error) { return loadChart(t), nil })
 				expectControllerStrategyMigration(client, true)
-				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), true, gomock.Any()).
-					DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
-						return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
-					})
+				if tt.want == "off" {
+					client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), true, gomock.Any()).
+						DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
+							return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
+						})
+				}
 
 				detectCalls := 0
-				impl := &Impl{
+				impl := &Impl{newRotationStore: emptyRotationTestStore,
 					Helm: client,
 					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 						detectCalls++
@@ -720,12 +727,26 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				options.Contour.Disabled = true
 				options.RadiusReleaseValues = state.RadiusValues
 				if command == "upgrade" {
-					require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+					err = impl.UpgradeRadius(t.Context(), options, "test-context")
 				} else {
 					options.Radius.Reinstall = true
-					require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
+					err = impl.InstallRadius(t.Context(), options, "test-context")
 				}
-
+				if tt.want != "off" {
+					// The deployed active baseline still requires cert-manager. Only the
+					// post-migration render reveals the omitted aggregation trust.
+					require.ErrorIs(t, err, errCertificateObserverUnavailable)
+					require.Positive(t, detectCalls)
+					history, historyErr := helmClient.RunHelmHistory(configuration, "radius")
+					require.NoError(t, historyErr)
+					revisions := 1
+					if tt.failed != nil {
+						revisions++
+					}
+					require.Len(t, history, revisions)
+					return
+				}
+				require.NoError(t, err)
 				upgraded, err := helmClient.RunHelmGet(configuration, "radius")
 				require.NoError(t, err)
 				// The off checksum hashes only the mode; other modes also hash the rest of the authorization settings,

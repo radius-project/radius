@@ -63,6 +63,16 @@ var ucpOffLeftoverSecrets = []ucpOffLeftoverSecret{
 	{secret: ucpAPIServerTrustSecretName},
 	{secret: ucpAPIServerCASecretName, certificate: ucpAPIServerCASecretName},
 	{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName},
+	{secret: "radius-ca", certificate: "radius-ca"},
+	{secret: "ucp-spiffe", certificate: "ucp-spiffe"},
+	{secret: "applications-rp-spiffe", certificate: "applications-rp-spiffe"},
+	{secret: "dynamic-rp-spiffe", certificate: "dynamic-rp-spiffe"},
+	{secret: "bicep-de-spiffe", certificate: "bicep-de-spiffe"},
+	{secret: "ucp-mtls", certificate: "ucp-cert"},
+	{secret: "applications-rp-mtls", certificate: "applications-rp-cert"},
+	{secret: "dynamic-rp-mtls", certificate: "dynamic-rp-cert"},
+	{secret: "controller-mtls", certificate: "controller-cert"},
+	{secret: "bicep-de-mtls", certificate: "bicep-de-cert"},
 }
 
 // ucpOffSecretState is what ReconcileUCPOffAPIServerTrust does with a ucpOffLeftoverSecret.
@@ -84,7 +94,7 @@ type ucpOffLeftoverFound struct {
 	object *corev1.Secret
 }
 
-// ReconcileUCPOffAPIServerTrust makes the Kubernetes API server trust UCP only through the CA of Secret ucp-cert once
+// reconcileUCPOffAPIServerTrust makes the Kubernetes API server trust UCP only through the CA of Secret ucp-cert once
 // Radius runs with authorization off. rad calls it after Helm installs, upgrades or rolls back to a release with
 // authorization off; it changes nothing when the cluster already has that state, so it also finishes an earlier run
 // that stopped after Helm.
@@ -112,19 +122,14 @@ type ucpOffLeftoverFound struct {
 // Helm metadata that the release does not declare was staged by an upgrade to authorization on that stopped before
 // Helm, and this deletes it. It keeps a declared object, such as the radius-selfsigned-bootstrap Issuer that charts
 // which serve UCP from ucp-cert also use to issue radius-ca.
-func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet) error {
-	return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared, false)
-}
-
-// reconcileUCPOffAPIServerTrust is ReconcileUCPOffAPIServerTrust. fresh reports that Helm installed the first revision
-// of the release, which no upgrade preceded, so rad never staged the radius-apiserver-ca chain for it and skips reading
-// the cert-manager Issuers and Certificate, which a user who cannot read them may still install Radius without.
-func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet, fresh bool) error {
+func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet) error {
+	ctx = withUCPMutationGuard(ctx, i.ucpMutationGuard)
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
 	}
-	if !fresh {
+	operation, _ := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
+	if operation == nil || !operation.fresh {
 		if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared, false); err != nil {
 			return err
 		}
@@ -153,12 +158,7 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
 	}
-	var leftovers []ucpOffLeftoverSecret
-	for _, entry := range ucpOffLeftoverSecrets {
-		if !declared[manifestObjectKey("", "Secret", entry.secret)] && !declared[manifestObjectKey("", "IssuedSecret", entry.secret)] {
-			leftovers = append(leftovers, entry)
-		}
-	}
+	leftovers := undeclaredLeftovers(ucpOffLeftoverSecrets, declared)
 	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
 	if err != nil {
 		return err
@@ -169,7 +169,7 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	}
 	if clean && !hasUCPOffLeftover(found) {
 		i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, found)
-		return nil
+		return ctx.Err()
 	}
 
 	output.LogInfo("Removing the trust in %s from APIService %s now that authorization is off...", ucpAPIServerCASecretName, ucpAPIServiceName)
@@ -185,55 +185,47 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 }
 
 // deleteUCPOffLeftovers deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
-// uid and resourceVersion rad read, and warns about each that rad does not own. When a leftover changed before rad
-// deleted it, it warns, or, when incompleteErr is set, returns an error, so that uninstall keeps cert-manager for a retry.
+// uid and resourceVersion rad read, and warns about each that rad does not own.
 func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret, incompleteErr bool) error {
-	found, err := i.deleteLeftoverSecrets(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers, incompleteErr)
-	i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, found)
-	return err
-}
-
-// deleteLeftoverSecrets deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
-// uid and resourceVersion rad read, and returns the state of each. When a leftover changed before rad deleted it, it
-// warns, or, when incompleteErr is set, returns an error after it handled the others.
-func (i *Impl) deleteLeftoverSecrets(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret, incompleteErr bool) ([]ucpOffLeftoverFound, error) {
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
-	if err != nil {
-		return nil, err
-	}
-	var changed []string
-	for n, f := range found {
+	for _, entry := range leftovers {
+		f, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, entry)
+		if err != nil {
+			return err
+		}
 		if f.state != ucpOffSecretLeftover {
+			i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, []ucpOffLeftoverFound{f})
 			continue
 		}
-		err := kubeClient.CoreV1().Secrets(radiusNamespace).Delete(ctx, f.secret, metav1.DeleteOptions{Preconditions: secretPreconditions(f.object)})
+		retain, err := checkUCPMutation(ctx, "delete", "Secret", f.object)
+		if err != nil {
+			return err
+		}
+		if retain {
+			continue
+		}
+		err = kubeClient.CoreV1().Secrets(radiusNamespace).Delete(ctx, f.secret, metav1.DeleteOptions{Preconditions: secretPreconditions(f.object)})
 		if err == nil {
-			found[n].state = ucpOffSecretKeep
 			continue
 		}
 		if !apierrors.IsConflict(err) && !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, f.secret, err)
+			return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, f.secret, classifyCleanupDelete(err))
 		}
 		// The Secret changed or was deleted since rad read it: decide again from what exists now, but never delete
 		// an object rad has not inspected.
 		again, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, f.ucpOffLeftoverSecret)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		found[n] = again
 		if again.state == ucpOffSecretLeftover {
-			found[n].state = ucpOffSecretKeep
 			if incompleteErr {
-				changed = append(changed, radiusNamespace+"/"+f.secret)
-				continue
+				return fmt.Errorf("rad did not delete Secret %s/%s, which changed after rad read it. Run the command again to delete it", radiusNamespace, f.secret)
 			}
 			i.logInfo("Warning: Secret %s/%s changed after rad read it, so rad left it. Run the command again to remove it.", radiusNamespace, f.secret)
+		} else {
+			i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, []ucpOffLeftoverFound{again})
 		}
 	}
-	if len(changed) > 0 {
-		return found, fmt.Errorf("rad did not delete Secret %s, which changed after rad read it. Run the command again to delete it", strings.Join(changed, ", "))
-	}
-	return found, nil
+	return nil
 }
 
 // secretPreconditions returns delete preconditions that match only secret as rad read it.
@@ -270,7 +262,7 @@ func (i *Impl) warnForeignUCPOffSecrets(kubeContext, radiusNamespace string, fou
 			owner = fmt.Sprintf("does not hold only a non-empty %s with annotations %s=true, %s=%s and %s=%s as rad writes it", caCertificateKey,
 				allowDirectInjectionAnnotation, releaseNameAnnotation, radiusReleaseName, releaseNamespaceAnnotation, radiusNamespace)
 		}
-		i.logInfo("Warning: rad did not delete Secret %s/%s, which %s. Authorization off does not use it; if nothing else does, delete it with %s",
+		i.logInfo("Warning: rad did not delete Secret %s/%s, which %s. Inspect its ownership, Certificate target and retention annotations; only if unused, delete it with %s",
 			radiusNamespace, f.secret, owner, kubectlCommand(kubeContext, radiusNamespace, "delete secret "+f.secret))
 	}
 }
@@ -316,11 +308,10 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 	return found, nil
 }
 
-// ucpOffLeftover reads the Secret of leftover and returns its state. A Secret is a leftover when no Certificate of its
-// name exists, or, for ucp-apiserver-tls, the Radius release's Certificate ucp-cert writes another Secret by
-// spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
-// only ca.crt, the allow-direct-injection annotation and the release annotations, which is what rad and the chart
-// README's plain-Helm steps write. A Secret that the live UCP pod template references is never a leftover.
+// ucpOffLeftover reads the Secret of leftover and returns its state. A private Secret is a leftover when no Certificate
+// targets it and rad owns it: cert-manager issued it for the recorded Certificate, or, for radius-apiserver-trust, it holds
+// only ca.crt and the allow-direct-injection annotation, which is what rad and the chart README's plain-Helm steps
+// write.
 func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
 	found := ucpOffLeftoverFound{ucpOffLeftoverSecret: leftover}
 	secret, err := kubeClient.CoreV1().Secrets(radiusNamespace).Get(ctx, leftover.secret, metav1.GetOptions{})
@@ -357,6 +348,10 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 				return found, nil
 			}
 		}
+		targeted, err := liveCertificateTargets(ctx, dynamicClient, radiusNamespace, leftover.secret)
+		if err != nil || targeted {
+			return found, err
+		}
 	}
 	found.state = ucpOffSecretForeign
 	if ownsUCPOffSecret(secret, leftover) {
@@ -365,14 +360,50 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 	return found, nil
 }
 
-// ownsUCPOffSecret reports whether rad's contract owns secret, the Secret of leftover. cert-manager must have issued a
-// Secret with a Certificate for leftover's Certificate of the Radius release, as the release annotations that the
-// chart's secretTemplate sets show; the certificate-name annotation alone does not identify the release.
+// A Certificate need not share its target's name. Listing can veto a
+// confirmed delete, but cannot nominate any other object for deletion.
+func liveCertificateTargets(ctx context.Context, client dynamic.Interface, namespace, name string) (bool, error) {
+	objects, err := client.Resource(certManagerCertificatesResource).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	if apierrors.IsNotFound(err) { // cert-manager CRD not installed
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("cannot check Certificate targets in %s: %w", namespace, err)
+	}
+	for _, item := range objects.Items {
+		target, _, err := unstructured.NestedString(item.Object, "spec", "secretName")
+		if err != nil || target == "" {
+			return false, fmt.Errorf("cannot determine target of Certificate %s/%s", namespace, item.GetName())
+		}
+		if target == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// ownsUCPOffSecret reports whether rad's contract owns secret, the Secret of leftover.
 func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool {
+	if secret.UID == "" || secret.ResourceVersion == "" || secret.DeletionTimestamp != nil ||
+		secret.Annotations[helmResourcePolicyAnnotation] == "keep" || secret.Annotations["radius.io/certificate-mode"] != "" {
+		return false
+	}
 	if leftover.certificate != "" {
-		return secret.Annotations[certificateNameAnnotation] == leftover.certificate &&
-			secret.Annotations[releaseNameAnnotation] == radiusReleaseName &&
-			secret.Annotations[releaseNamespaceAnnotation] == secret.Namespace
+		// Legacy leaf names are also legal operator CA names on token
+		// charts. An old Certificate annotation is not authority to delete
+		// a Secret that now holds signing material.
+		if strings.HasSuffix(leftover.secret, "-mtls") && len(secret.Data[corev1.TLSCertKey]) != 0 {
+			chain, err := parseCertificateBundlePEM(secret.Data[corev1.TLSCertKey])
+			if err != nil || len(chain) == 0 || chain[0].IsCA {
+				return false
+			}
+		}
+		if leftover.secret == ucpAPIServerCASecretName || leftover.secret == ucpAPIServerTLSSecretName {
+			if secret.Annotations[releaseNameAnnotation] != radiusReleaseName || secret.Annotations[releaseNamespaceAnnotation] != secret.Namespace {
+				return false
+			}
+		}
+		return secret.Annotations[certificateNameAnnotation] == leftover.certificate
 	}
 	return ownsUCPAPIServerTrust(secret, secret.Namespace)
 }
@@ -425,6 +456,9 @@ func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dy
 		if err != nil {
 			return false, err
 		}
+		if _, err := checkUCPMutation(ctx, "patch", "APIService", apiService); err != nil {
+			return false, err
+		}
 		_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
 		// A failed uid or resourceVersion test, or a concurrent write, means the APIService changed since rad read it.
 		if apierrors.IsInvalid(err) || apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
@@ -445,6 +479,10 @@ func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dy
 // ucpOffTrustPatch returns a JSON patch that removes the cert-manager inject annotations of apiService and sets its
 // caBundle to offCAs, and applies only while apiService has the uid and resourceVersion that rad read.
 func ucpOffTrustPatch(apiService *unstructured.Unstructured, offCAs []*x509.Certificate) ([]byte, error) {
+	return ucpTrustPatch(apiService, offCAs, true)
+}
+
+func ucpTrustPatch(apiService *unstructured.Unstructured, cas []*x509.Certificate, removeInjection bool) ([]byte, error) {
 	operations := []map[string]any{}
 	if uid := string(apiService.GetUID()); uid != "" {
 		operations = append(operations, map[string]any{"op": "test", "path": "/metadata/uid", "value": uid})
@@ -452,16 +490,28 @@ func ucpOffTrustPatch(apiService *unstructured.Unstructured, offCAs []*x509.Cert
 	if resourceVersion := apiService.GetResourceVersion(); resourceVersion != "" {
 		operations = append(operations, map[string]any{"op": "test", "path": "/metadata/resourceVersion", "value": resourceVersion})
 	}
-	for _, annotation := range ucpInjectAnnotations {
-		if _, ok := apiService.GetAnnotations()[annotation]; ok {
-			operations = append(operations, map[string]any{"op": "remove", "path": "/metadata/annotations/" + jsonPointerEscape(annotation)})
+	if removeInjection {
+		for _, annotation := range ucpInjectAnnotations {
+			if _, ok := apiService.GetAnnotations()[annotation]; ok {
+				operations = append(operations, map[string]any{"op": "remove", "path": "/metadata/annotations/" + jsonPointerEscape(annotation)})
+			}
 		}
 	}
-	operations = append(operations, map[string]any{"op": "add", "path": "/spec/caBundle", "value": base64.StdEncoding.EncodeToString(encodeCertificates(offCAs))})
+	operations = append(operations, map[string]any{"op": "add", "path": "/spec/caBundle", "value": base64.StdEncoding.EncodeToString(encodeCertificates(cas))})
 	return json.Marshal(operations)
 }
 
 // jsonPointerEscape escapes token for use in a JSON pointer (RFC 6901).
 func jsonPointerEscape(token string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(token, "~", "~0"), "/", "~1")
+}
+
+func undeclaredLeftovers(inventory []ucpOffLeftoverSecret, declared manifestObjectSet) []ucpOffLeftoverSecret {
+	var leftovers []ucpOffLeftoverSecret
+	for _, entry := range inventory {
+		if !declared[manifestObjectKey("", "Secret", entry.secret)] && !declared[manifestObjectKey("", "IssuedSecret", entry.secret)] {
+			leftovers = append(leftovers, entry)
+		}
+	}
+	return leftovers
 }

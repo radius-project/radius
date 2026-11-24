@@ -1,0 +1,7 @@
+{{- $port := int .Values.global.prometheus.port -}}
+{{- $reserved := list 3000 5443 6060 6062 8082 9443 -}}
+{{- if ne (include "radius.authz.mode" .) "off" -}}{{- $reserved = append $reserved 9444 -}}{{- end -}}
+{{- if .Values.dynamicrp.buildkit.enabled -}}{{- $reserved = append $reserved 1234 -}}{{- end -}}
+{{- if has $port $reserved -}}
+{{- fail (printf "global.prometheus.port %d conflicts with another Radius listener; choose a free port even when scraping is disabled" $port) -}}
+{{- end -}}

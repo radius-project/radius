@@ -18,6 +18,7 @@ package helm
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -698,7 +699,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(certificateTestChart(t), nil)
 
 	impl := &Impl{
-		Helm: mockHelmClient,
+		Helm: mockHelmClient, newRotationStore: emptyRotationTestStore,
 		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 			kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "v1.18.0", "")}.clients()
 			return kubeClient, apiextClient, nil
@@ -746,10 +747,6 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							release.Labels = radManagedByLabels()
 						}
 						client := NewMockHelmClient(gomock.NewController(t))
-						if command != "install" {
-							expectRadiusBaseline(t, client, options)
-						}
-						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(certificateTestChart(t), nil)
 						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
 						impl := &Impl{
 							Helm: client,
@@ -758,12 +755,11 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 								return nil, nil, errors.New("unexpected Kubernetes detection")
 							},
 						}
-						var err error
-						if command == "upgrade" {
-							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
-						} else {
-							err = impl.InstallRadius(t.Context(), options, kubeContext)
-						}
+						// Check dependency gating independently of the earlier lifecycle barrier.
+						prepared, parseErr := parseUserValuesFromCLI(&options.Radius)
+						require.NoError(t, parseErr)
+
+						err := impl.ensureCertManager(t.Context(), options, kubeContext, nil, options.RadiusReleaseValues, prepared, command != "install")
 						require.Error(t, err)
 						for _, part := range []string{
 							`"shared-cert-manager"`, `"security"`, "revision 3", string(status),
@@ -869,15 +865,23 @@ func Test_CertManagerPreflight_PinsContextThroughSuccessfulCommand(t *testing.T)
 			options.Contour.Disabled = true
 			options.Radius.ChartPath = "chart"
 			options.Radius.Reinstall = command == "reinstall"
-			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 			client := NewMockHelmClient(gomock.NewController(t))
-			client.EXPECT().LoadChart("chart").Return(&chart.Chart{}, nil)
-			client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).
-				DoAndReturn(func(config *helm.Configuration, _ string) (*releasev1.Release, error) {
+			ca := newTestCA(t, ucpAPIServerCASecretName)
+			rendered := fmt.Sprintf("apiVersion: apiregistration.k8s.io/v1\nkind: APIService\nmetadata:\n  name: %s\n  annotations:\n    %s: %s/%s\nspec:\n  caBundle: %s\n", ucpAPIServiceName, injectCAFromSecretAnnotation, RadiusSystemNamespace, ucpAPIServerCASecretName, base64.StdEncoding.EncodeToString(ca.pem))
+			selected := manifestTestChart(t, rendered)
+			client.EXPECT().LoadChart("chart").Return(selected, nil)
+			if command != "install" {
+				options.RadiusInstalled = true
+				options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+				options.RadiusReleaseChart = selected
+				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+				expectRadiusBaseline(t, client, options)
+				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).DoAndReturn(func(config *helm.Configuration, _ string) (*releasev1.Release, error) {
 					checkConfig(config)
 					k8sutil.WriteKubeconfig(t, configPath, "decoy", servers)
 					return nil, driver.ErrReleaseNotFound
 				})
+			}
 			applied := &releasev1.Release{Version: 1, Manifest: "apiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n"}
 			if command != "install" {
 				client.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true).
@@ -886,7 +890,10 @@ func Test_CertManagerPreflight_PinsContextThroughSuccessfulCommand(t *testing.T)
 						return nil
 					})
 			}
-			if command == "upgrade" {
+			if command != "install" {
+				if command == "reinstall" {
+					client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Name: "radius", Version: 1, Chart: selected, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil).Times(2)
+				}
 				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true, true, gomock.Any()).
 					DoAndReturn(func(config *helm.Configuration, _ *chart.Chart, _ map[string]any, _, _ string, _, _ bool, _ time.Duration) (*releasev1.Release, error) {
 						checkConfig(config)
@@ -905,7 +912,15 @@ func Test_CertManagerPreflight_PinsContextThroughSuccessfulCommand(t *testing.T)
 					})
 			}
 			impl := &Impl{
-				Helm: client,
+				Helm:           client,
+				contourCluster: &fakeContourCluster{},
+				newRotationStore: func(name, namespace string) (*rotationStore, error) {
+					checkContext(name)
+					if command == "install" {
+						k8sutil.WriteKubeconfig(t, configPath, "decoy", servers)
+					}
+					return emptyRotationTestStore(name, namespace)
+				},
 				newCertManagerClients: func(name string) (kubernetes.Interface, apiextclient.Interface, error) {
 					checkContext(name)
 					kube, api := (fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", CertManagerMinimumVersion, "")}).clients()
@@ -917,7 +932,7 @@ func Test_CertManagerPreflight_PinsContextThroughSuccessfulCommand(t *testing.T)
 				},
 				newUCPAPIServerTrustClient: func(name string) (kubernetes.Interface, error) {
 					checkContext(name)
-					return k8sfake.NewClientset(), nil
+					return k8sfake.NewClientset(apiServerCASecret(ca)), nil
 				},
 			}
 			var err error
@@ -1349,6 +1364,7 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 		newCertManagerDynamicClient: uninstallStageClient,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
+	setupUninstallStore(t, impl)
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
 	require.Len(t, logs, 1)
 	require.Contains(t, logs[0], "Keeping cert-manager: could not check whether rad installed it")

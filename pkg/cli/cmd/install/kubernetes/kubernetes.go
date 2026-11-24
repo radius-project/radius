@@ -253,6 +253,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if state.RadiusInstalled && !r.Reinstall {
+		if state.RadiusBootstrapPending {
+			return helm.ErrBootstrapPending
+		}
 		if r.Certificates.Specified() {
 			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged certificate settings. Certificate mode or CA changes require coordinated migration")
 		}

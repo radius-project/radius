@@ -67,6 +67,11 @@ aggregation DNS profiles; external requires aggregation DNS only. Local CA feasi
 proof of issuance by an external backend. Public trust staging and convergence require the
 paired certificate lifecycle implementation.
 
+Replacing component images does not enable CA rotation or recovery in this CLI.
+Rotation is blocked before any changes because the CLI cannot verify which trust
+bundles the running components have loaded. Recovery after CA expiry or compromise
+is not supported.
+
 Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed.
 The 'global.rbac.enabled' and 'global.rbac.dryRun' Helm settings are experimental,
 including when their values are preserved from a previous installation.
@@ -224,6 +229,22 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	currentVersion := state.RadiusVersion
+	if r.Certificates.RotationPhase != "" || r.Certificates.RotateCA {
+		if r.Chart != "" || r.Version != "" || len(r.Set) != 0 || len(r.SetFile) != 0 ||
+			len(r.ContourSet) != 0 || len(r.ContourSetFile) != 0 || r.ResetValues {
+			return fmt.Errorf("CA rotation cannot be combined with chart, version, values, or Contour changes")
+		}
+		options := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{Certificates: r.Certificates})
+		options.RadiusReleaseValues = state.RadiusValues
+		if r.PreflightOnly {
+			return r.Helm.CheckRadiusCertificates(ctx, options, r.KubeContext)
+		}
+		if err := r.Helm.UpgradeRadius(ctx, options, r.KubeContext); err != nil {
+			return err
+		}
+		r.Output.LogInfo("CA rotation phase %s completed.", r.Certificates.RotationPhase)
+		return nil
+	}
 
 	// Resolve target version
 	targetVersion, err := r.resolveTargetVersion()

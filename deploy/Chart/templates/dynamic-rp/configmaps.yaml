@@ -35,7 +35,7 @@ data:
       serviceName: "dynamic-rp"
       prometheus:
         path: "/metrics"
-        port: 9092
+        port: {{ .Values.global.prometheus.port }}
     profilerProvider:
       enabled: true
       port: 6062

@@ -73,8 +73,11 @@ func validateUCPAPIServerAPIAnchors(ca *x509.Certificate, api *unstructured.Unst
 	return nil
 }
 
-func validateUCPAPIServerCAOwnership(secret *corev1.Secret) error {
+func validateUCPAPIServerCAOwnership(secret *corev1.Secret, namespace, release string) error {
 	a := secret.Annotations
+	if a[releaseNameAnnotation] != release || a[releaseNamespaceAnnotation] != namespace {
+		return fmt.Errorf("selfSigned aggregation signer %s/%s lacks release annotations for %s/%s; preserve it and verify ownership before retrying", namespace, secret.Name, namespace, release)
+	}
 	if secret.Type != corev1.SecretTypeTLS ||
 		a[certificateNameAnnotation] != ucpAPIServerCASecretName ||
 		a["cert-manager.io/issuer-name"] != radiusBootstrapIssuerName ||
@@ -98,6 +101,10 @@ func retainedUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface,
 	if err != nil {
 		return nil, fmt.Errorf("read retained aggregation trust: %w", err)
 	}
+	return validateRetainedUCPAPIServerTrust(secret, namespace, releaseName)
+}
+
+func validateRetainedUCPAPIServerTrust(secret *corev1.Secret, namespace, releaseName string) (*corev1.Secret, error) {
 	mode, recorded := secret.Annotations["radius.io/certificate-mode"]
 	if !recorded {
 		return nil, nil

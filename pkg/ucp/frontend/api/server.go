@@ -56,6 +56,9 @@ import (
 type Service struct {
 	options                    *ucp.Options
 	loadRequestHeaderConfigMap func(context.Context) (*corev1.ConfigMap, error)
+	aggregationSource          *mtls.Source
+	aggregationProof           *mtls.AggregationProof
+	aggregationPodUID          string
 }
 
 // DefaultModules returns a list of default modules that will be registered with the router.
@@ -262,11 +265,15 @@ func (s *Service) listenAndServe(ctx context.Context, service *http.Server) erro
 	// Only the serving key pair rotates here. The authenticator owns client trust.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	config, err := mtls.NewServingConfig(ctx, dir, service.TLSConfig)
+	config, source, err := mtls.NewServingConfig(ctx, dir, service.TLSConfig)
 	if err != nil {
-		return fmt.Errorf("failed to load the API server certificate: %w", err)
+		return fmt.Errorf("failed to initialize aggregation serving certificate: %w", err)
 	}
 	service.TLSConfig = config
+	source.GuardServingGeneration(service)
+	if err := s.configureAggregationIdentity(service); err != nil {
+		return err
+	}
 	return service.ListenAndServeTLS("", "")
 }
 
@@ -278,20 +285,15 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
-	// Handle shutdown based on the context
-	go func() {
-		<-ctx.Done()
-		// We don't care about shutdown errors
-		_ = service.Shutdown(ctx)
-	}()
+	// Capture shared routes before adding aggregation-only identity headers or
+	// TLS policy. Internal component traffic must not attest the API-server route.
+	internal := s.internalServer(service)
 
 	internalErr := make(chan error, 1)
 	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
 		if s.options.Config.Server.InternalPort == 0 {
 			return errors.New("server.internalPort is required when the authorization mode is not off")
 		}
-		internal := s.internalServer(service)
 		go func() {
 			<-ctx.Done()
 			_ = internal.Shutdown(ctx)
@@ -306,6 +308,10 @@ func (s *Service) Run(ctx context.Context) error {
 		}()
 	}
 
+	go func() {
+		<-ctx.Done()
+		_ = service.Shutdown(ctx)
+	}()
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
 	err = s.listenAndServe(ctx, service)
 
@@ -325,6 +331,14 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
+}
+
+func withAggregationPodUID(next http.Handler, podUID string) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set(mtls.AggregationPodUIDHeader, podUID)
+		writer.Header().Set("Cache-Control", "no-store")
+		next.ServeHTTP(writer, request)
+	})
 }
 
 // internalServer returns a server for internal component traffic. It serves the same
