@@ -7,17 +7,20 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { capture, tool } from "./bicep-types.mjs";
+import { tool } from "./bicep-types.mjs";
 import {
   bicepExtensionTargets,
   plannedBicepExtensions,
+  releaseBicepConfig,
   validateBicepExtensionLock
 } from "./release-bicep-extensions.mjs";
 import script, {
   approvedRelease,
+  captureSelected,
   existingManifest,
   generationSource,
   prepareRelease,
+  proveFirstCapture,
   publishRelease,
   releaseIdentity,
   selectSnapshot,
@@ -324,6 +327,194 @@ test("approval reuses the merged-release resolver and committed-plan validator",
   await assert.rejects(
     approvedRelease({ github, context }, directory, env, run),
     /Release tag no longer/
+  );
+});
+
+test("first capture after Helm failed before generation requires complete skipped history", async () => {
+  for (const crossRun of [false, true]) {
+    const retry = {
+      ...source,
+      runId: crossRun ? 124 : 123,
+      generationAttempt: crossRun ? 1 : 2
+    };
+    const prior = {
+      ...workflowRun,
+      status: "completed",
+      conclusion: "failure"
+    };
+    const skipped = {
+      name: "Stage full-version Radius Bicep extension",
+      status: "completed",
+      conclusion: "skipped"
+    };
+    const github = {
+      paginate: async (method, args) => method(args),
+      rest: {
+        actions: {
+          listWorkflowRuns: async () => [prior],
+          listWorkflowRunArtifacts: async () => [],
+          getWorkflowRunAttempt: async ({ run_id, attempt_number }) => ({
+            data:
+              (
+                run_id === retry.runId &&
+                attempt_number === retry.generationAttempt
+              ) ?
+                {
+                  ...workflowRun,
+                  id: retry.runId,
+                  run_attempt: retry.generationAttempt,
+                  run_number: 50
+                }
+              : prior
+          }),
+          listJobsForWorkflowRunAttempt: async () => [skipped]
+        }
+      }
+    };
+    const absent = async () => {
+      throw Object.assign(new Error("not found"), {
+        code: 1,
+        stderr: `Error response from registry: failed to fetch the content of "${expected.reference}": ${expected.reference}: not found`
+      });
+    };
+    await proveFirstCapture(github, retry, expected, absent);
+    assert.equal(selectSnapshot([], retry, false, true), "");
+    for (const mutate of [
+      () => {
+        prior.status = "in_progress";
+      },
+      () => {
+        skipped.conclusion = "cancelled";
+      },
+      () => {
+        skipped.name = "Unknown job";
+      },
+      () => {
+        github.rest.actions.listWorkflowRunArtifacts = async () => [artifact];
+      }
+    ]) {
+      const saved = { ...prior };
+      const savedJob = { ...skipped };
+      const savedArtifacts = github.rest.actions.listWorkflowRunArtifacts;
+      mutate();
+      await assert.rejects(proveFirstCapture(github, retry, expected, absent));
+      Object.assign(prior, saved);
+      Object.assign(skipped, savedJob);
+      github.rest.actions.listWorkflowRunArtifacts = savedArtifacts;
+    }
+    await assert.rejects(
+      proveFirstCapture(github, retry, expected, async () => "{}"),
+      /never regenerate/
+    );
+    await assert.rejects(
+      proveFirstCapture(github, retry, expected, async () => {
+        throw new Error("registry forbidden");
+      }),
+      /registry forbidden/
+    );
+  }
+});
+
+test("selection permits local snapshot retention after remote reads become unavailable", async (t) => {
+  const directory = await temp(t);
+  await writeFile(
+    join(directory, "capture-selection.json"),
+    JSON.stringify({ source, expected })
+  );
+  const core = {
+    getInput: (name) => (name === "registry" ? "localhost:5000" : "")
+  };
+  const commands = [];
+  const run = async (args) => {
+    commands.push(args);
+    if (args[0] === "yq") return JSON.stringify(plan);
+    if (args[0] === "git" && args[1] === "rev-parse") return source.commit;
+    if (args[0] === "bicep") return "";
+    if (args[0] === "oras" && args[1] === "cp") {
+      const layout = args.at(-1).slice(0, -":bundle".length);
+      await mkdir(layout, { recursive: true });
+      await writeFile(
+        join(layout, "index.json"),
+        JSON.stringify({ manifests: [{ digest: hash("native") }] })
+      );
+      return "";
+    }
+    if (args[0] === "tar") {
+      await writeFile(args[2], "retained snapshot");
+      return "";
+    }
+    throw new Error("remote history and registry reads unavailable");
+  };
+  await captureSelected({ core, context }, directory, env, run);
+  assert.equal(
+    await readFile(join(directory, artifact.name), "utf8"),
+    "retained snapshot"
+  );
+  assert.ok(
+    !commands.some((args) => args[0] === "gh" || args[1] === "manifest")
+  );
+  await assert.rejects(
+    captureSelected(
+      { core, context },
+      directory,
+      { ...env, GITHUB_RUN_ATTEMPT: "2" },
+      run
+    ),
+    /another source or attempt/
+  );
+});
+
+test("later queued first attempts cannot block capture but queued reruns retain earlier history", async () => {
+  const later = {
+    ...workflowRun,
+    id: 124,
+    run_number: 51,
+    status: "queued",
+    run_attempt: 1
+  };
+  const previous = { ...later, run_attempt: 1, status: "completed" };
+  const github = {
+    paginate: async (method, args) => method(args),
+    rest: {
+      actions: {
+        getWorkflowRunAttempt: async ({ run_id, attempt_number }) => ({
+          data:
+            run_id === source.runId ? { ...workflowRun, run_number: 50 }
+            : attempt_number === later.run_attempt ? later
+            : previous
+        }),
+        listWorkflowRuns: async () => [later],
+        listWorkflowRunArtifacts: async () => [],
+        listJobsForWorkflowRunAttempt: async ({ attempt_number }) =>
+          attempt_number === later.run_attempt ? [] : [job]
+      }
+    }
+  };
+  const absent = async () => {
+    throw Object.assign(new Error("not found"), {
+      code: 1,
+      stderr: `Error response from registry: failed to fetch the content of "${expected.reference}": ${expected.reference}: not found`
+    });
+  };
+  await proveFirstCapture(github, source, expected, absent);
+  later.run_attempt = 2;
+  await assert.rejects(
+    proveFirstCapture(github, source, expected, absent),
+    /generation step|generation may/
+  );
+  later.run_attempt = 1;
+  later.run_number = undefined;
+  await assert.rejects(
+    proveFirstCapture(github, source, expected, absent),
+    /still active/
+  );
+  later.run_number = 51;
+  github.rest.actions.listJobsForWorkflowRunAttempt = async () => [
+    { status: "in_progress", started_at: "2026-10-01T10:00:00Z" }
+  ];
+  await assert.rejects(
+    proveFirstCapture(github, source, expected, absent),
+    /may already have started/
   );
 });
 
@@ -699,7 +890,7 @@ test("script surfaces API/auth failures instead of returning success or regenera
   );
 });
 
-test("reusable workflow stays preparatory, separates generation credentials, and serializes release writers", async () => {
+test("release caller activates the credential-isolated full-version producer and serializes writers", async () => {
   const yaml = await readFile(
     new URL("../workflows/__publish-release-bicep.yaml", import.meta.url),
     "utf8"
@@ -709,10 +900,22 @@ test("reusable workflow stays preparatory, separates generation credentials, and
     "utf8"
   );
   const [, bundle, publisher] = yaml.split(/^  (?:bundle|publish):\s*$/m);
+  const orderedSteps = [
+    "Validate approved source and select immutable snapshot",
+    "Generate types once for the full release version",
+    "Capture native Bicep OCI snapshot",
+    "Retain original native snapshot"
+  ].map((name) => bundle.indexOf(`- name: ${name}\n`));
+  assert.ok(
+    orderedSteps.every(
+      (position, index) =>
+        position >= 0 && (index === 0 || position > orderedSteps[index - 1])
+    )
+  );
   for (const step of job.steps) {
     assert.ok(bundle.includes(`- name: ${step.name}\n`));
   }
-  assert.doesNotMatch(active, /uses:.*__publish-release-bicep/);
+  assert.match(active, /uses:.*__publish-release-bicep/);
   assert.doesNotMatch(
     yaml,
     /secrets:|id-token:|--force|azure\/login|ACR|create-github-app-token/
@@ -768,12 +971,11 @@ test(
     const registry = process.env.BICEP_RELEASE_NATIVE_REGISTRY;
     assert.match(registry, /^localhost:[0-9]+$/);
     const directory = await temp(t);
-    await capture(source, directory, registry);
-    const archive = join(directory, artifact.name);
-    const nativeArtifact = {
-      ...artifact,
-      digest: hash(await readFile(archive))
+    const source = {
+      ...releaseIdentity(context, env, plan),
+      generationAttempt: 2
     };
+    const archive = join(directory, artifact.name);
     const writes = [];
     const run = async (args, options) => {
       const mapped = args.map((arg) =>
@@ -799,6 +1001,60 @@ test(
         throw error;
       }
     };
+    const history = {
+      paginate: async (method, args) => method(args),
+      rest: {
+        actions: {
+          listWorkflowRuns: async () => [
+            { ...workflowRun, status: "completed", conclusion: "failure" }
+          ],
+          listWorkflowRunArtifacts: async () => [],
+          getWorkflowRunAttempt: async ({ attempt_number }) => ({
+            data: {
+              ...workflowRun,
+              run_attempt: attempt_number,
+              run_number: 50,
+              status: "completed",
+              conclusion: "failure"
+            }
+          }),
+          listJobsForWorkflowRunAttempt: async () => [
+            {
+              name: "Stage full-version Radius Bicep extension",
+              status: "completed",
+              conclusion: "skipped"
+            }
+          ]
+        }
+      }
+    };
+    await proveFirstCapture(history, source, expected, run);
+    assert.equal(selectSnapshot([], source, false, true), "");
+    await writeFile(
+      join(directory, "capture-selection.json"),
+      JSON.stringify({ source, expected })
+    );
+    history.rest.actions.getWorkflowRunAttempt = async () => {
+      throw new Error("history unavailable after generation");
+    };
+    await captureSelected(
+      {
+        context,
+        core: { getInput: (name) => (name === "registry" ? registry : "") }
+      },
+      directory,
+      { ...env, GITHUB_RUN_ATTEMPT: "2" },
+      async (args, options) => {
+        if (args[0] === "yq") return JSON.stringify(plan);
+        if (args[0] === "git" && args[1] === "rev-parse") return source.commit;
+        return tool(args, options);
+      }
+    );
+    const nativeArtifact = {
+      ...artifact,
+      digest: hash(await readFile(archive))
+    };
+    const nativeClient = () => client({ ...workflowRun, run_attempt: 2 });
     for (const target of [
       expected,
       plannedBicepExtensions(
@@ -807,7 +1063,7 @@ test(
       )[1]
     ]) {
       const receipt = await prepareRelease(
-        client(),
+        nativeClient(),
         archive,
         source,
         target,
@@ -815,20 +1071,47 @@ test(
         directory
       );
       const before = writes.length;
-      await publishRelease(client(), receipt, directory, run);
-      await publishRelease(client(), receipt, directory, run);
+      await publishRelease(nativeClient(), receipt, directory, run);
+      await publishRelease(nativeClient(), receipt, directory, run);
+      assert.equal(receipt.record.generation.runAttempt, 2);
       const restore = join(directory, target.version);
       await mkdir(restore);
       await mkdir(join(restore, "docker"));
       await writeFile(join(restore, "docker/config.json"), "{}");
+      // Private transport fixture: preserve canonical bytes at the consumer destination.
+      const mirror = `${registry}/release-mirror:${target.version}`;
+      await tool([
+        "oras",
+        "cp",
+        "--from-plain-http",
+        "--to-plain-http",
+        `${registry}/release-radius@${receipt.record.digest}`,
+        mirror
+      ]);
+      assert.equal(
+        hash(await tool(["oras", "manifest", "fetch", "--plain-http", mirror])),
+        receipt.record.digest
+      );
+      const imageConfig = releaseBicepConfig(
+        {
+          ...plan,
+          version: `v${target.version}`,
+          releaseType: target.version.includes("-rc.") ? "rc" : "final"
+        },
+        source.commit,
+        target.version
+      );
+      imageConfig.extensions.radius = imageConfig.extensions.radius.replace(
+        "biceptypes.azurecr.io/radius",
+        `${registry}/release-mirror`
+      );
       await writeFile(
         join(restore, "bicepconfig.json"),
         JSON.stringify({
+          ...imageConfig,
+          // The disposable generic registry needs OCI; the shipped ACR config does not.
           experimentalFeaturesEnabled: { ociEnabled: true },
-          cacheRootDirectory: join(restore, "cache"),
-          extensions: {
-            radius: `br:${registry}/release-radius:${target.version}`
-          }
+          cacheRootDirectory: join(restore, "cache")
         })
       );
       await writeFile(join(restore, "main.bicep"), "extension radius\n");

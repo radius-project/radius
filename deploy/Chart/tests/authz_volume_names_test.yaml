@@ -1,0 +1,45 @@
+suite: test that a user root CA volume cannot reuse the Radius CA bundle volume name
+templates:
+  - ucp/deployment.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - controller/deployment.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  # Helm stops at the first failing template, so the chart-wide render error is reported for ucp.
+  # Every component mounts the radius-ca volume when authorization is on, so a user volume with
+  # that name would duplicate it and Kubernetes would reject the Deployment.
+  - it: fails when global.rootCA.volumeName is the Radius CA bundle volume name in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: radius-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.volumeName must not be \"radius-ca\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
+        template: ucp/deployment.yaml
+
+  - it: fails when global.rootCA.volumeName is the Radius CA bundle volume name in enforce
+    set:
+      global.rbac.enabled: true
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: radius-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rootCA.volumeName must not be \"radius-ca\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
+        template: ucp/deployment.yaml
+
+  - it: allows the Radius CA bundle volume name when authorization is off
+    set:
+      global.rootCA.cert: test-ca
+      global.rootCA.volumeName: radius-ca
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: radius-ca
+            secret:
+              secretName: root-ca-cert
+        template: controller/deployment.yaml
