@@ -207,6 +207,58 @@ test_release_workflow_sibling_result() {
     pass_test
 }
 
+test_release_producer_results() {
+    local step mappings command producer result key job value status summary
+    local -a environment
+    step="$(yq -o=json '.jobs."build-summary".steps[] |
+        select(.name == "Check all build jobs")' "${RELEASE_WORKFLOW}")"
+    mappings="$(jq -er '.env | to_entries[] |
+        [.key, (.value | capture(
+            "^\\s*\\$\\{\\{ needs\\.(?<job>[a-z-]+)\\.result \\}\\}\\s*$"
+        ).job)] | @tsv' <<< "${step}")"
+    command="$(jq -er '.run' <<< "${step}")"
+    for producer in publish-radius-bicep-extension build-and-push-bicep-types verify-release; do
+        if ! JOB="${producer}" yq -e \
+            '.jobs."build-summary".needs | any_c(. == strenv(JOB))' \
+            "${RELEASE_WORKFLOW}" >/dev/null; then
+            fail_test "summary must depend on ${producer}"
+        fi
+        for result in success failure cancelled; do
+            environment=()
+            while IFS=$'\t' read -r key job; do
+                value=success
+                case "${job}" in
+                    publish-radius-bicep-extension)
+                        value=skipped
+                        [[ "${job}" != "${producer}" ]] || value="${result}"
+                        ;;
+                    build-and-push-bicep-types | verify-release | approve-publication | finalize-release | coordinate-release | publish-sibling-releases)
+                        [[ "${result}" == success ]] || value=skipped
+                        ;;
+                esac
+                [[ "${job}" != "${producer}" ]] || value="${result}"
+                environment+=("${key}=${value}")
+            done <<< "${mappings}"
+            summary="${TEST_ROOT}/${producer}-${result}.md"
+            status=0
+            (
+                cd "${REPO_ROOT}"
+                env "${environment[@]}" GITHUB_STEP_SUMMARY="${summary}" \
+                    bash -eu -c "${command}"
+            ) >"${TEST_ROOT}/producer-output" 2>&1 || status=$?
+            if ! grep -Eq "^\\| ${producer} \\| .* ${result} \\|$" "${summary}"; then
+                fail_test "summary omitted ${producer}:${result}"
+            elif [[ "${result}" == success && "${status}" != 0 ]]; then
+                fail_test "intentional alternate-producer skip failed summary"
+            elif [[ "${result}" != success && "${status}" == 0 ]]; then
+                fail_test "${producer}:${result} falsely reported success"
+            else
+                pass_test
+            fi
+        done
+    done
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/build-summary-test-XXXXXX")"
 
@@ -216,6 +268,7 @@ main() {
     test_cancelled_fails
     test_malformed_argument_fails
     test_no_arguments_fails
+    test_release_producer_results
     for result in success skipped failure cancelled; do
         test_release_workflow_sibling_result "${result}"
     done

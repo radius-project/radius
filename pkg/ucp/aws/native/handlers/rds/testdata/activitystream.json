@@ -1,0 +1,89 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_AURORA_CLUSTER_ARN": "arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das",
+    "RADIUS_REC_KMS_KEY_ID": "1234abcd-12ab-34cd-56ef-1234567890ab"
+  },
+  "interactions": [
+    {
+      "service": "RDS",
+      "operation": "StartActivityStream",
+      "request": "Action=StartActivityStream&ApplyImmediately=true&KmsKeyId=1234abcd-12ab-34cd-56ef-1234567890ab&Mode=async&ResourceArn=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<StartActivityStreamResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <StartActivityStreamResult>\n    <KinesisStreamName>aws-rds-das-cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</KinesisStreamName>\n    <KmsKeyId>1234abcd-12ab-34cd-56ef-1234567890ab</KmsKeyId>\n    <Mode>async</Mode>\n    <Status>starting</Status>\n    <ApplyImmediately>true</ApplyImmediately>\n  </StartActivityStreamResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0001</RequestId>\n  </ResponseMetadata>\n</StartActivityStreamResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>starting</ActivityStreamStatus>\n        <ActivityStreamMode>async</ActivityStreamMode>\n        <ActivityStreamKmsKeyId>1234abcd-12ab-34cd-56ef-1234567890ab</ActivityStreamKmsKeyId>\n        <ActivityStreamKinesisStreamName>aws-rds-das-cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</ActivityStreamKinesisStreamName>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0002</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>started</ActivityStreamStatus>\n        <ActivityStreamMode>async</ActivityStreamMode>\n        <ActivityStreamKmsKeyId>1234abcd-12ab-34cd-56ef-1234567890ab</ActivityStreamKmsKeyId>\n        <ActivityStreamKinesisStreamName>aws-rds-das-cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</ActivityStreamKinesisStreamName>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0003</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>started</ActivityStreamStatus>\n        <ActivityStreamMode>async</ActivityStreamMode>\n        <ActivityStreamKmsKeyId>1234abcd-12ab-34cd-56ef-1234567890ab</ActivityStreamKmsKeyId>\n        <ActivityStreamKinesisStreamName>aws-rds-das-cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</ActivityStreamKinesisStreamName>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0004</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>started</ActivityStreamStatus>\n        <ActivityStreamMode>async</ActivityStreamMode>\n        <ActivityStreamKmsKeyId>1234abcd-12ab-34cd-56ef-1234567890ab</ActivityStreamKmsKeyId>\n        <ActivityStreamKinesisStreamName>aws-rds-das-cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</ActivityStreamKinesisStreamName>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0005</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "StopActivityStream",
+      "request": "Action=StopActivityStream&ApplyImmediately=true&ResourceArn=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<StopActivityStreamResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <StopActivityStreamResult>\n    <KinesisStreamName>aws-rds-das-cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</KinesisStreamName>\n    <KmsKeyId>1234abcd-12ab-34cd-56ef-1234567890ab</KmsKeyId>\n    <Status>stopping</Status>\n  </StopActivityStreamResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0006</RequestId>\n  </ResponseMetadata>\n</StopActivityStreamResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>stopping</ActivityStreamStatus>\n        <ActivityStreamMode>async</ActivityStreamMode>\n        <ActivityStreamKmsKeyId>1234abcd-12ab-34cd-56ef-1234567890ab</ActivityStreamKmsKeyId>\n        <ActivityStreamKinesisStreamName>aws-rds-das-cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</ActivityStreamKinesisStreamName>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0007</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "RDS",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=arn%3Aaws%3Ards%3Aus-west-2%3A123456789012%3Acluster%3Aradius-rec-das&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult>\n    <DBClusters>\n      <DBCluster>\n        <DBClusterIdentifier>radius-rec-das</DBClusterIdentifier>\n        <DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-das</DBClusterArn>\n        <DbClusterResourceId>cluster-A6TSYXITZCZXJHIRVFUBZ5LTWY</DbClusterResourceId>\n        <Engine>aurora-postgresql</Engine>\n        <Status>available</Status>\n        <ActivityStreamStatus>stopped</ActivityStreamStatus>\n      </DBCluster>\n    </DBClusters>\n  </DescribeDBClustersResult>\n  <ResponseMetadata>\n    <RequestId>5d3b2a1c-7e8f-4a6b-9c0d-1e2f3a4b0008</RequestId>\n  </ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    }
+  ]
+}

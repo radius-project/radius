@@ -1,0 +1,180 @@
+{
+  "typeName": "AWS::RDS::TenantDatabase",
+  "description": "A tenant database (PDB) in an RDS for Oracle container database (CDB) instance that uses the multi-tenant configuration. RDS changes one tenant database of an instance at a time and backs the instance up after each change, so give tenant databases of one instance dependsOn on each other. A deploy waits for the instance after each change, and gets 409 when the instance is still busy with another change. Deleting it takes a final DB snapshot of the instance, which Radius never deletes.",
+  "additionalProperties": false,
+  "definitions": {
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "required": ["Key"]
+    },
+    "MasterUserSecret": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SecretArn": {
+          "type": "string",
+          "description": "The ARN of the secret."
+        },
+        "SecretStatus": {
+          "type": "string",
+          "description": "The status of the secret, such as active."
+        },
+        "KmsKeyId": {
+          "type": "string",
+          "description": "The AWS KMS key that encrypts the secret."
+        }
+      }
+    }
+  },
+  "properties": {
+    "DBInstanceIdentifier": {
+      "type": "string",
+      "description": "The identifier of the CDB instance the tenant database is in. It isn't case-sensitive."
+    },
+    "TenantDBName": {
+      "type": "string",
+      "description": "The name of the tenant database. It isn't case-sensitive.",
+      "minLength": 1,
+      "maxLength": 8
+    },
+    "MasterUsername": {
+      "type": "string",
+      "description": "The name of the master user of the tenant database: 1 to 16 letters, numbers, or underscores, starting with a letter.",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,15}$"
+    },
+    "MasterUserPassword": {
+      "type": "string",
+      "description": "The password of the master user: 8 to 30 printable ASCII characters other than /, \", @, &, and '. Can't be set with ManageMasterUserPassword.",
+      "minLength": 8,
+      "maxLength": 30
+    },
+    "ManageMasterUserPassword": {
+      "type": "boolean",
+      "description": "Whether RDS manages the master user password in AWS Secrets Manager."
+    },
+    "MasterUserSecretKmsKeyId": {
+      "type": "string",
+      "description": "The AWS KMS key that encrypts the secret RDS manages, when ManageMasterUserPassword is true. It can't change once RDS manages the password."
+    },
+    "CharacterSetName": {
+      "type": "string",
+      "description": "The character set of the tenant database. AWS uses AL32UTF8 when it isn't set."
+    },
+    "NcharCharacterSetName": {
+      "type": "string",
+      "description": "The NCHAR character set of the tenant database. AWS uses AL16UTF16 when it isn't set."
+    },
+    "MasterUserSecret": {
+      "$ref": "#/definitions/MasterUserSecret",
+      "description": "The secret RDS manages in AWS Secrets Manager for the master user password."
+    },
+    "TenantDatabaseARN": {
+      "type": "string",
+      "description": "The ARN of the tenant database."
+    },
+    "TenantDatabaseResourceId": {
+      "type": "string",
+      "description": "The AWS Region-unique, immutable identifier of the tenant database."
+    },
+    "DbiResourceId": {
+      "type": "string",
+      "description": "The AWS Region-unique, immutable identifier of the DB instance."
+    },
+    "Tags": {
+      "type": "array",
+      "description": "The tags of the tenant database. An RDS resource has at most 50 tags.",
+      "maxItems": 50,
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": true,
+    "cloudFormationSystemTags": false,
+    "tagProperty": "/properties/Tags"
+  },
+  "required": ["DBInstanceIdentifier", "TenantDBName", "MasterUsername"],
+  "createOnlyProperties": [
+    "/properties/DBInstanceIdentifier",
+    "/properties/TenantDBName",
+    "/properties/MasterUsername",
+    "/properties/CharacterSetName",
+    "/properties/NcharCharacterSetName"
+  ],
+  "readOnlyProperties": [
+    "/properties/MasterUserSecret",
+    "/properties/TenantDatabaseARN",
+    "/properties/TenantDatabaseResourceId",
+    "/properties/DbiResourceId"
+  ],
+  "writeOnlyProperties": [
+    "/properties/MasterUserPassword",
+    "/properties/MasterUserSecretKmsKeyId"
+  ],
+  "primaryIdentifier": [
+    "/properties/DBInstanceIdentifier",
+    "/properties/TenantDBName"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:DescribeDBInstances",
+        "rds:CreateTenantDatabase",
+        "rds:DescribeTenantDatabases",
+        "kms:CreateGrant",
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey",
+        "secretsmanager:CreateSecret",
+        "secretsmanager:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": ["rds:DescribeTenantDatabases"]
+    },
+    "update": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:DescribeTenantDatabases",
+        "rds:DescribeDBInstances",
+        "rds:ModifyTenantDatabase",
+        "rds:RemoveTagsFromResource",
+        "kms:CreateGrant",
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey",
+        "secretsmanager:CreateSecret",
+        "secretsmanager:TagResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "rds:CreateDBSnapshot",
+        "rds:DescribeDBInstances",
+        "rds:DeleteTenantDatabase",
+        "rds:DescribeTenantDatabases"
+      ]
+    },
+    "list": {
+      "permissions": ["rds:DescribeTenantDatabases"]
+    }
+  }
+}
