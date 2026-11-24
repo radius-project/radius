@@ -289,7 +289,12 @@ func TestObserveServingCertificate(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, fmt.Sprintf("%x", sha256.Sum256(der)), result.LeafSHA256)
 					require.Len(t, result.ChainSHA256, 2)
-					require.Equal(t, leaf.NotAfter, result.NotAfter)
+					anchor := mustParseCertificate(t, target.CA)
+					expiry := leaf.NotAfter
+					if anchor.NotAfter.Before(expiry) {
+						expiry = anchor.NotAfter
+					}
+					require.Equal(t, expiry, result.NotAfter)
 					require.Equal(t, target.PodUID, result.PodUID)
 					require.EqualValues(t, 2, reads.Load())
 				} else {
