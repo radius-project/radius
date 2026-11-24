@@ -99,10 +99,17 @@ main() {
     local intended="${REPO}/intended-targets.json"
     cp "${ROOT}/.github/release-parity/targets.json" "${intended}"
     TEST_EXPECTED_TARGETS="${intended}" expect pass "matching intended targets"
+    expect "cannot validate a frozen first RC" \
+        "GHCR first RC cannot use an old tagged validator" HEAD --frozen-first-rc
+    mkdir -p "${REPO}/.github/scripts"
+    cp "${SCRIPT_DIR}/validate-release-controller-plan.sh" "${REPO}/.github/scripts/"
+    expect pass "GHCR first RC can validate its signed source at the tag" HEAD --frozen-first-rc
+    rm "${REPO}/.github/scripts/validate-release-controller-plan.sh"
     use_legacy_contract
     TEST_EXPECTED_TARGETS="${intended}" expect "source targets differ" "legacy source rejects intended GHCR plan"
     cp "${REPO}/.github/release-parity/targets.json" "${intended}"
     TEST_EXPECTED_TARGETS="${intended}" expect pass "same legacy source accepts matching legacy plan"
+    TEST_EXPECTED_TARGETS="${intended}" expect pass "retained ACR plan does not run the GHCR validator" HEAD --frozen-first-rc
     write_pipeline
     rm "${WORKFLOWS}/__publish-release-bicep.yaml"
     expect "has no reusable Radius Bicep producer workflow" "missing reusable workflow rejects partial backport"

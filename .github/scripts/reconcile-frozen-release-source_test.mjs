@@ -274,7 +274,9 @@ for (const [name, mutate, error] of [
 for (const conflictingRef of [
   "heads/release/0.61",
   `tags/${version}`,
-  "heads/automation/release-state-0.61.0-rc.1"
+  "heads/automation/release-state-0.61.0-rc.1",
+  "heads/automation/aws-bicep-request-0.61.0-rc.1",
+  "heads/automation/bicep-release-state-0.61.0-rc.1"
 ]) {
   test(`rejects missing frozen source alongside ${conflictingRef}`, async () => {
     const f = fixture();
@@ -445,7 +447,7 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   const compatibilitySource = process.env.FROZEN_RELEASE_COMPAT_DIR ?? root;
   const frozenFiles = [
     ".goreleaser.yaml",
-    ".github/workflows/build-release.yaml",
+    ".github/workflows",
     ".github/scripts",
     ".github/release-parity/targets.json",
     "cliff.toml",
@@ -533,7 +535,8 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
     "--output-dir",
     prepared
   ];
-  bash("verify-release-build-contract.sh", [a, "--require-sibling-releases"]);
+  const buildOptions = ["--require-sibling-releases", "--frozen-first-rc"];
+  bash("verify-release-build-contract.sh", [a, ...buildOptions]);
   bash("prepare-release.sh", [...prepareArgs, "--version-only"]);
   const preflightProduct = read(path.join(prepared, "product-commit.txt"));
   assert.equal(preflightProduct, a);
@@ -672,8 +675,9 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   git("switch", "-q", "main");
 
   const controllerOutput = path.join(temp, "controller");
-  const validateController = (sha) =>
-    bash("validate-release-controller-plan.sh", [
+  const validateController = (sha, tools = scripts) =>
+    run("bash", [
+      path.join(tools, "validate-release-controller-plan.sh"),
       "--plan-file",
       originalPlan,
       "--version",
@@ -840,7 +844,7 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   }
   validateController(c);
   assert.equal(read(path.join(controllerOutput, "release-commit.txt")), c);
-  bash("verify-release-build-contract.sh", [c, "--require-sibling-releases"]);
+  bash("verify-release-build-contract.sh", [c, ...buildOptions]);
 
   const lockCore = coreFixture({
     MODE: "create",
@@ -943,6 +947,12 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   );
 
   const plan = JSON.parse(run("yq", ["-o=json", ".", originalPlan]));
+  git("switch", "-q", "--detach", c);
+  if (plan.expectedOutputs.bicepExtensionsContract === "ghcr-v1") {
+    // approvedRelease in the GHCR publisher calls the tag's validator.
+    validateController(c, path.join(repo, ".github/scripts"));
+    assert.equal(read(path.join(controllerOutput, "release-commit.txt")), c);
+  }
   const { verifyReleaseManifest } = await import(
     pathToFileURL(
       path.join(repo, ".github/scripts/verify-release-manifest.mjs")

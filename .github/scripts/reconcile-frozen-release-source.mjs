@@ -266,7 +266,9 @@ export default async function reconcileFrozenReleaseSource({
   for (const ref of [
     `heads/release/${releaseVersion[1]}.${releaseVersion[2]}`,
     `tags/${version}`,
-    `heads/automation/release-state-${version.slice(1)}`
+    `heads/automation/release-state-${version.slice(1)}`,
+    `heads/automation/aws-bicep-request-${version.slice(1)}`,
+    `heads/automation/bicep-release-state-${version.slice(1)}`
   ]) {
     try {
       await github.rest.git.getRef({ owner, repo, ref });
