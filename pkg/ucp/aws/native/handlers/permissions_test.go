@@ -44,11 +44,13 @@ var iamPrefixes = map[string]string{
 	"elasticloadbalancingv2":   "elasticloadbalancing",
 	"emr":                      "elasticmapreduce",
 	"fsx":                      "fsx",
+	"glue":                     "glue",
 	"iam":                      "iam",
 	"iot":                      "iot",
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"neptune":                  "rds",
 	"rds":                      "rds",
 	"s3":                       "s3",
 	"s3control":                "s3",
@@ -192,6 +194,12 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 	// AWS checks the caller for this on a Chime streaming Put with a MediaInsightsConfiguration.
 	implied["create"] = append(implied["create"], "chime:GetMediaInsightsPipelineConfiguration")
 	implied["update"] = append(implied["update"], "chime:GetMediaInsightsPipelineConfiguration")
+	// AWS authorizes Glue's CreatePartitionIndex and DeletePartitionIndex with glue:UpdateTable on the table, and
+	// GetPartitionIndexes, which every operation calls, with glue:GetTable.
+	implied["create"] = append(implied["create"], "glue:UpdateTable", "glue:GetTable")
+	implied["delete"] = append(implied["delete"], "glue:UpdateTable", "glue:GetTable")
+	implied["read"] = append(implied["read"], "glue:GetTable")
+	implied["update"] = append(implied["update"], "glue:GetTable")
 	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}
