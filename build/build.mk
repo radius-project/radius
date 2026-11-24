@@ -159,6 +159,7 @@ clean: ## Cleans output directory.
 build-bicep: build-bicep-$(GOOS)-$(GOARCH)
 
 BICEP_EXTENSION_TAG ?= $(REL_CHANNEL)
+BICEP_RELEASE_PLAN ?=
 
 # Generate a target for the bicep container
 # Params:
@@ -170,7 +171,7 @@ build-bicep-$(1)-$(2):
 	$(eval BINS_OUT_DIR_$(1)_$(2) := $(OUT_DIR)/$(1)_$(2)/$(BUILDTYPE_DIR))
 	@echo "$(ARROW) Building bicep container on $(1)/$(2) to $(BINS_OUT_DIR_$(1)_$(2))/bicep"
 	BICEP_VERSION="$$(BICEP_VERSION)" BICEP_CHECKSUM_LINUX_AMD64="$$(BICEP_CHECKSUM_LINUX_AMD64)" BICEP_CHECKSUM_LINUX_ARM64="$$(BICEP_CHECKSUM_LINUX_ARM64)" BICEP_OS=linux BICEP_ARCH=$(2) bash build/scripts/install-bicep.sh $(BINS_OUT_DIR_$(1)_$(2))/bicep
-	./build/scripts/generate-bicepconfig.sh $(BICEP_EXTENSION_TAG) $(BINS_OUT_DIR_$(1)_$(2))/bicep
+	./build/scripts/generate-bicepconfig.sh $(BICEP_EXTENSION_TAG) $(BINS_OUT_DIR_$(1)_$(2))/bicep $(if $(BICEP_RELEASE_PLAN),"$(BICEP_RELEASE_PLAN)")
 endef
 
 # Generate bicep build targets for each combination of OS and ARCH

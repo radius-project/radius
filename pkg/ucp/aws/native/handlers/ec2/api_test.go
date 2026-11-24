@@ -18,6 +18,7 @@ package ec2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -1509,5 +1510,182 @@ var vpnGatewayRoutePropagationAPI = map[string]nativetest.Call{
 		Unclear: "The page doesn't say that the route-table-id filter, unlike RouteTableIds, leaves out a route table " +
 			"that doesn't exist, which the handler relies on and the fake does. The fake takes only that filter, and " +
 			"returns InvalidParameterValue for any other, which the page doesn't say.",
+	},
+}
+
+const (
+	instanceStatesGuide = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-lifecycle.html"
+	stopStartGuide      = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html"
+	spotRequestsGuide   = "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-spot-instances-request.html"
+	consistencyGuide    = "https://docs.aws.amazon.com/ec2/latest/devguide/eventual-consistency.html"
+
+	// testInstance is the instance the instance state rules use.
+	testInstance = "i-0123456789abcdef0"
+)
+
+// instanceCall returns a Break that puts testInstance in state, with the extra fields set, and makes the call against
+// a new fake of the EC2 API backed by store.
+func instanceCall(state types.InstanceStateName, extra map[string]any, call func(ctx context.Context, f *fakeInstances) error) func(ctx context.Context, store *awsfake.CloudControl) error {
+	return func(ctx context.Context, store *awsfake.CloudControl) error {
+		putInstance(store, testInstance, state, extra)
+		return call(ctx, newFakeInstances(store))
+	}
+}
+
+// instanceIs returns an error when f doesn't read testInstance in state, with the reason code.
+func instanceIs(ctx context.Context, f *fakeInstances, state types.InstanceStateName, reason string) error {
+	out, err := f.DescribeInstances(ctx, &awsec2.DescribeInstancesInput{InstanceIds: []string{testInstance}}, inTestRegion)
+	if err != nil {
+		return err
+	}
+	instance := out.Reservations[0].Instances[0]
+	got := ""
+	if instance.StateReason != nil {
+		got = aws.ToString(instance.StateReason.Code)
+	}
+	if instance.State.Name != state || got != reason {
+		return fmt.Errorf("the instance is %s with reason %q, not %s with reason %q", instance.State.Name, got, state, reason)
+	}
+	return nil
+}
+
+func startInstance(ctx context.Context, f *fakeInstances) error {
+	_, err := f.StartInstances(ctx, &awsec2.StartInstancesInput{InstanceIds: []string{testInstance}}, inTestRegion)
+	return err
+}
+
+func stopInstance(ctx context.Context, f *fakeInstances) error {
+	_, err := f.StopInstances(ctx, &awsec2.StopInstancesInput{InstanceIds: []string{testInstance}}, inTestRegion)
+	return err
+}
+
+// instanceIDRules are the rules for the instance IDs of a call.
+func instanceIDRules(call func(ctx context.Context, f *fakeInstances, ids []string) error) []nativetest.Rule {
+	return []nativetest.Rule{
+		{
+			Rule: "an instance ID is i- and 8 or 17 hex characters",
+			Doc:  commonErrors,
+			Break: instanceCall(types.InstanceStateNameRunning, nil, func(ctx context.Context, f *fakeInstances) error {
+				return call(ctx, f, []string{"i-XYZ"})
+			}),
+			Code: "InvalidInstanceID.Malformed",
+		},
+		{
+			Rule: "an instance ID names an instance EC2 has",
+			Doc:  commonErrors,
+			Break: instanceCall(types.InstanceStateNameRunning, nil, func(ctx context.Context, f *fakeInstances) error {
+				return call(ctx, f, []string{"i-0fedcba9876543210"})
+			}),
+			Code: "InvalidInstanceID.NotFound",
+		},
+	}
+}
+
+var instanceStateAPI = map[string]nativetest.Call{
+	"DescribeInstances": {
+		Doc: page("DescribeInstances"),
+		Rules: append(instanceIDRules(func(ctx context.Context, f *fakeInstances, ids []string) error {
+			_, err := f.DescribeInstances(ctx, &awsec2.DescribeInstancesInput{InstanceIds: ids}, inTestRegion)
+			return err
+		}),
+			nativetest.Rule{
+				Rule: "MaxResults can't be combined with instance IDs",
+				Break: instanceCall(types.InstanceStateNameRunning, nil, func(ctx context.Context, f *fakeInstances) error {
+					_, err := f.DescribeInstances(ctx, &awsec2.DescribeInstancesInput{InstanceIds: []string{testInstance}, MaxResults: aws.Int32(5)}, inTestRegion)
+					return err
+				}),
+				Code: invalidCombination,
+			},
+			nativetest.Rule{
+				Rule: "an instance the account doesn't own isn't in the output",
+				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
+					putInstance(store, testInstance, types.InstanceStateNameRunning, map[string]any{"Owner": "other"})
+					out, err := newFakeInstances(store).DescribeInstances(ctx, &awsec2.DescribeInstancesInput{InstanceIds: []string{testInstance}}, inTestRegion)
+					if err == nil && len(out.Reservations[0].Instances) > 0 {
+						err = fmt.Errorf("the output has %d instances", len(out.Reservations[0].Instances))
+					}
+					return err
+				},
+			},
+			nativetest.Rule{
+				Rule: "a recently terminated instance can still appear, as terminated",
+				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
+					putInstance(store, testInstance, types.InstanceStateNameTerminated, nil)
+					return instanceIs(ctx, newFakeInstances(store), types.InstanceStateNameTerminated, "")
+				},
+			},
+		),
+		Unclear: "EC2 is eventually consistent (" + consistencyGuide + "), and the docs don't say how soon a read shows " +
+			"the state a start or stop moves an instance to. The fake shows it on the next read.",
+	},
+	"StartInstances": {
+		Doc: page("StartInstances"),
+		Rules: append(instanceIDRules(func(ctx context.Context, f *fakeInstances, ids []string) error {
+			_, err := f.StartInstances(ctx, &awsec2.StartInstancesInput{InstanceIds: ids}, inTestRegion)
+			return err
+		}),
+			nativetest.Rule{
+				Rule: "InstanceId.N is required",
+				Doc:  commonErrors,
+				Break: instanceCall(types.InstanceStateNameStopped, nil, func(ctx context.Context, f *fakeInstances) error {
+					_, err := f.StartInstances(ctx, &awsec2.StartInstancesInput{}, inTestRegion)
+					return err
+				}),
+				Code: missingParameter,
+			},
+			nativetest.Rule{
+				Rule:  "starting an instance with an instance store root volume returns an error, which EC2's error codes page names UnsupportedOperation",
+				Break: instanceCall(types.InstanceStateNameStopped, map[string]any{"RootDeviceType": "instance-store"}, startInstance),
+				Code:  "UnsupportedOperation",
+			},
+			nativetest.Rule{
+				Rule: "a started instance is pending, and then running",
+				Doc:  instanceStatesGuide,
+				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
+					putInstance(store, testInstance, types.InstanceStateNameStopped, map[string]any{"StateReason": "Client.UserInitiatedShutdown"})
+					f := newFakeInstances(store)
+					return errors.Join(startInstance(ctx, f), instanceIs(ctx, f, types.InstanceStateNamePending, "Client.UserInitiatedShutdown"), instanceIs(ctx, f, types.InstanceStateNameRunning, ""))
+				},
+			},
+		),
+		Unclear: "The page doesn't say what EC2 does for an instance that isn't stopped. The fake returns IncorrectInstanceState, " +
+			"which EC2's error codes page gives for an instance in the wrong state, so a handler that starts a running, pending, " +
+			"or stopping instance fails.",
+	},
+	"StopInstances": {
+		Doc: page("StopInstances"),
+		Rules: append(instanceIDRules(func(ctx context.Context, f *fakeInstances, ids []string) error {
+			_, err := f.StopInstances(ctx, &awsec2.StopInstancesInput{InstanceIds: ids}, inTestRegion)
+			return err
+		}),
+			nativetest.Rule{
+				Rule: "InstanceId.N is required",
+				Doc:  commonErrors,
+				Break: instanceCall(types.InstanceStateNameRunning, nil, func(ctx context.Context, f *fakeInstances) error {
+					_, err := f.StopInstances(ctx, &awsec2.StopInstancesInput{}, inTestRegion)
+					return err
+				}),
+				Code: missingParameter,
+			},
+			nativetest.Rule{
+				Rule:  "an instance with an instance store root volume can't be stopped, which EC2's error codes page names UnsupportedOperation",
+				Break: instanceCall(types.InstanceStateNameRunning, map[string]any{"RootDeviceType": "instance-store"}, stopInstance),
+				Code:  "UnsupportedOperation",
+			},
+			nativetest.Rule{
+				Rule: "Hibernate defaults to false, so a stopped instance is stopping, and then stopped by a user-initiated shutdown",
+				Doc:  stopStartGuide,
+				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
+					putInstance(store, testInstance, types.InstanceStateNameRunning, nil)
+					f := newFakeInstances(store)
+					return errors.Join(stopInstance(ctx, f), instanceIs(ctx, f, types.InstanceStateNameStopping, ""), instanceIs(ctx, f, types.InstanceStateNameStopped, "Client.UserInitiatedShutdown"))
+				},
+			},
+		),
+		Unclear: "The page doesn't say what EC2 does for an instance that isn't running. The fake returns IncorrectInstanceState, " +
+			"which EC2's error codes page gives for an instance in the wrong state. A Spot Instance can be stopped only if a " +
+			"persistent Spot Instance request launched it (" + spotRequestsGuide + "), and the guide names no error code for one " +
+			"a one-time request launched. The fake returns UnsupportedOperation, which the error codes page gives for an " +
+			"operation an instance doesn't support.",
 	},
 }

@@ -263,6 +263,25 @@ func Strings(properties map[string]any, name string) []string {
 	return out
 }
 
+// The running states a template can keep an instance in, with a type such as AWS::EC2::InstanceState.
+const (
+	StateRunning = "running"
+	StateStopped = "stopped"
+)
+
+// RunningState returns the State property of properties: the running state a template of typeName keeps an instance
+// in, StateRunning or StateStopped. Any other value, or none, is a rejected client failure, so nothing reaches AWS.
+func RunningState(properties map[string]any, typeName string) (string, error) {
+	if s, _ := properties["State"].(string); s == StateRunning || s == StateStopped {
+		return s, nil
+	}
+	return "", &native.Failure{
+		Message:     fmt.Sprintf("State of an %s must be %q or %q", typeName, StateRunning, StateStopped),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
 // Without returns a copy of properties without the named top-level properties.
 func Without(properties map[string]any, names ...string) map[string]any {
 	out := maps.Clone(properties)

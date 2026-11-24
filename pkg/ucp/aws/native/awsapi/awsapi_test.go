@@ -153,6 +153,22 @@ func Test_PropertyHelpers(t *testing.T) {
 	require.Equal(t, []string{"EngineVersion", "Config"}, Changed(request))
 }
 
+func Test_RunningState(t *testing.T) {
+	for _, state := range []string{StateRunning, StateStopped} {
+		got, err := RunningState(map[string]any{"State": state}, "AWS::EC2::InstanceState")
+		require.NoError(t, err)
+		require.Equal(t, state, got)
+	}
+	for _, properties := range []map[string]any{{}, {"State": nil}, {"State": "Running"}, {"State": "stopping"}, {"State": 1}} {
+		_, err := RunningState(properties, "AWS::EC2::InstanceState")
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure, "%v", properties)
+		require.True(t, failure.ClientError)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome)
+		require.Equal(t, `State of an AWS::EC2::InstanceState must be "running" or "stopped"`, failure.Message)
+	}
+}
+
 func Test_Tags(t *testing.T) {
 	properties := map[string]any{"Tags": []any{
 		map[string]any{"Key": "team", "Value": "a"},

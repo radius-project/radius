@@ -231,7 +231,7 @@ func (h *TenantDatabase) Create(ctx context.Context, request native.CreateReques
 		input.Tags = awsapi.SDKTags[types.Tag](tags)
 	}
 	err := h.whenInstanceFree(ctx, request.Region, aws.ToString(input.DBInstanceIdentifier), func() error {
-		_, err := h.api.CreateTenantDatabase(ctx, input, inRegion(request.Region), sendOnce)
+		_, err := h.api.CreateTenantDatabase(ctx, input, inRegion(request.Region), retryThrottlesOnly)
 		return err
 	})
 	if err != nil {
@@ -271,7 +271,7 @@ func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateReques
 		input.DBInstanceIdentifier, input.TenantDBName = tenant.DBInstanceIdentifier, tenant.TenantDBName
 		calls = append(calls, func() error {
 			return h.whenInstanceFree(ctx, request.Region, aws.ToString(tenant.DBInstanceIdentifier), func() error {
-				_, err := h.api.ModifyTenantDatabase(ctx, input, opt, sendOnce)
+				_, err := h.api.ModifyTenantDatabase(ctx, input, opt, retryThrottlesOnly)
 				return err
 			})
 		})
@@ -400,7 +400,7 @@ func (h *TenantDatabase) DeleteWithToken(ctx context.Context, region string, ide
 			DBInstanceIdentifier:      tenant.DBInstanceIdentifier,
 			TenantDBName:              tenant.TenantDBName,
 			FinalDBSnapshotIdentifier: aws.String(token),
-		}, inRegion(region), sendOnce)
+		}, inRegion(region), retryThrottlesOnly)
 		if !awsapi.HasCode(err, "InvalidDBInstanceState") {
 			return err
 		}
