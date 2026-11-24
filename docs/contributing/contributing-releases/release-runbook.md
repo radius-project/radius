@@ -53,13 +53,13 @@ For an existing `release/X.Y` channel, also review and **rebase-merge the genera
 
 Open the automatically started [Release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml). For an existing channel, select the run started by the metadata backport merge and confirm **State: validated and ready to reconcile**, not the initial main-merge run that reports waiting. Review its version, Radius source commit, Deployment Engine commit, and frozen sibling commits. Record the exact **version and source commit** from this run's summary for recovery.
 
-- **Until v0.63.0 final ships:** confirm the Deployment Engine commit includes azure-octo/deployment-engine#705 (`e537d7e4b`). This release removes the AWS routes that older Deployment Engines call.
+- **Until v0.63.0 final ships:** confirm the Deployment Engine commit includes radius-project/deployment-engine#705 (`e537d7e4b`). This release removes the AWS routes that older Deployment Engines call.
 
 In **Review deployments**, approve **Approve release reconciliation** in the `release` environment.
 
 For a frozen first RC, the controller then creates or reuses a signed release-App commit based on the frozen product cutoff, adding only the reviewed release metadata files, including the PM notes. The release branch, tag, builds, and artifact locks use this resolved commit, not the later `main` squash commit. Record the resolved source SHA from the summary for subsequent recovery.
 
-Automation creates the Deployment Engine tag when missing, waits up to 15 minutes for its image while unlocked, locks the image digest, reconciles sibling tags, and creates the Radius tag last. **Do not manually create tags or dispatch individual publishers on the normal path.**
+Automation creates the Deployment Engine tag when missing, waits up to 15 minutes for its image while unlocked, locks the verified full-version GHCR index digest, reconciles sibling tags, and creates the Radius tag last. **Do not manually create tags or dispatch individual publishers on the normal path.**
 
 ### 4. Check the build and approve stable publication
 
@@ -115,7 +115,7 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 
 **Sibling GitHub Release publication failed:** resume the same version/source. Matching entries and their generated notes are reused, even when Radius is already public. Investigate source/classification conflicts rather than deleting releases or moving tags.
 
-**Dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
+**Downstream dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
 
 **Provenance attestation or verification failed:** for a transient GitHub or Sigstore error, resume the same release; signing the same staged digests again is safe. A missing or mismatched attestation means the artifact did not come from this tag build. Investigate it instead of bypassing verification.
 

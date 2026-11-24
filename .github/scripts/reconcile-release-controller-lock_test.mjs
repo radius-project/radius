@@ -51,7 +51,11 @@ function fixture() {
         getCommit: async () => ({
           data: {
             parents: [{ sha: releaseSource }],
-            author: { login: "radius-release-bot[bot]", type: "Bot" },
+            author: {
+              login: "radius-release[bot]",
+              type: "Bot",
+              id: 294554884
+            },
             commit: { verification: { verified: true } }
           }
         })
@@ -265,6 +269,7 @@ test("rejects a release candidate lock for another Radius source", async () => {
 test("rejects a release candidate lock written outside the release App", async () => {
   for (const data of [
     { author: { login: "octocat", type: "User" }, verified: true },
+    { author: { login: "other[bot]", type: "Bot", id: 1 }, verified: true },
     { author: { type: "Bot" }, verified: false }
   ]) {
     const state = fixture();

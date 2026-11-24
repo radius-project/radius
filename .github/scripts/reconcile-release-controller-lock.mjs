@@ -122,7 +122,9 @@ async function verifyLockCommit(
   }
   if (
     commit.commit?.verification?.verified !== true ||
-    commit.author?.type !== "Bot"
+    commit.author?.type !== "Bot" ||
+    commit.author.login !== "radius-release[bot]" ||
+    commit.author.id !== 294554884
   ) {
     throw new Error(
       `Release state commit ${sha} on ${branch} is not a GitHub-verified App commit`
@@ -166,7 +168,7 @@ async function readReleaseCandidateLock({ github, context, core }) {
       releaseSourceCommit,
       signedTag: candidate,
       deSourceCommit,
-      imageTag: lock?.deploymentEngine?.imageTag
+      imageTag: candidate.slice(1)
     },
     lock?.deploymentEngine?.digest
   );
@@ -224,7 +226,10 @@ export default async function reconcileReleaseControllerLock({
   ) {
     throw new Error("release and Deployment Engine commits must be full SHAs");
   }
-  if (inputs.signedTag !== inputs.version) {
+  if (
+    inputs.signedTag !== inputs.version ||
+    inputs.imageTag !== inputs.version.slice(1)
+  ) {
     throw new Error("Deployment Engine signed tag must match release version");
   }
   if (mode === "create" && !digestPattern.test(requestedDigest)) {
@@ -262,7 +267,13 @@ export default async function reconcileReleaseControllerLock({
     return;
   }
 
-  let content = await getContent(github, owner, repo, branch, path);
+  let content = await getContent(
+    github,
+    owner,
+    repo,
+    reference.object.sha,
+    path
+  );
   if (!content && mode === "create") {
     if (reference.object.sha !== inputs.releaseSourceCommit) {
       throw new Error(
@@ -287,8 +298,10 @@ export default async function reconcileReleaseControllerLock({
         throw error;
       }
     }
-    content = await getContent(github, owner, repo, branch, path);
     reference = await getRef(github, owner, repo, branch);
+    content =
+      reference &&
+      (await getContent(github, owner, repo, reference.object.sha, path));
     if (!reference) {
       throw new Error(`Release state branch ${branch} disappeared`);
     }

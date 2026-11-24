@@ -136,8 +136,7 @@ export async function setup({ github, context, core }) {
       deImage = context.payload.client_payload?.dest_image;
       deTag = context.payload.client_payload?.tag;
       requireValue(
-        typeof deImage === "string" &&
-          /^[a-z0-9.-]+\/[a-z0-9._/-]+$/.test(deImage) &&
+        deImage === "ghcr.io/radius-project/deployment-engine" &&
           typeof deTag === "string" &&
           /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/.test(deTag),
         "Invalid deployment-engine reference"

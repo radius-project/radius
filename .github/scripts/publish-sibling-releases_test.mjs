@@ -142,7 +142,7 @@ function fixture(releaseType = "final", version = "v0.62.0") {
   const options = {
     github: client(["radius-project/radius"]),
     siblings: client(names.map((name) => `radius-project/${name}`)),
-    engine: client(["azure-octo/deployment-engine"]),
+    engine: client(["radius-project/deployment-engine"]),
     context: {
       repo: { owner: "radius-project", repo: "radius" },
       ref: `refs/tags/${version}`,

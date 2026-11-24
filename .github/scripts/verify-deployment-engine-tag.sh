@@ -19,7 +19,7 @@
 set -euo pipefail
 
 GH="${GH:-gh}"
-readonly REPOSITORY="azure-octo/deployment-engine"
+readonly REPOSITORY="radius-project/deployment-engine"
 TAG=""
 # Optional commit that the tag, or an absent tag's base ref, must resolve to:
 # the approved commit, or for a final release the commit its RC locked.
@@ -27,6 +27,7 @@ EXPECTED_COMMIT=""
 # Ref whose commit the release controller tags after approval when the tag
 # is absent.
 ABSENT_BASE=""
+REQUIRE_PUBLISHER=false
 LOOKUP_ERROR=""
 
 cleanup() {
@@ -43,7 +44,7 @@ fail() {
 
 usage() {
     cat <<'EOF'
-Usage: verify-deployment-engine-tag.sh [--allow-absent <base-ref>] <tag> \
+Usage: verify-deployment-engine-tag.sh [--require-publisher] [--allow-absent <base-ref>] <tag> \
     [expected-commit]
 
 Writes the tag commit and its state (signed, unsigned, or absent) to
@@ -83,6 +84,16 @@ write_outputs() {
     local commit="$1"
     local state="$2"
 
+    if [[ "${REQUIRE_PUBLISHER}" == true ]]; then
+        local path=".github/workflows/build-and-push.yaml"
+        "${GH}" api "repos/${REPOSITORY}/contents/${path}?ref=${commit}" \
+            -H 'Accept: application/vnd.github.raw+json' |
+            yq -e '(.on.push.tags[] == "v*") and
+                .env.REGISTRY == "ghcr.io/radius-project" and
+                .jobs.container.permissions.packages == "write"' >/dev/null ||
+            fail "${commit} lacks the active direct GHCR tag publisher; select a reviewed release source before tagging"
+    fi
+
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
         {
             echo "commit=${commit}"
@@ -119,6 +130,10 @@ main() {
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --require-publisher)
+                REQUIRE_PUBLISHER=true
+                shift
+                ;;
             --allow-absent)
                 ABSENT_BASE="${2:-}"
                 [[ -n "${ABSENT_BASE}" ]] ||
@@ -161,11 +176,8 @@ main() {
     command -v "${GH}" >/dev/null || fail "required command not found: ${GH}"
     command -v jq >/dev/null || fail "required command not found: jq"
 
-    # The repository is private, so a token without access receives the same
-    # 404 as a missing tag. Prove access first instead of asking for a tag
-    # that may already exist.
-    if ! "${GH}" api "repos/${REPOSITORY}" --jq '.full_name' > /dev/null; then
-        fail "the token cannot read ${REPOSITORY}; verify ${TAG} with a publisher App token minted for that repository with contents: read"
+    if [[ "$("${GH}" api "repos/${REPOSITORY}" --jq '.full_name')" != "${REPOSITORY}" ]]; then
+        fail "cannot read ${REPOSITORY} at its canonical location"
     fi
 
     recovery="git tag -s ${TAG} -m 'release tag ${TAG}'"

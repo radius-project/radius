@@ -63,7 +63,10 @@ case "\${mode}" in
     wrong-ref) ref="refs/tags/v0.60.0" ;;
     wrong-revision) revision="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" ;;
 esac
-labels="{\"org.opencontainers.image.ref\":\"\${ref}\",\"org.opencontainers.image.revision\":\"\${revision}\"}"
+source="https://github.com/radius-project/deployment-engine"
+[[ "\${mode}" != "legacy-source" ]] || source="https://github.com/azure-octo/deployment-engine"
+[[ "\${mode}" != "malformed-source" ]] || source="https://github.com//"
+labels="{\"org.opencontainers.image.source\":\"\${source}\",\"org.opencontainers.image.ref\":\"\${ref}\",\"org.opencontainers.image.revision\":\"\${revision}\"}"
 # Published Deployment Engine indexes carry BuildKit attestation manifests.
 cat <<JSON
 {"manifest":{"digest":"${DIGEST}","manifests":[
@@ -150,7 +153,7 @@ test_invalid_output_contract() {
 test_rejects_label_mismatches() {
     local mode
 
-    for mode in wrong-ref wrong-revision; do
+    for mode in wrong-ref wrong-revision legacy-source malformed-source; do
         if run_verifier "${mode}" >/dev/null 2>&1; then
             fail_test "${mode} Deployment Engine image was accepted"
             return
@@ -246,6 +249,12 @@ main() {
     fi
 
     test_rejects_label_mismatches
+    PUBLISHED_DE_DIGEST="${DIGEST}" run_verifier legacy-source \
+        --expected-digest "${DIGEST}" >/dev/null ||
+        fail_test "rejected the authenticated historical digest"
+    PUBLISHED_DE_DIGEST="${DIGEST}" run_verifier malformed-source \
+        --expected-digest "${DIGEST}" >/dev/null ||
+        fail_test "rejected the authenticated historical malformed source"
     test_reports_stale_image
     test_registry_error_is_not_stale
     test_stale_mode_requires_safe_options

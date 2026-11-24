@@ -53,6 +53,10 @@ write_fake_gh() {
 #!/bin/bash
 set -euo pipefail
 case "$*" in
+    *"/contents/.github/workflows/build-and-push.yaml?ref="*)
+        [[ "$2" == *"ref=${FAKE_BASE_COMMIT:?}" ]] || exit 1
+        printf '%s\n' "${FAKE_PUBLISHER:-null}"
+        ;;
     *"/git/ref/tags/"*)
         if [[ -z "${FAKE_REF:-}" ]]; then
             printf 'gh: %s\n' "${FAKE_REF_ERROR:-Not Found (HTTP 404)}" >&2
@@ -73,7 +77,7 @@ case "$*" in
         fi
         printf '{"sha":"%s"}\n' "${FAKE_BASE_COMMIT}"
         ;;
-    *) printf '%s\n' 'azure-octo/deployment-engine' ;;
+    *) printf '%s\n' 'radius-project/deployment-engine' ;;
 esac
 EOF
     chmod +x "${TEST_ROOT}/gh"
@@ -236,6 +240,18 @@ test_accepts_tag_at_approved_commit() {
     ((++PASS))
 }
 
+test_new_tag_requires_active_tag_publisher() {
+    repository "" "" ahead "${COMMIT_B}"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_failure "lacks the active direct GHCR tag publisher" \
+        "an unmigrated Deployment Engine commit must not be tagged" || return
+    export FAKE_PUBLISHER='{"on":{"push":{"tags":["v*"]}},"env":{"REGISTRY":"ghcr.io/radius-project"},"jobs":{"container":{"permissions":{"packages":"write"}}}}'
+    run_script --require-publisher --allow-absent main v0.61.0
+    unset FAKE_PUBLISHER
+    expect_outputs "${COMMIT_B}" absent "new tag at transferred publisher" || return
+    ((++PASS))
+}
+
 test_rejects_tag_moved_after_approval() {
     repository "${ANNOTATED_REF}" "$(tag_object true valid)"
     run_script v0.61.0-rc.1 "${COMMIT_B}"
@@ -381,7 +397,7 @@ test_existing_tag_is_verified_even_when_absence_is_allowed() {
 test_unreadable_repository_is_not_reported_as_missing_tag() {
     write_unreadable_fake_gh
     run_script --allow-absent main v0.61.0-rc.1
-    expect_failure "cannot read azure-octo/deployment-engine" \
+    expect_failure "cannot read radius-project/deployment-engine" \
         "an unreadable repository must fail as an access problem" || return
     if [[ "${OUTPUT}" == *"git tag -s"* || "${OUTPUT}" == *"is absent"* ]]; then
         fail_test "unreadable repository was reported as a missing tag"
@@ -402,6 +418,7 @@ main() {
     test_rejects_non_commit_tag_target
     test_rejects_mismatched_signed_tag_name
     test_accepts_tag_at_approved_commit
+    test_new_tag_requires_active_tag_publisher
     test_rejects_tag_moved_after_approval
     test_rejects_malformed_approved_commit
     test_missing_tag_without_plan_prints_recovery_command
