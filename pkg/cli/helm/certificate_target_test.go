@@ -100,7 +100,7 @@ spec:
 		t.Run(action, func(t *testing.T) {
 			opts := opts
 			opts.Contour.Disabled, opts.RadiusInstalled = true, true
-			opts.RadiusReleaseValues = authzOnValues
+			opts.RadiusReleaseValues = providerTestValues("external")
 			opts.CertManager.ChartPath = "cert-manager"
 			client := NewMockHelmClient(gomock.NewController(t))
 			client.EXPECT().LoadChart("chart").Return(c, nil)
