@@ -1,0 +1,82 @@
+{
+  "typeName": "AWS::RedshiftServerless::UsageLimit",
+  "description": "A usage limit of an Amazon Redshift Serverless workgroup, made with Redshift Serverless's CreateUsageLimit. It caps the compute or cross-Region data sharing the workgroup uses in a period, and says what happens when the workgroup reaches it.",
+  "properties": {
+    "ResourceArn": {
+      "type": "string",
+      "description": "The ARN of the workgroup the limit is for.",
+      "minLength": 1
+    },
+    "UsageType": {
+      "type": "string",
+      "description": "What the limit counts: serverless-compute, in RPU hours, or cross-region-datasharing, in terabytes.",
+      "enum": ["serverless-compute", "cross-region-datasharing"]
+    },
+    "Amount": {
+      "type": "integer",
+      "description": "The limit: RPU hours for serverless-compute, or terabytes for cross-region-datasharing.",
+      "minimum": 1
+    },
+    "Period": {
+      "type": "string",
+      "description": "The period the amount applies to. AWS uses monthly when the template leaves it out. A weekly period begins on Sunday.",
+      "enum": ["daily", "weekly", "monthly"]
+    },
+    "BreachAction": {
+      "type": "string",
+      "description": "What Redshift Serverless does when the workgroup reaches the limit. AWS uses log when the template leaves it out.",
+      "enum": ["log", "emit-metric", "deactivate"]
+    },
+    "UsageLimitId": {
+      "type": "string",
+      "description": "The ID AWS gives the usage limit."
+    },
+    "UsageLimitArn": {
+      "type": "string",
+      "description": "The ARN of the usage limit."
+    }
+  },
+  "required": ["ResourceArn", "UsageType", "Amount"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/UsageLimitId"],
+  "createOnlyProperties": [
+    "/properties/ResourceArn",
+    "/properties/UsageType",
+    "/properties/Period"
+  ],
+  "readOnlyProperties": [
+    "/properties/UsageLimitId",
+    "/properties/UsageLimitArn"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "redshift-serverless:CreateUsageLimit",
+        "redshift-serverless:GetUsageLimit",
+        "redshift-serverless:ListUsageLimits",
+        "redshift-serverless:ListWorkgroups"
+      ]
+    },
+    "read": {
+      "permissions": ["redshift-serverless:GetUsageLimit"]
+    },
+    "update": {
+      "permissions": [
+        "redshift-serverless:UpdateUsageLimit",
+        "redshift-serverless:GetUsageLimit",
+        "redshift-serverless:ListWorkgroups"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift-serverless:DeleteUsageLimit",
+        "redshift-serverless:GetUsageLimit",
+        "redshift-serverless:ListUsageLimits",
+        "redshift-serverless:ListWorkgroups"
+      ]
+    },
+    "list": {
+      "permissions": ["redshift-serverless:ListUsageLimits"]
+    }
+  }
+}

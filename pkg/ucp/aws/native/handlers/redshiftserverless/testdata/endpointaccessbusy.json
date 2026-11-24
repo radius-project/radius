@@ -1,0 +1,42 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "ef4363",
+    "RADIUS_REC_SG": "sg-05f63e0424b3a775b",
+    "RADIUS_REC_SUBNET": "subnet-0246473c74ffa9795",
+    "RADIUS_REC_WORKGROUP": "radius-rs-probe",
+    "RADIUS_REC_WORKGROUP_ARN": "arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968"
+  },
+  "interactions": [
+    {
+      "service": "Redshift Serverless",
+      "operation": "CreateUsageLimit",
+      "request": "{\"amount\":10,\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageType\":\"serverless-compute\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":10,\"breachAction\":\"log\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"monthly\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/97d664d5-666a-4c6e-949c-48a553bca114\",\"usageLimitId\":\"97d664d5-666a-4c6e-949c-48a553bca114\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "CreateEndpointAccess",
+      "request": "{\"endpointName\":\"radius-rec-ef4363\",\"subnetIds\":[\"subnet-0246473c74ffa9795\"],\"vpcSecurityGroupIds\":[\"sg-05f63e0424b3a775b\"],\"workgroupName\":\"radius-rs-probe\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ConflictException\",\"message\":\"An operation is running on the serverless workgroup.\"}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "DeleteUsageLimit",
+      "request": "{\"usageLimitId\":\"97d664d5-666a-4c6e-949c-48a553bca114\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":10,\"breachAction\":\"log\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"monthly\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/97d664d5-666a-4c6e-949c-48a553bca114\",\"usageLimitId\":\"97d664d5-666a-4c6e-949c-48a553bca114\",\"usageType\":\"serverless-compute\"}}"
+    }
+  ]
+}

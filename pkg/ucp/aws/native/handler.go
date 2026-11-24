@@ -232,6 +232,11 @@ type CreateRequest struct {
 	// idempotency token or tags the create with it. UCP may call Create more than once with the same ClientToken,
 	// including from concurrent requests, and each call must return the same resource without creating a second one.
 	ClientToken string
+
+	// Held, set only for Find, reports whether another alias holds the resource with the identifier. A handler whose
+	// search can match resources other aliases manage, because AWS accepts duplicates, leaves those out before it
+	// counts the matches, so they don't make the search ambiguous.
+	Held func(ctx context.Context, identifier string) (bool, error)
 }
 
 // Recovery is how UCP finds a create it lost after AWS accepted it, such as when UCP stopped before it saved the
@@ -331,6 +336,11 @@ type Failure struct {
 
 	// ClientError is true when the request caused the failure, such as an invalid property value, rather than AWS.
 	ClientError bool
+
+	// Conflict is true when AWS can't make the change now because the resource, or the one it belongs to, is busy
+	// with another change that ends on its own, such as an RDS instance changing another tenant database. UCP
+	// answers a start call's Conflict failure with 409, so the caller deploys again later.
+	Conflict bool
 
 	// Outcome is how much of the operation AWS applied. The zero value, OutcomeUnknown, keeps the pending values as
 	// possibly applied.

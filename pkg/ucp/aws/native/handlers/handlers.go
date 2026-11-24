@@ -36,6 +36,7 @@ import (
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
 	rdssdk "github.com/aws/aws-sdk-go-v2/service/rds"
+	redshiftserverlesssdk "github.com/aws/aws-sdk-go-v2/service/redshiftserverless"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	s3controlsdk "github.com/aws/aws-sdk-go-v2/service/s3control"
 	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
@@ -63,6 +64,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/rds"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/redshiftserverless"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
@@ -80,6 +82,7 @@ func All(cfg aws.Config) []native.Handler {
 	rdsAPI := rdssdk.NewFromConfig(cfg)
 	s3API := s3sdk.NewFromConfig(cfg)
 	stsAPI := stssdk.NewFromConfig(cfg)
+	redshiftServerlessAPI := redshiftserverlesssdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
 		docdb.NewInstance(docdbAPI),
@@ -106,6 +109,9 @@ func All(cfg aws.Config) []native.Handler {
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
 		rds.NewDBInstanceState(rdsAPI),
+		redshiftserverless.NewUsageLimit(redshiftServerlessAPI),
+		redshiftserverless.NewEndpointAccess(redshiftServerlessAPI),
+		redshiftserverless.NewCustomDomainAssociation(redshiftServerlessAPI),
 		s3.NewBucketRequestPayment(s3API),
 		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
 		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),

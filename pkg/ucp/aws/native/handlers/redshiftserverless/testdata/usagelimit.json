@@ -1,0 +1,168 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_WORKGROUP_ARN": "arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968"
+  },
+  "interactions": [
+    {
+      "service": "Redshift Serverless",
+      "operation": "CreateUsageLimit",
+      "request": "{\"amount\":10,\"breachAction\":\"log\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageType\":\"serverless-compute\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":10,\"breachAction\":\"log\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":10,\"breachAction\":\"log\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "ListWorkgroups",
+      "request": "{}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroups\":[{\"baseCapacity\":8,\"configParameters\":[{\"parameterKey\":\"auto_mv\",\"parameterValue\":\"true\"},{\"parameterKey\":\"datestyle\",\"parameterValue\":\"ISO, MDY\"},{\"parameterKey\":\"enable_case_sensitive_identifier\",\"parameterValue\":\"false\"},{\"parameterKey\":\"enable_large_strings_opt_in\",\"parameterValue\":\"\"},{\"parameterKey\":\"enable_user_activity_logging\",\"parameterValue\":\"true\"},{\"parameterKey\":\"query_group\",\"parameterValue\":\"default\"},{\"parameterKey\":\"require_ssl\",\"parameterValue\":\"true\"},{\"parameterKey\":\"search_path\",\"parameterValue\":\"$user, public\"},{\"parameterKey\":\"use_fips_ssl\",\"parameterValue\":\"false\"},{\"parameterKey\":\"max_query_execution_time\",\"parameterValue\":\"14400\"}],\"creationDate\":\"2026-11-20T18:21:40.772Z\",\"endpoint\":{\"address\":\"radius-rs-probe.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"port\":5439,\"vpcEndpoints\":[{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2c\",\"networkInterfaceId\":\"eni-073335f8db4ad1904\",\"privateIpAddress\":\"10.42.2.196\",\"subnetId\":\"subnet-08f85e8358802b1d7\"},{\"availabilityZone\":\"us-west-2b\",\"networkInterfaceId\":\"eni-0a5aee136789b1a29\",\"privateIpAddress\":\"10.42.1.64\",\"subnetId\":\"subnet-0b467ecef2369184c\"},{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0f09ec6c1d4ed7ea6\",\"privateIpAddress\":\"10.42.0.138\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-0134540b9ef537ff9\",\"vpcId\":\"vpc-0fbff0af6d535096d\"}]},\"enhancedVpcRouting\":false,\"extraComputeForAutomaticOptimization\":false,\"ipAddressType\":\"ipv4\",\"namespaceName\":\"radius-rs-probe\",\"patchVersion\":\"207\",\"pricePerformanceTarget\":{\"status\":\"DISABLED\"},\"publiclyAccessible\":false,\"securityGroupIds\":[\"sg-05f63e0424b3a775b\"],\"status\":\"MODIFYING\",\"subnetIds\":[\"subnet-0246473c74ffa9795\",\"subnet-0b467ecef2369184c\",\"subnet-08f85e8358802b1d7\"],\"trackName\":\"current\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupId\":\"701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupName\":\"radius-rs-probe\",\"workgroupVersion\":\"1.0.567987\"}]}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":10,\"breachAction\":\"log\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "ListWorkgroups",
+      "request": "{}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroups\":[{\"baseCapacity\":8,\"configParameters\":[{\"parameterKey\":\"auto_mv\",\"parameterValue\":\"true\"},{\"parameterKey\":\"datestyle\",\"parameterValue\":\"ISO, MDY\"},{\"parameterKey\":\"enable_case_sensitive_identifier\",\"parameterValue\":\"false\"},{\"parameterKey\":\"enable_large_strings_opt_in\",\"parameterValue\":\"\"},{\"parameterKey\":\"enable_user_activity_logging\",\"parameterValue\":\"true\"},{\"parameterKey\":\"query_group\",\"parameterValue\":\"default\"},{\"parameterKey\":\"require_ssl\",\"parameterValue\":\"true\"},{\"parameterKey\":\"search_path\",\"parameterValue\":\"$user, public\"},{\"parameterKey\":\"use_fips_ssl\",\"parameterValue\":\"false\"},{\"parameterKey\":\"max_query_execution_time\",\"parameterValue\":\"14400\"}],\"creationDate\":\"2026-11-20T18:21:40.772Z\",\"endpoint\":{\"address\":\"radius-rs-probe.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"port\":5439,\"vpcEndpoints\":[{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2c\",\"networkInterfaceId\":\"eni-073335f8db4ad1904\",\"privateIpAddress\":\"10.42.2.196\",\"subnetId\":\"subnet-08f85e8358802b1d7\"},{\"availabilityZone\":\"us-west-2b\",\"networkInterfaceId\":\"eni-0a5aee136789b1a29\",\"privateIpAddress\":\"10.42.1.64\",\"subnetId\":\"subnet-0b467ecef2369184c\"},{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0f09ec6c1d4ed7ea6\",\"privateIpAddress\":\"10.42.0.138\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-0134540b9ef537ff9\",\"vpcId\":\"vpc-0fbff0af6d535096d\"}]},\"enhancedVpcRouting\":false,\"extraComputeForAutomaticOptimization\":false,\"ipAddressType\":\"ipv4\",\"namespaceName\":\"radius-rs-probe\",\"patchVersion\":\"207\",\"pricePerformanceTarget\":{\"status\":\"DISABLED\"},\"publiclyAccessible\":false,\"securityGroupIds\":[\"sg-05f63e0424b3a775b\"],\"status\":\"AVAILABLE\",\"subnetIds\":[\"subnet-0246473c74ffa9795\",\"subnet-0b467ecef2369184c\",\"subnet-08f85e8358802b1d7\"],\"trackName\":\"current\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupId\":\"701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupName\":\"radius-rs-probe\",\"workgroupVersion\":\"1.0.567987\"}]}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":10,\"breachAction\":\"log\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "UpdateUsageLimit",
+      "request": "{\"amount\":20,\"breachAction\":\"emit-metric\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":20,\"breachAction\":\"emit-metric\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":20,\"breachAction\":\"emit-metric\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "ListWorkgroups",
+      "request": "{}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroups\":[{\"baseCapacity\":8,\"configParameters\":[{\"parameterKey\":\"auto_mv\",\"parameterValue\":\"true\"},{\"parameterKey\":\"datestyle\",\"parameterValue\":\"ISO, MDY\"},{\"parameterKey\":\"enable_case_sensitive_identifier\",\"parameterValue\":\"false\"},{\"parameterKey\":\"enable_large_strings_opt_in\",\"parameterValue\":\"\"},{\"parameterKey\":\"enable_user_activity_logging\",\"parameterValue\":\"true\"},{\"parameterKey\":\"query_group\",\"parameterValue\":\"default\"},{\"parameterKey\":\"require_ssl\",\"parameterValue\":\"true\"},{\"parameterKey\":\"search_path\",\"parameterValue\":\"$user, public\"},{\"parameterKey\":\"use_fips_ssl\",\"parameterValue\":\"false\"},{\"parameterKey\":\"max_query_execution_time\",\"parameterValue\":\"14400\"}],\"creationDate\":\"2026-11-20T18:21:40.772Z\",\"endpoint\":{\"address\":\"radius-rs-probe.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"port\":5439,\"vpcEndpoints\":[{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2c\",\"networkInterfaceId\":\"eni-073335f8db4ad1904\",\"privateIpAddress\":\"10.42.2.196\",\"subnetId\":\"subnet-08f85e8358802b1d7\"},{\"availabilityZone\":\"us-west-2b\",\"networkInterfaceId\":\"eni-0a5aee136789b1a29\",\"privateIpAddress\":\"10.42.1.64\",\"subnetId\":\"subnet-0b467ecef2369184c\"},{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0f09ec6c1d4ed7ea6\",\"privateIpAddress\":\"10.42.0.138\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-0134540b9ef537ff9\",\"vpcId\":\"vpc-0fbff0af6d535096d\"}]},\"enhancedVpcRouting\":false,\"extraComputeForAutomaticOptimization\":false,\"ipAddressType\":\"ipv4\",\"namespaceName\":\"radius-rs-probe\",\"patchVersion\":\"207\",\"pricePerformanceTarget\":{\"status\":\"DISABLED\"},\"publiclyAccessible\":false,\"securityGroupIds\":[\"sg-05f63e0424b3a775b\"],\"status\":\"MODIFYING\",\"subnetIds\":[\"subnet-0246473c74ffa9795\",\"subnet-0b467ecef2369184c\",\"subnet-08f85e8358802b1d7\"],\"trackName\":\"current\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupId\":\"701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupName\":\"radius-rs-probe\",\"workgroupVersion\":\"1.0.567987\"}]}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":20,\"breachAction\":\"emit-metric\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "ListWorkgroups",
+      "request": "{}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroups\":[{\"baseCapacity\":8,\"configParameters\":[{\"parameterKey\":\"auto_mv\",\"parameterValue\":\"true\"},{\"parameterKey\":\"datestyle\",\"parameterValue\":\"ISO, MDY\"},{\"parameterKey\":\"enable_case_sensitive_identifier\",\"parameterValue\":\"false\"},{\"parameterKey\":\"enable_large_strings_opt_in\",\"parameterValue\":\"\"},{\"parameterKey\":\"enable_user_activity_logging\",\"parameterValue\":\"true\"},{\"parameterKey\":\"query_group\",\"parameterValue\":\"default\"},{\"parameterKey\":\"require_ssl\",\"parameterValue\":\"true\"},{\"parameterKey\":\"search_path\",\"parameterValue\":\"$user, public\"},{\"parameterKey\":\"use_fips_ssl\",\"parameterValue\":\"false\"},{\"parameterKey\":\"max_query_execution_time\",\"parameterValue\":\"14400\"}],\"creationDate\":\"2026-11-20T18:21:40.772Z\",\"endpoint\":{\"address\":\"radius-rs-probe.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"port\":5439,\"vpcEndpoints\":[{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2c\",\"networkInterfaceId\":\"eni-073335f8db4ad1904\",\"privateIpAddress\":\"10.42.2.196\",\"subnetId\":\"subnet-08f85e8358802b1d7\"},{\"availabilityZone\":\"us-west-2b\",\"networkInterfaceId\":\"eni-0a5aee136789b1a29\",\"privateIpAddress\":\"10.42.1.64\",\"subnetId\":\"subnet-0b467ecef2369184c\"},{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0f09ec6c1d4ed7ea6\",\"privateIpAddress\":\"10.42.0.138\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-0134540b9ef537ff9\",\"vpcId\":\"vpc-0fbff0af6d535096d\"}]},\"enhancedVpcRouting\":false,\"extraComputeForAutomaticOptimization\":false,\"ipAddressType\":\"ipv4\",\"namespaceName\":\"radius-rs-probe\",\"patchVersion\":\"207\",\"pricePerformanceTarget\":{\"status\":\"DISABLED\"},\"publiclyAccessible\":false,\"securityGroupIds\":[\"sg-05f63e0424b3a775b\"],\"status\":\"MODIFYING\",\"subnetIds\":[\"subnet-0246473c74ffa9795\",\"subnet-0b467ecef2369184c\",\"subnet-08f85e8358802b1d7\"],\"trackName\":\"current\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupId\":\"701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupName\":\"radius-rs-probe\",\"workgroupVersion\":\"1.0.567987\"}]}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":20,\"breachAction\":\"emit-metric\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "ListWorkgroups",
+      "request": "{}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"workgroups\":[{\"baseCapacity\":8,\"configParameters\":[{\"parameterKey\":\"auto_mv\",\"parameterValue\":\"true\"},{\"parameterKey\":\"datestyle\",\"parameterValue\":\"ISO, MDY\"},{\"parameterKey\":\"enable_case_sensitive_identifier\",\"parameterValue\":\"false\"},{\"parameterKey\":\"enable_large_strings_opt_in\",\"parameterValue\":\"\"},{\"parameterKey\":\"enable_user_activity_logging\",\"parameterValue\":\"true\"},{\"parameterKey\":\"query_group\",\"parameterValue\":\"default\"},{\"parameterKey\":\"require_ssl\",\"parameterValue\":\"true\"},{\"parameterKey\":\"search_path\",\"parameterValue\":\"$user, public\"},{\"parameterKey\":\"use_fips_ssl\",\"parameterValue\":\"false\"},{\"parameterKey\":\"max_query_execution_time\",\"parameterValue\":\"14400\"}],\"creationDate\":\"2026-11-20T18:21:40.772Z\",\"endpoint\":{\"address\":\"radius-rs-probe.123456789012.us-west-2.redshift-serverless.amazonaws.com\",\"port\":5439,\"vpcEndpoints\":[{\"networkInterfaces\":[{\"availabilityZone\":\"us-west-2c\",\"networkInterfaceId\":\"eni-073335f8db4ad1904\",\"privateIpAddress\":\"10.42.2.196\",\"subnetId\":\"subnet-08f85e8358802b1d7\"},{\"availabilityZone\":\"us-west-2b\",\"networkInterfaceId\":\"eni-0a5aee136789b1a29\",\"privateIpAddress\":\"10.42.1.64\",\"subnetId\":\"subnet-0b467ecef2369184c\"},{\"availabilityZone\":\"us-west-2a\",\"networkInterfaceId\":\"eni-0f09ec6c1d4ed7ea6\",\"privateIpAddress\":\"10.42.0.138\",\"subnetId\":\"subnet-0246473c74ffa9795\"}],\"vpcEndpointId\":\"vpce-0134540b9ef537ff9\",\"vpcId\":\"vpc-0fbff0af6d535096d\"}]},\"enhancedVpcRouting\":false,\"extraComputeForAutomaticOptimization\":false,\"ipAddressType\":\"ipv4\",\"namespaceName\":\"radius-rs-probe\",\"patchVersion\":\"207\",\"pricePerformanceTarget\":{\"status\":\"DISABLED\"},\"publiclyAccessible\":false,\"securityGroupIds\":[\"sg-05f63e0424b3a775b\"],\"status\":\"AVAILABLE\",\"subnetIds\":[\"subnet-0246473c74ffa9795\",\"subnet-0b467ecef2369184c\",\"subnet-08f85e8358802b1d7\"],\"trackName\":\"current\",\"workgroupArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupId\":\"701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"workgroupName\":\"radius-rs-probe\",\"workgroupVersion\":\"1.0.567987\"}]}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":20,\"breachAction\":\"emit-metric\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "DeleteUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"usageLimit\":{\"amount\":20,\"breachAction\":\"emit-metric\",\"featureType\":\"serverless-compute\",\"limitType\":\"compute-used\",\"period\":\"daily\",\"resourceArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:workgroup/701e3ae7-741e-4f82-8ae0-ab7a32a27968\",\"usageLimitArn\":\"arn:aws:redshift-serverless:us-west-2:123456789012:usagelimit/4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\",\"usageType\":\"serverless-compute\"}}"
+    },
+    {
+      "service": "Redshift Serverless",
+      "operation": "GetUsageLimit",
+      "request": "{\"usageLimitId\":\"4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ValidationException\",\"message\":\"The usage limit ID is not valid. 4c7c86a3-e937-4a9d-8acf-bdfc46c1d69d does not exist\"}"
+    }
+  ]
+}

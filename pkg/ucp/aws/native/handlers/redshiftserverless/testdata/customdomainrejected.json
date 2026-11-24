@@ -1,0 +1,18 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_WORKGROUP": "radius-rs-probe"
+  },
+  "interactions": [
+    {
+      "service": "Redshift Serverless",
+      "operation": "CreateCustomDomainAssociation",
+      "request": "{\"customDomainCertificateArn\":\"arn:aws:acm:us-west-2:123456789012:certificate/00000000-0000-0000-0000-000000000000\",\"customDomainName\":\"radius-rec.example.com\",\"workgroupName\":\"radius-rs-probe\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ValidationException\",\"message\":\"The provided certificateArn value wasn't found for the account.\"}"
+    }
+  ]
+}
