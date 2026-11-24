@@ -1,0 +1,170 @@
+{
+  "typeName": "AWS::KMS::Grant",
+  "description": "A grant on an AWS KMS key, made with KMS's CreateGrant. It lets a principal use the key in the operations it lists. AWS has no call that changes a grant, so every property is create-only. Deleting it retires it.",
+  "definitions": {
+    "EncryptionContext": {
+      "type": "object",
+      "patternProperties": {
+        ".+": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Constraints": {
+      "type": "object",
+      "properties": {
+        "EncryptionContextEquals": {
+          "description": "The grant allows a cryptographic operation only when the request's encryption context is exactly these pairs.",
+          "$ref": "#/definitions/EncryptionContext"
+        },
+        "EncryptionContextSubset": {
+          "description": "The grant allows a cryptographic operation only when the request's encryption context includes these pairs.",
+          "$ref": "#/definitions/EncryptionContext"
+        },
+        "SourceArn": {
+          "type": "string",
+          "description": "The grant allows its operations only when the request is made on behalf of the AWS resource with this ARN.",
+          "minLength": 20,
+          "maxLength": 512
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "KeyId": {
+      "type": "string",
+      "description": "The key ID or key ARN of the KMS key. Use the key ARN for a key in another AWS account. AWS reports the key ARN.",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "GranteePrincipal": {
+      "type": "string",
+      "description": "The ARN of the AWS principal that gets the grant's permissions. Set this or GranteeServicePrincipal, not both.",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[\\w+=,.@:/-]+$"
+    },
+    "GranteeServicePrincipal": {
+      "type": "string",
+      "description": "The AWS service principal that gets the grant's permissions, such as rds.amazonaws.com. It needs Constraints.SourceArn and a retiring principal.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^([A-Za-z0-9\\-]+)\\.([A-Za-z0-9\\-]+)(\\.[A-Za-z0-9\\-]+)+$"
+    },
+    "RetiringPrincipal": {
+      "type": "string",
+      "description": "The ARN of the AWS principal that can retire the grant. Set this or RetiringServicePrincipal, not both.",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[\\w+=,.@:/-]+$"
+    },
+    "RetiringServicePrincipal": {
+      "type": "string",
+      "description": "The AWS service principal that can retire the grant.",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^([A-Za-z0-9\\-]+)\\.([A-Za-z0-9\\-]+)(\\.[A-Za-z0-9\\-]+)+$"
+    },
+    "Operations": {
+      "type": "array",
+      "description": "The operations the grant allows. The key must support each one.",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "Decrypt",
+          "Encrypt",
+          "GenerateDataKey",
+          "GenerateDataKeyWithoutPlaintext",
+          "ReEncryptFrom",
+          "ReEncryptTo",
+          "Sign",
+          "Verify",
+          "GetPublicKey",
+          "CreateGrant",
+          "RetireGrant",
+          "DescribeKey",
+          "GenerateDataKeyPair",
+          "GenerateDataKeyPairWithoutPlaintext",
+          "GenerateMac",
+          "VerifyMac",
+          "DeriveSharedSecret",
+          "Encapsulate",
+          "Decapsulate"
+        ]
+      }
+    },
+    "Constraints": {
+      "description": "Conditions on the requests the grant allows.",
+      "$ref": "#/definitions/Constraints"
+    },
+    "Name": {
+      "type": "string",
+      "description": "The name Radius gives the grant, from the create's client token. AWS returns the existing grant for a create with the same name and values, so a create Radius sends again never makes a second grant.",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-zA-Z0-9:/_-]+$"
+    },
+    "GrantId": {
+      "type": "string",
+      "description": "The ID AWS gives the grant."
+    },
+    "IssuingAccount": {
+      "type": "string",
+      "description": "The AWS account that created the grant, as the ARN of its root user."
+    }
+  },
+  "required": ["KeyId", "Operations"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/KeyId", "/properties/GrantId"],
+  "createOnlyProperties": [
+    "/properties/KeyId",
+    "/properties/GranteePrincipal",
+    "/properties/GranteeServicePrincipal",
+    "/properties/RetiringPrincipal",
+    "/properties/RetiringServicePrincipal",
+    "/properties/Operations",
+    "/properties/Constraints"
+  ],
+  "readOnlyProperties": [
+    "/properties/Name",
+    "/properties/GrantId",
+    "/properties/IssuingAccount"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": ["kms:CreateGrant", "kms:DescribeKey", "kms:ListGrants"],
+      "timeoutInMinutes": 15
+    },
+    "read": {
+      "permissions": ["kms:ListGrants", "kms:DescribeKey"]
+    },
+    "update": {
+      "permissions": ["kms:ListGrants", "kms:DescribeKey"]
+    },
+    "delete": {
+      "permissions": [
+        "kms:RetireGrant",
+        "kms:ListGrants",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ],
+      "timeoutInMinutes": 15
+    },
+    "list": {
+      "handlerSchema": {
+        "properties": {
+          "KeyId": {
+            "$ref": "resource-schema.json#/properties/KeyId"
+          }
+        },
+        "required": ["KeyId"]
+      },
+      "permissions": ["kms:ListGrants"]
+    }
+  }
+}
