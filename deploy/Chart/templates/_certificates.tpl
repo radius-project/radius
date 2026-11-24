@@ -195,3 +195,20 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
   "digest" (sha256sum (printf "%s\n%s" $bundle (toJson $issuer))) "issuer" $issuer | toJson -}}
 {{- end -}}
 {{- end -}}
+{{/* Compare signer material to the validated journal bundle independently of PEM wrapping or order. */}}
+{{- define "radius.caSet" -}}
+{{- $block := `-----BEGIN CERTIFICATE-----\r?\n([A-Za-z0-9+/=\r\n]+)\r?\n-----END CERTIFICATE-----` -}}
+{{- if not (regexMatch (printf `^[ \t\r\n]*%s([ \t\r\n]+%s)*[ \t\r\n]*$` $block $block) .) -}}
+{{- fail "Restore the recorded internal CA set: invalid certificate bundle." -}}
+{{- end -}}
+{{- $seen := dict -}}
+{{- range regexFindAll $block . -1 -}}
+{{- $encoded := regexReplaceAll `[\r\n]` (regexReplaceAll $block . "${1}") "" -}}
+{{- $der := b64dec $encoded -}}
+{{- if or (ne (b64enc $der) $encoded) (hasKey $seen $encoded) -}}
+{{- fail "Restore the recorded internal CA set: malformed or duplicate certificate." -}}
+{{- end -}}
+{{- $_ := set $seen $encoded true -}}
+{{- end -}}
+{{- keys $seen | sortAlpha | toJson -}}
+{{- end -}}

@@ -128,7 +128,7 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		if name == "internal" {
 			signer, err := kube.CoreV1().Secrets(state.Namespace).Create(t.Context(), &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{Name: plane.Signer.Name, Namespace: state.Namespace},
-				Data:       map[string][]byte{caCertificateKey: plane.NewCA},
+				Data:       map[string][]byte{caCertificateKey: []byte(strings.ReplaceAll(string(plane.NewCA), "\n", "\r\n"))},
 			}, metav1.CreateOptions{})
 			require.NoError(t, err)
 			plane.Signer.UID, plane.Signer.ResourceVersion = signer.UID, signer.ResourceVersion

@@ -380,7 +380,7 @@ data:
 			impl := trustImpl(kubefake.NewSimpleClientset(), client)
 			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 			defer cancel()
-			err := impl.waitForAppliedUCPAPIService(ctx, "test", RadiusSystemNamespace, rel)
+			err := impl.waitForAppliedBYOTrust(ctx, "test", RadiusSystemNamespace, rel)
 			if tt.want == "" {
 				require.NoError(t, err)
 			} else {

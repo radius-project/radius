@@ -43,7 +43,7 @@ not an override of a subsequent CA lifecycle.
 {{- if or (ne $pin.name "radius-mtls-ca") (not $pin.uid) (ne (dig "metadata" "uid" "" $source) $pin.uid)
     (ne (dig "metadata" "uid" "" $secret) $signer.uid) (not $secret) (not $source)
     (ne (dig "data" "ca.crt" "" $source) (b64dec $pin.bundle))
-    (ne (trim (b64dec $pin.bundle)) (trim (dig "data" "ca.crt" "" $secret | b64dec))) -}}
+    (ne (include "radius.caSet" (b64dec $pin.bundle)) (include "radius.caSet" (dig "data" "ca.crt" "" $secret | b64dec))) -}}
 {{- fail "Historical bootstrap ConfigMap or signer changed; restore the recorded internal trust source." -}}
 {{- end -}}
 {{- end -}}
@@ -68,7 +68,7 @@ not an override of a subsequent CA lifecycle.
 {{- $signer := (index $state.anchors $plane).signer -}}
 {{- $live := lookup "v1" "Secret" $.Release.Namespace $signer.name -}}
 {{- if or (not $live) (ne $live.metadata.uid $signer.uid) (ne $live.metadata.resourceVersion $signer.resourceVersion)
-    (ne (trim (dig "data" "ca.crt" "" $live | b64dec)) (trim (b64dec $pin.bundle))) -}}
+    (ne (include "radius.caSet" (dig "data" "ca.crt" "" $live | b64dec)) (include "radius.caSet" (b64dec $pin.bundle))) -}}
 {{- fail "Initial internal trust must exactly match the pinned signer Secret ca.crt; restore the recorded source." -}}
 {{- end -}}
 {{- if eq $pin.kind "Secret" -}}

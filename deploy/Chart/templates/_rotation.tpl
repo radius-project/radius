@@ -76,7 +76,7 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- if and (not $signerSource) (eq $plane "internal") (eq $state.mode "selfSigned") -}}
 {{- $live := lookup "v1" "Secret" $.Release.Namespace $record.signer.name -}}
 {{- if or (not $live) (ne $live.metadata.uid $record.signer.uid) $live.metadata.deletionTimestamp
-    (ne (trim $bundle) (trim (dig "data" "ca.crt" "" $live | b64dec))) -}}
+    (ne (include "radius.caSet" $bundle) (include "radius.caSet" (dig "data" "ca.crt" "" $live | b64dec))) -}}
 {{- fail "Retained internal ConfigMap must exactly match its pinned signer Secret ca.crt; restore the recorded source." -}}
 {{- end -}}
 {{- end -}}

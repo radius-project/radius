@@ -356,7 +356,11 @@ func TestInitialCertificateUninstallAndFreshEnforce(t *testing.T) {
 func TestInitialCertificateUninstallPreservesForeignState(t *testing.T) {
 	for _, change := range []string{"journal", "namespace intent", "public source", "signer"} {
 		t.Run(change, func(t *testing.T) {
-			b, _ := initialControllerFixture(t, "selfSigned", "radius")
+			mode := "selfSigned"
+			if change == "public source" {
+				mode = "caSecret"
+			}
+			b, _ := initialControllerFixture(t, mode, "radius")
 			require.NoError(t, b.run(t.Context()))
 			ctx := t.Context()
 			var preserved metav1.Object
@@ -418,7 +422,11 @@ func TestInitialCertificateUninstallPreservesForeignState(t *testing.T) {
 func TestInitialCertificateUninstallInterruptedCleanup(t *testing.T) {
 	for _, point := range []string{"radius-ca", "radius-apiserver-ca", "radius-mtls-ca", "ucp-spiffe", ucpAPIServerTrustSecretName, "namespace", initialCertificateJournal} {
 		t.Run(point, func(t *testing.T) {
-			b, fresh := initialControllerFixture(t, "selfSigned", "radius")
+			mode := "selfSigned"
+			if point == "radius-mtls-ca" {
+				mode = "caSecret"
+			}
+			b, fresh := initialControllerFixture(t, mode, "radius")
 			require.NoError(t, b.run(t.Context()))
 			kube := b.store.kube.(*kubefake.Clientset)
 			_, seedErr := kube.CoreV1().Secrets(b.store.namespace).Create(t.Context(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ucp-spiffe", Namespace: b.store.namespace, Annotations: map[string]string{certificateNameAnnotation: "ucp-spiffe"}}}, metav1.CreateOptions{})

@@ -93,26 +93,30 @@ func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusName
 	}
 	// A BYO chart owns its public injection source. Do not reconcile it to a self-signed signer.
 	if declared[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && !declared[manifestObjectKey("cert-manager.io", "Certificate", ucpAPIServerCASecretName)] {
-		source, err := renderedSecret(applied.Manifest, ucpAPIServerTrustSecretName)
-		if err != nil {
-			return fmt.Errorf("read applied BYO trust source: %w", err)
-		}
-		if source == nil || (source.Namespace != "" && source.Namespace != radiusNamespace) {
-			return fmt.Errorf("missing applied BYO trust source in %s", radiusNamespace)
-		}
-		selected, err := parseCertificateBundlePEM(source.Data[caCertificateKey])
-		if err != nil {
-			return fmt.Errorf("invalid applied BYO trust source: %w", err)
-		}
 		if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 			return err
 		}
-		return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace, selected)
+		return i.waitForAppliedBYOTrust(ctx, kubeContext, radiusNamespace, applied)
 	}
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 		return err
 	}
 	return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace, nil)
+}
+
+func (i *Impl) waitForAppliedBYOTrust(ctx context.Context, kubeContext, namespace string, applied *releasev1.Release) error {
+	source, err := renderedSecret(applied.Manifest, ucpAPIServerTrustSecretName)
+	if err != nil {
+		return fmt.Errorf("read applied BYO trust source: %w", err)
+	}
+	if source == nil || (source.Namespace != "" && source.Namespace != namespace) {
+		return fmt.Errorf("missing applied BYO trust source in %s", namespace)
+	}
+	selected, err := parseCertificateBundlePEM(source.Data[caCertificateKey])
+	if err != nil {
+		return fmt.Errorf("invalid applied BYO trust source: %w", err)
+	}
+	return i.waitForAvailableUCPAPIService(ctx, kubeContext, namespace, selected)
 }
 
 // waitForAppliedUCPAPIService waits for the UCP APIService after Helm applied rel, in the mode in which rel serves UCP's
