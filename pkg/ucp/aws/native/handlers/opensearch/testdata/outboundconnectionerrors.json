@@ -1,0 +1,67 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_OPENSEARCH_DOMAIN": "radius-rec-logs",
+    "RADIUS_REC_OPENSEARCH_REMOTE_DOMAIN": "radius-rec-archive"
+  },
+  "interactions": [
+    {
+      "service": "OpenSearch",
+      "operation": "CreateOutboundConnection",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceAlreadyExistsException"
+      },
+      "body": "{\"message\": \"A connection with alias archive already exists\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeOutboundConnections",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Connections\": []}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "CreateOutboundConnection",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "LimitExceededException"
+      },
+      "body": "{\"message\": \"Domain radius-rec-logs has reached the limit of 20 outbound connections\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "CreateOutboundConnection",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ValidationException"
+      },
+      "body": "{\"message\": \"Region us-wst-2 is not a valid Region\"}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DescribeOutboundConnections",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"Connections\": [{\"ConnectionAlias\": \"archive\", \"ConnectionId\": \"cc-0a1b2c3d4e5f\", \"ConnectionMode\": \"DIRECT\", \"ConnectionProperties\": {\"CrossClusterSearch\": {\"SkipUnavailable\": \"ENABLED\"}}, \"ConnectionStatus\": {\"StatusCode\": \"ACTIVE\"}, \"LocalDomainInfo\": {\"AWSDomainInformation\": {\"DomainName\": \"radius-rec-logs\", \"OwnerId\": \"123456789012\", \"Region\": \"us-west-2\"}}, \"RemoteDomainInfo\": {\"AWSDomainInformation\": {\"DomainName\": \"radius-rec-archive\", \"OwnerId\": \"123456789012\", \"Region\": \"us-west-2\"}}}]}"
+    },
+    {
+      "service": "OpenSearch",
+      "operation": "DeleteOutboundConnection",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"message\": \"Connection cc-0a1b2c3d4e5f not found\"}"
+    }
+  ]
+}
