@@ -29,6 +29,7 @@ import (
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -95,6 +96,9 @@ func readyUCPAPIServiceClient(string) (dynamic.Interface, error) {
 // withoutUCPAPIService makes impl see a cluster without the UCP APIService, so the step that removes trust left by
 // authorization on, after Helm switches it off, finds nothing to do.
 func withoutUCPAPIService(impl *Impl) *Impl {
+	if impl.newRotationStore == nil {
+		impl.newRotationStore = emptyRotationTestStore
+	}
 	impl.newCertManagerDynamicClient = func(string) (dynamic.Interface, error) { return ucpAPIServiceDynamicClient(), nil }
 	impl.newUCPAPIServerTrustClient = func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil }
 	return impl
@@ -180,22 +184,19 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, interval })
 
 	history := []*releasev1.Release{
-		{Version: 1, Chart: certificateTestChart(t)},
+		{Version: 1, Chart: certificateTestChart(t), Manifest: "apiVersion: v1\nkind: Secret\nmetadata: {name: ucp-cert}\n"},
 		{Version: 2, Chart: certificateTestChart(t)},
 	}
 	setValue(history[1].Chart.Values, true, "global", "rbac", "enabled")
-	impl := &Impl{
-		newUCPAPIServerTrustClient: uninstallTrustClient,
-		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
-			return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
-		},
-	}
+	cluster := newStageCluster(t, nil, false)
+	require.NoError(t, cluster.dynamic.Tracker().Add(ucpAPIService("", "", "")))
+	impl := cluster.impl(nil)
 
-	// Rolling back to a revision with authorization off does not wait.
+	// With no Off serving Secret there is no leftover trust to reconcile.
 	require.NoError(t, impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 1))
-	// Rolling back to a revision with authorization on waits for the API server CA.
+	// Authorization-on rollback still requires its selected signer source.
 	err := impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 2)
-	require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-ca is not usable")
+	require.ErrorContains(t, err, `secrets "radius-apiserver-ca" not found`)
 }
 
 // A chart before radius-apiserver-ca accepts the values of authorization on but serves UCP from the Secret ucp-cert of
@@ -219,13 +220,16 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 		return &releasev1.Release{Version: 1, Manifest: "apiVersion: " + apiVersion + "\nkind: " + kind + "\nmetadata:\n  name: ucp-cert\n"}
 	}
 
+	setupUninstallStore(t, impl)
 	require.NoError(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Secret"), nil, nil, enabled))
-	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, enabled), "Secret radius-system/radius-apiserver-ca is not usable")
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, enabled), `secrets "radius-apiserver-ca" not found`)
 
 	// A chart that enables authorization by default serves UCP from the Certificate ucp-cert while the user values say
 	// nothing, so rad waits for radius-apiserver-ca rather than reporting success without it.
-	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), enabled, nil, nil), "Secret radius-system/radius-apiserver-ca is not usable")
-	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, nil), "Secret radius-system/radius-apiserver-ca is not usable")
+
+	defaults := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), defaults, nil, nil), `secrets "radius-apiserver-ca" not found`)
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, served("Certificate"), nil, nil, nil), `secrets "radius-apiserver-ca" not found`)
 }
 
 // A fresh install with authorization off has no staged radius-apiserver-ca chain to remove, so a user who cannot read
@@ -233,19 +237,20 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 func Test_waitForInstalledUCPAPIService_FreshOffSkipsStageCleanup(t *testing.T) {
 	for _, version := range []int{1, 2} {
 		t.Run(fmt.Sprintf("revision=%d", version), func(t *testing.T) {
-			client := ucpAPIServiceDynamicClient(ucpAPIService("", "", "")).(*dynamicfake.FakeDynamicClient)
+			cluster := newStageCluster(t, nil, false)
+			_, err := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(),
+				tlsSecret(ucpOffCertificateSecretName, issueUCPCertificate(t, cluster.ucpCA), cluster.ucpCA.pem), metav1.CreateOptions{})
+			require.NoError(t, err)
+			client := cluster.dynamic
 			for _, resource := range []string{"issuers", "certificates"} {
 				client.PrependReactor("*", resource, func(action k8stesting.Action) (bool, runtime.Object, error) {
 					return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("not allowed"))
 				})
 			}
-			impl := &Impl{
-				newUCPAPIServerTrustClient:  uninstallTrustClient,
-				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return client, nil },
-			}
+			impl := cluster.impl(nil)
 			applied := &releasev1.Release{Version: version, Manifest: "apiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n"}
 
-			err := impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil)
+			err = impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil)
 			if version == 1 {
 				require.NoError(t, err)
 			} else {
@@ -270,7 +275,7 @@ func Test_stageInstalledUCPAPIServerCA_ChartDefaults(t *testing.T) {
 
 	require.NoError(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, nil, nil, nil, false, render))
 	defaults := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
-	require.ErrorIs(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, defaults, nil, nil, false, render), errRendered)
+	require.ErrorIs(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, defaults, nil, nil, false, render), errCertificateObserverUnavailable)
 }
 
 func Test_deployedAuthzMode(t *testing.T) {
@@ -375,7 +380,7 @@ data:
 			impl := trustImpl(kubefake.NewSimpleClientset(), client)
 			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 			defer cancel()
-			err := impl.waitForAppliedUCPAPIService(ctx, "test", RadiusSystemNamespace, rel)
+			err := impl.waitForAppliedBYOTrust(ctx, "test", RadiusSystemNamespace, rel)
 			if tt.want == "" {
 				require.NoError(t, err)
 			} else {

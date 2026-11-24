@@ -224,7 +224,7 @@ func TestCertificateExpiryWarning(t *testing.T) {
 			kube := k8sfake.NewClientset(caTLSSecret("operator-ca", cert, key))
 			impl := &Impl{
 				newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil },
-				logger:               func(format string, values ...any) { fmt.Fprintf(&logs, format, values...) },
+				logger:               func(format string, values ...any) { fmt.Fprintf(&logs, format, values...) }, newRotationStore: emptyRotationTestStore,
 			}
 			_, _, err := impl.prepareSelectedCertificates(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), caReleaseValues("operator-ca", cert), "", nil)
 			require.NoError(t, err)
@@ -446,7 +446,7 @@ func TestPrepareSelectedCertificates(t *testing.T) {
 			impl := &Impl{newCertificateClient: func(context string) (kubernetes.Interface, error) {
 				require.Equal(t, "selected-cluster", context)
 				return kube, nil
-			}}
+			}, newRotationStore: emptyRotationTestStore}
 			selected := certificateTestChart(t)
 			selected.Values = valuesutil.CoalesceTables(copyValues(tt.defaults), selected.Values)
 			var deployed map[string]any
@@ -491,7 +491,7 @@ func TestRadiusCertificateImportRetainedAfterUninstall(t *testing.T) {
 			return dynamicfake.NewSimpleDynamicClient(runtime.NewScheme()), nil
 		},
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kube, nil },
-		removeDefaultContourGateway: func(context.Context, string) error { return nil },
+		removeDefaultContourGateway: func(context.Context, string) error { return nil }, newRotationStore: uninstallTestStore(t),
 	}
 	options := NewDefaultClusterOptions()
 	options.Contour.Disabled = true
@@ -534,7 +534,7 @@ func TestCertificateImportLifecycle(t *testing.T) {
 			var logs strings.Builder
 			impl := &Impl{
 				newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil },
-				logger:               func(format string, values ...any) { fmt.Fprintf(&logs, format, values...) },
+				logger:               func(format string, values ...any) { fmt.Fprintf(&logs, format, values...) }, newRotationStore: emptyRotationTestStore,
 			}
 			options := NewDefaultClusterOptions()
 			options.Certificates = CertificateOptions{CACert: certPath, CAKey: keyPath}
@@ -612,6 +612,7 @@ func TestRadiusCertificateHelmValues(t *testing.T) {
 			kube := k8sfake.NewClientset(caTLSSecret("operator-ca", cert, key))
 			impl := &Impl{
 				newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil },
+				newRotationStore:     emptyRotationTestStore,
 			}
 
 			options := NewDefaultClusterOptions()

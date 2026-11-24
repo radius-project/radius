@@ -1,7 +1,5 @@
 {{- $appversion := include "radius.versiontag" . }}
-{{- if ne .Values.dynamicrp.terraform.path "/terraform" }}
-{{- fail "dynamicrp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}
-{{- end }}
+{{- include "radius.validateTerraformPath" (dict "root" . "component" "dynamicrp" "directory" "dynamic-rp") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,6 +25,7 @@ spec:
         {{- end }}
       annotations:
         checksum/authz-config: {{ include "radius.authz.configChecksum" . }}
+        checksum/metrics-port: {{ .Values.global.prometheus.port | toString | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -241,7 +240,7 @@ spec:
         {{- end}}
         {{- include "radius.targetCluster.env" . | nindent 8 }}
         ports:
-        - containerPort: 5443
+        - containerPort: 8082
           name: dynamic-rp
           protocol: TCP
         {{- if eq .Values.global.prometheus.enabled true }}

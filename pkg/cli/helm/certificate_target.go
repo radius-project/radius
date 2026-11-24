@@ -145,7 +145,7 @@ func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterO
 	}
 	if deployed != nil {
 		if err := unchangedCertificateSelection(deployed, target.Values); err != nil {
-			return nil, nil, fmt.Errorf("the installed chart selects different certificate settings; changing issuers requires coordinated CA migration: %w", err)
+			return nil, nil, fmt.Errorf("%w: the installed chart selects different certificate settings; changing issuers requires coordinated CA migration: %w", errCertificateObserverUnavailable, err)
 		}
 		if plan != nil && plan.secret != nil {
 			return nil, nil, fmt.Errorf("an installed signing Secret is missing; recover it or use coordinated CA migration")
@@ -236,12 +236,8 @@ func certificateProfilePlan(selected *chart.Chart, effective map[string]any, nam
 "internalSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") }},{{ end }}
 "aggregationSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") }}
 }`)})
-	values, err := valuesutil.CoalesceValues(c, effective)
-	if err != nil {
-		return nil, fmt.Errorf("coalesce certificate target: %w", err)
-	}
 	rendered, err := engine.Render(c, common.Values{
-		"Values": values, "Capabilities": common.DefaultCapabilities,
+		"Values": target.Values, "Capabilities": common.DefaultCapabilities,
 		"Release": map[string]any{"Name": "radius", "Namespace": namespace, "Service": "Helm"},
 	})
 	if err != nil {

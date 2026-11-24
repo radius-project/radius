@@ -1,48 +1,24 @@
 {{- include "radius.authz.validateSecretNames" . }}
+{{- $lifecycle := include "radius.lifecycleSnapshot" . | mustFromJson }}
+{{- include "radius.initialCertificateGuard" . }}
+{{- if and $lifecycle (eq (include "radius.authz.mode" .) "off") }}
+{{- fail "Authorization Off after a CA lifecycle requires a guarded lifecycle transition." }}
+{{- end }}
 {{- if ne (include "radius.authz.mode" .) "off" }}
 {{- include "radius.authz.certificates.validate" . }}
 {{- $certificates := .Values.global.rbac.certificates | default dict }}
 {{- $mode := include "radius.authz.certificates.mode" . }}
 {{- $ns := .Release.Namespace }}
-{{- if eq $mode "selfSigned" }}
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: radius-selfsigned-bootstrap
-  namespace: {{ $ns }}
-  labels:
-    app.kubernetes.io/part-of: radius
-spec:
-  selfSigned: {}
+{{- $planned := include "radius.lifecycleResourceNames" . | mustFromJson }}
+{{- if and (eq $mode "selfSigned") (not (hasKey $planned "Issuer/radius-selfsigned-bootstrap")) }}
+{{ include "radius.authz.certificates.bootstrapIssuer" . }}
 {{- end }}
 {{- if eq (include "radius.authz.tls.provider" .) "radius" }}
 {{- if eq $mode "selfSigned" }}
 ---
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: radius-ca
-  namespace: {{ $ns }}
-  labels:
-    app.kubernetes.io/part-of: radius
-spec:
-  isCA: true
-  commonName: radius-ca
-  secretName: radius-ca
-  # 1 year, renewed at two-thirds of its lifetime. Renewal keeps the CA key so certificates
-  # already issued stay valid; replacing the key needs coordinated CA rotation.
-  duration: 8760h
-  renewBefore: 2920h
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-    rotationPolicy: Never
-  issuerRef:
-    group: cert-manager.io
-    kind: Issuer
-    name: radius-selfsigned-bootstrap
+{{ include "radius.authz.certificates.root" (dict "root" . "name" "radius-ca") }}
 {{- end }}
-{{- if ne $mode "issuerRef" }}
+{{- if and (ne $mode "issuerRef") (not (hasKey $planned "Issuer/radius-ca-issuer")) }}
 ---
 # Signs only the "<receiver>-spiffe" server certificates below.
 apiVersion: cert-manager.io/v1
@@ -54,7 +30,7 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: {{ if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-ca{{ end }}
+    secretName: {{ if $lifecycle }}{{ $lifecycle.internal.signingSecret | quote }}{{ else if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-ca{{ end }}
 {{- end }}
 {{- $trustDomain := include "radius.authz.spiffe.trustDomain" . }}
 {{- range $receiver := include "radius.authz.certificates.receivers" . | fromJsonArray }}
@@ -92,34 +68,9 @@ spec:
 {{- end }}
 {{- if eq $mode "selfSigned" }}
 ---
-# selfSigned keeps aggregation independent of the internal SPIFFE CA.
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: radius-apiserver-ca
-  namespace: {{ $ns }}
-  labels:
-    app.kubernetes.io/part-of: radius
-spec:
-  isCA: true
-  commonName: radius-apiserver-ca
-  secretName: radius-apiserver-ca
-  secretTemplate:
-    annotations:
-      cert-manager.io/allow-direct-injection: "true"
-  # 1 year, renewed at two-thirds of its lifetime, keeping the key like radius-ca.
-  duration: 8760h
-  renewBefore: 2920h
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-    rotationPolicy: Never
-  issuerRef:
-    group: cert-manager.io
-    kind: Issuer
-    name: radius-selfsigned-bootstrap
+{{ include "radius.authz.certificates.root" (dict "root" . "name" "radius-apiserver-ca") }}
 {{- end }}
-{{- if ne $mode "issuerRef" }}
+{{- if and (ne $mode "issuerRef") (not (hasKey $planned "Issuer/radius-apiserver-issuer")) }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -130,10 +81,12 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: {{ if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-apiserver-ca{{ end }}
+    secretName: {{ if $lifecycle }}{{ $lifecycle.aggregation.signingSecret | quote }}{{ else if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-apiserver-ca{{ end }}
 {{- end }}
-{{- if and (ne $mode "selfSigned") (eq (include "radius.authz.tls.provider" .) "radius") }}
+{{ include "radius.lifecycleResources" . }}
+{{- if and (or $lifecycle (ne $mode "selfSigned")) (eq (include "radius.authz.tls.provider" .) "radius") }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") | fromJson }}
+{{- if eq $source.kind "ConfigMap" }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -145,8 +98,16 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
     radius.io/certificate-mode: {{ $mode | quote }}
+    {{- if $source.bootstrapUID }}
+    radius.io/certificate-bootstrap: {{ $source.bootstrapUID | quote }}
+    {{- end }}
+    {{- if $source.journalUID }}
+    radius.io/trust-journal-uid: {{ $source.journalUID | quote }}
+    radius.io/trust-revision: {{ $source.revision | quote }}
+    {{- end }}
 data:
   ca.crt: {{ $source.bundle | toJson }}
+{{- end }}
 {{- end }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson }}
 {{- if and $source.bundle (ne $mode "selfSigned") }}
@@ -164,6 +125,13 @@ metadata:
     radius.io/certificate-mode: {{ $mode | quote }}
     {{- if eq $mode "issuerRef" }}
     radius.io/issuer-ref: {{ $source.issuer | toJson | quote }}
+    {{- end }}
+    {{- if $source.bootstrapUID }}
+    radius.io/certificate-bootstrap: {{ $source.bootstrapUID | quote }}
+    {{- end }}
+    {{- if $source.journalUID }}
+    radius.io/trust-journal-uid: {{ $source.journalUID | quote }}
+    radius.io/trust-revision: {{ $source.revision | quote }}
     {{- end }}
 type: Opaque
 data:

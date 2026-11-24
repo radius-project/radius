@@ -32,6 +32,8 @@ import (
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
@@ -40,6 +42,11 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 	}
 	kubeconfig, kubeClient := startTestAPIServer(t)
 	t.Setenv("KUBECONFIG", kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err)
+	dynamicClient, err := dynamic.NewForConfig(config)
+	require.NoError(t, err)
+	installRotationTestCRDs(t, &rotationStore{dynamic: dynamicClient})
 	for _, namespace := range []string{CertManagerNamespace, RadiusSystemNamespace, "other-workload"} {
 		_, err := kubeClient.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: namespace},
@@ -60,7 +67,33 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 	require.NoError(t, err)
 	helmClient := NewHelmClient()
 	configuration := newTestHelmConfiguration(t, kubeconfig, CertManagerNamespace)
-	radiusConf := newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace)
+	radiusConfiguration := newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace)
+	ca, key, _ := testSigningCA(t, nil, nil, nil, nil)
+	for _, name := range []string{"radius-ca", ucpAPIServerCASecretName} {
+		signer := caTLSSecret(name, ca, key)
+		signer.Data[caCertificateKey] = ca
+		signer.Annotations = map[string]string{
+			certificateNameAnnotation: name, "cert-manager.io/issuer-name": radiusBootstrapIssuerName,
+			"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io",
+		}
+		if name == ucpAPIServerCASecretName {
+			signer.Annotations[allowDirectInjectionAnnotation] = "true"
+		}
+		_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), signer, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+	public := permanentPublicTrustSecret(ca)
+	public.Annotations["radius.io/certificate-mode"] = "selfSigned"
+	public.Annotations["helm.sh/resource-policy"] = "keep"
+	public.UID, public.ResourceVersion = "", ""
+	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), public, metav1.CreateOptions{})
+	require.NoError(t, err)
+	_, err = kubeClient.CoreV1().ConfigMaps(RadiusSystemNamespace).Create(t.Context(), &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "radius-mtls-ca", Namespace: RadiusSystemNamespace,
+			Labels: public.Labels, Annotations: public.Annotations},
+		Data: map[string]string{caCertificateKey: string(ca)},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
 
 	for _, status := range []releasecommon.Status{
 		releasecommon.StatusPendingInstall, releasecommon.StatusPendingUpgrade, releasecommon.StatusPendingRollback,
@@ -101,22 +134,29 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					options.CertManager.ReleaseName = name
 					options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 					impl := &Impl{Helm: helmClient}
-					var radiusHistory []*releasev1.Release
+					var radiusBefore []*releasev1.Release
 					if command == "upgrade" {
-						require.NoError(t, radiusConf.Releases.Create(&releasev1.Release{
-							Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1,
-							Chart: chart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
-						}))
+						options.RadiusReleaseValues = copyValues(authzDryRunValues)
+						deployed := &releasev1.Release{Name: radiusReleaseName, Namespace: RadiusSystemNamespace,
+							Version: 1, Chart: chart, Config: copyValues(authzDryRunValues), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
+						require.NoError(t, radiusConfiguration.Releases.Create(deployed))
 						t.Cleanup(func() {
-							_, err := radiusConf.Releases.Delete(radiusReleaseName, 1)
+							_, err := radiusConfiguration.Releases.Delete(radiusReleaseName, 1)
 							require.NoError(t, err)
 						})
-						radiusHistory, err = helmClient.RunHelmHistory(radiusConf, radiusReleaseName)
+						radiusBefore, err = helmClient.RunHelmHistory(radiusConfiguration, radiusReleaseName)
 						require.NoError(t, err)
 						err = impl.UpgradeRadius(t.Context(), options, testKubeContext)
 					} else {
 						options.Radius.Reinstall = command == "install --reinstall"
-						err = impl.InstallRadius(t.Context(), options, testKubeContext)
+						// Fresh enabled installs now enter the bootstrap driver
+						// before this dependency gate. Exercise the gate against
+						// real Helm storage without pretending the stub chart
+						// implements configured-CA bootstrap.
+						prepared, parseErr := parseUserValuesFromCLI(&options.Radius)
+						require.NoError(t, parseErr)
+
+						err = impl.ensureCertManager(t.Context(), options, testKubeContext, nil, nil, prepared, options.Radius.Reinstall)
 					}
 					require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 					require.ErrorContains(t, err, string(status))
@@ -131,9 +171,9 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, foreign, stillForeign)
 					if command == "upgrade" {
-						after, err := helmClient.RunHelmHistory(radiusConf, radiusReleaseName)
+						radiusAfter, err := helmClient.RunHelmHistory(radiusConfiguration, radiusReleaseName)
 						require.NoError(t, err)
-						require.Equal(t, radiusHistory, after)
+						require.Equal(t, radiusBefore, radiusAfter, "the deployed Radius release is not changed")
 					} else {
 						requireNoRelease(t, kubeconfig, radiusReleaseName)
 					}

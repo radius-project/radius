@@ -36,7 +36,7 @@ test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to l
 
 # Will be set by our build workflow, this is just a default
 TEST_TIMEOUT ?=1h
-# Helm unit tests start isolated API servers serially, so the package needs more than go test's 10m default.
+# Helm unit tests start isolated API servers serially, including under -race.
 UNIT_TEST_TIMEOUT ?=30m
 RADIUS_CONTAINER_LOG_PATH ?=./dist/container_logs
 REL_VERSION ?=latest

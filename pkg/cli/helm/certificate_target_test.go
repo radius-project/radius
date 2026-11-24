@@ -92,12 +92,13 @@ spec:
 	mock.EXPECT().LoadChart("chart").Return(c, nil)
 	opts.RadiusReleaseChart = c
 	expectRadiusBaseline(t, mock, opts)
-	impl := &Impl{Helm: mock, contourCluster: &fakeContourCluster{}}
+	impl := &Impl{Helm: mock, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{}}
 	require.ErrorContains(t, impl.CheckRadiusCertificates(t.Context(), opts, "selected-context"), "external TLS provider cannot project")
 	for _, action := range []string{"upgrade", "reinstall"} {
 		t.Run(action, func(t *testing.T) {
 			opts := opts
 			opts.Contour.Disabled, opts.RadiusInstalled = true, true
+			opts.RadiusReleaseValues = authzOnValues
 			opts.CertManager.ChartPath = "cert-manager"
 			client := NewMockHelmClient(gomock.NewController(t))
 			client.EXPECT().LoadChart("chart").Return(c, nil)
@@ -215,9 +216,11 @@ func TestRollbackCertificateObservations(t *testing.T) {
 					err = impl.RollbackRadius(t.Context(), "selected")
 				}
 				require.ErrorContains(t, err, want)
-				require.Empty(t, cluster.clusterWrites())
 				if change == "failed attempt" {
+					require.Equal(t, []string{"create leases", "delete leases"}, cluster.clusterWrites())
 					require.Empty(t, keys.Actions())
+				} else {
+					require.Empty(t, cluster.clusterWrites())
 				}
 			})
 		}
@@ -244,7 +247,7 @@ func TestExternalIssuerDependencyParity(t *testing.T) {
 				require.NoError(t, kube.AppsV1().Deployments("security").Delete(t.Context(), "cert-manager-cainjector", metav1.DeleteOptions{}))
 				keys := kube.(*fake.Clientset)
 				keys.ClearActions()
-				impl := &Impl{Helm: client, contourCluster: &fakeContourCluster{}, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) { return kube, ext, nil }}
+				impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{}, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) { return kube, ext, nil }}
 				run := impl.UpgradeRadius
 				if preflight {
 					run = impl.CheckRadiusCertificates
@@ -266,7 +269,7 @@ func TestPreflightRendersSelfSignedUpgrade(t *testing.T) {
 	client := NewMockHelmClient(gomock.NewController(t))
 	client.EXPECT().LoadChart("chart").Return(c, nil)
 	expectRadiusBaseline(t, client, opts)
-	impl := &Impl{Helm: client, contourCluster: &fakeContourCluster{}}
+	impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{}}
 	require.ErrorContains(t, impl.CheckRadiusCertificates(t.Context(), opts, "selected-context"), "invalid upgrade manifest")
 }
 
@@ -334,7 +337,7 @@ func TestRollbackChecksCertManagerBeforeSigningSecret(t *testing.T) {
 }
 
 func TestCertificateActionRenderOrdering(t *testing.T) {
-	for _, action := range []string{"reinstall", "upgrade", "reset", "fresh"} {
+	for _, action := range []string{"reinstall", "upgrade", "reset"} {
 		for _, invalid := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/invalid-provider=%t", action, invalid), func(t *testing.T) {
 				c := certificateHelperChart(certificateTestChart(t))
@@ -342,8 +345,9 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 					`{{ if .Release.IsUpgrade }}{{ fail "rendered upgrade" }}{{ else }}{{ fail "rendered install" }}{{ end }}`)})
 				options := NewDefaultClusterOptions()
 				options.Contour.Disabled = true
-				options.RadiusInstalled = action != "fresh"
-				options.Radius.Reinstall = action == "reinstall" || action == "fresh"
+				options.RadiusInstalled = true
+				options.RadiusReleaseValues = authzOnValues
+				options.Radius.Reinstall = action == "reinstall"
 				options.ResetValues = action == "reset"
 				options.Radius.ChartPath = "chart"
 				provider := "external"
@@ -353,15 +357,11 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 				options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=" + provider}
 				client := NewMockHelmClient(gomock.NewController(t))
 				client.EXPECT().LoadChart("chart").Return(c, nil)
-				if options.RadiusInstalled {
-					expectRadiusBaseline(t, client, options)
-				}
+				expectRadiusBaseline(t, client, options)
 				if !invalid {
 					client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(nil, driver.ErrReleaseNotFound)
 					if action == "reinstall" {
 						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: c, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil)
-					} else if action == "fresh" {
-						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(nil, driver.ErrReleaseNotFound)
 					}
 				}
 				impl := newStageCluster(t, nil, true).impl(client)
@@ -387,8 +387,6 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 				switch {
 				case invalid:
 					require.ErrorContains(t, err, "provider")
-				case action == "fresh":
-					require.ErrorContains(t, err, "rendered install")
 				default:
 					require.ErrorContains(t, err, "rendered upgrade")
 				}
@@ -401,7 +399,7 @@ func TestSteadyBYORechecksSigningSecret(t *testing.T) {
 	ca, key, _ := testSigningCA(t, nil, nil, nil, nil)
 	opts := NewDefaultClusterOptions()
 	opts.RadiusReleaseValues = caReleaseValues("operator-ca", ca)
-	chart := certificateTestChart(t)
+	selected := certificateHelperChart(certificateTestChart(t))
 	const manifest = `apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata: {name: ucp-cert}
@@ -410,18 +408,46 @@ spec: {secretName: ucp-apiserver-tls}
 apiVersion: v1
 kind: Secret
 metadata: {name: radius-apiserver-trust}`
-	rev := &releasev1.Release{Version: 1, Chart: chart, Config: opts.RadiusReleaseValues, Manifest: manifest, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
-	client := NewMockHelmClient(gomock.NewController(t))
-	client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{rev}, nil).Times(2)
-	secret := caTLSSecret("operator-ca", ca, key)
-	kube := fake.NewClientset(secret)
-	impl := &Impl{Helm: client, newCertificateClient: func(k string) (kubernetes.Interface, error) { require.Equal(t, "selected", k); return kube, nil }}
-	_, plan, err := impl.prepareOrdinaryCertificates(t.Context(), opts, chart, nil, map[string]any{}, "selected", true)
-	require.NoError(t, err)
-	secret.Data[corev1.TLSPrivateKeyKey] = nil
-	_, err = kube.CoreV1().Secrets(opts.Radius.Namespace).Update(t.Context(), secret, metav1.UpdateOptions{})
-	require.NoError(t, err)
-	require.ErrorContains(t, plan.recheck(), "signing Secret changed")
+	selected.Templates = append(selected.Templates, &common.File{Name: "templates/steady.yaml", Data: []byte(manifest)})
+	opts.Radius.ChartPath, opts.Contour.Disabled = "chart", true
+	for _, boundary := range []string{"before migration", "before staging"} {
+		for _, change := range []string{"signing Secret", "Radius revision"} {
+			t.Run(boundary+"/"+change, func(t *testing.T) {
+				rev := &releasev1.Release{Version: 1, Chart: selected, Config: opts.RadiusReleaseValues, Manifest: manifest, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
+				client := NewMockHelmClient(gomock.NewController(t))
+				client.EXPECT().LoadChart("chart").Return(selected, nil)
+				client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{rev}, nil).MinTimes(1)
+				secret := caTLSSecret("operator-ca", ca, key)
+				kube := fake.NewClientset(secret)
+				mutate := func() {
+					if change == "Radius revision" {
+						rev.Version++
+						return
+					}
+					secret.Data[corev1.TLSPrivateKeyKey] = nil
+					_, err := kube.CoreV1().Secrets(opts.Radius.Namespace).Update(t.Context(), secret, metav1.UpdateOptions{})
+					require.NoError(t, err)
+				}
+				client.EXPECT().RunHelmGet(gomock.Any(), opts.CertManager.ReleaseName).DoAndReturn(func(*helm.Configuration, string) (*releasev1.Release, error) {
+					if boundary == "before migration" {
+						mutate()
+					}
+					return nil, driver.ErrReleaseNotFound
+				})
+				if boundary == "before staging" {
+					expectControllerStrategyMigration(client, true).DoAndReturn(func(context.Context, *helm.Configuration, *chart.Chart, map[string]any, string, string, bool) error {
+						mutate()
+						return nil
+					})
+				}
+				cluster := newStageCluster(t, nil, true)
+				impl := cluster.impl(client)
+				impl.newCertificateClient = func(k string) (kubernetes.Interface, error) { require.Equal(t, "selected", k); return kube, nil }
+				require.ErrorContains(t, impl.UpgradeRadius(t.Context(), opts, "selected"), change+" changed")
+				requireOnlyCertificateGuardReads(t, cluster)
+			})
+		}
+	}
 }
 
 func TestMigrationFailureWithImportedCA(t *testing.T) {
@@ -455,8 +481,14 @@ metadata: {name: radius-apiserver-trust}`}
 	for _, action := range signing.Actions() {
 		require.Equal(t, "get", action.GetVerb())
 	}
-	require.Empty(t, cluster.kube.Actions())
-	require.Empty(t, cluster.dynamic.Actions())
+	requireOnlyCertificateGuardReads(t, cluster)
+}
+
+func requireOnlyCertificateGuardReads(t *testing.T, cluster *stageCluster) {
+	t.Helper()
+	for _, action := range append(cluster.kube.Actions(), cluster.dynamic.Actions()...) {
+		require.Contains(t, []string{"get", "list"}, action.GetVerb())
+	}
 }
 
 func runInstalledChartSwitchCommands(t *testing.T, old, selected *chart.Chart, stored map[string]any, kubeContext string) {
@@ -469,7 +501,7 @@ func runInstalledChartSwitchCommands(t *testing.T, old, selected *chart.Chart, s
 				{Chart: selected, Version: 2, Info: &releasev1.Info{Status: releasecommon.StatusFailed}},
 				{Chart: old, Config: stored, Version: 1, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 			}, nil)
-			i := &Impl{Helm: client}
+			i := &Impl{Helm: client, newRotationStore: emptyRotationTestStore}
 			opts := NewDefaultClusterOptions()
 			opts.Radius.ChartPath, opts.RadiusInstalled, opts.RadiusReleaseValues = "chart", true, stored
 			run := i.UpgradeRadius

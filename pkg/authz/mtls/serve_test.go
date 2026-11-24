@@ -487,7 +487,7 @@ func TestServe_ReloadsServerCertificate(t *testing.T) {
 
 // TestServe_ServingCertificateExpiryOnOpenConnection checks that the receiver stops vouching
 // for requests once its own serving certificate expires, even on a connection that was
-// established while it was valid, and that a renewed certificate keeps the connection usable.
+// established while it was valid. A renewed certificate applies only to new handshakes.
 func TestServe_ServingCertificateExpiryOnOpenConnection(t *testing.T) {
 	t.Parallel()
 	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
@@ -545,13 +545,13 @@ func TestServe_ServingCertificateExpiryOnOpenConnection(t *testing.T) {
 				require.True(t, reused, "expiry must be checked on the existing connection")
 
 				if kind == "renewed server" {
+					require.Equal(t, http.StatusServiceUnavailable, status)
+					require.Empty(t, srv.seen)
+					transport.CloseIdleConnections()
+					status, reused, _ = send()
+					require.False(t, reused)
 					require.Equal(t, http.StatusOK, status)
 					require.True(t, (<-srv.seen).hasIdentity)
-					for _, entry := range srv.logs.All() {
-						m := entry.ContextMap()
-						require.Nil(t, m[authz.LogFieldDenied], "unexpected denial: %v", entry)
-						require.Nil(t, m[authz.LogFieldWouldDeny], "unexpected denial: %v", entry)
-					}
 					return
 				}
 				requireLogged(t, srv.logs, mode, authz.CodeCertificateExpired, "own certificate")
@@ -561,10 +561,8 @@ func TestServe_ServingCertificateExpiryOnOpenConnection(t *testing.T) {
 					require.Empty(t, srv.seen, "the handler must not be called")
 					return
 				}
-				require.Equal(t, http.StatusOK, status)
-				seen := <-srv.seen
-				require.False(t, seen.hasIdentity, "an expired receiver must not attach an identity")
-				require.Empty(t, seen.authorization, "the token must not reach the handler")
+				require.Equal(t, http.StatusServiceUnavailable, status)
+				require.Empty(t, srv.seen, "dryRun does not bypass a retired TLS handshake")
 			})
 		}
 	}

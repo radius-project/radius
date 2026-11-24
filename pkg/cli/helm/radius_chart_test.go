@@ -18,6 +18,7 @@ package helm
 
 import (
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -26,9 +27,39 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/release"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
+
+func TestRadiusChartInstallCapabilities(t *testing.T) {
+	selected := certificateTestChart(t)
+	groups := map[string]bool{}
+	for _, file := range selected.CRDObjects() {
+		decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(file.File.Data)), 4096)
+		for {
+			var crd apiextv1.CustomResourceDefinition
+			err := decoder.Decode(&crd)
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, crd.Spec.Group)
+			groups[crd.Spec.Group] = true
+		}
+	}
+	require.NotEmpty(t, groups)
+	// Require literal capability arguments so every group can be compared.
+	argument := regexp.MustCompile("^\\s*[\"`]([^\"`]+)[\"`]")
+	for _, file := range selected.Templates {
+		for _, tail := range strings.Split(string(file.Data), ".Capabilities.APIVersions.Has")[1:] {
+			match := argument.FindStringSubmatch(tail)
+			require.NotNil(t, match, "%s: capability checks must name a literal API", file.Name)
+			group, _, _ := strings.Cut(match[1], "/")
+			require.False(t, groups[group], "%s: install registers %s after preview", file.Name, group)
+		}
+	}
+}
 
 func TestRadiusChart_ControllerResources(t *testing.T) {
 	t.Parallel()
