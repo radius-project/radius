@@ -1,0 +1,77 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_ACCOUNT_ID": "123456789012",
+    "RADIUS_REC_QUICKSIGHT_TEMPLATE_ID": "radius-rec-template"
+  },
+  "interactions": [
+    {
+      "service": "QuickSight",
+      "operation": "CreateTemplateAlias",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ConflictException"
+      },
+      "body": "{\"Message\": \"The template is being updated. Try again later.\", \"RequestId\": \"r-1\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "CreateTemplateAlias",
+      "status": 409,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceExistsException"
+      },
+      "body": "{\"Message\": \"Alias live already exists.\", \"RequestId\": \"r-2\", \"ResourceType\": \"TEMPLATE_ALIAS\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "UpdateTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 2}}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DescribeTemplateAlias",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": "{\"RequestId\": \"r\", \"TemplateAlias\": {\"AliasName\": \"live\", \"Arn\": \"arn:aws:quicksight:us-west-2:123456789012:template/radius-rec-template/alias/live\", \"TemplateVersionNumber\": 2}}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "UpdateTemplateAlias",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"Message\": \"Template version 9 not found.\", \"RequestId\": \"r-3\", \"ResourceType\": \"TEMPLATE\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "CreateTemplateAlias",
+      "status": 403,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "UnsupportedUserEditionException"
+      },
+      "body": "{\"Message\": \"This operation is not supported in Standard edition.\", \"RequestId\": \"r-4\"}"
+    },
+    {
+      "service": "QuickSight",
+      "operation": "DescribeTemplateAlias",
+      "status": 404,
+      "headers": {
+        "Content-Type": "application/json",
+        "X-Amzn-Errortype": "ResourceNotFoundException"
+      },
+      "body": "{\"Message\": \"Alias gone not found.\", \"RequestId\": \"r-5\", \"ResourceType\": \"TEMPLATE_ALIAS\"}"
+    }
+  ]
+}

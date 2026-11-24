@@ -162,6 +162,8 @@ github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0 h1:3eggSHnymdEyXlI7Fv
 github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0/go.mod h1:Bf6uHN804FAJ+yUro0QW65wEVJ68eKBIsSzY1SD5oDw=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5 h1:ZoW0j6XRzzzcWEGsPRxZCuiEj0j281S1ACN1cxJ8Obo=
 github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5/go.mod h1:DuktIBGJAIcDVjkXjUYY4jKjLUy3IISIteyikrHqqLI=
+github.com/aws/aws-sdk-go-v2/service/quicksight v1.139.2 h1:fm4FfmUjSDtBOYuVWN6ziKPlUZGjeqE6A3VlEXN+b5A=
+github.com/aws/aws-sdk-go-v2/service/quicksight v1.139.2/go.mod h1:NpZVYp+tQoRiOqNIMDr3PAL8ObV7Q8804brdF/oUZ9g=
 github.com/aws/aws-sdk-go-v2/service/rds v1.133.0 h1:Ql0s3Iyo6Fy6W2ZIxVASXF/S5XKW4zaQ2+nFl4kpd7c=
 github.com/aws/aws-sdk-go-v2/service/rds v1.133.0/go.mod h1:tKK8p0dQkndvUKVVr7N69A5YTsADPf69hkXsfWCmEfI=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10 h1:WBJb2VxRzzKnuN94YWqZPiu5a5zc3IleFqgZnmVCyvU=

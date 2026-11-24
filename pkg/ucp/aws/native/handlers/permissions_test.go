@@ -49,6 +49,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"quicksight":               "quicksight",
 	"rds":                      "rds",
 	"s3":                       "s3",
 	"s3control":                "s3",
@@ -181,6 +182,15 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
+	}
+	// AWS checks the permission to change the asset's permissions when Quick Sight adds an asset to a folder or
+	// removes it.
+	quicksightAssets := []string{
+		"quicksight:UpdateAnalysisPermissions", "quicksight:UpdateDashboardPermissions", "quicksight:UpdateDataSetPermissions",
+		"quicksight:UpdateDataSourcePermissions", "quicksight:UpdateTopicPermissions",
+	}
+	for _, op := range []string{"create", "delete"} {
+		implied[op] = append(implied[op], quicksightAssets...)
 	}
 	// PutTableReplication also needs these on the source and destination tables, as its API reference says.
 	tableReplication := []string{

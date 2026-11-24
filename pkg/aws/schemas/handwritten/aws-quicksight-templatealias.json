@@ -1,0 +1,77 @@
+{
+  "typeName": "AWS::QuickSight::TemplateAlias",
+  "description": "A name that points to a version of a Quick Sight template, made with CreateTemplateAlias. An update points it to another version. A delete leaves the alias in AWS, because AWS documents that DeleteTemplateAlias also deletes the template version the alias points to. Names that start with $, such as $LATEST, are AWS's own and can't be used.",
+  "properties": {
+    "AwsAccountId": {
+      "type": "string",
+      "description": "The ID of the AWS account that has the template.",
+      "minLength": 12,
+      "maxLength": 12,
+      "pattern": "^[0-9]{12}$"
+    },
+    "TemplateId": {
+      "type": "string",
+      "description": "The ID of the template.",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[\\w\\-]+$"
+    },
+    "AliasName": {
+      "type": "string",
+      "description": "The name of the alias.",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[\\w\\-]+$"
+    },
+    "TemplateVersionNumber": {
+      "type": "integer",
+      "description": "The version of the template the alias points to.",
+      "minimum": 1
+    },
+    "Arn": {
+      "type": "string",
+      "description": "The ARN of the alias."
+    }
+  },
+  "required": [
+    "AwsAccountId",
+    "TemplateId",
+    "AliasName",
+    "TemplateVersionNumber"
+  ],
+  "additionalProperties": false,
+  "primaryIdentifier": [
+    "/properties/AwsAccountId",
+    "/properties/TemplateId",
+    "/properties/AliasName"
+  ],
+  "createOnlyProperties": [
+    "/properties/AwsAccountId",
+    "/properties/TemplateId",
+    "/properties/AliasName"
+  ],
+  "readOnlyProperties": ["/properties/Arn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "quicksight:CreateTemplateAlias",
+        "quicksight:UpdateTemplateAlias",
+        "quicksight:DescribeTemplateAlias"
+      ],
+      "timeoutInMinutes": 10
+    },
+    "read": {
+      "permissions": ["quicksight:DescribeTemplateAlias"]
+    },
+    "update": {
+      "permissions": [
+        "quicksight:UpdateTemplateAlias",
+        "quicksight:DescribeTemplateAlias"
+      ],
+      "timeoutInMinutes": 10
+    },
+    "delete": {
+      "permissions": ["quicksight:DescribeTemplateAlias"]
+    }
+  }
+}
