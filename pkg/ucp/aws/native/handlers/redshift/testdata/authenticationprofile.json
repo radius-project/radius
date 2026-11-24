@@ -1,0 +1,88 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "b8dbfd"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "CreateAuthenticationProfile",
+      "request": "Action=CreateAuthenticationProfile\u0026AuthenticationProfileContent=%7B%22AllowDBUserOverride%22%3A+1%2C+%22Unused%22%3A+null%7D\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cCreateAuthenticationProfileResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cCreateAuthenticationProfileResult\u003e\n    \u003cAuthenticationProfileName\u003eradius-rec-b8dbfd\u003c/AuthenticationProfileName\u003e\n    \u003cAuthenticationProfileContent\u003e{\u0026quot;AllowDBUserOverride\u0026quot;:\u0026quot;1\u0026quot;}\u003c/AuthenticationProfileContent\u003e\n  \u003c/CreateAuthenticationProfileResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e3878deb2-acac-46d8-a1f8-0a29430dca85\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/CreateAuthenticationProfileResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeAuthenticationProfiles",
+      "request": "Action=DescribeAuthenticationProfiles\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeAuthenticationProfilesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeAuthenticationProfilesResult\u003e\n    \u003cAuthenticationProfiles\u003e\n      \u003cmember\u003e\n        \u003cAuthenticationProfileName\u003eradius-rec-b8dbfd\u003c/AuthenticationProfileName\u003e\n        \u003cAuthenticationProfileContent\u003e{\u0026quot;AllowDBUserOverride\u0026quot;:\u0026quot;1\u0026quot;}\u003c/AuthenticationProfileContent\u003e\n      \u003c/member\u003e\n    \u003c/AuthenticationProfiles\u003e\n  \u003c/DescribeAuthenticationProfilesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e38a688c6-5363-45b5-b1ce-d70ea6f28c50\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeAuthenticationProfilesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeAuthenticationProfiles",
+      "request": "Action=DescribeAuthenticationProfiles\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeAuthenticationProfilesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeAuthenticationProfilesResult\u003e\n    \u003cAuthenticationProfiles\u003e\n      \u003cmember\u003e\n        \u003cAuthenticationProfileName\u003eradius-rec-b8dbfd\u003c/AuthenticationProfileName\u003e\n        \u003cAuthenticationProfileContent\u003e{\u0026quot;AllowDBUserOverride\u0026quot;:\u0026quot;1\u0026quot;}\u003c/AuthenticationProfileContent\u003e\n      \u003c/member\u003e\n    \u003c/AuthenticationProfiles\u003e\n  \u003c/DescribeAuthenticationProfilesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e73b82c93-591b-413d-aa71-10c4403079a1\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeAuthenticationProfilesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "ModifyAuthenticationProfile",
+      "request": "Action=ModifyAuthenticationProfile\u0026AuthenticationProfileContent=%7B%22App_ID%22%3A+%22other%22%7D\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cModifyAuthenticationProfileResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cModifyAuthenticationProfileResult\u003e\n    \u003cAuthenticationProfileName\u003eradius-rec-b8dbfd\u003c/AuthenticationProfileName\u003e\n    \u003cAuthenticationProfileContent\u003e{\u0026quot;App_ID\u0026quot;:\u0026quot;other\u0026quot;}\u003c/AuthenticationProfileContent\u003e\n  \u003c/ModifyAuthenticationProfileResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e4b82d89c-5fc9-48ae-9ade-65511a3d6f17\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/ModifyAuthenticationProfileResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeAuthenticationProfiles",
+      "request": "Action=DescribeAuthenticationProfiles\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeAuthenticationProfilesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeAuthenticationProfilesResult\u003e\n    \u003cAuthenticationProfiles\u003e\n      \u003cmember\u003e\n        \u003cAuthenticationProfileName\u003eradius-rec-b8dbfd\u003c/AuthenticationProfileName\u003e\n        \u003cAuthenticationProfileContent\u003e{\u0026quot;App_ID\u0026quot;:\u0026quot;other\u0026quot;}\u003c/AuthenticationProfileContent\u003e\n      \u003c/member\u003e\n    \u003c/AuthenticationProfiles\u003e\n  \u003c/DescribeAuthenticationProfilesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e40717e99-d325-45f3-a62c-74f7d60f907f\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeAuthenticationProfilesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeAuthenticationProfiles",
+      "request": "Action=DescribeAuthenticationProfiles\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDescribeAuthenticationProfilesResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDescribeAuthenticationProfilesResult\u003e\n    \u003cAuthenticationProfiles\u003e\n      \u003cmember\u003e\n        \u003cAuthenticationProfileName\u003eradius-rec-b8dbfd\u003c/AuthenticationProfileName\u003e\n        \u003cAuthenticationProfileContent\u003e{\u0026quot;App_ID\u0026quot;:\u0026quot;other\u0026quot;}\u003c/AuthenticationProfileContent\u003e\n      \u003c/member\u003e\n    \u003c/AuthenticationProfiles\u003e\n  \u003c/DescribeAuthenticationProfilesResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eb3f540e4-3639-4d08-a790-78b9e956637f\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DescribeAuthenticationProfilesResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DeleteAuthenticationProfile",
+      "request": "Action=DeleteAuthenticationProfile\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cDeleteAuthenticationProfileResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cDeleteAuthenticationProfileResult\u003e\n    \u003cAuthenticationProfileName\u003eradius-rec-b8dbfd\u003c/AuthenticationProfileName\u003e\n  \u003c/DeleteAuthenticationProfileResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003eccc6f93c-22ec-4a4c-9a39-2068ebc2c25d\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/DeleteAuthenticationProfileResponse\u003e\n"
+    },
+    {
+      "service": "Redshift",
+      "operation": "DescribeAuthenticationProfiles",
+      "request": "Action=DescribeAuthenticationProfiles\u0026AuthenticationProfileName=radius-rec-b8dbfd\u0026Version=2012-12-01",
+      "status": 404,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003eAuthenticationProfileNotFoundFault\u003c/Code\u003e\n    \u003cMessage\u003eThe authentication profile does not exist. Check the name of the authentication profile and try the operation again.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003eb547bc79-c6e7-458d-b205-5657f97d8d40\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    }
+  ]
+}

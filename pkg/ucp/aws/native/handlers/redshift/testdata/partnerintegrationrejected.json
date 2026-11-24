@@ -1,0 +1,19 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_ACCOUNT": "123456789012",
+    "RADIUS_REC_CLUSTER": "radius-rs-item42-pr3"
+  },
+  "interactions": [
+    {
+      "service": "Redshift",
+      "operation": "AddPartner",
+      "request": "AccountId=123456789012\u0026Action=AddPartner\u0026ClusterIdentifier=radius-rs-item42-pr3\u0026DatabaseName=dev\u0026PartnerName=Sisu\u0026Version=2012-12-01",
+      "status": 404,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cErrorResponse xmlns=\"http://redshift.amazonaws.com/doc/2012-12-01/\"\u003e\n  \u003cError\u003e\n    \u003cType\u003eSender\u003c/Type\u003e\n    \u003cCode\u003ePartnerNotFound\u003c/Code\u003e\n    \u003cMessage\u003ePartner not supported.\u003c/Message\u003e\n  \u003c/Error\u003e\n  \u003cRequestId\u003e4a16fe67-db01-4cad-8441-b5941f79a617\u003c/RequestId\u003e\n\u003c/ErrorResponse\u003e\n"
+    }
+  ]
+}

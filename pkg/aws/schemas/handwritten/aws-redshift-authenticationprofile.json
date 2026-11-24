@@ -1,0 +1,47 @@
+{
+  "typeName": "AWS::Redshift::AuthenticationProfile",
+  "description": "A Redshift authentication profile: connection options that JDBC and ODBC clients read by the profile's name, made with Redshift's CreateAuthenticationProfile. AWS rejects a profile that holds secrets, such as SecretAccessKey or Password.",
+  "properties": {
+    "AuthenticationProfileName": {
+      "type": "string",
+      "description": "The name of the profile. It is case sensitive. Radius generates one when the template leaves it out.",
+      "minLength": 1,
+      "maxLength": 63,
+      "pattern": "^[a-zA-Z0-9\\-]+$"
+    },
+    "AuthenticationProfileContent": {
+      "type": "string",
+      "description": "The connection options, as a JSON object whose values are strings, numbers, or booleans, such as {\"AllowDBUserOverride\": \"1\", \"App_ID\": \"example\"}. AWS stores each value as a string and drops null values."
+    }
+  },
+  "required": ["AuthenticationProfileContent"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/AuthenticationProfileName"],
+  "createOnlyProperties": ["/properties/AuthenticationProfileName"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "redshift:CreateAuthenticationProfile",
+        "redshift:DescribeAuthenticationProfiles"
+      ]
+    },
+    "read": {
+      "permissions": ["redshift:DescribeAuthenticationProfiles"]
+    },
+    "update": {
+      "permissions": [
+        "redshift:ModifyAuthenticationProfile",
+        "redshift:DescribeAuthenticationProfiles"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "redshift:DeleteAuthenticationProfile",
+        "redshift:DescribeAuthenticationProfiles"
+      ]
+    },
+    "list": {
+      "permissions": ["redshift:DescribeAuthenticationProfiles"]
+    }
+  }
+}
