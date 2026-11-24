@@ -532,8 +532,6 @@ jobs:
         run: make install-yq
 
       - name: Install Radius
-        env:
-          PROFILING: ${{ inputs.control-plane-profiling && 'true' || 'false' }}
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control
         # plane), so the shared install is skipped for it.
@@ -654,6 +652,7 @@ jobs:
           rad workspace show
 
         env:
+          PROFILING: ${{ inputs.control-plane-profiling && 'true' || 'false' }}
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
 
