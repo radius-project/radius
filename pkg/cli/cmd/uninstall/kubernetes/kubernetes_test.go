@@ -712,6 +712,7 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 			}
 
 			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+			helmMock.EXPECT().RadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(nil, nil)
 			helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(tt.owned, tt.ownedErr)
 			if tt.promptAnswer != "" {
 				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
@@ -731,4 +732,120 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 			require.Equal(t, tt.wantWrites, outputMock.Writes)
 		})
 	}
+}
+
+// A retried uninstall finds no Radius release when the previous uninstall failed after Helm removed it. It must resume
+// that cleanup rather than report success.
+func Test_Run_NotInstalled_ResumesUninstallCleanup(t *testing.T) {
+	leftovers := []helm.UninstallLeftover{
+		{Kind: "Secret", Namespace: "radius-system", Name: "radius-apiserver-trust"},
+		{Kind: "Secret", Namespace: "radius-system", Name: "ucp-apiserver-tls"},
+	}
+	deleteErr := errors.New("delete failed")
+	tests := []struct {
+		name         string
+		assumeYes    bool
+		promptAnswer string
+		leftoversErr error
+		deleteErr    error
+		wantDelete   bool
+		wantCertMgr  bool
+		wantErr      string
+		wantLastLog  string
+	}{
+		{name: "resumes with --yes", assumeYes: true, wantDelete: true, wantCertMgr: true, wantLastLog: "Finished the previous Radius uninstall."},
+		{name: "resumes after confirmation", promptAnswer: prompt.ConfirmYes, wantDelete: true, wantCertMgr: true, wantLastLog: "Finished the previous Radius uninstall."},
+		{name: "cancelled", promptAnswer: prompt.ConfirmNo, wantLastLog: "Uninstall cancelled."},
+		{name: "delete fails", assumeYes: true, deleteErr: deleteErr, wantDelete: true, wantErr: "delete failed"},
+		{name: "check fails", assumeYes: true, leftoversErr: errors.New("forbidden"), wantErr: "failed to check for objects that a previous Radius uninstall left: forbidden"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			helmMock := helm.NewMockInterface(ctrl)
+			promptMock := prompt.NewMockInterface(ctrl)
+			outputMock := &output.MockOutput{}
+			ctx := t.Context()
+			runner := &Runner{
+				Helm:        helmMock,
+				Output:      outputMock,
+				Kubernetes:  kubernetes.NewMockInterface(ctrl),
+				Connections: &connections.MockFactory{},
+				Prompter:    promptMock,
+				KubeContext: "test-context",
+				AssumeYes:   tt.assumeYes,
+			}
+
+			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+			found := leftovers
+			if tt.leftoversErr != nil {
+				found = nil
+			}
+			helmMock.EXPECT().RadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(found, tt.leftoversErr)
+			if tt.promptAnswer != "" {
+				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).Return(tt.promptAnswer, nil)
+			}
+			if tt.wantDelete {
+				helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, "test-context", leftovers).Return(tt.deleteErr)
+			}
+			if tt.wantCertMgr {
+				helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)
+			}
+
+			err := runner.Run(ctx)
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			writes := outputMock.Writes
+			require.Contains(t, writes, output.LogOutput{Format: "- %s", Params: []any{leftovers[0]}})
+			require.Equal(t, output.LogOutput{Format: tt.wantLastLog}, writes[len(writes)-1])
+		})
+	}
+}
+
+// When the UCP cleanup fails after Helm removed Radius, --purge still deletes what the user confirmed, because a retry
+// finds no release and resumes only the UCP cleanup, never the purge.
+func Test_Run_Purge_UCPCleanupFailsAfterHelm(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	helmMock := helm.NewMockInterface(ctrl)
+	k8sMock := kubernetes.NewMockInterface(ctrl)
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	ctx := t.Context()
+	newRunner := func() *Runner {
+		return &Runner{
+			Helm:        helmMock,
+			Output:      &output.MockOutput{},
+			Kubernetes:  k8sMock,
+			Connections: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			KubeContext: "test-context",
+			AssumeYes:   true,
+			Purge:       true,
+		}
+	}
+
+	helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{RadiusInstalled: true}, nil)
+	helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)
+	appManagementClient.EXPECT().ListEnvironmentsAll(ctx).Return(nil, nil)
+	helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").
+		Return(&helm.RadiusRemovedError{Err: errors.New("delete failed")})
+	k8sMock.EXPECT().PerformRadiusCleanup(ctx, "test-context", kubernetes.CleanupPlan{
+		Namespaces:  []string{helm.RadiusSystemNamespace},
+		APIServices: []string{ucpAPIServiceName},
+		CRDs:        radiusCRDs,
+	}).Return(nil)
+
+	require.EqualError(t, newRunner().Run(ctx), "delete failed")
+
+	// The retry resumes only the UCP cleanup; gomock fails the test if it purges again.
+	leftovers := []helm.UninstallLeftover{{Kind: "Secret", Namespace: "radius-system", Name: "ucp-apiserver-tls"}}
+	helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+	helmMock.EXPECT().RadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(leftovers, nil)
+	helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, "test-context", leftovers).Return(nil)
+	helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)
+
+	require.NoError(t, newRunner().Run(ctx))
 }

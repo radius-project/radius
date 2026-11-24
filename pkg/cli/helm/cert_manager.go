@@ -20,12 +20,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -33,8 +38,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
@@ -90,11 +97,14 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 }
 
 // resolveAuthzMode returns the authorization mode the Radius chart will render from global.rbac. Values from the
-// current invocation are merged over the stored release values with Helm's own CoalesceTables, the merge Helm
-// upgrade applies for ResetThenReuseValues, so null or non-map replacements clear stored flags like Helm does.
-func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
+// current invocation are merged over the stored release values, and both over chartDefaults, the values.yaml of the
+// chart Helm applies, with Helm's own CoalesceTables, the merge Helm upgrade applies for ResetThenReuseValues, so null
+// or non-map replacements clear stored flags and chart defaults like Helm does. Without chartDefaults, a chart that
+// turns authorization on by default would render it while the user values say nothing.
+func resolveAuthzMode(chartDefaults, stored, current map[string]any) (authz.Mode, error) {
 	// CoalesceTables mutates both arguments, so merge copies.
 	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
+	merged = valuesutil.CoalesceTables(merged, copyValues(chartDefaults))
 	enabled, dryRun := rbacFlag(merged, "enabled"), rbacFlag(merged, "dryRun")
 
 	switch {
@@ -142,11 +152,8 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	controller := deployments.Items[0]
 	raw := controller.Labels[certManagerVersionLabel]
 	if raw == "" {
-		for _, c := range controller.Spec.Template.Spec.Containers {
-			if tag := imageTag(c.Image); tag != "" {
-				raw = tag
-				break
-			}
+		if container := certManagerControllerContainer(&controller); container != nil {
+			raw = imageTag(container.Image)
 		}
 	}
 
@@ -158,19 +165,28 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	return certManagerInstallation{Installed: true, Version: version.String(), Namespace: controller.Namespace}, nil
 }
 
-func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, namespace string) error {
-	for _, component := range []string{"controller", "webhook"} {
-		name := "cert-manager"
-		if component == "webhook" {
-			name = "webhook"
-		}
-		selector := "app.kubernetes.io/name=" + name + ",app.kubernetes.io/component=" + component
+// certManagerComponents maps each cert-manager component Radius needs to its app.kubernetes.io/name label. The
+// cainjector copies ca.crt of Secret radius-apiserver-ca into the Radius APIService, and follows its renewals, so
+// the Kubernetes API server can reach UCP.
+var certManagerComponents = []struct{ component, name string }{
+	{component: "controller", name: "cert-manager"},
+	{component: "webhook", name: "webhook"},
+	{component: "cainjector", name: "cainjector"},
+}
+
+// checkCertManagerReady fails unless the cert-manager controller, webhook and cainjector in namespace are rolled out
+// and available, and the cainjector can inject the CA certificates of a Secret in radiusNamespace into an APIService.
+// It calls warn when it cannot tell which container of the cainjector Deployment runs cainjector, so it cannot check
+// its flags.
+func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, namespace, radiusNamespace string, warn func(format string, v ...any)) error {
+	for _, c := range certManagerComponents {
+		selector := "app.kubernetes.io/name=" + c.name + ",app.kubernetes.io/component=" + c.component
 		deployments, err := client.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
 		if err != nil {
-			return fmt.Errorf("failed to check cert-manager %s readiness in namespace %q: %w", component, namespace, err)
+			return fmt.Errorf("failed to check cert-manager %s readiness in namespace %q: %w", c.component, namespace, err)
 		}
 		if len(deployments.Items) != 1 {
-			return fmt.Errorf("cert-manager %s in namespace %q is not ready: expected one Deployment, found %d. Repair cert-manager and retry", component, namespace, len(deployments.Items))
+			return fmt.Errorf("cert-manager %s in namespace %q is not ready: expected one Deployment, found %d. Repair cert-manager and retry", c.component, namespace, len(deployments.Items))
 		}
 		deployment := deployments.Items[0]
 		replicas := int32(1)
@@ -179,10 +195,230 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 		}
 		if replicas == 0 || deployment.Status.ObservedGeneration < deployment.Generation ||
 			deployment.Status.UpdatedReplicas < replicas || deployment.Status.AvailableReplicas < replicas {
-			return fmt.Errorf("cert-manager %s Deployment %s/%s is not ready. Wait for its rollout or repair cert-manager and retry", component, namespace, deployment.Name)
+			return fmt.Errorf("cert-manager %s Deployment %s/%s is not ready. Wait for its rollout or repair cert-manager and retry", c.component, namespace, deployment.Name)
+		}
+		if c.component == "cainjector" {
+			injectors := caInjectorContainers(&deployment)
+			if injectors == nil {
+				names := make([]string, 0, len(deployment.Spec.Template.Spec.Containers))
+				for _, container := range deployment.Spec.Template.Spec.Containers {
+					names = append(names, strconv.Quote(container.Name))
+				}
+				warn("Warning: rad could not tell which container of cert-manager cainjector Deployment %s/%s (%s) runs cainjector, so it did not check that cainjector can inject the CA certificate in Secret %s/%s into the Radius APIService",
+					namespace, deployment.Name, strings.Join(names, ", "), radiusNamespace, ucpAPIServerCASecretName)
+			}
+			if problem := caInjectorProblem(injectors, namespace, radiusNamespace, warn); problem != "" {
+				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA certificate in Secret %s/%s into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem, radiusNamespace, ucpAPIServerCASecretName)
+			}
 		}
 	}
 	return nil
+}
+
+// checkInstalledCertManagerReady fails unless cert-manager is installed, at least CertManagerMinimumVersion, and ready
+// to issue and inject the CA certificate in Secret radius-apiserver-ca, as checkCertManagerReady decides. rad calls it before a command that does
+// not install cert-manager itself, such as a rollback, applies a release that serves UCP from that CA.
+func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, radiusNamespace string) error {
+	newClients := i.newCertManagerClients
+	if newClients == nil {
+		newClients = newCertManagerClients
+	}
+	kubeClient, apiextClient, err := newClients(kubeContext)
+	if err != nil {
+		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
+	}
+	existing, err := detectCertManager(ctx, kubeClient, apiextClient)
+	if err != nil {
+		return err
+	}
+	if !existing.Installed {
+		return fmt.Errorf("cert-manager is not installed, and the Radius release serves UCP's API server from a certificate that cert-manager issues. Install cert-manager, for example with rad upgrade kubernetes, and retry")
+	}
+	minimum := semver.MustParse(CertManagerMinimumVersion)
+	if semver.MustParse(existing.Version).LessThan(minimum) {
+		return fmt.Errorf("cert-manager v%s in namespace %q is older than the minimum supported version v%s. Upgrade cert-manager to v%s or later and retry", existing.Version, existing.Namespace, minimum, minimum)
+	}
+	return checkCertManagerReady(ctx, kubeClient, existing.Namespace, radiusNamespace, i.logInfo)
+}
+
+// caInjectorProblem describes a setting of the cainjector containers that stops cainjector from injecting the CA
+// certificates of a Secret in radiusNamespace into an APIService, or returns "" when there is none. It reads the flags
+// in Args, with the $(NAME) references to the container's environment that Kubernetes expands. podNamespace is the
+// namespace of the cainjector pods. When it cannot resolve the --namespace value, it calls warn and does not check that
+// setting; rad then reports the problem when the CA certificate never reaches the APIService.
+func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespace string, warn func(format string, v ...any)) string {
+	for _, container := range injectors {
+		env := containerEnvironment(container, podNamespace)
+		var argv []string
+		var resolved []bool
+		raw := container.Args
+		// A command that runs cainjector passes the flags after the executable before the args.
+		if len(container.Command) > 0 && isCAInjectorName(path.Base(container.Command[0])) {
+			raw = slices.Concat(container.Command[1:], container.Args)
+		}
+		for _, arg := range raw {
+			value, ok := expandContainerReferences(arg, env)
+			argv = append(argv, value)
+			resolved = append(resolved, ok)
+		}
+		var namespace, apiServices *string
+		namespaceResolved := true
+		for idx, arg := range argv {
+			if !strings.HasPrefix(arg, "-") {
+				continue
+			}
+			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+			_, rawValue, _ := strings.Cut(raw[idx], "=")
+			valueResolved := resolved[idx]
+			if !hasValue && name != "enable-apiservices-injectable" && idx+1 < len(argv) {
+				value, rawValue, valueResolved = argv[idx+1], raw[idx+1], resolved[idx+1]
+			}
+			if !valueResolved {
+				if name == "namespace" {
+					namespace, namespaceResolved = &rawValue, false
+				}
+				// rad cannot tell what cainjector receives for any other flag either, so it leaves it unchecked.
+				continue
+			}
+			switch name {
+			case "enable-apiservices-injectable":
+				// Boolean flags take their value only after "=".
+				if !hasValue {
+					value = "true"
+				}
+				apiServices = &value
+			case "namespace":
+				namespace, namespaceResolved = &value, true
+			case "ignore-namespaces":
+				if slices.Contains(strings.Split(value, ","), radiusNamespace) {
+					return "ignores namespace " + strconv.Quote(radiusNamespace) + " by --ignore-namespaces"
+				}
+			}
+		}
+		if apiServices != nil {
+			if enabled, err := strconv.ParseBool(*apiServices); err == nil && !enabled {
+				return "sets --enable-apiservices-injectable=" + *apiServices
+			}
+		}
+		if !namespaceResolved {
+			warn("Warning: rad could not resolve the --namespace value %q of cert-manager cainjector container %q, so it did not check that cainjector watches namespace %q",
+				*namespace, container.Name, radiusNamespace)
+		} else if namespace != nil {
+			if *namespace != "" && *namespace != radiusNamespace {
+				return "is limited to namespace " + strconv.Quote(*namespace) + " by --namespace"
+			}
+		}
+	}
+	return ""
+}
+
+// containerEnvironment returns the environment variables of container that rad can resolve as the kubelet does:
+// literal values, which may refer to variables defined before them, and the pod namespace. A variable whose value the
+// kubelet resolves from another source maps to ok false.
+func containerEnvironment(container corev1.Container, podNamespace string) map[string]containerEnvValue {
+	env := map[string]containerEnvValue{}
+	for _, variable := range container.Env {
+		switch {
+		case variable.ValueFrom == nil:
+			value, ok := expandContainerReferences(variable.Value, env)
+			env[variable.Name] = containerEnvValue{value: value, ok: ok}
+		case variable.ValueFrom.FieldRef != nil && variable.ValueFrom.FieldRef.FieldPath == "metadata.namespace":
+			env[variable.Name] = containerEnvValue{value: podNamespace, ok: true}
+		default:
+			env[variable.Name] = containerEnvValue{}
+		}
+	}
+	return env
+}
+
+// containerEnvValue is the value of a container environment variable, and whether rad could resolve it.
+type containerEnvValue struct {
+	value string
+	ok    bool
+}
+
+// expandContainerReferences expands the $(NAME) references in s to env as Kubernetes does for a container's command,
+// args and environment: $$ is a literal $, and a reference to an undefined variable stays as written. ok is false when
+// s refers to a variable that env does not define or cannot resolve.
+func expandContainerReferences(s string, env map[string]containerEnvValue) (string, bool) {
+	var out strings.Builder
+	ok := true
+	for idx := 0; idx < len(s); idx++ {
+		if s[idx] != '$' || idx+1 >= len(s) {
+			out.WriteByte(s[idx])
+			continue
+		}
+		switch s[idx+1] {
+		case '$':
+			out.WriteByte('$')
+			idx++
+			continue
+		case '(':
+			end := strings.IndexByte(s[idx+2:], ')')
+			if end < 0 {
+				break
+			}
+			name := s[idx+2 : idx+2+end]
+			if value, found := env[name]; found && value.ok {
+				out.WriteString(value.value)
+			} else {
+				out.WriteString(s[idx : idx+3+end])
+				ok = false
+			}
+			idx += 2 + end
+			continue
+		}
+		out.WriteByte(s[idx])
+	}
+	return out.String(), ok
+}
+
+// caInjectorContainers returns the containers of deployment that run cainjector: those named, or running an image or
+// command named, cainjector or cert-manager-cainjector. Flags of other containers, such as an injected service-mesh
+// sidecar, do not configure cainjector. When it identifies none, it returns the only container, or nil when there are
+// several, so rad never reads a sidecar's flags as cainjector's.
+func caInjectorContainers(deployment *appsv1.Deployment) []corev1.Container {
+	containers := deployment.Spec.Template.Spec.Containers
+	var injectors []corev1.Container
+	for _, container := range containers {
+		image, _, _ := strings.Cut(container.Image, "@")
+		image = path.Base(image)
+		image, _, _ = strings.Cut(image, ":")
+		command := ""
+		if len(container.Command) > 0 {
+			command = path.Base(container.Command[0])
+		}
+		if slices.ContainsFunc([]string{container.Name, image, command}, isCAInjectorName) {
+			injectors = append(injectors, container)
+		}
+	}
+	if len(injectors) == 0 && len(containers) == 1 {
+		return containers
+	}
+	return injectors
+}
+
+// certManagerControllerContainer returns the container of deployment that runs the cert-manager controller: the one
+// named, or running an image named, cert-manager-controller. When it identifies none, it returns the only container,
+// or nil when there are several, so rad never reads the version from a sidecar's image, such as an injected
+// service-mesh proxy.
+func certManagerControllerContainer(deployment *appsv1.Deployment) *corev1.Container {
+	containers := deployment.Spec.Template.Spec.Containers
+	for idx := range containers {
+		image, _, _ := strings.Cut(containers[idx].Image, "@")
+		image, _, _ = strings.Cut(path.Base(image), ":")
+		if containers[idx].Name == "cert-manager-controller" || image == "cert-manager-controller" {
+			return &containers[idx]
+		}
+	}
+	if len(containers) == 1 {
+		return &containers[0]
+	}
+	return nil
+}
+
+func isCAInjectorName(name string) bool {
+	return name == "cainjector" || name == "cert-manager-cainjector"
 }
 
 // imageTag returns the tag of an image reference, ignoring any digest.
@@ -197,15 +433,13 @@ func imageTag(image string) string {
 
 // ensureCertManager makes cert-manager available when Radius authorization is enabled. It installs a pinned
 // version when none exists, upgrades a release rad installed when upgrade is true or when that release is
-// not deployed or its controller is missing, reuses a supported
+// not deployed or its controller is missing, refuses pending Helm operations, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
-// With authorization off it returns without contacting the cluster.
-func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	mode, err := resolveAuthzMode(storedValues, currentValues)
+// Authorization is enabled when userValues, the values prepareRadiusChart read from the command line, merged over
+// storedValues and chartDefaults, the values.yaml of the Radius chart rad applies, turn it on. With authorization off
+// it returns without contacting the cluster.
+func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, chartDefaults, storedValues, userValues map[string]any, upgrade bool) error {
+	mode, err := resolveAuthzMode(chartDefaults, storedValues, userValues)
 	if err != nil {
 		return err
 	}
@@ -213,13 +447,28 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		return nil
 	}
 
+	// Pin both the lookup and its recovery commands before current-context can change.
+	if kubeContext == "" {
+		config, err := clientcmd.NewDefaultClientConfigLoadingRules().Load()
+		if err != nil {
+			return fmt.Errorf("failed to resolve cert-manager kubeconfig context: %w", err)
+		}
+		kubeContext = config.CurrentContext
+	}
+
 	i.logInfo("Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed. Do not rely on it for production access control.")
 
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
-	ownedRelease, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)
+	ownedRelease, err := helmAction.getRelease(kubeContext, chartOptions.ReleaseName, chartOptions.Namespace)
 	if err != nil {
 		return err
+	}
+	if ownedRelease != nil && revisionStatus(ownedRelease).IsPending() {
+		return pendingCertManagerReleaseError(ownedRelease, chartOptions, kubeContext)
+	}
+	if !radOwnsCertManagerRelease(ownedRelease) {
+		ownedRelease = nil
 	}
 
 	newClients := i.newCertManagerClients
@@ -259,7 +508,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 				}
 				healthy = err == nil && existing.Installed
 				if healthy {
-					if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace); err != nil {
+					if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace, options.Radius.Namespace, i.logInfo); err != nil {
 						return err
 					}
 				}
@@ -282,7 +531,15 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if _, err := i.Helm.RunHelmUpgrade(helmConf, helmChart, buildCertManagerValues(), chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, true, chartOptions.Timeout); err != nil {
 			return fmt.Errorf("failed to upgrade cert-manager, err: %w", err)
 		}
-		return nil
+		// The upgrade reuses the values of the release, which can configure cainjector so it cannot inject Radius's CA.
+		existing, err := detect()
+		if err != nil {
+			return err
+		}
+		if !existing.Installed {
+			return fmt.Errorf("cert-manager is not running after rad upgraded it in namespace %q. Repair cert-manager and retry", chartOptions.Namespace)
+		}
+		return checkCertManagerReady(ctx, kubeClient, existing.Namespace, options.Radius.Namespace, i.logInfo)
 	}
 
 	existing, err := detect()
@@ -295,7 +552,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if semver.MustParse(existing.Version).LessThan(minimum) {
 			return fmt.Errorf("cert-manager v%s in namespace %q is older than the minimum supported version v%s. Upgrade cert-manager to v%s or later and retry; rad does not upgrade a cert-manager it did not install", existing.Version, existing.Namespace, minimum, minimum)
 		}
-		if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace); err != nil {
+		if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace, options.Radius.Namespace, i.logInfo); err != nil {
 			return err
 		}
 		output.LogInfo("Using existing cert-manager v%s in namespace %s", existing.Version, existing.Namespace)
@@ -313,25 +570,58 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 	return nil
 }
 
-// radOwnedCertManagerRelease returns the latest cert-manager Helm release when it carries rad's ownership
-// labels, or nil when the release does not exist or rad did not install it.
-func (i *Impl) radOwnedCertManagerRelease(options ChartOptions, kubeContext string) (*releasev1.Release, error) {
-	rel, err := NewHelmAction(i.Helm).getRelease(kubeContext, options.ReleaseName, options.Namespace)
-	if err != nil || rel == nil {
-		return nil, err
+func radOwnsCertManagerRelease(rel *releasev1.Release) bool {
+	if rel == nil {
+		return false
 	}
 	for k, v := range radManagedByLabels() {
 		if rel.Labels[k] != v {
-			return nil, nil
+			return false
 		}
 	}
-	return rel, nil
+	return true
+}
+
+func pendingCertManagerReleaseError(rel *releasev1.Release, options ChartOptions, kubeContext string) error {
+	target := "current kubeconfig context"
+	if kubeContext != "" {
+		target = fmt.Sprintf("context %q", kubeContext)
+	}
+	recovery := "A pending install may have no successful revision to roll back to. Have the installation's operator inspect any partially created resources and plan recovery without removing shared resources."
+	if revisionStatus(rel) != releasecommon.StatusPendingInstall {
+		recovery = fmt.Sprintf("If the operation was interrupted, have the installation's operator review the history and the changes a rollback would make. "+
+			"Only then consider %s; replace REVISION with a known-good revision from the history. A rollback can change or delete shared resources and issuer configuration.",
+			helmCommand(kubeContext, options.Namespace, "rollback "+options.ReleaseName+" REVISION --wait"))
+	}
+	if !radOwnsCertManagerRelease(rel) {
+		recovery += " This release is not owned by rad; coordinate recovery with the installation's operator rather than taking ownership."
+	}
+	if kubeContext == "" {
+		recovery += " No named kubeconfig context was selected; before running any suggested command, explicitly select and verify the cluster that rad inspected."
+	}
+
+	return clierrors.Message("cert-manager Helm release %q in namespace %q (%s), revision %d is %s. "+
+		"A Helm operation may still be running; wait for it to finish and retry. Pending status alone does not prove that the operation was interrupted. "+
+		"Before recovery, confirm that no Helm operation is active. Inspect the release with %s and %s, and inspect its workloads with %s. "+
+		"Check other workloads' certificates and issuers with %s. %s "+
+		"Back up release history, issuer keys and certificate Secrets before recovery. "+
+		"Do not uninstall cert-manager or delete its CRDs or Helm release Secrets as a shortcut: this can destroy certificates used by other workloads or orphan resources. "+
+		"After the operator resolves the pending state, retry the same rad command. rad has not changed the cert-manager release.",
+		options.ReleaseName, options.Namespace, target, rel.Version, revisionStatus(rel),
+		helmCommand(kubeContext, options.Namespace, "status "+options.ReleaseName),
+		helmCommand(kubeContext, options.Namespace, "history "+options.ReleaseName),
+		kubectlCommand(kubeContext, options.Namespace, "get deployments,jobs,pods"),
+		kubectlCommand(kubeContext, "", "get certificates,certificaterequests,issuers,clusterissuers,orders.acme.cert-manager.io,challenges.acme.cert-manager.io -A"),
+		recovery)
 }
 
 // isRadOwnedCertManager reports whether the cert-manager Helm release exists and carries rad's ownership labels.
 func (i *Impl) isRadOwnedCertManager(options ChartOptions, kubeContext string) (bool, error) {
-	rel, err := i.radOwnedCertManagerRelease(options, kubeContext)
-	return rel != nil, err
+	rel, err := NewHelmAction(i.Helm).getRelease(kubeContext, options.ReleaseName, options.Namespace)
+	if err != nil {
+		return false, err
+	}
+	return radOwnsCertManagerRelease(rel), nil
 }
 
 // CertManagerInstalledByRad reports whether the default cert-manager release exists and rad installed it.

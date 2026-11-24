@@ -167,32 +167,17 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	err = r.Helm.UninstallRadius(ctx, helm.NewDefaultClusterOptions(), r.KubeContext)
 	if err != nil {
+		// Helm already removed Radius, and a retry finds no release and never purges, so purge what the user confirmed
+		// now. The namespace purge also removes the Radius objects whose cleanup failed.
+		var removed *helm.RadiusRemovedError
+		if r.Purge && errors.As(err, &removed) {
+			return errors.Join(err, r.purge(ctx, plan))
+		}
 		return err
 	}
 
 	if r.Purge {
-		if len(plan.APIServices) > 0 {
-			for _, svc := range plan.APIServices {
-				r.Output.LogInfo("Removing APIService %s", svc)
-			}
-		}
-		if len(plan.CRDs) > 0 {
-			r.Output.LogInfo("Removing Radius custom resource definitions")
-		}
-		for _, ns := range plan.Namespaces {
-			r.Output.LogInfo("Deleting namespace %s", ns)
-		}
-		for _, ns := range plan.ProtectedNamespaces {
-			r.Output.LogInfo("Skipping deletion of namespace %s because Kubernetes does not allow deletion", ns)
-		}
-		r.Output.LogInfo("Waiting for resource deletions to finish...")
-
-		cleanupPlan := kubernetes.CleanupPlan{
-			Namespaces:  plan.Namespaces,
-			APIServices: plan.APIServices,
-			CRDs:        plan.CRDs,
-		}
-		if err := r.Kubernetes.PerformRadiusCleanup(ctx, r.KubeContext, cleanupPlan); err != nil {
+		if err := r.purge(ctx, plan); err != nil {
 			return err
 		}
 		r.Output.LogInfo("Radius was fully uninstalled. All data has been removed.")
@@ -202,11 +187,40 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-// uninstallCertManagerOnly handles a cluster without Radius. It removes a cert-manager that rad installed, which
-// can remain when a Radius install fails after cert-manager is installed or a previous cert-manager removal failed.
-// It never touches the Radius or Contour releases or any Radius data.
+// purge deletes the APIServices, CRDs and namespaces of plan, which the user confirmed, after Helm removed Radius.
+func (r *Runner) purge(ctx context.Context, plan cleanupPlan) error {
+	for _, svc := range plan.APIServices {
+		r.Output.LogInfo("Removing APIService %s", svc)
+	}
+	if len(plan.CRDs) > 0 {
+		r.Output.LogInfo("Removing Radius custom resource definitions")
+	}
+	for _, ns := range plan.Namespaces {
+		r.Output.LogInfo("Deleting namespace %s", ns)
+	}
+	for _, ns := range plan.ProtectedNamespaces {
+		r.Output.LogInfo("Skipping deletion of namespace %s because Kubernetes does not allow deletion", ns)
+	}
+	r.Output.LogInfo("Waiting for resource deletions to finish...")
+
+	return r.Kubernetes.PerformRadiusCleanup(ctx, r.KubeContext, kubernetes.CleanupPlan{
+		Namespaces:  plan.Namespaces,
+		APIServices: plan.APIServices,
+		CRDs:        plan.CRDs,
+	})
+}
+
+// uninstallCertManagerOnly handles a cluster without Radius. It first resumes the cleanup of a previous uninstall that
+// failed after Helm removed Radius, then removes a cert-manager that rad installed, which can remain when a Radius
+// install fails after cert-manager is installed or a previous cert-manager removal failed. It never touches the
+// Contour release or any Radius data.
 func (r *Runner) uninstallCertManagerOnly(ctx context.Context) error {
 	r.Output.LogInfo("Radius is not installed on the Kubernetes cluster")
+
+	resumed, err := r.resumeRadiusUninstall(ctx)
+	if err != nil || !resumed {
+		return err
+	}
 
 	owned, err := r.Helm.CertManagerInstalledByRad(r.KubeContext)
 	if err != nil {
@@ -234,6 +248,38 @@ func (r *Runner) uninstallCertManagerOnly(ctx context.Context) error {
 	}
 	r.Output.LogInfo("cert-manager cleanup finished.")
 	return nil
+}
+
+// resumeRadiusUninstall deletes what a previous uninstall left after Helm removed Radius, for example because a
+// Kubernetes call failed, so a retried uninstall finishes that cleanup instead of reporting success without it. It
+// returns false when the user cancels.
+func (r *Runner) resumeRadiusUninstall(ctx context.Context) (bool, error) {
+	clusterOptions := helm.NewDefaultClusterOptions()
+	leftovers, err := r.Helm.RadiusUninstallLeftovers(ctx, clusterOptions, r.KubeContext)
+	if err != nil {
+		return false, fmt.Errorf("failed to check for objects that a previous Radius uninstall left: %w", err)
+	}
+	if len(leftovers) == 0 {
+		return true, nil
+	}
+
+	r.Output.LogInfo("A previous Radius uninstall did not finish. This will remove only:")
+	for _, leftover := range leftovers {
+		r.Output.LogInfo("- %s", leftover)
+	}
+	confirmed, err := r.confirm("Continue removing these objects?")
+	if err != nil {
+		return false, err
+	}
+	if !confirmed {
+		r.Output.LogInfo("Uninstall cancelled.")
+		return false, nil
+	}
+	if err := r.Helm.DeleteRadiusUninstallLeftovers(ctx, r.KubeContext, leftovers); err != nil {
+		return false, err
+	}
+	r.Output.LogInfo("Finished the previous Radius uninstall.")
+	return true, nil
 }
 
 // confirm asks the user to confirm an uninstall step, or skips the prompt when --yes was provided.

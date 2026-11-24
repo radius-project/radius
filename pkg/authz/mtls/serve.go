@@ -65,6 +65,10 @@ type Receiver struct {
 	// AllowedCallers are the components that may call this receiver. Empty accepts any
 	// Radius component.
 	AllowedCallers []string
+
+	// KeySource supplies the hosting cluster's token signing keys. Nil uses in-cluster
+	// OIDC discovery. An explicit source allows embedded servers to supply their cluster client.
+	KeySource token.KeySource
 }
 
 // ListenAndServe serves srv according to the authorization mode in options.
@@ -123,10 +127,6 @@ func Serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 type serveConfig struct {
 	// pollInterval is how often the certificate files are polled for changes.
 	pollInterval time.Duration
-
-	// keys is the source of token signing keys. Nil uses the hosting cluster's OIDC
-	// discovery endpoint with the in-cluster config.
-	keys token.KeySource
 
 	// tokenNow is the verifier's clock. Nil uses time.Now.
 	tokenNow func() time.Time
@@ -193,7 +193,7 @@ func newServerAuth(options authz.Options, receiver Receiver, config serveConfig)
 		source.now = config.certNow
 	}
 
-	keys := config.keys
+	keys := receiver.KeySource
 	if keys == nil {
 		// Tokens are issued by the cluster hosting Radius, which may differ from the
 		// deployment target cluster.

@@ -308,27 +308,36 @@ func isTransientHelmStatus(status int) bool {
 }
 
 func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) error {
+	_, _, err := helmAction.applyHelmChartRelease(kubeContext, helmChart, helmConf, options, vals)
+	return err
+}
+
+// applyHelmChartRelease is ApplyHelmChart that also reports whether Helm applied the chart, which it does not when
+// the chart is installed and Reinstall is not set, and returns the release Helm applied, or nil when it applied none.
+func (helmAction *HelmActionImpl) applyHelmChartRelease(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) (bool, *releasev1.Release, error) {
 	chartInstalled, _, err := helmAction.QueryRelease(kubeContext, options.ReleaseName, options.Namespace)
 	if err != nil {
-		return fmt.Errorf("failed to query Helm release, err: %w", err)
+		return false, nil, fmt.Errorf("failed to query Helm release, err: %w", err)
 	}
 
 	if !chartInstalled {
-		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, options.Timeout, nil)
+		rel, err := helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, options.Timeout, nil)
 		if err != nil {
-			return fmt.Errorf("failed to run Helm install, err: %w", err)
+			return false, nil, fmt.Errorf("failed to run Helm install, err: %w", err)
 		}
-	} else if options.Reinstall {
-		// Reinstall path is used during `rad install kubernetes --reinstall`. Preserve the
-		// previously-stored user values by default (ResetThenReuseValues) so that re-runs
-		// don't silently revert non-default settings.
-		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, true, options.Timeout)
-		if err != nil {
-			return fmt.Errorf("failed to run Helm upgrade, err: %w", err)
-		}
+		return true, rel, nil
 	}
-
-	return nil
+	if !options.Reinstall {
+		return false, nil, nil
+	}
+	// Reinstall path is used during `rad install kubernetes --reinstall`. Preserve the
+	// previously-stored user values by default (ResetThenReuseValues) so that re-runs
+	// don't silently revert non-default settings.
+	rel, err := helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, true, options.Timeout)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to run Helm upgrade, err: %w", err)
+	}
+	return true, rel, nil
 }
 
 func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespace string) (bool, string, error) {

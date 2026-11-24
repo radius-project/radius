@@ -121,6 +121,45 @@ func TestSource_CertificateExpiresAfterLoad(t *testing.T) {
 	requireCode(t, err, "CertificateExpired")
 }
 
+func TestServingPairReload(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	first := ca.issue(t, certOptions{})
+	second := newCA(t).issue(t, certOptions{})
+	dir := newKubeletDir(t, first, ca.pem)
+	require.NoError(t, os.Remove(filepath.Join(dir.root, CAFile)))
+	src, err := NewCertificateSource(dir.root)
+	require.NoError(t, err)
+	config := src.ServerConfigFrom(nil)
+	before, err := config.GetConfigForClient(nil)
+	require.NoError(t, err)
+
+	// A mismatched key cannot displace the last known good pair.
+	key, err := os.ReadFile(filepath.Join(dir.root, KeyFile))
+	require.NoError(t, err)
+	dir.update(t, second, nil)
+	require.NoError(t, os.WriteFile(filepath.Join(dir.root, KeyFile), key, 0o600))
+	changed, err := src.Reload()
+	require.Error(t, err)
+	require.False(t, changed)
+	stillFirst, err := config.GetConfigForClient(nil)
+	require.NoError(t, err)
+	require.Equal(t, first.cert.Raw, stillFirst.Certificates[0].Leaf.Raw)
+
+	dir.update(t, second, nil)
+	changed, err = src.Reload()
+	require.NoError(t, err)
+	require.True(t, changed)
+	after, err := config.GetConfigForClient(nil)
+	require.NoError(t, err)
+	require.Equal(t, second.cert.Raw, after.Certificates[0].Leaf.Raw)
+	require.Equal(t, first.cert.Raw, before.Certificates[0].Leaf.Raw)
+
+	src.now = func() time.Time { return second.cert.NotAfter.Add(time.Second) }
+	_, err = config.GetConfigForClient(nil)
+	requireCode(t, err, "CertificateExpired")
+}
+
 func TestSource_Reload(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
@@ -326,5 +365,60 @@ func TestNewTrustSource(t *testing.T) {
 		require.NoError(t, err)
 		_, err = rotated.cert.Verify(x509.VerifyOptions{Roots: m.pool})
 		require.NoError(t, err)
+	})
+}
+
+// UCP's aggregated API server reads its certificate from a directory that documents only tls.crt and tls.key.
+func TestNewCertificateSource(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	writeCertDir := func(t *testing.T, cert testCert) string {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CertFile), cert.certPEM, 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, KeyFile), cert.keyPEM, 0o600))
+		return dir
+	}
+
+	t.Run("loads and reloads without ca.crt", func(t *testing.T) {
+		t.Parallel()
+		first := ca.issue(t, certOptions{uris: spiffeURIs("ucp")})
+		dir := writeCertDir(t, first)
+		src, err := NewCertificateSource(dir)
+		require.NoError(t, err)
+		cert, err := currentCert(src)
+		require.NoError(t, err)
+		require.Equal(t, first.cert.Raw, cert.Leaf.Raw)
+
+		second := newCA(t).issue(t, certOptions{uris: spiffeURIs("ucp")})
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CertFile), second.certPEM, 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, KeyFile), second.keyPEM, 0o600))
+		changed, err := src.Reload()
+		require.NoError(t, err)
+		require.True(t, changed)
+		cert, err = currentCert(src)
+		require.NoError(t, err)
+		require.Equal(t, second.cert.Raw, cert.Leaf.Raw)
+
+		_, err = src.clientConfig("spiffe://radius.internal/ns/radius-system/sa/ucp", nil)
+		require.ErrorContains(t, err, "no CA bundle")
+	})
+
+	t.Run("missing key", func(t *testing.T) {
+		t.Parallel()
+		dir := writeCertDir(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}))
+		require.NoError(t, os.Remove(filepath.Join(dir, KeyFile)))
+		_, err := NewCertificateSource(dir)
+		require.ErrorContains(t, err, "failed to read tls.key")
+	})
+
+	t.Run("expired certificate", func(t *testing.T) {
+		t.Parallel()
+		dir := writeCertDir(t, ca.issue(t, certOptions{
+			uris:      spiffeURIs("ucp"),
+			notBefore: time.Now().Add(-2 * time.Hour),
+			notAfter:  time.Now().Add(-time.Hour),
+		}))
+		_, err := NewCertificateSource(dir)
+		requireCode(t, err, "CertificateExpired")
 	})
 }

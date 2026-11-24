@@ -7,8 +7,8 @@ release:
   name: radius
   namespace: radius-system
 tests:
-  # The checksum restarts pods when helm upgrade changes the authorization mode or
-  # trust domain, because services read them only at startup.
+  # The checksum restarts pods when helm upgrade changes the authorization settings,
+  # because services read them only at startup.
   - it: hashes the off mode by default
     asserts:
       - equal:
@@ -29,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: f92dd491e2d78df1b8236a3632575ea329043dbcf1d035c6181085dd84518406
+          value: a8235814f5d8f0ba57e9a9251d3ae650ea7f7fcb8cd2ba0a6717c49a05aa66e2
 
   - it: hashes the enforce mode
     set:
@@ -37,7 +37,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: baacb4e078da0083e3977498acc5e849169bfc575793828069384fd370348a7c
+          value: 1168e8ad578671079e58691b022feab5236004c0855be916295a8004c1081e4b
 
   # Clients fix the receiver's expected SPIFFE ID at startup, so a trust-domain-only
   # upgrade must roll every caller.
@@ -48,7 +48,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 8d4a9d08b2bfa87894484e961519873d2af12d5b5ee6d641c89e89e3e74f2141
+          value: bf665dd31bba41fd0528b85e2866902b68861925d866cf3fc368c5fa8af32d52
 
   - it: changes the enforce checksum for a trust-domain-only upgrade
     set:
@@ -57,7 +57,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 39c4fe88995cb11a1849626441f842c7b804c6026037bb1fa9f1d349c4f2eae2
+          value: e4005fee65cb5f6057040b6a53597bcc2ae8745519998fc6d49df415e91b9c3c
 
   - it: ignores the trust domain when authorization is off
     set:

@@ -122,10 +122,19 @@ type Verifier struct {
 	fetchMu             sync.Mutex
 	lastUnknownKeyFetch time.Time
 
-	// mu guards keys and lastSuccess.
+	// noKeys wakes Run when a fetch leaves no usable keys, so Run retries after
+	// UnknownKeyInterval instead of waiting a full RefreshInterval.
+	noKeys chan struct{}
+
+	// mu guards keys, lastSuccess, fetched, and lastFetchFailed.
 	mu          sync.RWMutex
 	keys        KeySet
 	lastSuccess time.Time
+
+	// fetched is set after the first fetch. lastFetchFailed reports whether the latest
+	// fetch failed or left no usable keys.
+	fetched         bool
+	lastFetchFailed bool
 }
 
 // New returns a Verifier for config. Namespace, Audience, and Keys are required. A zero
@@ -152,6 +161,7 @@ func New(config Config) (*Verifier, error) {
 		maxKeyAge:          orDefault(config.MaxKeyAge, DefaultMaxKeyAge),
 		fetchTimeout:       orDefault(config.FetchTimeout, DefaultFetchTimeout),
 		leeway:             orDefault(config.Leeway, DefaultLeeway),
+		noKeys:             make(chan struct{}, 1),
 	}
 	if v.now == nil {
 		v.now = time.Now
@@ -170,15 +180,36 @@ func orDefault(d, def time.Duration) time.Duration {
 }
 
 // Run loads the signing keys and refreshes them every RefreshInterval until ctx is done.
-// After a failed refresh it retries every UnknownKeyInterval.
+// If no fetch has run yet, Run fetches immediately. When a Refresh already loaded the
+// keys, the first refresh waits a full RefreshInterval. After a failed fetch, or when any
+// fetch leaves no usable keys, it retries every UnknownKeyInterval.
 func (v *Verifier) Run(ctx context.Context) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	timer := time.NewTimer(0)
+	// Run fetches at once unless a fetch already ran. It waits the refresh interval only
+	// when that fetch left usable keys, and the retry interval otherwise.
+	v.mu.RLock()
+	first := time.Duration(0)
+	switch {
+	case v.fetched && !v.lastFetchFailed && len(v.keys.Keys) > 0:
+		first = v.refreshInterval
+	case v.fetched:
+		first = v.unknownKeyInterval
+	}
+	v.mu.RUnlock()
+	timer := time.NewTimer(first)
 	defer timer.Stop()
+	next := time.Now().Add(first)
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-v.noKeys:
+			// A fetch outside Run, such as one for an unknown key ID, left no usable keys.
+			if time.Until(next) > v.unknownKeyInterval {
+				timer.Reset(v.unknownKeyInterval)
+				next = time.Now().Add(v.unknownKeyInterval)
+			}
+			continue
 		case <-timer.C:
 		}
 
@@ -188,6 +219,7 @@ func (v *Verifier) Run(ctx context.Context) {
 			wait = v.unknownKeyInterval
 		}
 		timer.Reset(wait)
+		next = time.Now().Add(wait)
 	}
 }
 
@@ -202,7 +234,13 @@ func (v *Verifier) Refresh(ctx context.Context) error {
 // failed fetch keeps the cached keys. A successful fetch replaces them with the keys
 // Radius accepts. If there are none, it returns an error and Verify rejects every token
 // with AuthorizationUnavailable, so a key the cluster removed is not trusted for longer.
-func (v *Verifier) fetchLocked(ctx context.Context) error {
+func (v *Verifier) fetchLocked(ctx context.Context) (err error) {
+	defer func() {
+		v.mu.Lock()
+		v.fetched = true
+		v.lastFetchFailed = err != nil
+		v.mu.Unlock()
+	}()
 	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
 	defer cancel()
 	keys, err := v.source.Fetch(ctx)
@@ -224,6 +262,10 @@ func (v *Verifier) fetchLocked(ctx context.Context) error {
 	v.keys = KeySet{Issuer: keys.Issuer, Keys: accepted}
 	v.lastSuccess = v.now()
 	if len(accepted) == 0 {
+		select {
+		case v.noKeys <- struct{}{}:
+		default:
+		}
 		return errors.New("key set has no usable signing keys")
 	}
 	return nil
