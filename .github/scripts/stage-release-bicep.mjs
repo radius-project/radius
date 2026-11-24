@@ -57,17 +57,24 @@ export async function recoveryInputs(
   return { runId: "", attempt: "" };
 }
 
-export default async function stage({ github, context, core }) {
+export default async function stage({ github, context, core, run = tool }) {
   const directory = core.getInput("directory", { required: true });
   await mkdir(directory, { recursive: true });
   const tag = context.ref.slice("refs/tags/".length);
   const plan = JSON.parse(
-    await tool(["yq", "-o=json", ".", `.github/release-plans/${tag}.yaml`])
+    await run(["yq", "-o=json", ".", `.github/release-plans/${tag}.yaml`])
   );
   const ghcr = usesGhcrBicepExtensions(plan.expectedOutputs);
   core.setOutput("ghcr", String(ghcr));
-  if (!ghcr) return;
   const operation = core.getInput("operation", { required: true });
+  if (!ghcr) {
+    assert.ok(
+      operation === "preflight" &&
+        core.getInput("release_state") === "published",
+      "This unpublished release requires the retired Bicep ACR writer; finish it before cutover or use a reviewed new GHCR-only release source"
+    );
+    return;
+  }
   assert.ok(
     ["preflight", "lock"].includes(operation),
     "Unknown Bicep staging operation"

@@ -45,7 +45,7 @@ for (const [releaseType, version, expected] of [
   });
 }
 
-test("workflow uses the App client remotely and the job client for receipts", async (t) => {
+async function coordinationStep(t, state, getOctokit) {
   const workflow = (
     await readFile(
       new URL("../workflows/build-release.yaml", import.meta.url),
@@ -58,7 +58,7 @@ test("workflow uses the App client remotely and the job client for receipts", as
   assert.ok(step, "the downstream coordination step must exist");
   assert.match(step[0], /          retries: 5\n/);
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  const runStep = new AsyncFunction(
+  const stepScript = new AsyncFunction(
     "github",
     "getOctokit",
     "context",
@@ -66,7 +66,41 @@ test("workflow uses the App client remotely and the job client for receipts", as
     "process",
     step[1].replace(/^            /gm, "")
   );
+  const directory = await mkdtemp(path.join(os.tmpdir(), "coordination-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const inputs = {
+    PLAN_FILE: path.join(directory, "plan.json"),
+    SOURCE_SHA: state.sourceSha
+  };
+  return async (plan, recipeToken = "") => {
+    await writeFile(inputs.PLAN_FILE, JSON.stringify(plan));
+    let results;
+    await stepScript(
+      state.github,
+      getOctokit,
+      state.context,
+      {
+        getInput: (key) => inputs[key] ?? "",
+        setOutput: (_, json) => {
+          results = JSON.parse(json);
+        }
+      },
+      {
+        env: {
+          COORDINATION_TOKEN: "docs-samples",
+          RECIPE_TOKEN: recipeToken,
+          GITHUB_WORKSPACE: new URL("../../", import.meta.url).href.replace(
+            /\/$/,
+            ""
+          )
+        }
+      }
+    );
+    return results;
+  };
+}
 
+test("workflow uses the App client remotely and the job client for receipts", async (t) => {
   const state = fixture();
   const version = "v0.62.1";
   state.run.head_branch = "edge";
@@ -84,33 +118,13 @@ test("workflow uses the App client remotely and the job client for receipts", as
         )
     }
   );
-  const directory = await mkdtemp(path.join(os.tmpdir(), "coordination-auth-"));
-  t.after(() => rm(directory, { recursive: true, force: true }));
-  const planFile = path.join(directory, "plan.json");
-  await writeFile(planFile, JSON.stringify({ version, releaseType: "patch" }));
-  const outputs = {};
-  const core = {
-    getInput: (name) =>
-      ({ PLAN_FILE: planFile, SOURCE_SHA: state.sourceSha })[name] ?? "",
-    setOutput: (name, value) => {
-      outputs[name] = value;
-    }
-  };
   const tokens = [];
-  const getOctokit = (token) => {
+  const run = await coordinationStep(t, state, (token) => {
     tokens.push(token);
     return { request: state.remote };
-  };
-  await runStep(state.github, getOctokit, state.context, core, {
-    env: {
-      COORDINATION_TOKEN: "test-app-token",
-      GITHUB_WORKSPACE: new URL("../../", import.meta.url).href.replace(
-        /\/$/,
-        ""
-      )
-    }
   });
-  assert.deepEqual(tokens, ["test-app-token"]);
+  const results = await run({ version, releaseType: "patch" });
+  assert.deepEqual(tokens, ["docs-samples"]);
   assert.equal(state.deployments.length, 1);
   assert.equal(state.deployments[0].repo, "radius");
   assert.ok(state.statuses.length > 0);
@@ -126,7 +140,89 @@ test("workflow uses the App client remotely and the job client for receipts", as
       .filter(({ route }) => route.startsWith("GET "))
       .every(({ request }) => request.request.retries === 5)
   );
-  assert.equal(JSON.parse(outputs.results)[0].state, "success");
+  assert.equal(results[0].state, "success");
+});
+
+test("only a pinned public final coordinates the exact recipe run with its isolated token", async (t) => {
+  const state = fixture();
+  const version = "v0.62.0";
+  const identifier = `${version}-${state.sourceSha}`;
+  const recipeSource = "b".repeat(40);
+  const release = {
+    tag_name: version,
+    draft: false,
+    prerelease: false,
+    published_at: "2026-09-10T10:00:00Z"
+  };
+  state.github.rest.repos.listReleases = async () => [release];
+  state.context.ref = `refs/tags/${version}`;
+  const plan = { version, releaseType: "final" };
+  let title = `bicep-recipes / ${version}-${"c".repeat(40)}`;
+  const recipeDispatches = [];
+  const runStep = await coordinationStep(t, state, (token) => ({
+    request: async (route, request) => {
+      const recipe = request.repo === "resource-types-contrib";
+      assert.equal(token, recipe ? "recipe-only" : "docs-samples");
+      if (recipe && route.endsWith("/dispatches"))
+        recipeDispatches.push(request);
+      if (route === "GET /repos/{owner}/{repo}")
+        return { data: { default_branch: "v0.62" } };
+      if (route.endsWith("/{run_id}")) {
+        return {
+          data: {
+            ...state.run,
+            head_branch: recipe ? "main" : "edge",
+            display_title: recipe ? title : "Release",
+            html_url: `https://github.com/radius-project/${request.repo}/actions/runs/77`
+          }
+        };
+      }
+      return state.remote(route, request);
+    }
+  }));
+  const run = () => runStep(plan, "recipe-only");
+
+  assert.equal((await runStep(plan)).length, 3); // Replay an unpinned final.
+  plan.recipeSourceCommit = recipeSource;
+  release.draft = true;
+  await assert.rejects(run, /not a published release/);
+  release.draft = false;
+  release.prerelease = true;
+  await assert.rejects(run, /public final tag/);
+  release.prerelease = false;
+  plan.releaseType = "patch";
+  await assert.rejects(run, /public final tag/);
+  plan.releaseType = "final";
+  assert.deepEqual(recipeDispatches, []);
+
+  await assert.rejects(run, /does not match 'bicep-recipes/);
+  const [dispatch] = recipeDispatches;
+  assert.equal(dispatch.workflow_id, "publish-bicep-recipes.yaml");
+  assert.equal(dispatch.ref, "main");
+  assert.deepEqual(dispatch.inputs, {
+    release_version: "0.62.0",
+    recipe_source_commit: recipeSource,
+    release_identifier: identifier
+  });
+  const receipt = state.deployments.find(({ task }) =>
+    task.endsWith(":bicep-recipes")
+  );
+  assert.equal(receipt.sha, state.sourceSha);
+  assert.deepEqual(receipt.payload.task.inputs, dispatch.inputs);
+  title = `bicep-recipes / ${identifier}`;
+  assert.equal(
+    (await run()).find(({ name }) => name === "bicep-recipes").url,
+    "https://github.com/radius-project/resource-types-contrib/actions/runs/77"
+  );
+  await state.github.rest.repos.createDeploymentStatus({
+    deployment_id: receipt.id,
+    state: "queued",
+    log_url: ""
+  });
+  await assert.rejects(run, /Dispatch outcome unknown/);
+  plan.recipeSourceCommit = "d".repeat(40);
+  await assert.rejects(run, /Conflicting coordination payload/);
+  assert.equal(recipeDispatches.length, 1);
 });
 
 function fixture() {
@@ -183,7 +279,11 @@ function fixture() {
               entry.task === request.task
           ),
         createDeployment: async (request) => {
-          const deployment = { ...request, sha: request.ref, id: 12 };
+          const deployment = {
+            ...request,
+            sha: request.ref,
+            id: 12 + deployments.length
+          };
           deployments.push(deployment);
           return { data: deployment };
         },

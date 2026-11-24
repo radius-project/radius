@@ -257,6 +257,37 @@ func Test_Native_ResumeCreate(t *testing.T) {
 		require.Equal(t, []string{"Create"}, methods(h.fake.Calls()), "the create is sent again with the new template")
 	})
 
+	t.Run("the create applied every value but failed", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.LostResponses["Create"] = nativefake.ServerError("InternalFailure", "the response was lost")
+		h.fake.Failures[native.OperationCreate] = &native.Failure{Message: "the secret is impaired", ClientError: true, Outcome: native.OutcomeApplied}
+		require.Equal(t, http.StatusInternalServerError, h.put(nativePath, nativeProperties(1)).status)
+		h.fake.Calls()
+
+		resp := h.put(nativePath, nativeProperties(2))
+		require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+		require.Equal(t, []string{"Read", "Update"}, methods(h.fake.Calls()), "the create is finished, and the template goes to AWS as an update")
+		require.Empty(t, h.record(nativePath).Properties.ClientToken)
+	})
+
+	t.Run("the create applied every value but failed, and the template is unchanged", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.LostResponses["Create"] = nativefake.ServerError("InternalFailure", "the response was lost")
+		h.fake.Failures[native.OperationCreate] = &native.Failure{Message: "the secret is impaired", ClientError: true, Outcome: native.OutcomeApplied}
+		require.Equal(t, http.StatusInternalServerError, h.put(nativePath, nativeProperties(1)).status)
+		h.fake.Calls()
+
+		resp := h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "AWS has every value of the create, including the password")
+		rec := h.record(nativePath)
+		require.Contains(t, rec.Properties.Fingerprints.Digests, "Password")
+		require.Empty(t, rec.Properties.UnresolvedPaths)
+
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
+	})
+
 	t.Run("the created resource was deleted outside Radius", func(t *testing.T) {
 		h := newNativeHarness(t)
 		h.fake.LostResponses["Create"] = nativefake.ServerError("InternalFailure", "the response was lost")

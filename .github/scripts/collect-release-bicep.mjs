@@ -3,22 +3,11 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import {
-  lstat,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  writeFile
-} from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
-import { pathToFileURL } from "node:url";
 import { tool } from "./bicep-types.mjs";
 import {
   plannedBicepExtensions,
-  bicepExtensionMirrors,
   usesGhcrBicepExtensions,
   validateBicepExtensionRecord,
   verifyBicepExtensionOutput
@@ -67,40 +56,6 @@ export async function observeExtension(record, run = tool) {
   };
   verifyBicepExtensionOutput(record, observed);
   return observed;
-}
-
-export async function verifyMirrors(plan, sourceSha, lock, run = tool) {
-  const mirrors = bicepExtensionMirrors(plan, sourceSha, lock);
-  const directory = await mkdtemp(join(tmpdir(), "bicep-mirror-readback-"));
-  try {
-    const config = join(directory, "config.json");
-    await save(config, { auths: {} });
-    for (const record of mirrors) {
-      const bytes = await run(
-        [
-          "oras",
-          "manifest",
-          "fetch",
-          "--registry-config",
-          config,
-          record.reference
-        ],
-        { timeout: 30_000 }
-      );
-      assert.equal(
-        hash(bytes),
-        record.digest,
-        `Bicep mirror digest mismatch: ${record.reference}`
-      );
-      verifyBicepExtensionOutput(record, {
-        reference: record.reference,
-        descriptor: { digest: hash(bytes) },
-        manifest: JSON.parse(bytes)
-      });
-    }
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
 }
 
 async function validateAncestry(github, commit, head, ref) {
@@ -679,6 +634,10 @@ export default async function collect({
   }
   if (operation === "read") {
     const evidence = await readAwsEvidence(github, plan, sourceSha);
+    assert.ok(
+      evidence || core.getInput("published") !== "true",
+      "Published release is missing its trusted AWS evidence; do not dispatch or regenerate it"
+    );
     core.setOutput("exists", String(Boolean(evidence)));
     if (evidence) {
       await observeExtension(evidence.artifact);
@@ -739,18 +698,4 @@ export default async function collect({
   } else {
     throw new Error(`Unknown Bicep evidence operation: ${operation}`);
   }
-}
-
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
-  const [operation, planFile, sourceSha, lockFile] = process.argv.slice(2);
-  assert.equal(
-    operation,
-    "verify-mirrors",
-    "Expected verify-mirrors operation"
-  );
-  assert.equal(process.argv.length, 6);
-  await verifyMirrors(await load(planFile), sourceSha, await load(lockFile));
 }

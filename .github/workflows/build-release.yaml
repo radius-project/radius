@@ -121,6 +121,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_OPERATION: preflight
+          INPUT_RELEASE_STATE: ${{ steps.release-state.outputs.result }}
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-preflight
           INPUT_GENERATION_RUN_ID: ${{ inputs.generation-run-id }}
           INPUT_GENERATION_RUN_ATTEMPT: ${{ inputs.generation-run-attempt }}
@@ -859,27 +860,6 @@ jobs:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
 
-  publish-legacy-bicep-types:
-    name: Publish legacy Bicep types
-    needs:
-      - release-preflight
-      - goreleaser-release
-      - build-and-push-remaining-images
-      - build-and-push-helm-chart
-    if: >-
-      github.repository == 'radius-project/radius' &&
-      startsWith(github.ref, 'refs/tags/v') &&
-      needs.release-preflight.outputs.release-state != 'published' &&
-      needs.release-preflight.outputs.ghcr-bicep == 'false'
-    uses: ./.github/workflows/__build-bicep-types.yaml
-    # The publisher bot credentials are read inside the called job, which is the
-    # only job that carries the publish-bicep environment. Environment secrets
-    # cannot be passed by name to a reusable workflow, so the whole secret set
-    # is inherited and the called job resolves them from its environment.
-    secrets: inherit
-    permissions:
-      contents: read # Required for actions/checkout
-
   attest-release:
     name: Attest release provenance
     needs:
@@ -973,14 +953,14 @@ jobs:
 
   build-and-push-bicep-types:
     name: Reconcile paired Bicep extension lock
-    needs: [release-preflight, publish-radius-bicep-extension, publish-legacy-bicep-types]
+    needs: [release-preflight, publish-radius-bicep-extension]
     if: >-
       !cancelled() && needs.release-preflight.result == 'success' &&
       needs.release-preflight.outputs.release-state != 'published' &&
-      (needs.publish-legacy-bicep-types.result == 'success' ||
-       (needs.release-preflight.outputs.ghcr-bicep == 'true' &&
-        (needs.publish-radius-bicep-extension.result == 'success' ||
-         needs.release-preflight.outputs.bicep-locked == 'true')))
+      needs.release-preflight.outputs.ghcr-bicep == 'true' &&
+      (needs.publish-radius-bicep-extension.result == 'success' ||
+       (needs.release-preflight.outputs.bicep-locked == 'true' &&
+        needs.publish-radius-bicep-extension.result == 'skipped'))
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -1013,40 +993,6 @@ jobs:
           script: |
             const {default: stage} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/stage-release-bicep.mjs`)
             await stage({github, context, core})
-
-      - name: Get immutable Bicep mirror token
-        if: needs.release-preflight.outputs.ghcr-bicep == 'true'
-        id: mirror-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
-          repositories: radius-publisher
-          permission-actions: read
-          permission-contents: write
-
-      - name: Stage immutable ACR mirrors before verification
-        if: needs.release-preflight.outputs.ghcr-bicep == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-mirror-staging
-          INPUT_JOB_DEADLINE: ${{ env.BICEP_JOB_DEADLINE }}
-          PUBLISHER_TOKEN: ${{ steps.mirror-token.outputs.token }}
-        with:
-          script: |
-            const {stageMirrors} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/promote-release-bicep.mjs`)
-            await stageMirrors({github, core, context,
-              publisherGithub: getOctokit(process.env.PUBLISHER_TOKEN)})
-
-      - name: Retain immutable mirror staging receipt
-        if: always() && needs.release-preflight.outputs.ghcr-bicep == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: bicep-mirror-staging-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/bicep-mirror-staging/receipt.json
-          if-no-files-found: warn
-          retention-days: 90
 
   verify-release:
     name: Verify release manifest and staged installation
@@ -1304,21 +1250,6 @@ jobs:
             )
             await script({ github, core })
 
-      - name: Get Bicep promotion token
-        id: promotion-token
-        if: >-
-          needs.release-preflight.outputs.ghcr-bicep == 'true' ||
-          (needs.release-preflight.outputs.ghcr-bicep == 'false' &&
-           env.UPDATE_RELEASE == 'true' && steps.alias-policy.outputs.promote_channel == 'true')
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
-          repositories: radius-publisher
-          permission-actions: read
-          permission-contents: write
-
       - name: Promote stable aliases
         if: env.UPDATE_RELEASE == 'true' && steps.alias-policy.outputs.promote_channel == 'true'
         env:
@@ -1328,26 +1259,10 @@ jobs:
             GORELEASER_CLI_LOCK=dist/verification/release-cli-oci.json \
             make promote-release-aliases
 
-      - name: Promote verified Bicep aliases
-        if: >-
-          needs.release-preflight.outputs.ghcr-bicep == 'false' &&
-          env.UPDATE_RELEASE == 'true' && steps.alias-policy.outputs.promote_channel == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          github-token: ${{ steps.promotion-token.outputs.token }}
-          script: |
-            const { default: promote } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/promote-bicep-types.mjs`)
-            await promote({ github, context, core })
-        env:
-          INPUT_MANIFEST_FILE: dist/verification/release-manifest.json
-          INPUT_TAG: ${{ github.ref_name }}
-          INPUT_SOURCE_SHA: ${{ env.SOURCE_SHA }}
-
-      - name: Promote and mirror locked Bicep extensions
+      - name: Promote locked Bicep extensions
         if: needs.release-preflight.outputs.ghcr-bicep == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ steps.promotion-token.outputs.token }}
           script: |
             const {default: finalize} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/promote-release-bicep.mjs`)
             await finalize({github, core, context})
@@ -1360,7 +1275,7 @@ jobs:
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-finalization
           INPUT_JOB_DEADLINE: ${{ env.BICEP_JOB_DEADLINE }}
 
-      - name: Retain partial Bicep promotion and mirror receipt
+      - name: Retain partial Bicep promotion receipt
         if: always() && needs.release-preflight.outputs.ghcr-bicep == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -1488,7 +1403,7 @@ jobs:
           webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
 
   coordinate-release:
-    name: Coordinate docs and samples
+    name: Coordinate docs, samples, and final Bicep recipes
     needs: [release-preflight, verify-release, finalize-release]
     if: >-
       !cancelled() && needs.verify-release.result == 'success' &&
@@ -1512,7 +1427,12 @@ jobs:
         run: make install-yq
 
       - name: Read approved plan
-        run: yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${RUNNER_TEMP}/plan.json"
+        id: plan
+        run: |
+          plan="${RUNNER_TEMP}/plan.json"
+          yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${plan}"
+          recipes="$(yq -r '.releaseType == "final" and has("recipeSourceCommit")' "${plan}")"
+          echo "recipes=${recipes}" >>"${GITHUB_OUTPUT}"
 
       - name: Get docs and samples dispatch token
         id: coordination-token
@@ -1526,6 +1446,17 @@ jobs:
           permission-contents: read
           permission-pull-requests: read
 
+      - name: Get final Bicep recipe dispatch token
+        if: steps.plan.outputs.recipes == 'true'
+        id: recipe-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: resource-types-contrib
+          permission-actions: write
+
       - name: Reconcile downstream workflows
         id: coordinate
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -1533,13 +1464,15 @@ jobs:
           INPUT_PLAN_FILE: ${{ runner.temp }}/plan.json
           INPUT_SOURCE_SHA: ${{ github.sha }}
           COORDINATION_TOKEN: ${{ steps.coordination-token.outputs.token }}
+          RECIPE_TOKEN: ${{ steps.recipe-token.outputs.token }}
         with:
           retries: 5
           script: |
             // Use a separate client: the job client's auth hook overrides headers.
             const remote = getOctokit(process.env.COORDINATION_TOKEN).request
+            const recipeRemote = process.env.RECIPE_TOKEN && getOctokit(process.env.RECIPE_TOKEN).request
             const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
-            await coordinate({ github, remote, context, core })
+            await coordinate({ github, remote, recipeRemote, context, core })
 
       - name: Report coordination state
         if: always()
@@ -1561,7 +1494,6 @@ jobs:
       - build-and-push-helm-chart
       - build-and-push-bicep-types
       - publish-radius-bicep-extension
-      - publish-legacy-bicep-types
       - attest-release
       - finalize-release
       - verify-release
@@ -1606,7 +1538,6 @@ jobs:
           HELM_RESULT: ${{ needs.build-and-push-helm-chart.result }}
           BICEP_RESULT: ${{ needs.build-and-push-bicep-types.result }}
           RADIUS_BICEP_RESULT: ${{ needs.publish-radius-bicep-extension.result }}
-          LEGACY_BICEP_RESULT: ${{ needs.publish-legacy-bicep-types.result }}
           ATTESTATION_RESULT: ${{ needs.attest-release.result }}
           FINALIZE_RESULT: ${{ needs.finalize-release.result }}
           VERIFY_RESULT: ${{ needs.verify-release.result }}
@@ -1621,7 +1552,6 @@ jobs:
             "build-and-push-helm-chart:${HELM_RESULT}" \
             "build-and-push-bicep-types:${BICEP_RESULT}" \
             "publish-radius-bicep-extension:${RADIUS_BICEP_RESULT}" \
-            "publish-legacy-bicep-types:${LEGACY_BICEP_RESULT}" \
             "attest-release:${ATTESTATION_RESULT}" \
             "verify-release:${VERIFY_RESULT}" \
             "approve-publication:${APPROVAL_RESULT}" \

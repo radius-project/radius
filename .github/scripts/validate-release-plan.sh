@@ -235,6 +235,7 @@ validate_generated_contents() {
     local release_date="$4"
     local plan_path="$5"
     local expected_backports planned_siblings expected_notes actual_notes
+    local recipe_commit="" plan_format='.'
 
     expected_backports="${BACKPORTS_FILE}"
     canonical_json "${TEMP_DIR}/release-plan.yaml" '.includedBackports' \
@@ -250,25 +251,32 @@ validate_generated_contents() {
         '.siblingRepositories' "${planned_siblings}"
     verify_planned_siblings "${channel}" "${planned_siblings}"
 
-    regenerate_release "${release_type}" "${channel}" "${release_date}" \
+    if [[ "${release_type}" == final ]]; then
+        recipe_commit="$(bash "${SCRIPT_DIR}/resolve-recipe-source.sh" \
+            "${TEMP_DIR}/release-plan.yaml")"
+        # Keep duplicate top-level keys visible in the committed copy too.
+        plan_format='to_entries | sort_by(.key)'
+    fi
+    RECIPE_SOURCE_COMMIT="${recipe_commit}" regenerate_release \
+        "${release_type}" "${channel}" "${release_date}" \
         "${expected_backports}" "${planned_siblings}"
 
-    canonical_json "${TEMP_DIR}/release-plan.yaml" '.' \
+    canonical_json "${TEMP_DIR}/release-plan.yaml" "${plan_format}" \
         "${TEMP_DIR}/actual-plan.json"
-    canonical_json "${TEMP_DIR}/generated-output/release-plan.yaml" '.' \
+    canonical_json "${TEMP_DIR}/generated-output/release-plan.yaml" "${plan_format}" \
         "${TEMP_DIR}/expected-plan.json"
     if ! diff -u "${TEMP_DIR}/expected-plan.json" \
         "${TEMP_DIR}/actual-plan.json"; then
         fail "release plan differs from trusted regeneration"
     fi
 
-    canonical_json "${HEAD_DIR}/${plan_path}" '.' \
+    canonical_json "${HEAD_DIR}/${plan_path}" "${plan_format}" \
         "${TEMP_DIR}/committed-plan.json"
     if ! diff -u "${TEMP_DIR}/actual-plan.json" \
         "${TEMP_DIR}/committed-plan.json"; then
         fail "committed release plan differs from the pull request body"
     fi
-    canonical_json "${GENERATED_WORKTREE}/${plan_path}" '.' \
+    canonical_json "${GENERATED_WORKTREE}/${plan_path}" "${plan_format}" \
         "${TEMP_DIR}/generated-tracked-plan.json"
     if ! diff -u "${TEMP_DIR}/expected-plan.json" \
         "${TEMP_DIR}/generated-tracked-plan.json"; then

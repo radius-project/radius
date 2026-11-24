@@ -1,0 +1,138 @@
+{
+  "typeName": "AWS::Neptune::DBClusterEndpoint",
+  "description": "A custom endpoint of an Amazon Neptune DB cluster, made with Neptune's CreateDBClusterEndpoint. It reaches a chosen group of the cluster's DB instances.",
+  "definitions": {
+    "Tag": {
+      "type": "object",
+      "properties": {
+        "Key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "Value": {
+          "type": "string",
+          "maxLength": 256
+        }
+      },
+      "required": ["Key"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "DBClusterEndpointIdentifier": {
+      "type": "string",
+      "description": "The name of the endpoint. Neptune stores it in lowercase. Radius generates one when the template leaves it out.",
+      "minLength": 1,
+      "maxLength": 63
+    },
+    "DBClusterIdentifier": {
+      "type": "string",
+      "description": "The Neptune DB cluster the endpoint belongs to. Neptune stores it in lowercase.",
+      "minLength": 1
+    },
+    "EndpointType": {
+      "type": "string",
+      "description": "Which DB instances the endpoint can reach: READER, WRITER, or ANY.",
+      "enum": ["READER", "WRITER", "ANY"]
+    },
+    "StaticMembers": {
+      "type": "array",
+      "description": "The DB instances the endpoint reaches. Set this or ExcludedMembers, not both.",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "ExcludedMembers": {
+      "type": "array",
+      "description": "The DB instances the endpoint doesn't reach. It reaches every other eligible instance, including ones added later. Set this or StaticMembers, not both.",
+      "insertionOrder": false,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "Tags": {
+      "type": "array",
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      }
+    },
+    "DBClusterEndpointArn": {
+      "type": "string",
+      "description": "The ARN of the endpoint."
+    },
+    "DBClusterEndpointResourceIdentifier": {
+      "type": "string",
+      "description": "The ID AWS gives the endpoint, which stays the same for its whole life."
+    },
+    "Endpoint": {
+      "type": "string",
+      "description": "The DNS address of the endpoint."
+    },
+    "Status": {
+      "type": "string",
+      "description": "The status of the endpoint: creating, available, deleting, inactive, or modifying."
+    }
+  },
+  "required": ["DBClusterIdentifier", "EndpointType"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/DBClusterEndpointIdentifier"],
+  "createOnlyProperties": [
+    "/properties/DBClusterEndpointIdentifier",
+    "/properties/DBClusterIdentifier"
+  ],
+  "readOnlyProperties": [
+    "/properties/DBClusterEndpointArn",
+    "/properties/DBClusterEndpointResourceIdentifier",
+    "/properties/Endpoint",
+    "/properties/Status"
+  ],
+  "propertyTransform": {
+    "/properties/DBClusterEndpointIdentifier": "$lowercase(DBClusterEndpointIdentifier)",
+    "/properties/DBClusterIdentifier": "$lowercase(DBClusterIdentifier)"
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "rds:CreateDBClusterEndpoint",
+        "rds:AddTagsToResource",
+        "rds:DescribeDBClusterEndpoints",
+        "rds:DescribeDBClusters"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "rds:DescribeDBClusterEndpoints",
+        "rds:DescribeDBClusters",
+        "rds:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "rds:ModifyDBClusterEndpoint",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:DescribeDBClusterEndpoints",
+        "rds:DescribeDBClusters"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "rds:DeleteDBClusterEndpoint",
+        "rds:DescribeDBClusterEndpoints",
+        "rds:DescribeDBClusters"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "rds:DescribeDBClusterEndpoints",
+        "rds:DescribeDBClusters",
+        "rds:ListTagsForResource"
+      ]
+    }
+  }
+}
