@@ -161,6 +161,8 @@ jobs:
             --release-commit "${RELEASE_COMMIT}" \
             --trigger "${TRIGGER}" \
             --output-dir "${RUNNER_TEMP}/release-controller"
+          recipes="$(yq -r 'has("recipeSourceCommit")' "${RUNNER_TEMP}/release-plan.yaml")"
+          echo "REQUIRE_BICEP_RECIPES=${recipes}" >>"${GITHUB_ENV}"
 
       # A tag runs the tagged commit's workflows, so check them before any mutation.
       - name: Verify release commit runs the release build
@@ -172,8 +174,6 @@ jobs:
           if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
             args+=(--require-sibling-releases)
           fi
-          REQUIRE_BICEP_RECIPES="$(yq -r 'has("recipeSourceCommit")' "${RUNNER_TEMP}/release-plan.yaml")"
-          export REQUIRE_BICEP_RECIPES
           bash ./.github/scripts/verify-release-build-contract.sh \
             "${args[@]}"
 

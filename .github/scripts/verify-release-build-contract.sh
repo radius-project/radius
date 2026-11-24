@@ -201,6 +201,18 @@ main() {
                                                                    || reject "does not stage a draft GoReleaser release"
     verify_publication_gate
     verify_sibling_publication_gate
+
+    # Path-only push triggers also run for tags; only a tag filter marks a publisher.
+    while IFS= read -r name; do
+        [[ "${name}" =~ \.ya?ml$ && ".github/workflows/${name}" != "${BUILD_WORKFLOW}" ]] \
+                                                                                          || continue
+        if yq_true ".github/workflows/${name}" '(.on | tag) == "!!map" and
+            ((.on.push // {}) | tag) == "!!map" and
+            ((.on.push // {}) | (has("tags") or has("tags-ignore")))'; then
+            reject "also runs .github/workflows/${name} on tag pushes"
+        fi
+    done < <(git ls-tree --name-only "${COMMIT}:.github/workflows")
+
     if [[ "${REQUIRE_BICEP_RECIPES:-false}" == true ]]; then
         yq_true "${BUILD_WORKFLOW}" '
             [.jobs."coordinate-release".steps[] |
@@ -213,17 +225,6 @@ main() {
             reject "does not coordinate the Bicep recipe publisher"
         fi
     fi
-
-    # Path-only push triggers also run for tags; only a tag filter marks a publisher.
-    while IFS= read -r name; do
-        [[ "${name}" =~ \.ya?ml$ && ".github/workflows/${name}" != "${BUILD_WORKFLOW}" ]] \
-                                                                                          || continue
-        if yq_true ".github/workflows/${name}" '(.on | tag) == "!!map" and
-            ((.on.push // {}) | tag) == "!!map" and
-            ((.on.push // {}) | (has("tags") or has("tags-ignore")))'; then
-            reject "also runs .github/workflows/${name} on tag pushes"
-        fi
-    done < <(git ls-tree --name-only "${COMMIT}:.github/workflows")
 
     echo "Release commit ${COMMIT} starts ${BUILD_WORKFLOW} on its tag."
 }
