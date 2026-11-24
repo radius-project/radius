@@ -217,7 +217,7 @@ test_release_producer_results() {
             "^\\s*\\$\\{\\{ needs\\.(?<job>[a-z-]+)\\.result \\}\\}\\s*$"
         ).job)] | @tsv' <<< "${step}")"
     command="$(jq -er '.run' <<< "${step}")"
-    for producer in publish-radius-bicep-extension publish-legacy-bicep-types verify-release; do
+    for producer in publish-radius-bicep-extension build-and-push-bicep-types verify-release; do
         if ! JOB="${producer}" yq -e \
             '.jobs."build-summary".needs | any_c(. == strenv(JOB))' \
             "${RELEASE_WORKFLOW}" >/dev/null; then
@@ -228,7 +228,7 @@ test_release_producer_results() {
             while IFS=$'\t' read -r key job; do
                 value=success
                 case "${job}" in
-                    publish-radius-bicep-extension | publish-legacy-bicep-types)
+                    publish-radius-bicep-extension)
                         value=skipped
                         [[ "${job}" != "${producer}" ]] || value="${result}"
                         ;;

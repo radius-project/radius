@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/trackedresource"
 )
 
 func Test_ListResources(t *testing.T) {
@@ -105,6 +106,30 @@ func Test_ListResources(t *testing.T) {
 		response, err := ctrl.Run(ctx, nil, request)
 		require.NoError(t, err)
 		require.Equal(t, expected, response)
+	})
+
+	t.Run("legacy and current tracking entries are listed once", func(t *testing.T) {
+		original := resources.MustParse(*entryResource.ID)
+		otherResource := v20231001preview.GenericResource{
+			ID:   new(resourceGroupID + "/providers/Applications.Core/containers/other"),
+			Type: new("Applications.Core/containers"),
+			Name: new("other"),
+		}
+		other := datamodel.GenericResource{Properties: datamodel.GenericResourceProperties{ID: *otherResource.ID, Type: *otherResource.Type, Name: *otherResource.Name}}
+		legacy := database.Object{ID: trackedresource.LegacyIDFor(original).String(), Data: entryDatamodel}
+		current := database.Object{ID: trackedresource.IDFor(original).String(), Data: entryDatamodel}
+		for _, items := range [][]database.Object{{legacy, {Data: other}, current}, {current, legacy, {Data: other}}} {
+			databaseClient, ctrl := setupListResources(t)
+			databaseClient.EXPECT().Get(gomock.Any(), resourceGroupID).Return(&database.Object{Data: resourceGroupDatamodel}, nil)
+			databaseClient.EXPECT().Query(gomock.Any(), gomock.Any()).Return(&database.ObjectQueryResult{Items: items}, nil)
+
+			request, err := http.NewRequest(http.MethodGet, ctrl.Options().PathBase+id+"?api-version="+v20231001preview.Version, nil)
+			require.NoError(t, err)
+			response, err := ctrl.Run(rpctest.NewARMRequestContext(request), nil, request)
+			require.NoError(t, err)
+			list := response.(*armrpc_rest.OKResponse).Body.(*v1.PaginatedList)
+			require.ElementsMatch(t, []any{&entryResource, &otherResource}, list.Value)
+		}
 	})
 
 	t.Run("resource group not found", func(t *testing.T) {

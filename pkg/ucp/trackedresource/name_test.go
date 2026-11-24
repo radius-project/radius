@@ -17,6 +17,7 @@ limitations under the License.
 package trackedresource
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -48,4 +49,32 @@ func Test_LegacyNameFor(t *testing.T) {
 func Test_LegacyIDFor(t *testing.T) {
 	id := LegacyIDFor(testID)
 	require.Equal(t, resources.MustParse("/planes/radius/local/resourceGroups/test-group/providers/System.Resources/resources/test-app-303153687ee5adbcf353bc6c2caa4373f31e04c6"), id)
+}
+
+func Test_TrackingNameCompatibility(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name     string
+		nameFor  func(resources.ID) string
+		idFor    func(resources.ID) resources.ID
+		expected string
+	}{
+		{"current", NameFor, IDFor, "test-app-578debcee1fa4c9d11de5dd86eb2945e08b4b12f"},
+		{"legacy", LegacyNameFor, LegacyIDFor, "test-app-303153687ee5adbcf353bc6c2caa4373f31e04c6"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			uppercase := resources.MustParse("/planes/radius/LOCAL/resourceGroups/TEST-GROUP/providers/Applications.Core/applications/TEST-APP")
+			require.Equal(t, tt.expected, tt.nameFor(uppercase))
+			require.Equal(t, tt.expected, tt.idFor(uppercase).Name())
+			require.Empty(t, tt.nameFor(resources.ID{}))
+			require.True(t, tt.idFor(resources.ID{}).IsEmpty())
+
+			longID := resources.MustParse(testID.RootScope() + "/providers/Applications.Core/applications/" + strings.Repeat("a", 80))
+			name := tt.nameFor(longID)
+			require.Len(t, name, 63)
+			require.Regexp(t, `^a{22}-[0-9a-f]{40}$`, name)
+			require.Equal(t, name, tt.idFor(longID).Name())
+		})
+	}
 }

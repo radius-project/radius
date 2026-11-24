@@ -9,7 +9,8 @@ function fixture() {
   const inputs = {
     EVENT_TYPE: "release-controller.resume",
     VERSION: "v0.61.0-rc.1",
-    SOURCE_SHA: "a".repeat(40)
+    SOURCE_SHA: "a".repeat(40),
+    PUBLISHED: "false"
   };
   const dispatches = [];
   const outputs = {};
@@ -99,6 +100,58 @@ test("resumes failed publication jobs without creating another tag or dispatch",
   run.status = "in_progress";
   await resumeReleasePublication(state);
   assert.equal(reruns.length, 1);
+});
+
+test("published retries rerun preflight and dependents instead of reusing stale draft outputs", async () => {
+  for (const previousState of ["draft", "absent"]) {
+    const state = fixture();
+    state.inputs.PUBLISHED = "true";
+    const run = {
+      id: 77,
+      head_sha: state.inputs.SOURCE_SHA,
+      head_branch: state.inputs.VERSION,
+      event: "push",
+      status: "completed",
+      conclusion: "failure",
+      html_url: "https://example.test/run/77"
+    };
+    let preflight = previousState,
+      reruns = 0;
+    state.github.paginate = async () => [run];
+    state.github.rest.actions = {
+      listWorkflowRuns() {},
+      reRunWorkflowFailedJobs: async () =>
+        assert.fail("Would reuse stale preflight outputs"),
+      reRunWorkflow: async (request) => {
+        assert.equal(request.run_id, 77);
+        assert.deepEqual(request.request, { retries: 0 });
+        preflight = "published";
+        reruns++;
+      }
+    };
+    await resumeReleasePublication(state);
+    assert.equal(preflight, "published");
+    assert.equal(reruns, 1);
+    assert.deepEqual(state.dispatches, []);
+    run.status = "in_progress";
+    await resumeReleasePublication(state);
+    run.status = "completed";
+    run.conclusion = "success";
+    await resumeReleasePublication(state);
+    assert.equal(reruns, 1);
+  }
+});
+
+test("missing authenticated publication state blocks retry", async () => {
+  const state = fixture();
+  for (const value of ["", "published", undefined]) {
+    state.inputs.PUBLISHED = value;
+    await assert.rejects(
+      resumeReleasePublication(state),
+      /Authenticated publication state/
+    );
+  }
+  assert.deepEqual(state.dispatches, []);
 });
 
 for (const event of ["push", "workflow_dispatch"]) {
