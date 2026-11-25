@@ -47,10 +47,6 @@ on:
         required: true
       RADIUS_RELEASE_BOT_PRIVATE_KEY:
         required: true
-      RADIUS_PUBLISHER_BOT_CLIENT_ID:
-        required: true
-      RADIUS_PUBLISHER_BOT_PRIVATE_KEY:
-        required: true
       RELEASE_TEAMS_WEBHOOK:
         required: false
 
@@ -273,8 +269,8 @@ jobs:
         id: de-read-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
           owner: radius-project
           repositories: deployment-engine
           permission-metadata: read
@@ -434,8 +430,8 @@ jobs:
         id: de-read-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
           owner: radius-project
           repositories: deployment-engine
           permission-metadata: read
@@ -444,14 +440,14 @@ jobs:
       # Validation planned this commit for an absent tag, and the approval
       # above covers it. The pushed tag starts the Deployment Engine tag build,
       # which stages the image that this job adopts and locks. Only the
-      # Radius Publisher App writes to the Deployment Engine repository.
+      # Radius Release App writes the approved tag.
       - name: Create Deployment Engine tag token
         if: needs.validate.outputs.de-tag-state == 'absent'
         id: de-write-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
           owner: radius-project
           repositories: deployment-engine
           permission-metadata: read
@@ -485,8 +481,8 @@ jobs:
           APPROVED_DE_COMMIT: ${{ needs.validate.outputs.de-source-commit }}
           RELEASE_RECONCILE_TAG_ONLY: "true"
         run: |
-          [[ "${APP_SLUG}" == "radius-publisher" ]] || {
-            echo "The Deployment Engine token belongs to ${APP_SLUG}, not radius-publisher." >&2
+          [[ "${APP_SLUG}" == "radius-release" ]] || {
+            echo "The Deployment Engine token belongs to ${APP_SLUG}, not radius-release." >&2
             exit 1
           }
           ./.github/scripts/release-create-tag-and-branch.sh \

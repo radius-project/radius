@@ -1369,8 +1369,8 @@ jobs:
         id: engine-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
           owner: radius-project
           repositories: deployment-engine
           permission-contents: write
