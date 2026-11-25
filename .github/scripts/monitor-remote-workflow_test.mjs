@@ -836,43 +836,13 @@ test("uses one total timeout budget for discovery and completion", async () => {
   assert.equal(clock.now(), 2000);
 });
 
-test("all publisher callers use stable identifiers without time-window discovery", async () => {
-  const cases = [
-    {
-      file: "publish-de-image.yaml",
-      identifier:
-        "INPUT_RELEASE_IDENTIFIER: ${{ steps.payload.outputs.tag }}-${{ github.run_id }}",
-      eventType: "INPUT_EVENT_TYPE: deployment-engine",
-      timeout: "timeout-minutes: 18"
-    },
-    {
-      file: "__release-controller.yaml",
-      identifier:
-        "INPUT_RELEASE_IDENTIFIER: ${{ needs.validate.outputs.release-identifier }}",
-      eventType: "INPUT_EVENT_TYPE: deployment-engine",
-      // The job also waits up to 15 minutes for a newly created tag's build.
-      timeout: "timeout-minutes: 40"
-    }
-  ];
-
-  for (const fixture of cases) {
-    const contents = await readFile(
-      new URL(`../workflows/${fixture.file}`, import.meta.url),
-      "utf8"
-    );
-    assert.match(contents, /monitor-remote-workflow\.mjs/);
-    assert.ok(contents.includes(fixture.identifier), fixture.file);
-    assert.ok(contents.includes(fixture.eventType), fixture.file);
-    assert.ok(contents.includes(fixture.timeout), fixture.file);
-    assert.ok(contents.includes('INPUT_MAX_WAIT_SECONDS: "720"'), fixture.file);
-    assert.doesNotMatch(contents, /INPUT_DISPATCH_STARTED_AT/);
-    assert.doesNotMatch(contents, /peter-evans\/repository-dispatch/);
-
-    const payload = contents.match(
-      /INPUT_CLIENT_PAYLOAD: \|-\n([\s\S]*?)\n\s*INPUT_MAX_WAIT_SECONDS/
-    );
-    assert.ok(payload, fixture.file);
-    assert.match(payload[1], /\$\{\{ toJSON\(/, fixture.file);
-    assert.doesNotMatch(payload[1], /"\$\{\{/, fixture.file);
-  }
+test("the controller never dispatches a second Deployment Engine publisher", async () => {
+  const workflow = await readFile(
+    new URL("../workflows/__release-controller.yaml", import.meta.url),
+    "utf8"
+  );
+  assert.doesNotMatch(
+    workflow,
+    /publish-deployment-engine\.yml|monitor-remote-workflow\.mjs|radiusdeploymentengine\.azurecr\.io/
+  );
 });

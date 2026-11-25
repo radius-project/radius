@@ -17,6 +17,7 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
 name: Functional Tests (with Cloud Resources)
+run-name: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.correlation_id || '' }}
 
 on:
   # Enable manual trigger
@@ -33,7 +34,7 @@ on:
   repository_dispatch:
     types: [deployment-engine.run-functional-tests]
     # Expected client_payload:
-    #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
+    #   correlation_id: Unique producer run/attempt for this test request
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. edge, 0.61.0-rc.1, pr-123)
   # Native stacks use the ultimate stack base for triggers and the controller,

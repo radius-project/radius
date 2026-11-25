@@ -165,7 +165,6 @@ write_outputs() {
     local release_type="$3"
     local release_branch="$4"
     local de_image_tag="${VERSION#v}"
-    local de_source_tag="${VERSION#v}"
     local recipes_commit dashboard_commit aws_commit previous_version
     local resolved_plan="${OUTPUT_DIR}/release-plan.yaml"
     local recipe_commit=""
@@ -192,9 +191,6 @@ write_outputs() {
     printf '%s\n' "${release_type}" > "${OUTPUT_DIR}/release-type.txt"
     printf '%s\n' "${release_branch}" \
         > "${OUTPUT_DIR}/release-branch.txt"
-    if [[ "${release_type}" != "rc" ]]; then
-        de_source_tag="${channel}"
-    fi
     recipes_commit="$(
         plan_value '.siblingRepositories[] | select(.name == "recipes") |
             .sourceCommit'
@@ -210,7 +206,6 @@ write_outputs() {
     # A final promotes this release candidate.
     previous_version="$(plan_value '.previousVersion')"
     printf '%s\n' "${de_image_tag}" > "${OUTPUT_DIR}/de-image-tag.txt"
-    printf '%s\n' "${de_source_tag}" > "${OUTPUT_DIR}/de-source-tag.txt"
     printf '%s\n' "${recipes_commit}" > "${OUTPUT_DIR}/recipes-commit.txt"
     printf '%s\n' "${dashboard_commit}" \
         > "${OUTPUT_DIR}/dashboard-commit.txt"
@@ -226,9 +221,7 @@ write_outputs() {
             echo "channel=${channel}"
             echo "release-type=${release_type}"
             echo "release-branch=${release_branch}"
-            echo "release-identifier=${VERSION}-${RELEASE_COMMIT}"
             echo "de-image-tag=${de_image_tag}"
-            echo "de-source-tag=${de_source_tag}"
             echo "recipe-source-commit=${recipe_commit}"
             echo "recipes-commit=${recipes_commit}"
             echo "dashboard-commit=${dashboard_commit}"

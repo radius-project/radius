@@ -77,9 +77,7 @@ jobs:
       channel: ${{ steps.plan.outputs.channel }}
       release-type: ${{ steps.plan.outputs.release-type }}
       release-branch: ${{ steps.plan.outputs.release-branch }}
-      release-identifier: ${{ steps.plan.outputs.release-identifier }}
       de-image-tag: ${{ steps.plan.outputs.de-image-tag }}
-      de-source-tag: ${{ steps.plan.outputs.de-source-tag }}
       de-source-commit: ${{ steps.de-tag.outputs.commit }}
       de-tag-state: ${{ steps.de-tag.outputs.state }}
       plan-artifact-id: ${{ steps.upload-plan.outputs.artifact-id }}
@@ -88,6 +86,7 @@ jobs:
       bicep-types-aws-commit: ${{ steps.plan.outputs.bicep-types-aws-commit }}
       ghcr-bicep: ${{ steps.bicep-contract.outputs.ghcr }}
       published: ${{ steps.build-contract.outputs.published }}
+      published-de-digest: ${{ steps.build-contract.outputs.de-digest }}
     steps:
       - name: Checkout trusted controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -269,9 +268,6 @@ jobs:
             "${VERSION}" "${RELEASE_BRANCH}" \
             "${BICEP_TYPES_AWS_COMMIT}"
 
-      # The Deployment Engine repository is private and belongs to azure-octo,
-      # so neither GITHUB_TOKEN nor the release App can read its tags. The
-      # publisher App installation covers it; validation only reads.
       - name: Create Deployment Engine read token
         if: steps.plan.outputs.ready == 'true'
         id: de-read-token
@@ -279,7 +275,7 @@ jobs:
         with:
           client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
+          owner: radius-project
           repositories: deployment-engine
           permission-metadata: read
           permission-contents: read
@@ -315,11 +311,21 @@ jobs:
           RELEASE_TYPE: ${{ steps.plan.outputs.release-type }}
           RELEASE_CANDIDATE: ${{ steps.plan.outputs.previous-version }}
           RC_DE_COMMIT: ${{ steps.rc-lock.outputs.de-source-commit }}
+          PUBLISHED: ${{ steps.build-contract.outputs.published }}
+          PUBLISHED_DE_COMMIT: ${{ steps.build-contract.outputs.de-source-commit }}
         run: |
           args=(--allow-absent main "${VERSION}")
           if [[ "${RELEASE_TYPE}" == "final" ]]; then
             args=(--allow-absent "${RELEASE_CANDIDATE}" "${VERSION}"
               "${RC_DE_COMMIT:?the release candidate lock has no commit}")
+          fi
+          if [[ "${PUBLISHED}" == "true" ]]; then
+            args=("${VERSION}" "${PUBLISHED_DE_COMMIT:?missing published Deployment Engine commit}")
+            if [[ "${RELEASE_TYPE}" == "final" ]]; then
+              [[ "${RC_DE_COMMIT}" == "${PUBLISHED_DE_COMMIT}" ]]
+            fi
+          else
+            args=(--require-publisher "${args[@]}")
           fi
           bash ./.github/scripts/verify-deployment-engine-tag.sh "${args[@]}"
 
@@ -405,12 +411,10 @@ jobs:
     outputs:
       digest: ${{ steps.verify-image.outputs.digest }}
       source-commit: ${{ steps.de-tag.outputs.commit }}
-      run-url: ${{ steps.monitor-de-workflow.outputs.run_url }}
-      run-state: ${{ steps.monitor-de-workflow.outputs.run_state }}
       lock-branch: >-
         ${{ steps.de-lock.outputs.branch || steps.lock-image.outputs.branch }}
     steps:
-      - name: Checkout trusted publisher monitor
+      - name: Checkout trusted release controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.workflow_sha }}
@@ -432,7 +436,7 @@ jobs:
         with:
           client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
+          owner: radius-project
           repositories: deployment-engine
           permission-metadata: read
           permission-contents: read
@@ -448,7 +452,7 @@ jobs:
         with:
           client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
+          owner: radius-project
           repositories: deployment-engine
           permission-metadata: read
           permission-contents: write
@@ -457,7 +461,7 @@ jobs:
         if: needs.validate.outputs.de-tag-state == 'absent'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: azure-octo/deployment-engine
+          repository: radius-project/deployment-engine
           ref: ${{ needs.validate.outputs.de-source-commit }}
           token: ${{ steps.de-write-token.outputs.token }}
           path: deployment-engine
@@ -517,12 +521,20 @@ jobs:
             const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
             await script({context, github, core})
 
-      # The tag build stages the full-version image a few minutes after the
-      # tag push. Wait for it rather than copying a source image that may not
-      # exist yet; after the wait, the correlated publisher copies it instead.
-      # A resumed attempt waits too, because the tag that an interrupted
-      # attempt pushed may still be building.
+      - name: Require original lock for published releases
+        if: needs.validate.outputs.published == 'true'
+        env:
+          PUBLISHED_DIGEST: ${{ needs.validate.outputs.published-de-digest }}
+          LOCK_DIGEST: ${{ steps.de-lock.outputs.digest }}
+        run: |
+          [[ -n "${PUBLISHED_DIGEST}" && "${PUBLISHED_DIGEST}" == "${LOCK_DIGEST}" ]] || {
+            echo "Published Deployment Engine lock is missing or differs from the release manifest." >&2
+            exit 1
+          }
+
+      # A resumed attempt may arrive while the original tag build is running.
       - name: Wait for the Deployment Engine tag build
+        id: staged
         if: steps.de-lock.outputs.exists != 'true'
         env:
           GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
@@ -541,80 +553,16 @@ jobs:
               --output "${RUNNER_TEMP}/de-image-wait.json" \
               --allow-absent \
               --state-output "${state_file}"
-            [[ "$(<"${state_file}")" == "absent" ]] || break
-            if ((SECONDS >= deadline)); then
-              echo "::notice::The tag build has not staged ${DE_IMAGE_TAG} yet; the publisher copies it from the source registry."
+            if [[ "$(<"${state_file}")" == "complete" ]]; then
+              echo "digest=$(jq -er '.digest' "${RUNNER_TEMP}/de-image-wait.json")" >> "${GITHUB_OUTPUT}"
               break
+            fi
+            if ((SECONDS >= deadline)); then
+              echo "::error::Inspect the tag build in radius-project/deployment-engine and resume this release after ${DE_IMAGE_TAG} is staged. Do not recreate the tag."
+              exit 1
             fi
             sleep 30
           done
-
-      # A full-version tag from another source is a conflict, not permission
-      # to dispatch a publisher that could overwrite an immutable artifact.
-      - name: Inspect unlocked Deployment Engine image
-        if: steps.de-lock.outputs.exists != 'true'
-        id: existing-image
-        env:
-          GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
-          DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
-          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
-          DE_SOURCE_COMMIT: ${{ steps.de-tag.outputs.commit }}
-        run: |
-          bash ./.github/scripts/verify-deployment-engine-image.sh \
-            --tag "${DE_IMAGE_TAG}" \
-            --signed-tag "${RELEASE_VERSION}" \
-            --source-commit "${DE_SOURCE_COMMIT}" \
-            --output "${RUNNER_TEMP}/de-image-before.json" \
-            --allow-absent \
-            --state-output "${RUNNER_TEMP}/de-image-state.txt"
-
-      - name: Get App token for radius-publisher
-        if: steps.de-lock.outputs.exists != 'true'
-        id: publisher-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
-          repositories: radius-publisher
-          permission-metadata: read
-          permission-actions: read
-          permission-contents: write
-
-      - name: Dispatch or monitor correlated DE publisher run
-        if: steps.de-lock.outputs.exists != 'true'
-        id: monitor-de-workflow
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          github-token: ${{ steps.publisher-token.outputs.token }}
-          script: |
-            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
-            await script({context, github, core})
-        env:
-          INPUT_OWNER: azure-octo
-          INPUT_REPO: radius-publisher
-          INPUT_WORKFLOW_FILE: publish-deployment-engine.yml
-          INPUT_EVENT_TYPE: deployment-engine
-          INPUT_RELEASE_IDENTIFIER: ${{ needs.validate.outputs.release-identifier }}
-          INPUT_REUSE_SUCCESSFUL: >-
-            ${{ steps.existing-image.outputs.state == 'complete' &&
-            'true' || 'false' }}
-          INPUT_DISPATCH_IF_MISSING: >-
-            ${{ steps.existing-image.outputs.state == 'complete' &&
-            'false' || 'true' }}
-          INPUT_CLIENT_PAYLOAD: |-
-            {
-              "source_repository": ${{ toJSON(github.repository) }},
-              "source_sha": ${{ toJSON(inputs.source-commit) }},
-              "src_image": "radiusdeploymentengine.azurecr.io/deployment-engine",
-              "dest_image": "ghcr.io/radius-project/deployment-engine",
-              "tag": ${{ toJSON(needs.validate.outputs.de-image-tag) }},
-              "source_tag": ${{ toJSON(needs.validate.outputs.de-source-tag) }},
-              "expected_revision": ${{ toJSON(steps.de-tag.outputs.commit) }},
-              "expected_ref": ${{ toJSON(format('refs/tags/{0}', needs.validate.outputs.version)) }}
-            }
-          INPUT_MAX_WAIT_SECONDS: "720"
-          INPUT_POLL_INTERVAL_SECONDS: "15"
 
       - name: Verify published Deployment Engine image
         id: verify-image
@@ -625,13 +573,14 @@ jobs:
           DE_SOURCE_COMMIT: ${{ steps.de-tag.outputs.commit }}
           LOCKED_DIGEST: >-
             ${{ steps.de-lock.outputs.digest ||
-            steps.existing-image.outputs.digest }}
+            steps.staged.outputs.digest }}
+          PUBLISHED_DE_DIGEST: ${{ needs.validate.outputs.published-de-digest }}
         run: |
           bash ./.github/scripts/verify-deployment-engine-image.sh \
             --tag "${DE_IMAGE_TAG}" \
             --signed-tag "${RELEASE_VERSION}" \
             --source-commit "${DE_SOURCE_COMMIT}" \
-            --expected-digest "${LOCKED_DIGEST}" \
+            --expected-digest "${LOCKED_DIGEST:?missing staged or locked digest}" \
             --output "${RUNNER_TEMP}/de-image.json"
 
       - name: Get App token for release state
@@ -662,15 +611,6 @@ jobs:
           script: |
             const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
             await script({context, github, core})
-
-      - name: Show failed Deployment Engine publish logs
-        if: failure() && steps.monitor-de-workflow.outputs.run_id != ''
-        env:
-          GH_TOKEN: ${{ steps.publisher-token.outputs.token }}
-          RUN_ID: ${{ steps.monitor-de-workflow.outputs.run_id }}
-        run: |
-          gh run view "${RUN_ID}" \
-            --repo azure-octo/radius-publisher --log-failed || true
 
   reconcile-siblings:
     name: Reconcile sibling repositories
@@ -951,6 +891,7 @@ jobs:
           GORELEASER_PARITY_TARGETS: ${{ runner.temp }}/release-controller/release-targets.json
           DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
           DE_IMAGE_DIGEST: ${{ needs.publish-deployment-engine.outputs.digest }}
+          PUBLISHED_DE_DIGEST: ${{ needs.validate.outputs.published-de-digest }}
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
           DE_SOURCE_COMMIT: ${{ needs.publish-deployment-engine.outputs.source-commit }}
         run: |
@@ -1050,8 +991,6 @@ jobs:
           VALIDATE_RESULT: ${{ needs.validate.result }}
           APPROVE_RESULT: ${{ needs.approve.result }}
           DE_RESULT: ${{ needs.publish-deployment-engine.result }}
-          DE_RUN_URL: ${{ needs.publish-deployment-engine.outputs.run-url }}
-          DE_RUN_STATE: ${{ needs.publish-deployment-engine.outputs.run-state }}
           DE_LOCK_BRANCH: >-
             ${{ needs.publish-deployment-engine.outputs.lock-branch }}
           SIBLINGS_RESULT: ${{ needs.reconcile-siblings.result }}
@@ -1070,23 +1009,12 @@ jobs:
             echo "| Deployment Engine | ${DE_RESULT} |"
             echo "| Sibling repositories | ${SIBLINGS_RESULT} |"
             echo "| Radius tag last | ${RADIUS_RESULT} |"
-            if [[ -n "${DE_RUN_URL}" ]]; then
-              echo
-              echo "Deployment Engine publisher: ${DE_RUN_URL}"
-            fi
             if [[ -n "${DE_LOCK_BRANCH}" ]]; then
               echo "Deployment Engine lock: ${DE_LOCK_BRANCH}"
             fi
             if [[ "${READY}" == "false" ]]; then
               echo
               echo "This release is waiting for its generated metadata backport."
-            elif [[ "${DE_RUN_STATE}" == "unknown" ]]; then
-              echo
-              echo "The Deployment Engine dispatch outcome is unknown."
-              echo "No second dispatch was sent after the uncertain response."
-              echo "Inspect azure-octo/radius-publisher runs and the destination"
-              echo "image before retrying; a new invocation can dispatch again."
-              echo "Release identifier: ${VERSION}-${SOURCE_COMMIT}"
             elif [[ "${RADIUS_RESULT}" != "success" ]]; then
               echo
               echo "Completed stages are reconciled on resume. A conflicting"

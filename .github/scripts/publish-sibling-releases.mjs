@@ -63,7 +63,7 @@ export function releaseTargets(plan, manifest, sourceSha) {
   return [
     ...targets,
     {
-      owner: "azure-octo",
+      owner: "radius-project",
       repo: "deployment-engine",
       sha: engines[0].sourceSha
     }
@@ -301,7 +301,7 @@ export default async function publishSiblingReleases({
     for (const target of targets) {
       results.push(
         await publishRepositoryRelease({
-          github: target.owner === "azure-octo" ? engine : siblings,
+          github: target.repo === "deployment-engine" ? engine : siblings,
           core,
           plan,
           target,

@@ -1371,7 +1371,7 @@ jobs:
         with:
           client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
+          owner: radius-project
           repositories: deployment-engine
           permission-contents: write
           permission-workflows: write

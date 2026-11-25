@@ -144,7 +144,7 @@ reject_image() {
 
 main() {
     local reference raw digest expected_platforms actual_platforms
-    local actual_refs actual_revisions
+    local actual_refs actual_revisions actual_sources configs
     local inspect_status=0
 
     while [[ $# -gt 0 ]]; do
@@ -189,8 +189,8 @@ main() {
         esac
     done
 
-    [[ "${TAG}" =~ ^[0-9]+\.[0-9]+(\.[0-9]+(-rc\.[1-9][0-9]*)?)?$ ]] ||
-        fail "tag must use X.Y, X.Y.Z, or X.Y.Z-rc.N format"
+    [[ "v${TAG}" == "${SIGNED_TAG}" ]] ||
+        fail "image tag must match the full release version"
     [[ "${SIGNED_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$ ]] ||
         fail "signed tag must use vX.Y.Z or vX.Y.Z-rc.N format"
     [[ "${SOURCE_COMMIT}" =~ ^[0-9a-f]{40}$ ]] ||
@@ -250,6 +250,22 @@ main() {
     [[ "${actual_platforms}" == "${expected_platforms}" ]] ||
         reject_image "${reference}" \
             "unexpected platform set ${actual_platforms} for ${reference}"
+    configs="$(jq -c '.image | keys - ["unknown/unknown"] | sort' "${raw}")"
+    [[ "${configs}" == "${expected_platforms}" ]] ||
+        reject_image "${reference}" "missing or unexpected platform configs for ${reference}"
+    actual_sources="$(jq -c '[
+        .image | to_entries[] | select(.key != "unknown/unknown") |
+        .value.config.Labels."org.opencontainers.image.source"
+    ] | unique' "${raw}")"
+    if [[ "${actual_sources}" != '["https://github.com/radius-project/deployment-engine"]' ]]; then
+        # Published legacy images also shipped with the malformed source
+        # URL https://github.com//. Their immutable digest binds the bytes.
+        [[ "${PUBLISHED_DE_DIGEST:-}" == "${digest}" &&
+            "${EXPECTED_DIGEST}" == "${digest}" &&
+            ( "${actual_sources}" == '["https://github.com/azure-octo/deployment-engine"]' ||
+            "${actual_sources}" == '["https://github.com//"]' ) ]] ||
+            reject_image "${reference}" "unexpected source repository ${actual_sources} for ${reference}"
+    fi
     actual_refs="$(jq -c '[
         .image | to_entries[] | select(.key != "unknown/unknown") |
         .value.config.Labels."org.opencontainers.image.ref"

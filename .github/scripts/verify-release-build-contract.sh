@@ -31,6 +31,7 @@ REQUIRE_SIBLING_RELEASES=false
 BICEP_DUAL_PIPELINE=false
 GHCR_ONLY=false
 REQUIRE_CURRENT_BICEP=false
+REQUIRE_CURRENT_ENGINE=false
 
 fail() {
     echo "Error: $*" >&2
@@ -480,7 +481,7 @@ verify_historical_bicep_resume_gate() {
 main() {
     local job name
 
-    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep]"
+    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep] [--require-current-engine]"
     local revision="$1"
     shift
     EXPECTED_TARGETS=""
@@ -488,6 +489,7 @@ main() {
         case "$1" in
             --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true; shift ;;
             --require-current-bicep) REQUIRE_CURRENT_BICEP=true; shift ;;
+            --require-current-engine) REQUIRE_CURRENT_ENGINE=true; shift ;;
             --expected-targets)
                 [[ $# -ge 2 && -f "$2" ]] || fail "expected targets JSON is required"
                 EXPECTED_TARGETS="$2"; shift 2 ;;
@@ -520,6 +522,21 @@ main() {
     verify_publication_gate
     verify_historical_bicep_resume_gate
     verify_sibling_publication_gate
+    if [[ "${REQUIRE_CURRENT_ENGINE}" == true ]]; then
+        yq_true "${BUILD_WORKFLOW}" '
+            [.jobs."publish-sibling-releases".steps[] |
+                select(.id == "engine-token") | .with] |
+            (length == 1 and .[0].owner == "radius-project" and
+                .[0].repositories == "deployment-engine")' ||
+            reject "does not publish the transferred Deployment Engine release"
+        local publisher
+        publisher="$(git show "${COMMIT}:.github/scripts/publish-sibling-releases.mjs")" ||
+            reject "is missing the sibling release publisher"
+        [[ "${publisher}" != *azure-octo* ]] ||
+            reject "still targets the old Deployment Engine owner"
+        grep -Eq '^[[:space:]]*github: target\.repo === "deployment-engine" \? engine : siblings,$' <<<"${publisher}" ||
+            reject "does not select the Deployment Engine client by repository"
+    fi
     verify_attestation_gate
 
     # Path-only push triggers also run for tags; only a tag filter marks a publisher.
