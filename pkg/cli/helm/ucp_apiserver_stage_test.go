@@ -1008,6 +1008,70 @@ func Test_UpgradeRadius_StageUCPAPIServerCAChecksUCPAPIServerTLS(t *testing.T) {
 	})
 }
 
+// A fresh install with authorization on has no UCP APIService to stage trust for, but an interrupted uninstall can
+// leave ucp-apiserver-tls behind, which cert-manager keeps for Certificate ucp-cert without checking its CA.
+func Test_stageUCPAPIServerCA_FreshInstallChecksRetainedUCPAPIServerTLS(t *testing.T) {
+	render := func(t *testing.T) renderRadiusManifest {
+		manifest := renderStageTestManifest(t, authzOnValues)
+		return func(context.Context) (string, bool, error) { return manifest, true, nil }
+	}
+	stage := func(t *testing.T, c *stageCluster) error {
+		return c.impl(nil).stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, radiusReleaseName, deployedMode(authz.ModeOff), authz.ModeEnforce, render(t))
+	}
+	create := func(t *testing.T, c *stageCluster, secret *corev1.Secret) {
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), secret, metav1.CreateOptions{})
+		require.NoError(t, err)
+		c.kube.ClearActions()
+	}
+
+	t.Run("owned leaf without radius-apiserver-ca", func(t *testing.T) {
+		c := newStageCluster(t, nil, false)
+		create(t, c, apiServerTLSSecret(t, newTestCA(t, "deleted-ca")))
+		require.NoError(t, stage(t, c))
+		require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName), "Helm issues a new radius-apiserver-ca, so rad must delete the retained leaf")
+	})
+	t.Run("owned leaf from another CA", func(t *testing.T) {
+		c := newStageCluster(t, nil, false)
+		c.issueAPIServerCA(t)
+		create(t, c, apiServerTLSSecret(t, newTestCA(t, "deleted-ca")))
+		require.NoError(t, stage(t, c))
+		require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName), "rad must delete a leaf that radius-apiserver-ca did not issue")
+	})
+	t.Run("unmarked leaf", func(t *testing.T) {
+		c := newStageCluster(t, nil, false)
+		stale := newTestCA(t, "deleted-ca")
+		create(t, c, tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, stale), stale.pem))
+		err := stage(t, c)
+		require.ErrorContains(t, err, "Secret radius-system/ucp-apiserver-tls is not marked for Certificate ucp-cert of Helm release radius-system/radius")
+		require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system delete secret ucp-apiserver-tls`)
+		require.Empty(t, c.clusterWrites(), "rad must refuse before any write")
+		require.NotNil(t, c.secret(t, ucpAPIServerTLSSecretName), "rad must not delete a Secret the release does not own")
+	})
+	t.Run("leaf from the retained radius-apiserver-ca", func(t *testing.T) {
+		c := newStageCluster(t, nil, false)
+		c.issueAPIServerCA(t)
+		kept := apiServerTLSSecret(t, c.apiServerCA)
+		create(t, c, kept)
+		require.NoError(t, stage(t, c))
+		require.Empty(t, c.clusterWrites())
+		require.Equal(t, kept.Data, c.secret(t, ucpAPIServerTLSSecretName).Data)
+	})
+}
+
+// When the APIService already trusts only radius-apiserver-ca, rad stages nothing, but still deletes a release-owned
+// ucp-apiserver-tls that the CA did not issue, so cert-manager issues it again.
+func Test_stageUCPAPIServerCA_TrustedCADeletesStaleUCPAPIServerTLS(t *testing.T) {
+	c := newStageCluster(t, nil, false)
+	c.onUCP(t)
+	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
+	_, err := secrets.Update(t.Context(), apiServerTLSSecret(t, newTestCA(t, "deleted-ca")), metav1.UpdateOptions{})
+	require.NoError(t, err)
+	manifest := renderStageTestManifest(t, authzOnValues)
+	render := func(context.Context) (string, bool, error) { return manifest, true, nil }
+	require.NoError(t, c.impl(nil).stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, radiusReleaseName, deployedMode(authz.ModeEnforce), authz.ModeEnforce, render))
+	require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName))
+}
+
 // deployedMode returns a function that returns mode, as stageUCPAPIServerCA reads the deployed mode.
 func deployedMode(mode authz.Mode) func() (authz.Mode, error) {
 	return func() (authz.Mode, error) { return mode, nil }

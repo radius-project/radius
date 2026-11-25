@@ -112,8 +112,9 @@ func renderOnce(render renderRadiusManifest) renderRadiusManifest {
 // The APIService is cluster-scoped, so before it writes anything rad requires that the Radius release owns it and that
 // it routes to UCP in radiusNamespace (see releaseUCPAPIService).
 //
-// It does nothing when the APIService does not exist, as on a fresh install, or the APIService caBundle already holds
-// only the key of radius-apiserver-ca. When manifest has no radius-apiserver-ca Certificate, as in charts before it, it
+// When the APIService does not exist, as on a fresh install, it only checks a retained ucp-apiserver-tls, as
+// checkRetainedUCPAPIServerTLS describes. When the APIService caBundle already holds only the key of
+// radius-apiserver-ca, it only refuses a ucp-apiserver-tls the release does not own and deletes one that CA did not issue. When manifest has no radius-apiserver-ca Certificate, as in charts before it, it
 // only records the CAs of the live caBundle in the trust Secret. If cert-manager does not issue the CA in time, it
 // returns an error before Helm changes anything; running the command again resumes. When authorization will be off,
 // or the rendered chart serves UCP from the Secret ucp-cert of authorization off whatever its values say, as charts
@@ -142,8 +143,13 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	}
 
 	apiService, err := releaseUCPAPIService(ctx, kubeContext, dynamicClient, radiusNamespace, releaseName)
-	if err != nil || apiService == nil {
+	if err != nil {
 		return err
+	}
+	if apiService == nil {
+		// Nothing to stage trust for, but an uninstall can leave ucp-apiserver-tls behind, which cert-manager would
+		// keep for the new Certificate ucp-cert.
+		return checkRetainedUCPAPIServerTLS(ctx, kubeContext, kubeClient, radiusNamespace, render)
 	}
 
 	manifest, ok, err := render(ctx)
@@ -182,7 +188,11 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return err
 	}
 	if current != nil && onlyKey(live, current) {
-		return nil
+		servingTLS, err := releaseUCPAPIServerTLS(ctx, kubeContext, kubeClient, radiusNamespace)
+		if err != nil {
+			return err
+		}
+		return deleteStaleUCPAPIServerTLS(ctx, kubeContext, kubeClient, radiusNamespace, servingTLS, current)
 	}
 	// cert-manager keeps a ucp-apiserver-tls whose leaf still matches Certificate ucp-cert, without checking which CA
 	// signed it, so UCP would serve it once Helm applies ucp-cert.
@@ -277,14 +287,58 @@ func releaseUCPAPIServerTLS(ctx context.Context, kubeContext string, client kube
 		kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTLSSecretName))
 }
 
+// checkRetainedUCPAPIServerTLS handles a ucp-apiserver-tls Secret that exists before a release with no UCP APIService,
+// such as a fresh install after an interrupted uninstall, serves UCP from Certificate ucp-cert. cert-manager keeps a
+// Secret whose leaf still matches the Certificate without checking which CA signed it. Like the upgrade that turns
+// authorization on, rad refuses a Secret that the release does not own and deletes an owned one whose leaf does not
+// verify against a usable radius-apiserver-ca of the release. Without one, Helm's radius-apiserver-ca Certificate
+// issues a CA with a new key, so no retained leaf can verify against it and rad deletes it too. It reads nothing more,
+// and does not render the chart, when the Secret does not exist.
+func checkRetainedUCPAPIServerTLS(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string, render renderRadiusManifest) error {
+	_, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTLSSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
+	}
+	manifest, ok, err := render(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to render the Radius chart to check %s: %w", ucpAPIServerTLSSecretName, err)
+	}
+	if !ok {
+		return nil
+	}
+	kind, err := ucpServingCertificateKind(manifest)
+	if err != nil {
+		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
+	}
+	// A chart that serves UCP from Secret ucp-cert does not use ucp-apiserver-tls.
+	if kind != "Certificate" {
+		return nil
+	}
+	servingTLS, err := releaseUCPAPIServerTLS(ctx, kubeContext, client, radiusNamespace)
+	if err != nil || servingTLS == nil {
+		return err
+	}
+	if err := refuseForeignUCPAPIServerCA(ctx, kubeContext, client, radiusNamespace); err != nil {
+		return err
+	}
+	ca, _, _, err := readUCPAPIServerCA(ctx, client, radiusNamespace)
+	if err != nil {
+		return err
+	}
+	return deleteStaleUCPAPIServerTLS(ctx, kubeContext, client, radiusNamespace, servingTLS, ca)
+}
+
 // deleteStaleUCPAPIServerTLS deletes secret, the release's ucp-apiserver-tls that releaseUCPAPIServerTLS returned,
-// when its leaf does not verify for UCP against ca, so cert-manager issues a new one from ca once Helm applies
+// when ca is nil or its leaf does not verify for UCP against ca, so cert-manager issues a new one once Helm applies
 // Certificate ucp-cert. The delete is pinned to the uid and resourceVersion rad read; it keeps a Secret that verifies.
 func deleteStaleUCPAPIServerTLS(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string, secret *corev1.Secret, ca *x509.Certificate) error {
 	if secret == nil {
 		return nil
 	}
-	if chain, err := certificateChain(secret.Data[corev1.TLSCertKey]); err == nil && verifiesUCPCertificate(chain[0], chain[1:], ca, radiusNamespace) {
+	if chain, err := certificateChain(secret.Data[corev1.TLSCertKey]); err == nil && ca != nil && verifiesUCPCertificate(chain[0], chain[1:], ca, radiusNamespace) {
 		return nil
 	}
 	output.LogInfo("Deleting Secret %s/%s, which %s did not issue, so cert-manager issues it again...", radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName)

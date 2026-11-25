@@ -473,7 +473,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	// Helm installs the new CA and starts rolling UCP; the rollout has not finished, so both CAs stay trusted.
 	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), apiServerCASecret(apiServerCA), metav1.CreateOptions{})
 	require.NoError(t, err)
-	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, apiServerCA), apiServerCA.pem), metav1.CreateOptions{})
+	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), apiServerTLSSecret(t, apiServerCA), metav1.CreateOptions{})
 	require.NoError(t, err)
 	_, err = kubeClient.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), ucpDeployment(false), metav1.CreateOptions{})
 	require.NoError(t, err)
