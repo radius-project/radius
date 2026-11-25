@@ -142,6 +142,11 @@ BASH
                 ([$job.steps | to_entries[] | select(.value.id == "version")] as $v |
                  [$job.steps | to_entries[] | select(.value.name == "Publish image")] as $p |
                  ($v | length) == 1 and ($p | length) == 1 and $v[0].key < $p[0].key and
+                 any($job.steps | to_entries[];
+                     .key < $p[0].key and (.value | mandatory and
+                         (.uses // "" | test("^docker/login-action@[0-9a-f]{40}$")) and
+                         .with.registry == "ghcr.io" and .with.username == "${{ github.actor }}" and
+                         .with.password == "${{ github.token }}")) and
                  ($v[0].value | mandatory and (.run | rtrimstr("\n")) == $parse) and
                  ($p[0].value | mandatory and .env.TAG == "${{ steps.version.outputs.ghcr-tag }}" and
                     .env.REGISTRY == null and (.run == $push or (.run | startswith($push + "\n")))))
@@ -151,6 +156,15 @@ BASH
         jq -e '.type == "file" and (.size | type == "number" and . > 0)' \
             <<<"${metadata}" >/dev/null ||
             fail "${helper} is not a nonempty file at ${commit}; select a reviewed release source before tagging"
+        local tree parser=".github/scripts/parse-version.sh"
+        tree="$("${GH}" api "repos/${REPOSITORY}/git/trees/${commit}?recursive=1")" ||
+            fail "could not read the Git tree at ${commit}; retry the same commit after checking API access"
+        jq -e '.truncated == false and (.tree | type == "array")' \
+            <<<"${tree}" >/dev/null || fail "incomplete Git tree at ${commit}; cannot verify ${parser}"
+        jq -e --arg path "${parser}" \
+            'any(.tree[]; .path == $path and .type == "blob" and .mode == "100755")' \
+            <<<"${tree}" >/dev/null ||
+            fail "${parser} is missing or not executable at ${commit}; select a reviewed release source before tagging"
     fi
 
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

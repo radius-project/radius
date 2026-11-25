@@ -53,6 +53,15 @@ write_fake_gh() {
 #!/bin/bash
 set -euo pipefail
 case "$*" in
+    *"/git/trees/"*)
+        [[ "$2" == *"/git/trees/${FAKE_BASE_COMMIT:?}?recursive=1" ]] || exit 1
+        if [[ "${FAKE_PARSER_MODE:-}" == missing ]]; then
+            echo '{"truncated":false,"tree":[]}'
+        else
+            printf '{"truncated":false,"tree":[{"path":".github/scripts/parse-version.sh","mode":"%s","type":"blob"}]}\n' \
+                "${FAKE_PARSER_MODE:-100755}"
+        fi
+        ;;
     *"/contents/.github/scripts/require-unused-tag.sh?ref="*)
         [[ "$2" == *"ref=${FAKE_BASE_COMMIT:?}" ]] || exit 1
         if [[ -n "${FAKE_HELPER_ERROR:-}" ]]; then
@@ -279,6 +288,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - id: version
         run: .github/scripts/parse-version.sh --ref "$GITHUB_REF" --sha "$GITHUB_SHA" --out "$GITHUB_OUTPUT"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Publish image
         env:
           TAG: ${{ steps.version.outputs.ghcr-tag }}
@@ -297,6 +311,14 @@ YAML
     FAKE_PUBLISHER="${workflow}"
     run_script --require-publisher --allow-absent main v0.61.0
     expect_outputs "${COMMIT_B}" absent "new tag at transferred publisher" || return
+    local mode
+    for mode in missing 100644; do
+        export FAKE_PARSER_MODE="${mode}"
+        run_script --require-publisher --allow-absent main v0.61.0
+        unset FAKE_PARSER_MODE
+        expect_failure "parse-version.sh is missing or not executable at ${COMMIT_B}" "parser: ${mode}" || return
+        [[ ! -s "${TEST_ROOT}/outputs" ]] || { fail_test "invalid parser emitted tag state"; return; }
+    done
     local error expected
     for error in 'Not Found (HTTP 404)' 'Service Unavailable (HTTP 503)'; do
         export FAKE_HELPER_ERROR="${error}"
@@ -312,8 +334,11 @@ YAML
             return
         fi
     done
-    # shellcheck disable=SC2016
-    FAKE_PUBLISHER="$(yq '.jobs.build.steps[0].with.ref = "${{ github.sha }}" | .jobs.container.steps[0].with.ref = "${{ github.sha }}"' <<< "${workflow}")"
+    local build_checkout container_checkout login
+    build_checkout='(.jobs.build.steps[] | select(.uses // "" | test("^actions/checkout@")))'
+    container_checkout='(.jobs.container.steps[] | select(.uses // "" | test("^actions/checkout@")))'
+    login='(.jobs.container.steps[] | select(.uses // "" | test("^docker/login-action@")))'
+    FAKE_PUBLISHER="$(yq "${build_checkout}.with.ref = \"\${{ github.sha }}\" | ${container_checkout}.with.ref = \"\${{ github.sha }}\"" <<< "${workflow}")"
     run_script --require-publisher --allow-absent main v0.61.0
     expect_outputs "${COMMIT_B}" absent "both jobs check out the push SHA" || return
     FAKE_PUBLISHER="$(yq '.permissions = {"contents":"read","packages":"write"} | del(.jobs.container.permissions)' <<< "${workflow}")"
@@ -328,15 +353,17 @@ YAML
     # Shell variables in the mutated publish command belong to the producer.
     # shellcheck disable=SC2016
     for mutation in \
-        'del(.jobs.build.steps[0])' \
-        'del(.jobs.container.steps[0])' \
+        "del(${build_checkout})" \
+        "del(${container_checkout})" \
+        "del(${login})" \
+        "${login}.with.registry = \"example.com\"" \
         '.jobs.build.permissions = {} | .permissions.contents = "read"' \
         'del(.jobs.container.permissions.contents) | .permissions.contents = "read"' \
         'del(.jobs.container.permissions.packages) | .permissions.packages = "write"' \
-        '.jobs.build.steps[0].with.ref = "${{ github.ref }}"' \
-        '.jobs.container.steps[0].with.ref = "${{ github.ref }}"' \
-        '.jobs.build.steps[0].with.ref = "main"' \
-        '.jobs.container.steps[0].with.repository = "radius-project/radius"' \
+        "${build_checkout}.with.ref = \"\${{ github.ref }}\"" \
+        "${container_checkout}.with.ref = \"\${{ github.ref }}\"" \
+        "${build_checkout}.with.ref = \"main\"" \
+        "${container_checkout}.with.repository = \"radius-project/radius\"" \
         '.jobs.container.steps = ([{"run":"make test"}] + .jobs.container.steps)' \
         '.jobs.build.steps = ([{"uses":"./local-action"}] + .jobs.build.steps)' \
         ".jobs.container.if = \"github.ref == 'refs/heads/main'\"" \
