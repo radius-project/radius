@@ -51,6 +51,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chime"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chimevoice"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
@@ -109,6 +110,7 @@ func All(cfg aws.Config) []native.Handler {
 		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stsAPI),
 		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
+		chimevoice.NewTerminationCredentials(chimeAPI),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
 		neptune.NewClusterEndpoint(neptunesdk.NewFromConfig(cfg)),
