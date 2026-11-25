@@ -275,7 +275,7 @@ tests:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
           data:
-            ca.crt: dHJ1c3QtY2E=
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNDRENDQWE0Q0NRRFhvTWkwaHlYLzNEQUtCZ2dxaGtqT1BRUURBakFSTVE4d0RRWURWUVFEREFaMVkzQXQKWTJFd0lCY05Nall4TVRJMU1qRXdOVFF4V2hnUE1qRXlOakV4TURFeU1UQTFOREZhTUJFeER6QU5CZ05WQkFNTQpCblZqY0MxallUQ0NBVXN3Z2dFREJnY3Foa2pPUFFJQk1JSDNBZ0VCTUN3R0J5cUdTTTQ5QVFFQ0lRRC8vLy8vCkFBQUFBUUFBQUFBQUFBQUFBQUFBQVAvLy8vLy8vLy8vLy8vLy96QmJCQ0QvLy8vL0FBQUFBUUFBQUFBQUFBQUEKQUFBQUFQLy8vLy8vLy8vLy8vLy8vQVFnV3NZMTJLbzZrK2V6NjcxVmRwaUd2R1VkQnJETVU3RDJPODQ4UGlmUwpZRXNERlFERW5UWUlodWNFazJwbWVPRVRuU2EzZ1o5K2tBUkJCR3NYMGZMaExFSkgrTHptNVdPa1FQSjNBMzJCCkxlc3pvUFNoT1VYWW1NS1dUK05DNHY0YWY1dU81K3RLZkErZUZpdk9NMWRyTVY3T3k3WkFhRGUvVWZVQ0lRRC8KLy8vL0FBQUFBUC8vLy8vLy8vLy92T2I2cmFjWG5vVHp1Y3JDL0dNbFVRSUJBUU5DQUFUR2pDMGlORHZuMVpZQgpOUUZDM0M1cTVKTDJlZ2x4VDhCcExVYWcxVldrWVB6VlI0WkdnM1g0MXBUU25ZNUN6Z3RXOXAxaG80K3IraDJECktDMTU1OThJTUFvR0NDcUdTTTQ5QkFNQ0EwZ0FNRVVDSVFEUG5tK1ltMVRYbU1QdWRlYklzUGRIUUI0SGcvUisKZzdBN3BndlhJSW0yUUFJZ1ZFU0tMMHZCN3hiUk9qbEtULzdWbm12Y3FtZ29iSDk1NjMxSlRBY281QjQ9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         - apiVersion: v1
           kind: Secret
           metadata:
@@ -293,8 +293,43 @@ tests:
         documentIndex: 1
       - equal:
           path: spec.caBundle
-          value: dHJ1c3QtY2E=
+          value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUNDRENDQWE0Q0NRRFhvTWkwaHlYLzNEQUtCZ2dxaGtqT1BRUURBakFSTVE4d0RRWURWUVFEREFaMVkzQXQKWTJFd0lCY05Nall4TVRJMU1qRXdOVFF4V2hnUE1qRXlOakV4TURFeU1UQTFOREZhTUJFeER6QU5CZ05WQkFNTQpCblZqY0MxallUQ0NBVXN3Z2dFREJnY3Foa2pPUFFJQk1JSDNBZ0VCTUN3R0J5cUdTTTQ5QVFFQ0lRRC8vLy8vCkFBQUFBUUFBQUFBQUFBQUFBQUFBQVAvLy8vLy8vLy8vLy8vLy96QmJCQ0QvLy8vL0FBQUFBUUFBQUFBQUFBQUEKQUFBQUFQLy8vLy8vLy8vLy8vLy8vQVFnV3NZMTJLbzZrK2V6NjcxVmRwaUd2R1VkQnJETVU3RDJPODQ4UGlmUwpZRXNERlFERW5UWUlodWNFazJwbWVPRVRuU2EzZ1o5K2tBUkJCR3NYMGZMaExFSkgrTHptNVdPa1FQSjNBMzJCCkxlc3pvUFNoT1VYWW1NS1dUK05DNHY0YWY1dU81K3RLZkErZUZpdk9NMWRyTVY3T3k3WkFhRGUvVWZVQ0lRRC8KLy8vL0FBQUFBUC8vLy8vLy8vLy92T2I2cmFjWG5vVHp1Y3JDL0dNbFVRSUJBUU5DQUFUR2pDMGlORHZuMVpZQgpOUUZDM0M1cTVKTDJlZ2x4VDhCcExVYWcxVldrWVB6VlI0WkdnM1g0MXBUU25ZNUN6Z3RXOXAxaG80K3IraDJECktDMTU1OThJTUFvR0NDcUdTTTQ5QkFNQ0EwZ0FNRVVDSVFEUG5tK1ltMVRYbU1QdWRlYklzUGRIUUI0SGcvUisKZzdBN3BndlhJSW0yUUFJZ1ZFU0tMMHZCN3hiUk9qbEtULzdWbm12Y3FtZ29iSDk1NjMxSlRBY281QjQ9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         documentIndex: 1
+
+  - it: fails when the overlap trust Secret holds something other than PEM certificates
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: apiregistration.k8s.io/v1
+          kind: APIService
+          metadata:
+            name: v1alpha3.api.ucp.dev
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KLS0tLS1CRUdJTiBOT1RFLS0tLS0KYjNSb1pYST0KLS0tLS1FTkQgTk9URS0tLS0tCg==
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+          data:
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    asserts:
+      - failedTemplate:
+          errorPattern: "ca.crt of Secret radius-system/radius-apiserver-trust holds something other than PEM certificates"
 
   - it: ignores a leftover trust Secret on a fresh install without the APIService
     template: ucp/apiservice.yaml

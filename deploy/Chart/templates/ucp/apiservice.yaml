@@ -65,11 +65,18 @@ release. The inject annotation would make cainjector copy any other Secret of th
 {{- fail (printf "Secret %s/radius-apiserver-ca is not marked for Helm release %s/%s with annotations radapp.io/release-name and radapp.io/release-namespace, so the release will not trust its CA. Delete it with 'kubectl delete secret radius-apiserver-ca -n %s' if nothing else uses it, then run the command again" .Release.Namespace .Release.Namespace .Release.Name .Release.Namespace) }}
 {{- end }}
 {{- $caBundle = dig "data" "ca.crt" "" $apiServerCA }}
-{{- /* cainjector copies ca.crt as it is, so it must hold only PEM certificates. */}}
+{{- end }}
+{{- end }}
+{{- /*
+The release publishes ca.crt of either source in the APIService, which more principals may read than the Secret, and
+cainjector copies it as it is. Fail before choosing the inject annotation unless it holds only PEM certificates.
+*/}}
 {{- $caPEM := $caBundle | b64dec }}
 {{- if and $caPEM (or (not (contains "-----BEGIN CERTIFICATE-----" $caPEM)) (trim (regexReplaceAll "(?s)-----BEGIN CERTIFICATE-----\\r?\\n[A-Za-z0-9+/=\\r\\n]*-----END CERTIFICATE-----" $caPEM ""))) }}
+{{- if eq $caSource "radius-apiserver-trust" }}
+{{- fail (printf "ca.crt of Secret %s/radius-apiserver-trust holds something other than PEM certificates, so the release will not trust it. Delete it with 'kubectl delete secret radius-apiserver-trust -n %s', or write only the PEM CA certificates to its ca.crt, then run the command again" .Release.Namespace .Release.Namespace) }}
+{{- else }}
 {{- fail (printf "ca.crt of Secret %s/radius-apiserver-ca holds something other than PEM certificates, so the release will not trust it. Delete it with 'kubectl delete secret radius-apiserver-ca -n %s' so cert-manager issues it again, then run the command again" .Release.Namespace .Release.Namespace) }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- else }}
