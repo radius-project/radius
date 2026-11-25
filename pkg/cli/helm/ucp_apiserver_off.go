@@ -153,7 +153,13 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
 	}
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets)
+	var leftovers []ucpOffLeftoverSecret
+	for _, entry := range ucpOffLeftoverSecrets {
+		if !declared[manifestObjectKey("", "Secret", entry.secret)] && !declared[manifestObjectKey("", "IssuedSecret", entry.secret)] {
+			leftovers = append(leftovers, entry)
+		}
+	}
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
 	if err != nil {
 		return err
 	}
@@ -175,7 +181,7 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 		return err
 	}
 
-	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets, false)
+	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, leftovers, false)
 }
 
 // deleteUCPOffLeftovers deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the

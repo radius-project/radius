@@ -26,6 +26,8 @@ import (
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -236,4 +238,101 @@ func helmRESTConfig(t *testing.T, kubeContext string) *rest.Config {
 	require.NoError(t, err)
 
 	return config
+}
+
+func Test_CertificateClients_UseSelectedKubeconfig(t *testing.T) {
+	clients := []struct {
+		name string
+		path string
+		run  func(t *testing.T, context string) error
+	}{
+		{
+			name: "cert-manager typed client",
+			path: "/apis/apps/v1/deployments",
+			run: func(t *testing.T, context string) error {
+				client, _, err := newCertManagerClients(context)
+				if err != nil {
+					return err
+				}
+				_, err = client.AppsV1().Deployments("").List(t.Context(), metav1.ListOptions{})
+				return err
+			},
+		},
+		{
+			name: "cert-manager API extension client",
+			path: "/apis/apiextensions.k8s.io/v1/customresourcedefinitions/certificates.cert-manager.io",
+			run: func(t *testing.T, context string) error {
+				_, client, err := newCertManagerClients(context)
+				if err != nil {
+					return err
+				}
+				_, err = client.ApiextensionsV1().CustomResourceDefinitions().Get(t.Context(), certManagerCRDName, metav1.GetOptions{})
+				return err
+			},
+		},
+		{
+			name: "cert-manager dynamic client",
+			path: "/apis/cert-manager.io/v1/certificaterequests",
+			run: func(t *testing.T, context string) error {
+				client, err := newCertManagerDynamicClient(context)
+				if err != nil {
+					return err
+				}
+				_, err = client.Resource(schema.GroupVersionResource{
+					Group: "cert-manager.io", Version: "v1", Resource: "certificaterequests",
+				}).List(t.Context(), metav1.ListOptions{})
+				return err
+			},
+		},
+		{
+			name: "certificate Secret client",
+			path: "/api/v1/namespaces/radius-system/secrets/operator-ca",
+			run: func(t *testing.T, context string) error {
+				client, err := (&Impl{}).certificateClient(context)
+				if err != nil {
+					return err
+				}
+				_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), "operator-ca", metav1.GetOptions{})
+				return err
+			},
+		},
+	}
+	for _, client := range clients {
+		for _, scenario := range []string{"default home", "isolated config", "merged explicit context", "malformed config", "missing config", "unknown context", "no current context"} {
+			t.Run(client.name+"/"+scenario, func(t *testing.T) {
+				target := k8sutil.NewForbiddenAPIServer(t)
+				decoy := k8sutil.NewForbiddenAPIServer(t)
+				var selected string
+				switch scenario {
+				case "default home":
+					k8sutil.WriteKubeconfig(t, k8sutil.IsolateKubeconfig(t), "target", map[string]string{"target": target.URL})
+				case "merged explicit context":
+					selected = useTargetKubeconfig(t, target.URL, decoy.URL, true)
+				default:
+					selected = useTargetKubeconfig(t, target.URL, decoy.URL, false)
+					path := os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
+					switch scenario {
+					case "malformed config":
+						require.NoError(t, os.WriteFile(path, []byte("this is: [not valid yaml"), 0600))
+					case "missing config":
+						t.Setenv(clientcmd.RecommendedConfigPathEnvVar, filepath.Join(t.TempDir(), "missing"))
+					case "unknown context":
+						selected = "nonexistent-context"
+					case "no current context":
+						k8sutil.WriteKubeconfig(t, path, "", map[string]string{"target": target.URL})
+					}
+				}
+				err := client.run(t, selected)
+				switch scenario {
+				case "malformed config", "missing config", "unknown context", "no current context":
+					require.ErrorContains(t, err, "failed to initialize Kubernetes client config")
+					require.Empty(t, target.Requests())
+				default:
+					require.True(t, apierrors.IsForbidden(err), "expected target API Forbidden response, got %v", err)
+					require.Equal(t, []string{"GET " + client.path}, target.Requests())
+				}
+				require.Empty(t, decoy.Requests(), "must not fall back to another cluster")
+			})
+		}
+	}
 }
