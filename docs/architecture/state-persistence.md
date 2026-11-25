@@ -657,6 +657,7 @@ databaseProvider:
 **PostgreSQL (Helm chart)** — `database.enabled=true` switches UCP, Applications RP, and Dynamic RP to the `postgresql` provider. By default the chart also installs an in-cluster PostgreSQL server and the `database-secret` password Secret. To use an existing server instead, set `database.external.host`. The chart then skips the in-cluster server and builds each service's URL from that host:
 
 ```bash
+kubectl create namespace radius-system
 kubectl create secret generic radius-db -n radius-system \
   --from-literal=POSTGRES_PASSWORD='<URL-safe password>'
 
@@ -673,7 +674,13 @@ rad install kubernetes \
 | `database.external.sslmode`        | `verify-full` | `sslmode` for every service URL. A server with a private CA needs `global.rootCA` or `require`. |
 | `database.external.existingSecret` | `""`          | Required. Secret with a `POSTGRES_PASSWORD` key for the service users.                          |
 
-Prepare the server first with `deploy/init-db/init-external-db.sh`. It creates the `ucp`, `applications_rp`, and `dynamic_rp` users and databases and the `resources` table, and is safe to re-run. It connects with the standard PostgreSQL client variables (`PGHOST`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`) and sets each service user's password from `RADIUS_DB_PASSWORD`, which must match the Secret. The chart adds the Secret to the protected control-plane Secrets. A change to the host, port, or `sslmode` restarts the three services on `helm upgrade`. `rad shutdown` and `rad startup` support only the in-cluster server.
+Prepare the server first with `deploy/init-db/init-external-db.sh`. It creates the `ucp`, `applications_rp`, and `dynamic_rp` users and databases and the `resources` table. Re-running it with the same password is safe. It connects with the standard PostgreSQL client variables (`PGHOST`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`) and sets each service user's password from `RADIUS_DB_PASSWORD`, which must match the Secret. The chart adds the Secret to the protected control-plane Secrets. A change to the host, port, or `sslmode` restarts the three services on `helm upgrade`. `rad shutdown` and `rad startup` support only the in-cluster server.
+
+To change the password, run the script with the new `RADIUS_DB_PASSWORD`, update the Secret, and then restart the three services (`kubectl rollout restart deployment ucp applications-rp dynamic-rp -n radius-system`). Running pods keep the old password until they restart.
+
+Use an external server for a new installation. Setting `database.external.host` on an existing release doesn't migrate data: the services start against the external databases, and Helm deletes the in-cluster server's StatefulSet, Service, and `database-secret` (the volume is kept). Don't use `database-secret` as `database.external.existingSecret`. Switching back to the in-cluster server isn't a recovery path either, because the chart generates a new password that doesn't match the users in the kept volume.
+
+The external server holds the resource data, but not every Secret the control plane needs. Before you recreate the cluster against the same server, back up and restore the `radius-encryption-key` Secret in `radius-system`: sensitive resource fields are stored encrypted with its keys, and the chart generates new keys when the Secret is missing, which leaves those fields unreadable. Also back up and restore the Terraform state Secrets (`tfstate-*` in `radius-system`) when recipes use the default Kubernetes state backend; without them, Terraform can't update or delete the infrastructure it created. Credentials registered with `rad credential register` are also stored as Kubernetes Secrets, so register them again on the new cluster.
 
 No other code changes are needed. The `DatabaseProvider` will read the
 `provider` field and call the matching factory function to produce the client.

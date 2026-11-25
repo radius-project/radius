@@ -141,20 +141,29 @@ Returns "true" when the chart installs its own in-cluster PostgreSQL server. Set
 database.external.host connects to an existing server instead.
 */}}
 {{- define "radius.database.inCluster" -}}
-{{- if and .Values.database.external.host (not .Values.database.enabled) -}}
+{{- $host := include "radius.database.externalHost" . -}}
+{{- if and $host (not .Values.database.enabled) -}}
 {{- fail "database.external.host requires database.enabled=true" -}}
 {{- end -}}
-{{- if and .Values.database.enabled (not .Values.database.external.host) -}}
+{{- if and .Values.database.enabled (not $host) -}}
 true
 {{- end -}}
+{{- end -}}
+
+{{/*
+Returns database.external.host, or "" when it or the database.external map is unset. Releases
+upgraded with --reuse-values from a chart without database.external have no such map.
+*/}}
+{{- define "radius.database.externalHost" -}}
+{{- dig "external" "host" "" (.Values.database | default dict) -}}
 {{- end -}}
 
 {{/*
 Returns the name of the Secret whose POSTGRES_PASSWORD key holds the resource provider password.
 */}}
 {{- define "radius.database.secretName" -}}
-{{- if .Values.database.external.host -}}
-{{- required "database.external.existingSecret is required when database.external.host is set" .Values.database.external.existingSecret -}}
+{{- if include "radius.database.externalHost" . -}}
+{{- required "database.external.existingSecret is required when database.external.host is set" .Values.database.external.existingSecret | toString -}}
 {{- else -}}
 database-secret
 {{- end -}}
@@ -166,9 +175,9 @@ context) and "name" (used as both the user and database name). POSTGRES_PASSWORD
 runtime by the database provider.
 */}}
 {{- define "radius.database.url" -}}
-{{- $db := .ctx.Values.database -}}
-{{- if $db.external.host -}}
-postgresql://{{ .name }}:${POSTGRES_PASSWORD}@{{ $db.external.host }}:{{ $db.external.port | default 5432 }}/{{ .name }}?sslmode={{ $db.external.sslmode | default "verify-full" }}
+{{- $external := .ctx.Values.database.external | default dict -}}
+{{- if include "radius.database.externalHost" .ctx -}}
+postgresql://{{ .name }}:${POSTGRES_PASSWORD}@{{ $external.host }}:{{ $external.port | default 5432 }}/{{ .name }}?sslmode={{ $external.sslmode | default "verify-full" }}
 {{- else -}}
 postgresql://{{ .name }}:${POSTGRES_PASSWORD}@database.{{ .ctx.Release.Namespace }}:5432/{{ .name }}?sslmode=disable
 {{- end -}}
@@ -221,8 +230,8 @@ external database password Secret.
 {{- $spiffe = append $spiffe (printf "%s-spiffe" .) -}}
 {{- end -}}
 {{- $database := list "database-secret" -}}
-{{- if and .Values.database.external.host .Values.database.external.existingSecret -}}
-{{- $database = append $database .Values.database.external.existingSecret -}}
+{{- if include "radius.database.externalHost" . -}}
+{{- $database = append $database (include "radius.database.secretName" .) -}}
 {{- end -}}
 {{- concat $database (list "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
 {{- end -}}

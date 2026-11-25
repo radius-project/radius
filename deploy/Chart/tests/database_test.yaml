@@ -313,6 +313,17 @@ tests:
       - exists:
           path: spec.template.metadata.annotations["checksum/database-url"]
 
+  - it: should not add a rollout checksum for the in-cluster database
+    templates:
+      - ucp/deployment.yaml
+      - rp/deployment.yaml
+      - dynamic-rp/deployment.yaml
+    set:
+      database.enabled: true
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations["checksum/database-url"]
+
   - it: should derive the ucp rollout checksum from its connection URL
     template: ucp/deployment.yaml
     set:
@@ -323,3 +334,49 @@ tests:
       - equal:
           path: spec.template.metadata.annotations["checksum/database-url"]
           value: 067b1fbfa11cc818c852b476517b82305a80ec0626a8d11b0f3871cefbf13497
+
+  # Releases upgraded with --reuse-values from a chart without database.external have no such map.
+  - it: should render when database.external is absent
+    set:
+      database.enabled: true
+      database.external: null
+    asserts:
+      - notFailedTemplate: {}
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '@database\.NAMESPACE:5432/ucp\?sslmode=disable'
+        template: ucp/configmaps.yaml
+
+  - it: should render a numeric-looking secret name as a string
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: 123
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "123"
+                key: POSTGRES_PASSWORD
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "123"
+                key: POSTGRES_PASSWORD
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "123"
+                key: POSTGRES_PASSWORD
+        template: dynamic-rp/deployment.yaml
