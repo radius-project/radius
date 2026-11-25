@@ -429,6 +429,8 @@ func (d *terraformDriver) FindSecretIDs(ctx context.Context, envConfig recipes.C
 // getDeployedOutputResources is used to the get the resource IDs by parsing the terraform state for resource information and using it to create UCP qualified IDs.
 // Currently only Azure, AWS and Kubernetes providers are supported by output resources.
 // It records the ARN of each AWS resource as its provider resource ID on output.
+// It returns only resources that the recipe manages and skips resources that the recipe reads with a data block.
+// Radius treats output resources as owned by the recipe resource and can delete them.
 func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module *tfjson.StateModule, configuration recipes.Configuration, output *recipes.RecipeOutput) ([]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	recipeResources := []string{}
@@ -437,6 +439,10 @@ func (d *terraformDriver) getDeployedOutputResources(ctx context.Context, module
 	}
 
 	for _, resource := range module.Resources {
+		if resource.Mode != tfjson.ManagedResourceMode {
+			continue
+		}
+
 		switch resource.ProviderName {
 		case TerraformKubernetesProvider:
 			var resourceType, resourceName, namespace, provider string
