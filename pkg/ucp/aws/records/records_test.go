@@ -1,0 +1,523 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package records
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+)
+
+const (
+	vpcID   = "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/VPC/app-vpc"
+	otherID = "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/VPC/other-vpc"
+)
+
+func parse(t *testing.T, id string) resources.ID {
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+	return parsed
+}
+
+func Test_Store(t *testing.T) {
+	store := NewStore(inmemory.NewClient())
+	id := parse(t, vpcID)
+
+	rec, etag, err := store.Get(t.Context(), id)
+	require.NoError(t, err)
+	require.Nil(t, rec)
+	require.Empty(t, etag)
+
+	rec = NewRecord(id, "owner")
+	rec.Properties.AWSIdentifier = "vpc-1"
+	etag, err = store.Save(t.Context(), rec, "")
+	require.NoError(t, err)
+	require.NotEmpty(t, etag)
+
+	// A second first save of the same alias loses.
+	_, err = store.Save(t.Context(), NewRecord(id, "other"), "")
+	require.ErrorIs(t, err, &database.ErrConcurrency{})
+
+	got, gotETag, err := store.Get(t.Context(), id)
+	require.NoError(t, err)
+	require.Equal(t, etag, gotETag)
+	require.Equal(t, "app-vpc", got.Name)
+	require.Equal(t, "AWS.EC2/VPC", got.ResourceTypeName())
+	require.Equal(t, "owner", got.Properties.Owner)
+	require.False(t, LastModified(got).IsZero())
+
+	// A save with a stale ETag loses.
+	_, err = store.Save(t.Context(), got, "stale")
+	require.ErrorIs(t, err, &database.ErrConcurrency{})
+
+	require.NoError(t, store.Touch(t.Context(), id))
+	require.NoError(t, store.Touch(t.Context(), parse(t, otherID)))
+
+	_, etag, err = store.Get(t.Context(), id)
+	require.NoError(t, err)
+	require.ErrorIs(t, store.DeleteIfUnchanged(t.Context(), id, "stale"), &database.ErrConcurrency{})
+	require.NoError(t, store.DeleteIfUnchanged(t.Context(), id, etag))
+	gone, _, err := store.Get(t.Context(), id)
+	require.NoError(t, err)
+	require.Nil(t, gone)
+}
+
+func Test_Store_Errors(t *testing.T) {
+	store := NewStore(failing{Client: inmemory.NewClient()})
+	_, _, err := store.Get(t.Context(), parse(t, vpcID))
+	require.ErrorContains(t, err, "failed to read the record")
+	_, err = store.FindByIdentifier(t.Context(), parse(t, vpcID), "vpc-1", schemas.IdentityScopeRegion)
+	require.ErrorContains(t, err, "failed to search the records")
+	require.Error(t, store.Touch(t.Context(), parse(t, vpcID)))
+
+	// Data that is not a record is an error, not "no record".
+	db := inmemory.NewClient()
+	require.NoError(t, db.Save(t.Context(), &database.Object{Metadata: database.Metadata{ID: vpcID}, Data: map[string]any{"properties": "x"}}))
+	_, _, err = NewStore(db).Get(t.Context(), parse(t, vpcID))
+	require.ErrorContains(t, err, "failed to read the record")
+}
+
+// Test_Store_LegacyUnresolvedPaths reads a record that UCP saved before it escaped keys in paths. Its unresolved paths
+// stay as they are, apart from new ones, until AWS has the values of a deploy.
+func Test_Store_LegacyUnresolvedPaths(t *testing.T) {
+	db := inmemory.NewClient()
+	data := map[string]any{
+		"id":   vpcID,
+		"name": "app-vpc",
+		"type": "AWS.EC2/VPC",
+		"properties": map[string]any{
+			"owner":           "owner",
+			"lastApplied":     map[string]any{"Labels": map[string]any{"tenant/id": "a"}},
+			"unresolvedPaths": []any{"Labels/tenant/id", "Labels/a~1b"},
+		},
+	}
+	require.NoError(t, db.Save(t.Context(), &database.Object{Metadata: database.Metadata{ID: vpcID}, Data: data}))
+	store := NewStore(db)
+
+	rec, etag, err := store.Get(t.Context(), parse(t, vpcID))
+	require.NoError(t, err)
+	require.Equal(t, []string{"Labels/tenant/id", "Labels/a~1b"}, rec.Properties.LegacyUnresolvedPaths)
+	require.Empty(t, rec.Properties.UnresolvedPaths)
+	require.True(t, HasUnresolved(rec))
+
+	// An interrupted update adds new paths in the escaped form and keeps the legacy ones.
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "b"}}
+	KeepPending(rec)
+	_, err = store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+	obj, err := db.Get(t.Context(), vpcID)
+	require.NoError(t, err)
+	properties := obj.Data.(map[string]any)["properties"].(map[string]any)
+	require.Equal(t, []any{"Labels/tenant/id", "Labels/a~1b"}, properties["unresolvedPaths"])
+	require.Equal(t, []any{"Labels/tenant~1id"}, properties["unresolvedPropertyPaths"])
+
+	others, err := store.Others(t.Context(), parse(t, otherID), schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Len(t, others, 1)
+	require.Equal(t, []string{"Labels/tenant/id", "Labels/a~1b"}, others[0].Properties.LegacyUnresolvedPaths)
+
+	// A deploy AWS applied clears both.
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "c"}}
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.UnresolvedPaths)
+	require.Nil(t, rec.Properties.LegacyUnresolvedPaths)
+	require.False(t, HasUnresolved(rec))
+}
+
+func Test_FindByIdentifier(t *testing.T) {
+	db := inmemory.NewClient()
+	store := NewStore(db)
+	ctx := t.Context()
+
+	holder, err := store.FindByIdentifier(ctx, parse(t, otherID), "", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.AWSIdentifier = "vpc-1"
+	_, err = store.Save(ctx, rec, "")
+	require.NoError(t, err)
+
+	holder, err = store.FindByIdentifier(ctx, parse(t, otherID), "vpc-1", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Equal(t, vpcID, holder)
+	require.Equal(t, "app-vpc", AliasOf(holder))
+
+	// The alias's own record does not count.
+	holder, err = store.FindByIdentifier(ctx, parse(t, vpcID), "vpc-1", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+
+	// Other types and regions do not count.
+	holder, err = store.FindByIdentifier(ctx, parse(t, "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.EC2/VPC/x"), "vpc-1", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+	holder, err = store.FindByIdentifier(ctx, parse(t, "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Subnet/x"), "vpc-1", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+}
+
+func Test_FindByIdentifier_AccountScope(t *testing.T) {
+	store := NewStore(inmemory.NewClient())
+	ctx := t.Context()
+	holderID := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.IAM/AccountPasswordPolicy/policy"
+	rec := NewRecord(parse(t, holderID), "owner")
+	rec.Properties.AWSIdentifier = "1234567"
+	_, err := store.Save(ctx, rec, "")
+	require.NoError(t, err)
+
+	otherRegion := parse(t, "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.IAM/AccountPasswordPolicy/other")
+	holder, err := store.FindByIdentifier(ctx, otherRegion, "1234567", schemas.IdentityScopeAccount)
+	require.NoError(t, err)
+	require.Equal(t, holderID, holder, "an account-wide type is searched in every region of the account")
+
+	holder, err = store.FindByIdentifier(ctx, otherRegion, "1234567", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+
+	// An account whose ID starts with the holder's is another account.
+	otherAccount := parse(t, "/planes/aws/aws/accounts/12345678/regions/us-west-2/providers/AWS.IAM/AccountPasswordPolicy/other")
+	holder, err = store.FindByIdentifier(ctx, otherAccount, "1234567", schemas.IdentityScopeAccount)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+}
+
+func Test_accountScope(t *testing.T) {
+	require.Equal(t, "/planes/aws/aws/accounts/1234567", accountScope(parse(t, vpcID)))
+	noAccount := parse(t, "/planes/aws/aws/regions/us-west-2/providers/AWS.EC2/VPC/x")
+	require.Equal(t, noAccount.RootScope(), accountScope(noAccount))
+}
+
+func Test_Settle(t *testing.T) {
+	newRecord := func() *datamodel.AWSResource {
+		rec := NewRecord(parse(t, vpcID), "owner")
+		rec.Properties.LastApplied = map[string]any{"CidrBlock": "10.0.0.0/16", "Tags": map[string]any{"a": "1"}}
+		rec.Properties.Fingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"Secret": "old", "Kept": "same"}}
+		rec.Properties.PendingLastApplied = map[string]any{"EnableDnsSupport": true, "Tags": map[string]any{"b": "2"}}
+		rec.Properties.PendingFingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"Secret": "new", "Kept": "same"}}
+		rec.Properties.PendingOperation = OperationUpdate
+		return rec
+	}
+
+	rec := newRecord()
+	Settle(rec, native.OutcomeRejected)
+	require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16", "Tags": map[string]any{"a": "1"}}, rec.Properties.LastApplied)
+	require.Equal(t, "old", rec.Properties.Fingerprints.Digests["Secret"])
+
+	for _, outcome := range []native.Outcome{native.OutcomePartial, native.OutcomeUnknown} {
+		rec = newRecord()
+		Settle(rec, outcome)
+		require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16", "EnableDnsSupport": true, "Tags": map[string]any{"a": "1", "b": "2"}}, rec.Properties.LastApplied)
+		require.Equal(t, map[string]string{"Kept": "same"}, rec.Properties.Fingerprints.Digests)
+	}
+
+	rec = newRecord()
+	Settle(rec, native.OutcomeApplied)
+	require.Equal(t, map[string]any{"EnableDnsSupport": true, "Tags": map[string]any{"b": "2"}}, rec.Properties.LastApplied)
+	require.Equal(t, "new", rec.Properties.Fingerprints.Digests["Secret"])
+
+	for _, outcome := range []native.Outcome{native.OutcomeRejected, native.OutcomePartial, native.OutcomeUnknown, native.OutcomeApplied} {
+		rec = newRecord()
+		Settle(rec, outcome)
+		require.Nil(t, rec.Properties.PendingLastApplied)
+		require.Nil(t, rec.Properties.PendingFingerprints)
+		require.Empty(t, rec.Properties.PendingOperation)
+	}
+}
+
+func Test_FindByIdentifier_Pages(t *testing.T) {
+	store := NewStore(paged{Client: inmemory.NewClient()})
+	holder, err := store.FindByIdentifier(t.Context(), parse(t, otherID), "vpc-1", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Equal(t, vpcID, holder)
+}
+
+func Test_State(t *testing.T) {
+	rec := NewRecord(parse(t, vpcID), "owner")
+	require.False(t, IsRunning(rec))
+	require.True(t, IsStale(rec))
+	require.False(t, HasApplied(rec))
+	require.Equal(t, OperationUpdate, PendingOperation(rec))
+
+	rec.Properties.ClientToken = "token"
+	require.True(t, IsFirstCreate(rec))
+	require.Equal(t, OperationCreate, PendingOperation(rec))
+	rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+	require.Equal(t, OperationDelete, PendingOperation(rec))
+	require.True(t, IsRunning(rec))
+	rec.Properties.PendingOperation = OperationUpdate
+	require.Equal(t, OperationUpdate, PendingOperation(rec))
+
+	rec.SystemData.LastModifiedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	require.False(t, IsStale(rec))
+	defer func() { Now = time.Now }()
+	Now = func() time.Time { return time.Now().Add(StaleAfter + time.Minute) }
+	require.True(t, IsStale(rec))
+
+	for op, state := range map[string]v1.ProvisioningState{
+		OperationCreate: v1.ProvisioningStateProvisioning,
+		OperationUpdate: v1.ProvisioningStateUpdating,
+		OperationDelete: v1.ProvisioningStateDeleting,
+	} {
+		require.Equal(t, state, StateOf(op))
+	}
+	require.Equal(t, "not-an-id", AliasOf("not-an-id"))
+}
+
+func Test_ApplyPendingAndFail(t *testing.T) {
+	newRec := func() *datamodel.AWSResource {
+		rec := NewRecord(parse(t, vpcID), "owner")
+		rec.Properties.LastApplied = map[string]any{"A": "1"}
+		rec.Properties.PendingLastApplied = map[string]any{"A": "2"}
+		rec.Properties.Fingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"P": "old"}}
+		rec.Properties.PendingFingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"P": "new"}}
+		rec.Properties.PendingOperation = OperationUpdate
+		rec.Properties.ClientToken = "c"
+		rec.Properties.RequestToken = "r"
+		return rec
+	}
+
+	rec := newRec()
+	ApplyPending(rec)
+	require.Equal(t, map[string]any{"A": "2"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "new"}, rec.Properties.Fingerprints.Digests)
+	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+	require.Empty(t, rec.Properties.PendingOperation+rec.Properties.ClientToken+rec.Properties.RequestToken)
+	require.Equal(t, "r", rec.Properties.LastRequestToken)
+	require.Nil(t, rec.Properties.LastRequestError)
+	require.Equal(t, v1.ProvisioningStateSucceeded, rec.ProvisioningState())
+	require.True(t, HasApplied(rec))
+
+	rec = newRec()
+	failure := &v1.ErrorDetails{Code: "Invalid", Message: "bad"}
+	Fail(rec, failure)
+	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "old"}, rec.Properties.Fingerprints.Digests)
+	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+	require.Empty(t, rec.Properties.RequestToken)
+	require.Equal(t, "r", rec.Properties.LastRequestToken)
+	require.Equal(t, failure, rec.Properties.LastRequestError)
+	require.Equal(t, "c", rec.Properties.ClientToken)
+	require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
+
+	// A successful operation without pending values, such as a resumed one, keeps the last-applied properties and
+	// fingerprints.
+	rec = newRec()
+	rec.Properties.PendingLastApplied = nil
+	ApplyPending(rec)
+	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+	require.Equal(t, map[string]string{"P": "old"}, rec.Properties.Fingerprints.Digests)
+
+	// A deploy that made no fingerprints drops the old ones, which are for values the template no longer sets.
+	rec = newRec()
+	rec.Properties.PendingFingerprints = nil
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.Fingerprints)
+}
+
+type failing struct{ database.Client }
+
+func (failing) Get(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
+	return nil, errors.New("down")
+}
+
+func (failing) Query(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+	return nil, errors.New("down")
+}
+
+// paged returns the alias's own record on the first page and the holder on the second.
+type paged struct{ database.Client }
+
+func (paged) Query(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+	if database.NewQueryConfig(options...).PaginationToken == "" {
+		return &database.ObjectQueryResult{Items: []database.Object{{Metadata: database.Metadata{ID: otherID}}}, PaginationToken: "next"}, nil
+	}
+	return &database.ObjectQueryResult{Items: []database.Object{{Metadata: database.Metadata{ID: vpcID}}}}, nil
+}
+
+func Test_KeepPending(t *testing.T) {
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"A": "1", "Nested": map[string]any{"B": "2", "C": "3"}, "List": []any{"x"}}
+	rec.Properties.PendingLastApplied = map[string]any{"Nested": map[string]any{"B": "changed", "D": "4"}, "List": []any{"y"}, "E": "5"}
+	rec.Properties.PendingOperation = OperationUpdate
+	KeepPending(rec)
+	require.Equal(t, map[string]any{
+		"A":      "1",
+		"Nested": map[string]any{"B": "changed", "C": "3", "D": "4"},
+		"List":   []any{"y"},
+		"E":      "5",
+	}, rec.Properties.LastApplied)
+	require.Nil(t, rec.Properties.PendingLastApplied)
+	require.Empty(t, rec.Properties.PendingOperation)
+
+	// A taken-over resource has no last-applied properties yet.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingLastApplied = map[string]any{"A": "1"}
+	KeepPending(rec)
+	require.Equal(t, map[string]any{"A": "1"}, rec.Properties.LastApplied)
+
+	// Without pending values, nothing changes.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	KeepPending(rec)
+	require.Nil(t, rec.Properties.LastApplied)
+}
+
+// Test_KeepPending_Unresolved checks that the paths a possibly applied update changed stay unresolved until AWS applies
+// a deploy fully, so a list the update replaces whole doesn't lose a field AWS may still have.
+func Test_KeepPending_Unresolved(t *testing.T) {
+	interrupted := func() *datamodel.AWSResource {
+		rec := NewRecord(parse(t, vpcID), "owner")
+		rec.Properties.LastApplied = map[string]any{
+			"Mode":   "old",
+			"Same":   "kept",
+			"Videos": []any{map[string]any{"Name": "hd", "Sharpness": 75.0}},
+			"Nested": map[string]any{"B": "2"},
+		}
+		rec.Properties.PendingLastApplied = map[string]any{
+			"Mode":   "new",
+			"Same":   "kept",
+			"Videos": []any{map[string]any{"Name": "hd"}},
+			"Nested": map[string]any{"B": "2", "C": "3"},
+		}
+		rec.Properties.UnresolvedPaths = []string{"Earlier", "Mode"}
+		return rec
+	}
+
+	rec := interrupted()
+	KeepPending(rec)
+	require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths, "changed paths are added to earlier ones, sorted, once each")
+
+	// A map key that holds "/" or "~" stays one segment of its path.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "a", "a~b": "x"}}
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "b", "a~b": "y"}}
+	KeepPending(rec)
+	require.Equal(t, []string{"Labels/a~0b", "Labels/tenant~1id"}, rec.Properties.UnresolvedPaths)
+	for _, outcome := range []native.Outcome{native.OutcomePartial, native.OutcomeUnknown} {
+		rec = interrupted()
+		Settle(rec, outcome)
+		require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths)
+	}
+
+	rec = interrupted()
+	Settle(rec, native.OutcomeRejected)
+	require.Equal(t, []string{"Earlier", "Mode"}, rec.Properties.UnresolvedPaths, "AWS changed nothing, so nothing new is unresolved, and nothing is resolved")
+
+	rec = interrupted()
+	Settle(rec, native.OutcomeApplied)
+	require.Nil(t, rec.Properties.UnresolvedPaths, "AWS applied everything")
+
+	rec = interrupted()
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.UnresolvedPaths)
+
+	// A list the update changes into an object is unresolved at both paths, because AWS may still have the list.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"Config": []any{map[string]any{"Name": "hd", "Sharpness": 75.0}}}
+	rec.Properties.PendingLastApplied = map[string]any{"Config": map[string]any{"Items": []any{"hd"}}}
+	KeepPending(rec)
+	require.Equal(t, []string{"Config", "Config/Items"}, rec.Properties.UnresolvedPaths)
+
+	// A first create has no last-applied properties, so every path it sets is unresolved.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingLastApplied = map[string]any{"Videos": []any{"a"}, "Mode": "new"}
+	KeepPending(rec)
+	require.Equal(t, []string{"Mode", "Videos"}, rec.Properties.UnresolvedPaths)
+
+	// An operation without pending values, such as a delete, resolves nothing.
+	rec = interrupted()
+	rec.Properties.PendingLastApplied = nil
+	ApplyPending(rec)
+	require.Equal(t, []string{"Earlier", "Mode"}, rec.Properties.UnresolvedPaths)
+}
+
+func Test_KeepPending_Fingerprints(t *testing.T) {
+	fingerprints := func(keyID string, digests map[string]string) *datamodel.AWSFingerprints {
+		return &datamodel.AWSFingerprints{KeyID: keyID, Digests: digests}
+	}
+
+	// The update may or may not have reached AWS, so a fingerprint it changed or added is dropped, and the value is
+	// sent again. Fingerprints it did not change stay, and so do those of values it did not set.
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.Fingerprints = fingerprints("k", map[string]string{"Same": "a", "Changed": "b", "Other": "c"})
+	rec.Properties.PendingFingerprints = fingerprints("k", map[string]string{"Same": "a", "Changed": "x", "New": "y"})
+	KeepPending(rec)
+	require.Equal(t, fingerprints("k", map[string]string{"Same": "a", "Other": "c"}), rec.Properties.Fingerprints)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+
+	// Fingerprints made with a different key, or none at all, are unusable already and stay as they are.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.Fingerprints = fingerprints("old", map[string]string{"Changed": "b"})
+	rec.Properties.PendingFingerprints = fingerprints("new", map[string]string{"Changed": "x"})
+	KeepPending(rec)
+	require.Equal(t, fingerprints("old", map[string]string{"Changed": "b"}), rec.Properties.Fingerprints)
+
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingFingerprints = fingerprints("k", map[string]string{"Changed": "x"})
+	KeepPending(rec)
+	require.Nil(t, rec.Properties.Fingerprints)
+	require.Nil(t, rec.Properties.PendingFingerprints)
+}
+
+func Test_Store_DeleteAndTouchErrors(t *testing.T) {
+	store := NewStore(failingWrites{Client: inmemory.NewClient()})
+	require.Error(t, store.DeleteIfUnchanged(t.Context(), parse(t, vpcID), "etag"))
+
+	// DeleteIfUnchanged of a record that is already gone succeeds.
+	require.NoError(t, NewStore(notFoundDB{Client: inmemory.NewClient()}).DeleteIfUnchanged(t.Context(), parse(t, vpcID), "etag"))
+
+	// Touch leaves alone a record another request saved meanwhile.
+	db := inmemory.NewClient()
+	rec := NewRecord(parse(t, vpcID), "owner")
+	_, err := NewStore(db).Save(t.Context(), rec, "")
+	require.NoError(t, err)
+	require.NoError(t, NewStore(concurrentSave{Client: db}).Touch(t.Context(), parse(t, vpcID)))
+}
+
+// failingWrites fails every delete.
+type failingWrites struct{ database.Client }
+
+func (failingWrites) Delete(ctx context.Context, id string, options ...database.DeleteOptions) error {
+	return errors.New("down")
+}
+
+// notFoundDB reports every delete as not found, as Postgres does for a missing record even with an ETag.
+type notFoundDB struct{ database.Client }
+
+func (notFoundDB) Delete(ctx context.Context, id string, options ...database.DeleteOptions) error {
+	return &database.ErrNotFound{ID: id}
+}
+
+// concurrentSave reports every save as losing a race.
+type concurrentSave struct{ database.Client }
+
+func (concurrentSave) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+	return &database.ErrConcurrency{}
+}

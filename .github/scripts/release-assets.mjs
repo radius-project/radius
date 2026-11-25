@@ -3,10 +3,14 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { bicepExtensionLockName } from "./release-bicep-extensions.mjs";
+import { validatePublicationManifest } from "./publish-draft-release.mjs";
 
 import {
   waitForRelease,
-  waitForReleaseState
+  waitForReleaseState,
+  findRelease,
+  listReleases
 } from "./release-reconciliation.mjs";
 
 /** @param {unknown} value */
@@ -72,6 +76,74 @@ function downloadUploadedAsset(github, owner, repo, asset, options) {
       description: `Uploaded release asset ${asset.name} (ID ${asset.id})`
     }
   );
+}
+
+export async function readBicepExtensionLock(
+  github,
+  tag,
+  options = { core: console }
+) {
+  const owner = "radius-project";
+  const repo = "radius";
+  const releases = await github.paginate(github.rest.repos.listReleases, {
+    owner,
+    repo,
+    per_page: 100
+  });
+  const matches = releases.filter((release) => release.tag_name === tag);
+  if (matches.length > 1) throw new Error(`Multiple releases for ${tag}`);
+  if (!matches.length) return undefined;
+  const release = matches[0];
+  const asset = findAsset(
+    await listAssets(github, owner, repo, release.id),
+    bicepExtensionLockName
+  );
+  if (asset?.state === "starter") {
+    if (!release.draft)
+      throw new Error("Published GHCR release has an incomplete Bicep lock");
+    // No lock bytes were accepted. The authenticated pair upload reconciles
+    // this incomplete asset using the existing starter-asset recovery.
+    return undefined;
+  }
+  if (!asset) {
+    if (!release.draft)
+      throw new Error("Published GHCR release is missing its Bicep lock");
+    return undefined;
+  }
+  return JSON.parse(
+    (await downloadUploadedAsset(github, owner, repo, asset, options)).toString(
+      "utf8"
+    )
+  );
+}
+
+export async function readPublishedReleaseManifest(github, tag, sourceSha) {
+  const owner = "radius-project";
+  const repo = "radius";
+  const release = findRelease(await listReleases(github, owner, repo), tag);
+  if (!release || release.draft === true) return undefined;
+  if (release.draft !== false)
+    throw new Error("Release publication state is unknown");
+  const { data: commit } = await github.rest.repos.getCommit({
+    owner,
+    repo,
+    ref: `refs/tags/${tag}`
+  });
+  if (commit.sha !== sourceSha)
+    throw new Error("Published release tag differs from the approved source");
+  const asset = findAsset(
+    await listAssets(github, owner, repo, release.id),
+    "release-manifest.json"
+  );
+  if (!asset || asset.state !== "uploaded")
+    throw new Error(
+      "Published release is missing its completed release manifest"
+    );
+  const manifest = JSON.parse(
+    (await downloadAsset(github, owner, repo, asset.id)).toString("utf8")
+  );
+  validatePublicationManifest(manifest, tag, sourceSha);
+  return manifest;
 }
 
 /** @param {Buffer} data @param {string} name */
@@ -216,7 +288,10 @@ async function downloadFiles(github, core, owner, repo, release) {
 
   const assets = await listAssets(github, owner, repo, release.id);
   const missing = names.filter((name) => !findAsset(assets, name));
-  if (missing.length > 0 && !optional) {
+  if (
+    missing.length > 0 &&
+    (!optional || missing.includes(bicepExtensionLockName))
+  ) {
     throw new Error(`Release is missing assets: ${missing.join(", ")}`);
   }
   if (missing.length > 0) {
@@ -245,7 +320,8 @@ async function uploadFile(
 ) {
   const name = path.basename(file);
   const data = await readFile(file);
-  const immutable = core.getInput("IMMUTABLE") === "true";
+  const immutable =
+    name === bicepExtensionLockName || core.getInput("IMMUTABLE") === "true";
   let assets = await listAssets(github, owner, repo, release.id);
   let existing = findAsset(assets, name);
   if (await deleteStarterAsset(github, owner, repo, release, existing)) {

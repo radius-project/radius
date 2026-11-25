@@ -27,8 +27,10 @@ import (
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -36,8 +38,22 @@ import (
 //
 // For testability, all fields on this struct MUST be parsable from YAML without any further initialization required.
 type Config struct {
+	// AWS is the configuration for the AWS plane.
+	AWS AWSConfig `yaml:"aws"`
+
 	// Authorization is the configuration for internal component authorization.
 	Authorization authz.Options `yaml:"authorization"`
+
+	// CallerAuthentication configures verified Kubernetes request-header identity.
+	// When both trust sources are absent, forwarded identity headers are rejected.
+	CallerAuthentication *authorization.RequestHeaderOptions `yaml:"callerAuthentication,omitempty"`
+
+	// KubernetesCallerAuthentication loads dedicated aggregation-proxy trust from
+	// the cluster at startup. It is mutually exclusive with CallerAuthentication.
+	KubernetesCallerAuthentication *authorization.KubernetesRequestHeaderOptions `yaml:"kubernetesCallerAuthentication,omitempty"`
+
+	// UserAuthorization enables the user-facing policy runtime, not enforcement.
+	UserAuthorization authorization.RuntimeOptions `yaml:"userAuthorization"`
 
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`
@@ -72,6 +88,9 @@ type Config struct {
 	// Server is the configuration for the HTTP server.
 	Server hostoptions.ServerOptions `yaml:"server"`
 
+	// SHA256Migration is the configuration for the automatic migration of SHA-1-derived values.
+	SHA256Migration hashmigration.Config `yaml:"sha256Migration"`
+
 	// Tracing is the configuration for the tracing system.
 	Tracing traceservice.Options `yaml:"tracerProvider"`
 
@@ -94,6 +113,14 @@ const (
 type IdentityConfig struct {
 	// AuthMethod represents the method of authentication for authenticating with external systems like Azure and AWS.
 	AuthMethod string `yaml:"authMethod"`
+}
+
+// AWSConfig provides configuration for the AWS plane.
+type AWSConfig struct {
+	// FingerprintKeyFile is the file that holds the HMAC key for fingerprints of write-only AWS property values.
+	// Defaults to the path where the Helm chart mounts the key. Set it to use a different key file, such as when
+	// running UCP as a local process.
+	FingerprintKeyFile string `yaml:"fingerprintKeyFile"`
 }
 
 // RoutingConfig provides configuration for UCP routing.

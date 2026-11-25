@@ -24,7 +24,12 @@ endif
 
 # generate-rad-corerp-client-2025-08-01-preview is a new target, which will replace generate-rad-corerp-client in future, once all resources of Radius.Core are ready and Applications.Core is deprecated.
 .PHONY: generate
-generate: generate-cleanup generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-genericcliclient generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-cleanup generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-rad-authorization-client generate-genericcliclient generate-go generate-bicep-types generate-ucp-crd generate-controller generate-rbac-catalog ## Generates all targets.
+
+.PHONY: generate-rbac-catalog
+generate-rbac-catalog: generate-openapi-spec ## Generates the user-facing RBAC permission catalog.
+	go run ./pkg/ucp/authorization/internal/cataloggen/cmd
+	go test ./pkg/ucp/authorization -run TestCatalogUpToDate
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed: generate-pnpm-installed
@@ -57,6 +62,7 @@ generate-openapi-spec: # Generates all Radius OpenAPI specs from TypeSpec.
 	cd typespec/Applications.Messaging && pnpm exec tsp compile .
 	cd typespec/Applications.Datastores && pnpm exec tsp compile .
 	cd typespec/Radius.Core && pnpm exec tsp compile .
+	cd typespec/Radius.Core/authorization && pnpm exec tsp compile .
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -141,6 +147,12 @@ generate-genericcliclient: generate-tsp-installed ## Generates the generic CLI c
 	$(call generate-typespec-go-client,typespec/GenericResource,pkg/cli/clients_new/generated,true)
 	@echo "$(ARROW) Done."
 
+.PHONY: generate-rad-authorization-client
+generate-rad-authorization-client: generate-tsp-installed ## Generates UCP authorization contracts without adding Applications RP routes.
+	cd typespec/Radius.Core/authorization && pnpm exec tsp compile .
+	@mkdir -p pkg/ucp/api/authorization/v20250801preview/fake
+	$(call generate-typespec-go-client,typespec/Radius.Core/authorization,pkg/ucp/api/authorization/v20250801preview,true)
+
 .PHONY: generate-go
 generate-go: ## Generates go with 'go generate' (Mocks).
 	@echo "$(ARROW) Running go generate..."
@@ -214,20 +226,20 @@ rebuild-bicep-types-index:
 	node $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/rebuild-index.js --out-dir $(BICEP_TYPES_GENERATED_DIR) --release-version ${VERSION}
 
 # Publishing the unified `radius` Bicep extension. Runnable locally against any
-# OCI registry (e.g. a local Zot/CRane-backed registry, or biceptypes.azurecr.io
-# after `az acr login`). Both BICEP_PUBLISH_TARGET and the local Bicep CLI must
+# OCI registry (e.g. a local Zot/CRane-backed registry, or ghcr.io
+# after `docker login`). Both BICEP_PUBLISH_TARGET and the local Bicep CLI must
 # be available. CI workflows (added separately) call this target after
 # generating types and authenticating to the registry.
 #
-# Example:
-#   make publish-bicep-extension BICEP_PUBLISH_TARGET=br:biceptypes.azurecr.io/radius:latest
+# Example (replace your-github-user with your own namespace):
+#   make publish-bicep-extension BICEP_PUBLISH_TARGET=br:ghcr.io/your-github-user/bicep-types-radius:dev
 BICEP_PUBLISH_INDEX := $(BICEP_TYPES_OUTPUT_BASE)/../index.json
 BICEP_PUBLISH_TARGET ?=
 
 .PHONY: publish-bicep-extension
 publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICEP_PUBLISH_TARGET. Requires generate-bicep-types to have been run.
 	@if [ -z "$(BICEP_PUBLISH_TARGET)" ]; then \
-		echo "ERROR: BICEP_PUBLISH_TARGET must be set (e.g. br:biceptypes.azurecr.io/radius:latest)"; \
+		echo "ERROR: BICEP_PUBLISH_TARGET must be set (e.g. br:ghcr.io/your-github-user/bicep-types-radius:dev)"; \
 		exit 1; \
 	fi
 	@if [ ! -f "$(BICEP_PUBLISH_INDEX)" ]; then \

@@ -1,0 +1,583 @@
+import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import test from "node:test";
+
+const root = new URL("../../../", import.meta.url);
+const examplesDir = new URL("examples/2025-08-01-preview/", import.meta.url);
+const read = (url) => readFileSync(url, "utf8");
+const json = (url) => JSON.parse(read(url));
+const examples = readdirSync(examplesDir)
+  .filter((file) => file.endsWith(".json"))
+  .map((file) => ({ file, ...json(new URL(file, examplesDir)) }));
+
+test("checkAccess bounds do not restrict either explainAccess request", async (t) => {
+  const { definitions, paths } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  const resolve = (schema) =>
+    schema.$ref ?
+      definitions[schema.$ref.slice("#/definitions/".length)]
+    : schema;
+  for (const prefix of ["", "/{scope}"]) {
+    for (const operation of ["checkAccess", "explainAccess"]) {
+      const path = `${prefix}/providers/Radius.Core/${operation}`;
+      await t.test(path, () => {
+        const parameter = paths[path].post.parameters.find(
+          (parameter) => parameter.in === "body"
+        );
+        const request = resolve(parameter.schema);
+        const checks = request.properties.checks;
+        const check = resolve(checks.items);
+        const principal = resolve(request.properties.principal);
+        const bounded = operation === "checkAccess";
+        assert.equal(checks.minItems, 1);
+        assert.equal(checks.maxItems, bounded ? 100 : undefined);
+        assert.equal(
+          check.properties.target.maxLength,
+          bounded ? 2048 : undefined
+        );
+        assert.equal(
+          check.properties.permission.maxLength,
+          bounded ? 256 : undefined
+        );
+        for (const [field, maximum] of [
+          ["issuer", 256],
+          ["subject", 512],
+          ["displayName", 128]
+        ]) {
+          assert.equal(
+            principal.properties[field].maxLength,
+            bounded ? maximum : undefined,
+            field
+          );
+        }
+      });
+    }
+  }
+});
+
+test("access-check input bounds do not constrain verified identity output", () => {
+  const { definitions } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(
+    definitions.BoundedAccessCheckRequest.properties.principal.$ref,
+    "#/definitions/AccessCheckPrincipal"
+  );
+  for (const [field, maximum] of [
+    ["issuer", 256],
+    ["subject", 512],
+    ["displayName", 128]
+  ]) {
+    assert.equal(
+      definitions.AccessCheckPrincipal.properties[field].maxLength,
+      maximum
+    );
+    assert.equal(definitions.Principal.properties[field].maxLength, undefined);
+  }
+  for (const model of ["WhoAmIResult", "CheckAccessResponse"]) {
+    assert.equal(
+      definitions[model].properties.principal.$ref,
+      "#/definitions/Principal"
+    );
+  }
+  assert.equal(
+    definitions.WhoAmIResult.properties.groups.items.$ref,
+    "#/definitions/Principal"
+  );
+});
+
+test("inspection scope limits preserve existing policy and management contracts", () => {
+  const { definitions, paths, parameters } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(definitions.AuthorizationScope.maxLength, undefined);
+  assert.equal(definitions.AuthorizationScopePath.maxLength, undefined);
+  for (const [model, property] of [
+    ["RoleDefinitionProperties", "assignableScopes"],
+    ["RoleAssignmentProperties", "scope"]
+  ]) {
+    const field = definitions[model].properties[property];
+    assert.equal(field.maxLength, undefined);
+    if (field.items) assert.equal(field.items.maxLength, undefined);
+  }
+  assert.equal(
+    definitions.BoundedAccessCheck.properties.target.maxLength,
+    2048
+  );
+  let scopedCheck = false;
+  for (const [path, methods] of Object.entries(paths)) {
+    for (const operation of Object.values(methods)) {
+      for (const value of operation.parameters ?? []) {
+        const parameter =
+          value.$ref?.startsWith("#/parameters/") ?
+            parameters[value.$ref.slice("#/parameters/".length)]
+          : value;
+        if (parameter.name !== "scope") continue;
+        const inspection = path.endsWith("/checkAccess");
+        assert.equal(parameter.maxLength, inspection ? 2047 : undefined, path);
+        if (inspection) scopedCheck = true;
+      }
+    }
+  }
+  assert.equal(scopedCheck, true);
+  assert.equal(
+    parameters["AccessChangeListOptions.scope"].maxLength,
+    undefined
+  );
+});
+
+test("inspection permission limits preserve existing catalog and policy contracts", () => {
+  const { definitions } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  const resolve = (schema) =>
+    schema.$ref ?
+      {
+        ...resolve(definitions[schema.$ref.slice("#/definitions/".length)]),
+        ...schema
+      }
+    : schema;
+  const permission = `Team.Data/${"a".repeat(250)}/read`;
+  for (const [model, property] of [
+    ["RoleDefinitionProperties", "permissions"],
+    ["Permission", "name"],
+    ["EffectiveAccessResponse", "permissions"]
+  ]) {
+    const field = definitions[model].properties[property];
+    const schema = resolve(field.items ?? field);
+    assert.match(permission, new RegExp(schema.pattern), model);
+    assert.equal(schema.maxLength, undefined, model);
+  }
+  const inspection = resolve(
+    definitions.BoundedAccessCheck.properties.permission
+  );
+  assert.match(permission, new RegExp(inspection.pattern));
+  assert.equal(inspection.maxLength, 256);
+  assert.ok(permission.length > inspection.maxLength);
+});
+
+test("examples preserve the requested role and assignment shapes", async (t) => {
+  assert.equal(examples.length, 3);
+  for (const example of examples) {
+    await t.test(example.file, () => {
+      const { parameters } = example;
+      const response = example.responses["201"].body;
+      assert.deepEqual(example.responses["200"].body, response);
+      assert.equal(parameters["api-version"], "2025-08-01-preview");
+      assert.ok(parameters.scope.startsWith("planes/"));
+      assert.equal(parameters.scope.endsWith("/"), false);
+      assert.equal(
+        response.name,
+        parameters.roleDefinitionName ?? parameters.roleAssignmentName
+      );
+      assert.equal(
+        response.id,
+        `/${parameters.scope}/providers/${response.type}/${response.name}`
+      );
+      const request = parameters.resource.properties;
+      if (response.type === "Radius.Core/roleDefinitions") {
+        assert.equal(response.properties.roleType, "Custom");
+        assert.equal("roleType" in request, false);
+        assert.deepEqual(response.properties.permissions, request.permissions);
+        assert.ok(
+          request.permissions.every((permission) => !permission.includes("*"))
+        );
+      } else {
+        assert.equal(response.type, "Radius.Core/roleAssignments");
+        assert.equal(response.properties.scope, `/${parameters.scope}`);
+        for (const field of ["scope", "managedBy", "createdBy"]) {
+          assert.equal(
+            field in request,
+            false,
+            `${field} must be server-owned`
+          );
+        }
+        assert.deepEqual(request.principal, response.properties.principal);
+        assert.deepEqual(
+          Object.fromEntries(
+            ["type", "issuer", "subject"].map((key) => [
+              key,
+              request.principal[key]
+            ])
+          ),
+          {
+            type: "group",
+            issuer: "kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530",
+            subject: "team-a-devs"
+          }
+        );
+        assert.equal(
+          response.properties.roleDefinitionId,
+          request.roleDefinitionId
+        );
+      }
+    });
+  }
+  const environment = examples.find(({ file }) => file.includes("Environment"));
+  assert.equal(
+    environment.parameters.scope,
+    "planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging"
+  );
+  assert.match(
+    environment.responses["201"].body.id,
+    /\/environments\/staging\/providers\/Radius[.]Core\/roleAssignments\//
+  );
+});
+
+test("entry points keep authorization out of Applications RP generation", () => {
+  const applicationEntry = read(new URL("../main.tsp", import.meta.url));
+  assert.doesNotMatch(applicationEntry, /import\s+["'][^"']*authorization/);
+  assert.match(
+    read(new URL("main.tsp", import.meta.url)),
+    /import "\.\.\/authorization[.]tsp"/
+  );
+  const bicepEntry = read(new URL("../bicep/main.tsp", import.meta.url));
+  assert.match(bicepEntry, /import "\.\.\/main[.]tsp"/);
+  assert.match(bicepEntry, /import "\.\.\/authorization[.]tsp"/);
+  const config = read(new URL("tspconfig.yaml", import.meta.url));
+  assert.match(config, /pkg\/ucp\/api\/authorization\/v20250801preview/);
+  assert.doesNotMatch(config, /pkg\/corerp/);
+});
+
+const scalarPattern = (source, name, maximum) => {
+  const declaration = source.match(
+    new RegExp(
+      `((?:^[\\t ]*@[^\\n]*\\n)+)^[\\t ]*scalar ${name} extends string;`,
+      "m"
+    )
+  );
+  assert.ok(declaration, `missing scalar decorators: ${name}`);
+  const pattern = declaration[1].match(
+    /^[\t ]*@pattern\("((?:\\.|[^"\\])*)"\)[\t ]*$/m
+  );
+  assert.ok(pattern, `missing scalar pattern: ${name}`);
+  const maxLength = declaration[1].match(/^[\t ]*@maxLength\((\d+)\)[\t ]*$/m);
+  if (maximum === undefined) {
+    assert.equal(maxLength, null, `unexpected scalar maxLength: ${name}`);
+  } else {
+    assert.ok(maxLength, `missing scalar maxLength: ${name}`);
+    assert.equal(Number(maxLength[1]), maximum, `scalar maxLength: ${name}`);
+  }
+  return new RegExp(JSON.parse(`"${pattern[1]}"`));
+};
+
+test("scalar constraints accept decorator order without losing either constraint", () => {
+  const decorators = [
+    '@doc("fixture")',
+    '@pattern("^[a-z]+$")',
+    "@maxLength(8)"
+  ];
+  for (const order of [
+    [0, 1, 2],
+    [2, 1, 0]
+  ]) {
+    const source = `${order.map((index) => decorators[index]).join("\n")}\nscalar Fixture extends string;`;
+    const pattern = scalarPattern(source, "Fixture", 8);
+    assert.ok(pattern.test("abc"));
+    assert.equal(pattern.test("ABC"), false);
+  }
+  for (const [source, expected] of [
+    ["@maxLength(8)", /missing scalar pattern/],
+    ['@pattern("^[a-z]+$")', /missing scalar maxLength/],
+    ['@pattern("^[a-z]+$")\n@maxLength(9)', /scalar maxLength/]
+  ]) {
+    assert.throws(
+      () =>
+        scalarPattern(
+          `${source}\nscalar Fixture extends string;`,
+          "Fixture",
+          8
+        ),
+      expected
+    );
+  }
+});
+
+test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
+  const source = read(new URL("../authorization.tsp", import.meta.url));
+  const scope = scalarPattern(source, "AuthorizationScope");
+  const plane = "/planes/radius/local";
+  const group = `${plane}/resourceGroups/team-a`;
+  for (const value of [
+    "/",
+    plane,
+    group,
+    "/planes/aws/aws-account",
+    "/planes/azure/azure-subscription"
+  ]) {
+    assert.ok(scope.test(value), value);
+  }
+  for (const type of [
+    "Radius.Core/environments",
+    "Radius.Core/recipePacks",
+    "Radius.Core/applications",
+    "Applications.Core/environments",
+    "Applications.Core/applications"
+  ]) {
+    const value = `${group}/providers/${type}/one`;
+    assert.ok(scope.test(value), value);
+    assert.ok(scope.test(value.toLowerCase()), value.toLowerCase());
+  }
+  for (const value of [
+    "",
+    `${group}/`,
+    `${group}//providers/Radius.Core/environments/one`,
+    `${group}/providers/Radius.Core/environments/*`,
+    `${group}/providers/Radius.Core/environments/white space`
+  ]) {
+    assert.equal(scope.test(value), false, value);
+  }
+  const permission = scalarPattern(source, "PermissionName");
+  for (const value of [
+    "Radius.Core/applications/read",
+    "Radius.Core/environments/use/action",
+    "System.Resources/resourceProviders/resourceTypes/joinPermissionSet/action",
+    "Radius.Data/my-sql/read"
+  ]) {
+    assert.ok(permission.test(value), value);
+  }
+  for (const value of [
+    "*",
+    "Radius.Core/*",
+    "Radius.Core/applications/*",
+    "Radius.Core/applications/read "
+  ]) {
+    assert.equal(permission.test(value), false, value);
+  }
+  const path = scalarPattern(source, "AuthorizationScopePath");
+  assert.ok(path.test(group.slice(1)));
+  assert.equal(path.test(group), false);
+  assert.equal(path.test(`${group.slice(1)}/`), false);
+});
+
+test("Bicep merges resource-group resources and excludes installation-only and read-only APIs", () => {
+  const types = json(
+    new URL(
+      "hack/bicep-types-radius/generated/radius/radius.core/2025-08-01-preview/types.json",
+      root
+    )
+  );
+  const resolve = (reference) => types[Number(reference.$ref.slice(2))];
+  const resource = (name) => {
+    const found = types.find(
+      (type) =>
+        type.$type === "ResourceType" &&
+        type.name === `Radius.Core/${name}@2025-08-01-preview`
+    );
+    assert.ok(found, name);
+    return found;
+  };
+  for (const name of [
+    "applications",
+    "environments",
+    "recipePacks",
+    "bicepSettings",
+    "terraformSettings"
+  ]) {
+    resource(name);
+  }
+  assert.equal(resource("roleDefinitions").readableScopes, 0);
+  assert.equal(resource("roleDefinitions").writableScopes, 0);
+  assert.equal(resource("roleAssignments").readableScopes, 0);
+  assert.equal(resource("roleAssignments").writableScopes, 0);
+  const body = (name) => resolve(resource(name).body);
+  const properties = (name) =>
+    resolve(body(name).properties.properties.type).properties;
+  for (const key of ["scope", "managedBy", "createdBy"]) {
+    assert.equal(properties("roleAssignments")[key].flags, 2, key);
+  }
+  assert.equal(properties("roleDefinitions").roleType.flags, 2);
+  assert.equal(
+    types.some(
+      (type) =>
+        type.$type === "ResourceType" &&
+        /\/(authorizationSettings|accessChanges|permissions)@/.test(type.name)
+    ),
+    false
+  );
+  const index = json(
+    new URL("hack/bicep-types-radius/generated/index.json", root)
+  );
+  for (const name of [
+    "authorizationSettings",
+    "accessChanges",
+    "permissions"
+  ]) {
+    assert.equal(
+      `Radius.Core/${name}@2025-08-01-preview` in index.resources,
+      false
+    );
+  }
+  for (const name of ["roleDefinitions", "roleAssignments"]) {
+    assert.equal(
+      index.resources[`Radius.Core/${name}@2025-08-01-preview`].$ref,
+      `radius/radius.core/2025-08-01-preview/types.json#/${types.indexOf(resource(name))}`
+    );
+  }
+});
+
+test("generated Swagger preserves scope routes, read-only fields, and operation boundaries", () => {
+  const spec = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(spec.info.version, "2025-08-01-preview");
+  const prefix = "/providers/Radius.Core";
+  const methods = (path) =>
+    Object.keys(spec.paths[path])
+      .filter((key) => ["get", "put", "post", "patch", "delete"].includes(key))
+      .sort();
+  for (const scope of ["", "/{scope}"]) {
+    for (const [type, key] of [
+      ["roleDefinitions", "roleDefinitionName"],
+      ["roleAssignments", "roleAssignmentName"]
+    ]) {
+      assert.deepEqual(methods(`${scope}${prefix}/${type}`), ["get"]);
+      assert.deepEqual(methods(`${scope}${prefix}/${type}/{${key}}`), [
+        "delete",
+        "get",
+        "put"
+      ]);
+    }
+    assert.deepEqual(methods(`${scope}${prefix}/checkAccess`), ["post"]);
+    assert.deepEqual(methods(`${scope}${prefix}/explainAccess`), ["post"]);
+    assert.deepEqual(methods(`${scope}${prefix}/effectiveAccess`), ["get"]);
+  }
+  assert.deepEqual(methods(`${prefix}/authorizationSettings/default`), [
+    "get",
+    "put"
+  ]);
+  assert.deepEqual(methods(`${prefix}/permissions`), ["get"]);
+  assert.deepEqual(methods(`${prefix}/accessChanges`), ["get"]);
+  assert.deepEqual(methods(`${prefix}/accessChanges/{accessChangeName}`), [
+    "get"
+  ]);
+  assert.deepEqual(methods(`${prefix}/whoAmI`), ["get"]);
+  assert.equal(
+    Object.keys(spec.paths).some((path) => /internal|preflight/.test(path)),
+    false
+  );
+
+  const definitions = Object.values(spec.definitions);
+  const snapshot = definitions.find(
+    (definition) =>
+      definition.properties?.roleAssignment &&
+      definition.properties?.authorizationSettings
+  );
+  assert.ok(snapshot, "missing policy snapshot");
+  assert.equal(snapshot.properties.roleAssignments.type, "array");
+  assert.equal(snapshot.required?.includes("roleAssignments") ?? false, false);
+  const assignmentResource =
+    spec.definitions[
+      snapshot.properties.roleAssignments.items.$ref.split("/").at(-1)
+    ];
+  assert.ok(assignmentResource.properties.properties);
+  assert.ok(assignmentResource.properties.id || assignmentResource.allOf);
+  assert.match(
+    snapshot.properties.roleAssignments.description,
+    /not the complete assignment inventory/
+  );
+  const properties = (required) => {
+    const model = definitions.find((definition) =>
+      required.every((key) => Object.hasOwn(definition.properties ?? {}, key))
+    );
+    assert.ok(model, `missing properties: ${required.join(", ")}`);
+    return model.properties;
+  };
+  const role = properties(["displayName", "roleType", "permissions"]);
+  assert.equal(role.roleType.readOnly, true);
+  const assignment = properties([
+    "roleDefinitionId",
+    "principal",
+    "scope",
+    "managedBy",
+    "createdBy"
+  ]);
+  for (const key of ["scope", "managedBy", "createdBy"]) {
+    assert.equal(assignment[key].readOnly, true, key);
+  }
+  assert.deepEqual(assignment.roleDefinitionId["x-ms-mutability"], [
+    "read",
+    "create"
+  ]);
+  const principal = properties(["type", "issuer", "subject"]);
+  for (const key of ["type", "issuer", "subject"]) {
+    assert.deepEqual(
+      principal[key]["x-ms-mutability"],
+      ["read", "create"],
+      key
+    );
+  }
+  const mode = definitions.find((definition) =>
+    definition.enum?.includes("DryRun")
+  );
+  assert.deepEqual([...mode.enum].sort(), ["Disabled", "DryRun", "Enforce"]);
+
+  const resolve = (parameter) =>
+    parameter.$ref?.startsWith("#/parameters/") ?
+      spec.parameters[parameter.$ref.split("/").at(-1)]
+    : parameter;
+  const scopedPut =
+    spec.paths[`/{scope}${prefix}/roleAssignments/{roleAssignmentName}`].put;
+  const scope = scopedPut.parameters
+    .map(resolve)
+    .find((parameter) => parameter.name === "scope");
+  assert.equal(scope.in, "path");
+  assert.equal(scope["x-ms-skip-url-encoding"], true);
+
+  for (const path of [
+    `${prefix}/effectiveAccess`,
+    `/{scope}${prefix}/effectiveAccess`,
+    `${prefix}/accessChanges`
+  ]) {
+    const principal = spec.paths[path].get.parameters
+      .map(resolve)
+      .find((parameter) => parameter.name === "principal");
+    assert.equal(principal.in, "query");
+    assert.match(
+      principal.description,
+      /JSON object containing type, issuer, and subject/
+    );
+    assert.match(principal.description, /not a display-form principal string/);
+    if (path.endsWith("/effectiveAccess")) {
+      assert.equal(principal.required, false);
+      assert.match(principal.description, /Omit to inspect the caller/);
+      assert.match(
+        principal.description,
+        /No group memberships may be asserted/
+      );
+    } else {
+      assert.match(principal.description, /authenticated actor/);
+    }
+  }
+
+  const applicationSpec = json(
+    new URL(
+      "swagger/specification/radius/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(
+    Object.keys(applicationSpec.paths).some((path) =>
+      /roleDefinitions|roleAssignments|authorizationSettings|accessChanges|checkAccess|whoAmI/.test(
+        path
+      )
+    ),
+    false
+  );
+});

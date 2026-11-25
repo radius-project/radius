@@ -117,6 +117,69 @@ That means service-specific code usually does not build raw HTTP stacks itself.
 Instead, it supplies a `Configure` callback that registers routes on top of the
 shared server.
 
+### Internal component authorization
+
+ARM-RPC frontends serve through `mtls.ListenAndServe` in
+[pkg/authz/mtls/serve.go](../../pkg/authz/mtls/serve.go), which applies the
+authorization mode from the `authorization` config section (set by the chart
+from `global.rbac.enabled` and `global.rbac.dryRun`). Internal calls are
+authenticated with projected Kubernetes ServiceAccount tokens; no component
+presents a client certificate.
+
+- `off` (default): plain HTTP, behavior unchanged.
+- `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
+  invalid tokens, disallowed callers, and requests that can't be checked
+  because the signing keys are unavailable are logged as would-deny
+  (`InvalidAuthenticationInfo`, `AuthorizationFailed`,
+  `AuthorizationUnavailable`), and the request is served without a caller
+  identity.
+- `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
+  wrong-audience token gets `401 InvalidAuthenticationInfo`; unavailable
+  signing keys give `503 AuthorizationUnavailable`; and callers not in the
+  server's allowed list get `403 AuthorizationFailed`. `applications-rp` and
+  `dynamic-rp` allow only the `ucp` identity.
+
+Signing keys are unavailable when none have loaded yet, when 15 minutes have
+passed since the last successful fetch, or when the last successful fetch
+returned no usable key. A failed refresh alone does not cause a `503`: the
+receiver keeps verifying tokens with the keys it already has until that
+15-minute limit.
+
+Each receiver presents the certificate that cert-manager issues to it in Secret
+`<receiver>-spiffe`, mounted at `/var/run/radius/spiffe` (`tls.crt`,
+`tls.key`), whose only SAN is the URI
+`spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
+client certificate. It verifies the `Authorization: Bearer` token offline with
+[pkg/authz/token](../../pkg/authz/token/verifier.go), requiring the receiver's
+name as the audience, maps the ServiceAccount to the caller's
+`<component>.<namespace>.svc` identity, and removes the header before calling the
+handler. Probes and metrics stay on their plain ports.
+
+Callers build transports with `mtls.NewClientTransport` and
+`mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
+They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and
+require exactly one SAN, a URI SAN with the receiver's SPIFFE ID, instead of
+matching DNS names; a certificate with any DNS, IP, email, or other SAN is
+rejected. Only after the server is verified do they send the token from
+`/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
+UCP, Applications RP, Dynamic RP, and the controller project only `ca.crt`
+from the `radius-ca` Secret (never
+`tls.key`) to `/var/run/radius/ca`; the server certificate volume projects no
+`ca.crt`. Servers chain their certificate to it and clients verify servers
+against it.
+
+Certificate and CA files are reloaded by polling (every 10 seconds) without a
+restart; new handshakes use the new material. Before each request, a client
+closes every connection whose verified server chain has expired, including
+connections in use, which aborts their in-flight requests and active HTTP/2
+streams. It also retires the connection pool that held the expired connection,
+so the request performs a fresh handshake with the current CA bundle instead of
+racing HTTP/2's asynchronous removal of the closed connection. A retired pool
+keeps only its unexpired connections that are still serving requests. Each
+later request closes the pool's idle connections and forgets the pool once it
+has no unexpired tracked connections. When a connection in a retired pool
+expires, the client closes it without replacing the current pool again.
+
 ### Request context and validation
 
 The server layer applies middleware that creates an ARM-aware request context.

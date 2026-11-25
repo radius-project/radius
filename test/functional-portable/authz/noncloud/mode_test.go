@@ -34,6 +34,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/test"
 )
@@ -120,6 +121,28 @@ func Test_ExpectedMode(t *testing.T) {
 	}
 }
 
+func Test_InstalledTrustDomain(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		values map[string]any
+		want   string
+	}{
+		{name: "no global values", values: map[string]any{}, want: mtls.DefaultTrustDomain},
+		{name: "no spiffe values", values: rbacValues(map[string]any{"enabled": true}), want: mtls.DefaultTrustDomain},
+		{name: "empty trust domain", values: rbacValues(map[string]any{"spiffe": map[string]any{"trustDomain": ""}}), want: mtls.DefaultTrustDomain},
+		{name: "custom trust domain", values: rbacValues(map[string]any{"spiffe": map[string]any{"trustDomain": "example.org"}}), want: "example.org"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, installedTrustDomain(tt.values))
+		})
+	}
+}
+
 func Test_LoggedMode(t *testing.T) {
 	t.Parallel()
 
@@ -175,6 +198,16 @@ func rbacValues(rbac map[string]any) map[string]any {
 func expectedInstalledMode(t *testing.T) authz.Mode {
 	t.Helper()
 
+	helmMode := expectedMode(installedValues(t))
+	want, err := expectedTestMode(helmMode, os.Getenv(expectedModeEnv))
+	require.NoError(t, err)
+	return want
+}
+
+// installedValues returns all values of the installed Radius Helm release.
+func installedValues(t *testing.T) map[string]any {
+	t.Helper()
+
 	contextName, err := kubernetes.GetContextFromConfigFileIfExists("", "")
 	require.NoError(t, err)
 
@@ -192,11 +225,7 @@ func expectedInstalledMode(t *testing.T) authz.Mode {
 	get.AllValues = true
 	values, err := get.Run(radiusReleaseName)
 	require.NoError(t, err, "failed to read Helm values for release %q", radiusReleaseName)
-
-	helmMode := expectedMode(values)
-	want, err := expectedTestMode(helmMode, os.Getenv(expectedModeEnv))
-	require.NoError(t, err)
-	return want
+	return values
 }
 
 // expectedMode mirrors the chart's radius.authz.mode helper.
@@ -210,6 +239,17 @@ func expectedMode(values map[string]any) authz.Mode {
 		return authz.ModeEnforce
 	}
 	return authz.ModeOff
+}
+
+// installedTrustDomain mirrors the chart's radius.authz.spiffe.trustDomain helper.
+func installedTrustDomain(values map[string]any) string {
+	global, _ := values["global"].(map[string]any)
+	rbac, _ := global["rbac"].(map[string]any)
+	spiffe, _ := rbac["spiffe"].(map[string]any)
+	if domain, _ := spiffe["trustDomain"].(string); domain != "" {
+		return domain
+	}
+	return mtls.DefaultTrustDomain
 }
 
 func expectedTestMode(helmMode authz.Mode, expected string) (authz.Mode, error) {

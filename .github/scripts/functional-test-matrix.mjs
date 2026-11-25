@@ -31,7 +31,15 @@ const dryRunSuites = [
   "ucp-noncloud"
 ];
 
-export function selectNonCloudTests({ eventName, payload = {} }) {
+// Suites that only exercise non-default authorization execution modes. PR-profile runs
+// skip them unless authorization-related paths changed; full runs always include them.
+const authzModeSuites = new Set(["authz-noncloud"]);
+
+export function selectNonCloudTests({
+  eventName,
+  payload = {},
+  authzChanged = true
+}) {
   if (!eventName) {
     throw new Error("GitHub event name is required");
   }
@@ -60,8 +68,12 @@ export function selectNonCloudTests({ eventName, payload = {} }) {
     }
   }
 
+  const includeAuthzModes = profile === "full" || authzChanged !== false;
+  // Authorization changes also need the legacy paths exercised with authorization off.
   const selected = suites.filter(
-    (name) => profile === "full" || !legacySuites.has(name)
+    (name) =>
+      includeAuthzModes ||
+      (!legacySuites.has(name) && !authzModeSuites.has(name))
   );
   const include = [
     ...selected.map((name) => ({
@@ -69,11 +81,11 @@ export function selectNonCloudTests({ eventName, payload = {} }) {
       name,
       authzDryRun: false
     })),
-    ...dryRunSuites.map((name) => ({
+    ...(includeAuthzModes ? dryRunSuites : []).map((name) => ({
       os: "ubuntu-24.04",
       name,
       authzDryRun: true
     }))
   ];
-  return { profile, matrix: { include } };
+  return { profile, authzModes: includeAuthzModes, matrix: { include } };
 }

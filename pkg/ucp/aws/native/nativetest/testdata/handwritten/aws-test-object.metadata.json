@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::Test::Object",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": ""
+}

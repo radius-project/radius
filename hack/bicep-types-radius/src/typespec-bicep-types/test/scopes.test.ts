@@ -25,7 +25,7 @@ describe("armResourceKindToScopeType", () => {
     expect(armResourceKindToScopeType("Custom")).toBe(ScopeType.None);
   });
 
-  it("maps Extension resources to ScopeType.Extension", () => {
-    expect(armResourceKindToScopeType("Extension")).toBe(ScopeType.Extension);
+  it("maps ARM-style extensions to ScopeType.None for Radius resource-group deployments", () => {
+    expect(armResourceKindToScopeType("Extension")).toBe(ScopeType.None);
   });
 });

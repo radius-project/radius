@@ -231,7 +231,7 @@ func Test_DirectModule_Bicep(t *testing.T) {
 		},
 		{
 			// Deploy the direct-module recipe pack and the resource that uses it.
-			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion(), "appName="+appName),
+			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion(), "appName="+appName, "appNamespace="+appNamespace, "lockedNamespace="+lockedNamespace),
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   false,
 			SkipKubernetesOutputResourceValidation: true,

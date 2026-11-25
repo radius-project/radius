@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/aws/awstypes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -72,4 +73,10 @@ func IsAWSResource(id resources.ID) bool {
 		return false
 	}
 	return strings.EqualFold(id.ScopeSegments()[0].Type, PlaneTypeAWS)
+}
+
+// IsReadOnlyResource reports whether id is an AWS resource of a type that AWS creates on its own, such as
+// AWS.EC2/Image. Radius can reference these resources but never creates or deletes them.
+func IsReadOnlyResource(id resources.ID) bool {
+	return IsAWSResource(id) && awstypes.IsReadOnly(ToAWSResourceType(id))
 }

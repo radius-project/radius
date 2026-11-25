@@ -154,6 +154,7 @@ ExecHealthProbeProperties
 ExtenderListSecretResponse
 ExtenderProperties
 ExtenderResource
+FIPS
 Fairfax
 Fargate
 FindSecretIDs
@@ -402,6 +403,7 @@ Sidekiq
 SignalR
 Snyk
 SPIFFE
+SPIFFEID
 SplitNamespace
 SqlDatabase
 SqlDatabaseListSecretsResult
@@ -618,6 +620,8 @@ crd
 createdAt
 createdBy
 createdByType
+crradfunctest
+crradfunctestl
 crypto
 cryptographic
 cryptographically
@@ -821,6 +825,7 @@ jsonResponse
 jsondiff
 judgement
 jwt
+keyid
 keyspace
 keyvault
 kube
@@ -985,6 +990,7 @@ persistentVolumes
 pfx
 pgvector
 pgvector's
+pg_trgm
 pkgs
 plaidResource
 plainHTTP
@@ -1120,6 +1126,7 @@ roleARN
 rollout
 rollouts
 rootca
+rootfs
 roundtrips
 rp
 rpc
@@ -1169,6 +1176,7 @@ sql
 sqlDatabases
 sqldatabases
 sqlite
+squote
 src
 sslPassthrough
 stateStores
@@ -1341,6 +1349,7 @@ rolname
 dbregistrykey
 sumdb
 jqlang
+ltrimstr
 tfrg
 dessant
 dkdkkdkfkkd

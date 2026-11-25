@@ -33,8 +33,11 @@ export async function resumeReleasePublication({
 }) {
   const version = core.getInput("VERSION", { required: true });
   const sourceSha = core.getInput("SOURCE_SHA", { required: true });
+  const published = core.getInput("PUBLISHED", { required: true });
   if (!versionPattern.test(version) || !commitPattern.test(sourceSha))
     throw new Error("Invalid publication resume identity");
+  if (!["true", "false"].includes(published))
+    throw new Error("Authenticated publication state is required for resume");
   const deadline = now() + 300000;
   let run;
   while (!run) {
@@ -65,7 +68,7 @@ export async function resumeReleasePublication({
   }
   if (run.status === "completed" && run.conclusion !== "success") {
     const retry =
-      run.conclusion === "failure" ?
+      published === "false" && run.conclusion === "failure" ?
         github.rest.actions.reRunWorkflowFailedJobs
       : github.rest.actions.reRunWorkflow;
     await retry({ ...context.repo, run_id: run.id, request: { retries: 0 } });

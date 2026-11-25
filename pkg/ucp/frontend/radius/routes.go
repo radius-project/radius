@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
+	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
@@ -35,7 +36,6 @@ import (
 	resourcegroups_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourcegroups"
 	resourceproviders_ctrl "github.com/radius-project/radius/pkg/ucp/frontend/controller/resourceproviders"
 	"github.com/radius-project/radius/pkg/validator"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 const (
@@ -52,10 +52,12 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 		ResourceTypeGetter: validator.UCPResourceTypeGetter,
 	})
 
-	transport := otelhttp.NewTransport(http.DefaultTransport)
+	transport, err := ucp.NewDownstreamTransport(m.options.Config)
+	if err != nil {
+		return nil, err
+	}
 
 	// More convienent way to capture errors
-	var err error
 	capture := func(handler http.HandlerFunc, e error) http.HandlerFunc {
 		if e != nil {
 			err = errors.Join(err, e)

@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::Chime::VoiceConnectorTermination",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": ""
+}

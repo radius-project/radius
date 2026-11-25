@@ -79,7 +79,16 @@ type Client interface {
 	// Save will return ErrNotFound if the resource is not found.
 	// When providing an ETag, Save will return ErrConcurrency if the resource has been
 	// modified OR deleted since the ETag was retrieved.
+	// WithCreateOnly atomically inserts instead of upserting and returns
+	// ErrConcurrency if the resource exists. It cannot be combined with an ETag.
 	Save(ctx context.Context, obj *Object, options ...SaveOptions) error
+}
+
+// Enumerator is implemented by clients that can visit every stored object. It is intended for maintenance tasks such
+// as data migrations rather than request handling, and visits scopes as well as resources.
+type Enumerator interface {
+	// Enumerate calls fn for every stored object until fn returns an error.
+	Enumerate(ctx context.Context, fn func(obj *Object) error) error
 }
 
 // Query specifies the structure of a query. RootScope and ResourceType are required and other fields are optional.

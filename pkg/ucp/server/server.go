@@ -17,6 +17,8 @@ limitations under the License.
 package server
 
 import (
+	"context"
+
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
@@ -24,14 +26,25 @@ import (
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/backend"
 	"github.com/radius-project/radius/pkg/ucp/frontend/api"
+	ucp_aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
 	"github.com/radius-project/radius/pkg/ucp/initializer"
+	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 )
 
-// NewServer initializes a host for UCP based on the provided options.
-func NewServer(options *ucp.Options) (*hosting.Host, error) {
+// NewServer initializes a host for UCP based on the provided options. It creates the AWS clients first, so the
+// frontend and the backend share them.
+func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error) {
+	if err := ucp_aws_frontend.InitializeClients(ctx, options); err != nil {
+		return nil, err
+	}
+
 	services := []hosting.Service{
 		api.NewService(options),
 		backend.NewService(options),
+	}
+
+	if options.UserAuthorization != nil {
+		services = append(services, options.UserAuthorization)
 	}
 
 	if options.Config.Metrics.Enabled {
@@ -47,6 +60,10 @@ func NewServer(options *ucp.Options) (*hosting.Host, error) {
 	}
 
 	services = append(services, initializer.NewService(options))
+
+	if !options.Config.SHA256Migration.Disabled {
+		services = append(services, newHashMigrationService(options.DatabaseProvider, hashmigration.NewKubernetesReporter(), hashmigration.ClusterClient()))
+	}
 
 	return &hosting.Host{
 		Services: services,

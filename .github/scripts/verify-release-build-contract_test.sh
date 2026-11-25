@@ -41,9 +41,38 @@ write_pipeline() {
     mkdir -p "${WORKFLOWS}"
     cp "${ROOT}/.goreleaser.yaml" "${REPO}/.goreleaser.yaml"
     cp "${ROOT}/.github/workflows/build-release.yaml" "${WORKFLOWS}/build-release.yaml"
+    cp "${ROOT}/.github/workflows/__publish-release-bicep.yaml" "${WORKFLOWS}/__publish-release-bicep.yaml"
+    mkdir -p "${REPO}/.github/release-parity"
+    cp "${ROOT}/.github/release-parity/targets.json" "${REPO}/.github/release-parity/targets.json"
+    mkdir -p "${REPO}/.github/scripts"
+    cp "${ROOT}/.github/scripts/release-parity-manifest.sh" \
+        "${ROOT}/.github/scripts/publish-sibling-releases.mjs" \
+        "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
+        "${ROOT}/.github/scripts/promote-release-bicep.mjs" "${REPO}/.github/scripts/"
     # Both run on tag pushes without publishing a release.
     printf '%s\n' 'on:' '  push:' '    paths: [setup.yaml]' > "${WORKFLOWS}/setup.yml"
     printf '%s\n' 'on: [push, pull_request]' > "${WORKFLOWS}/lint.yaml"
+}
+
+use_legacy_contract() {
+    yq -i -o=json '
+        del(.bicepExtensionsContract) |
+        .ociArtifacts[0].repository = "biceptypes.azurecr.io/aws" |
+        .ociArtifacts[1].repository = "biceptypes.azurecr.io/radius"
+    ' "${REPO}/.github/release-parity/targets.json"
+    yq -i '
+        .jobs."build-and-push-bicep-types" = {
+            "uses": "./.github/workflows/__build-bicep-types.yaml",
+            "needs": ["release-preflight"],
+            "if": "github.repository == '\''radius-project/radius'\'' && startsWith(github.ref, '\''refs/tags/v'\'') && needs.release-preflight.outputs.release-state != '\''published'\''"
+        } |
+        del(.jobs."publish-radius-bicep-extension") |
+        (.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")) |= (
+            .name = "Promote verified Bicep aliases" |
+            .if = "env.UPDATE_RELEASE == '\''true'\'' && steps.alias-policy.outputs.promote_channel == '\''true'\''" |
+            .with.script = "await import(\"./promote-bicep-types.mjs\")"
+        )
+    ' "${WORKFLOWS}/build-release.yaml"
 }
 
 # Commits the fixture and expects a pass, or a failure that contains $1.
@@ -56,6 +85,7 @@ expect() {
     local status=0
     local -a args=("${revision}")
     [[ -z "${option}" ]] || args+=("${option}")
+    [[ -z "${TEST_EXPECTED_TARGETS:-}" ]] || args+=(--expected-targets "${TEST_EXPECTED_TARGETS}")
 
     git -C "${REPO}" add -A
     git -C "${REPO}" commit -q --allow-empty -m "${description}"
@@ -70,7 +100,7 @@ expect() {
 }
 
 main() {
-    local job dependency mutation
+    local job dependency mutation contract
     command -v yq > /dev/null || {
         echo "yq is required" >&2
         exit 1
@@ -84,7 +114,62 @@ main() {
 
     write_pipeline
     expect pass "current release pipeline beside non-publishing push workflows"
+    local intended="${REPO}/intended-targets.json"
+    cp "${ROOT}/.github/release-parity/targets.json" "${intended}"
+    TEST_EXPECTED_TARGETS="${intended}" expect pass "matching intended targets"
+    use_legacy_contract
+    TEST_EXPECTED_TARGETS="${intended}" expect "source targets differ" "legacy source rejects intended GHCR plan"
+    cp "${REPO}/.github/release-parity/targets.json" "${intended}"
+    TEST_EXPECTED_TARGETS="${intended}" expect pass "same legacy source accepts matching legacy plan"
+    TEST_EXPECTED_TARGETS="${intended}" expect "retired Bicep ACR writer" \
+        "matching selector-free source cannot start new publication" HEAD --require-current-bicep
+    write_pipeline
+    TEST_EXPECTED_TARGETS="${intended}" expect "source targets differ" \
+        "GHCR-only source rejects selector-free approved plan before publication" HEAD --require-current-bicep
+    # shellcheck disable=SC2016 # Literal workflow expressions under test.
+    for mutation in \
+        '.jobs."build-and-push-bicep-types".needs = []' \
+        'del(.jobs."release-preflight".outputs."release-state")' \
+        '.jobs."release-preflight".outputs."release-state" = "${{ steps.other.outputs.result }}"' \
+        '(.jobs."release-preflight".steps[] | select(.id == "release-state")).if = "false"'; do
+        write_pipeline
+        use_legacy_contract
+        yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
+        expect "published Bicep resume gate" "historical resume rejects missing state wiring: ${mutation}"
+    done
+    local script
+    for script in release-parity-manifest.sh collect-release-bicep.mjs promote-release-bicep.mjs; do
+        write_pipeline
+        case "${script}" in
+            release-parity-manifest.sh)
+                # shellcheck disable=SC2016 # Literal tagged script, never executed.
+                printf '\nnode "${SCRIPT_DIR}/collect-release-bicep.mjs" verify-mirrors\n' >>"${REPO}/.github/scripts/${script}" ;;
+            collect-release-bicep.mjs)
+                printf '\nexport async function verifyMirrors() { throw new Error("old mirror verifier"); }\n' >>"${REPO}/.github/scripts/${script}" ;;
+            promote-release-bicep.mjs)
+                printf '\nimport { promotionRequests } from "./promote-bicep-types.mjs";\n' >>"${REPO}/.github/scripts/${script}" ;;
+        esac
+        expect "still requires the retired Bicep ACR writer" \
+            "new workflow with mirror-dependent ${script} rejects before tagging" HEAD --require-current-bicep
+        write_pipeline
+        rm "${REPO}/.github/scripts/${script}"
+        expect "has no GHCR-only entry point" "partial backport missing ${script}" HEAD --require-current-bicep
+    done
+    write_pipeline
+    rm "${WORKFLOWS}/__publish-release-bicep.yaml"
+    expect "has no reusable Radius Bicep producer workflow" "missing reusable workflow rejects partial backport"
+    write_pipeline
     expect pass "new preparations require sibling publication" HEAD --require-sibling-releases
+    expect pass "new mutation requires GHCR-only publication" HEAD --require-current-bicep
+    expect pass "new release uses the transferred Deployment Engine" HEAD --require-current-engine
+    local publisher="${REPO}/.github/scripts/publish-sibling-releases.mjs"
+    sed 's/target.repo === "deployment-engine"/target.owner === "radius-project"/' \
+        "${ROOT}/.github/scripts/publish-sibling-releases.mjs" > "${publisher}"
+    expect "does not select the Deployment Engine client by repository" \
+        "reject an owner-only backport" HEAD --require-current-engine
+    write_pipeline
+    yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "engine-token")).with.owner = "azure-octo"' "${WORKFLOWS}/build-release.yaml"
+    expect "does not publish the transferred Deployment Engine" "reject old installation" HEAD --require-current-engine
 
     write_pipeline
     yq -i 'del(.jobs."publish-sibling-releases") |
@@ -94,18 +179,71 @@ main() {
     expect "has no publish-sibling-releases job" \
         "new preparations reject a branch without sibling publication" HEAD --require-sibling-releases
 
-    for mutation in \
-        '.jobs."publish-sibling-releases".if = "always()"' \
-        '.jobs."publish-sibling-releases".needs = []' \
-        '.jobs."publish-sibling-releases"."continue-on-error" = true' \
-        '.jobs."publish-sibling-releases".concurrency.group = "unserialized"' \
-        '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries")).if = "false"' \
-        '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries"))."continue-on-error" = true'; do
+    for contract in ghcr legacy; do
         write_pipeline
-        yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
-        expect "does not enforce the sibling publication gate" \
-            "weakened sibling gate: ${mutation}"
+        [[ "${contract}" != legacy ]] || use_legacy_contract
+        expect pass "${contract} pipeline requires gated sibling publication" HEAD --require-sibling-releases
+        for mutation in \
+            'del(.jobs."attest-release")' \
+            '.jobs."attest-release".needs = []' \
+            '.jobs."attest-release".if = "always()"' \
+            '.jobs."attest-release"."continue-on-error" = true' \
+            '.jobs."attest-release".permissions."id-token" = "none"' \
+            '.jobs."goreleaser-release".permissions.attestations = "write"' \
+            '.jobs."verify-release".needs |= map(select(. != "attest-release"))' \
+            '.jobs."verify-release".if += " || true"' \
+            '.jobs."verify-release".permissions.attestations = "none"' \
+            '.jobs."finalize-release".permissions.attestations = "none"' \
+            '.jobs."finalize-release".needs |= map(select(. != "attest-release"))' \
+            '.jobs."build-summary".needs |= map(select(. != "attest-release"))' \
+            '(.jobs."attest-release".steps[] | select(.name == "Attest release provenance")).if = "false"' \
+            '(.jobs."attest-release".steps[] | select(.name == "Attest release provenance"))."continue-on-error" = true'; do
+            [[ "${contract}" != legacy || "${mutation}" != 'del(.jobs."attest-release")' ]] || continue
+            write_pipeline
+            [[ "${contract}" != legacy ]] || use_legacy_contract
+            yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
+            expect "does not enforce the attestation gate" \
+                "${contract} weakened attestation gate: ${mutation}" HEAD --require-sibling-releases
+        done
+        for mutation in \
+            '.jobs."publish-sibling-releases".if = "always()"' \
+            '.jobs."publish-sibling-releases".if += " || true"' \
+            '.jobs."publish-sibling-releases".needs = []' \
+            '.jobs."publish-sibling-releases"."continue-on-error" = true' \
+            '.jobs."publish-sibling-releases".concurrency.group = "unserialized"' \
+            '.jobs."publish-sibling-releases".concurrency."cancel-in-progress" = true' \
+            '.jobs."build-summary".needs |= map(select(. != "publish-sibling-releases"))' \
+            '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries")).env.INPUT_MANIFEST_FILE = "unverified.json"' \
+            '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries")).if = "false"' \
+            '(.jobs."publish-sibling-releases".steps[] | select(.name == "Reconcile sibling release entries"))."continue-on-error" = true'; do
+            write_pipeline
+            [[ "${contract}" != legacy ]] || use_legacy_contract
+            yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
+            expect "does not enforce the sibling publication gate" \
+                "${contract} weakened sibling gate: ${mutation}" HEAD --require-sibling-releases
+        done
     done
+
+    for selector in '""' 'null' '"ghcr-v2"'; do
+        write_pipeline
+        SELECTOR="${selector}" yq -i -o=json \
+            '.bicepExtensionsContract = (strenv(SELECTOR) | from_json)' \
+            "${REPO}/.github/release-parity/targets.json"
+        expect "invalid Bicep release contract" "reject unknown or empty selector ${selector}"
+    done
+
+    write_pipeline
+    yq -i -o=json 'del(.bicepExtensionsContract)' "${REPO}/.github/release-parity/targets.json"
+    expect "invalid Bicep release contract" "GHCR outputs without selector"
+
+    write_pipeline
+    use_legacy_contract
+    expect pass "historical inspection preserves selector-free ACR contracts"
+    expect "requires the retired Bicep ACR writer" \
+        "new mutation cannot use a historical ACR pipeline" HEAD --require-current-bicep
+    yq -i '.jobs."build-and-push-bicep-types".if += " || true"' "${WORKFLOWS}/build-release.yaml"
+    expect "does not enforce the published Bicep resume gate" \
+        "historical published recovery must never reach the ACR writer"
 
     for job in verify-release approve-publication coordinate-release; do
         write_pipeline
@@ -147,9 +285,26 @@ main() {
         '.jobs."finalize-release".steps |= map(select(.name != "Promote stable aliases"))' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote stable aliases")).if = "false"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote stable aliases"))."continue-on-error" = true' \
-        '.jobs."finalize-release".steps |= map(select(.name != "Promote verified Bicep aliases"))' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases")).if = "false"' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases"))."continue-on-error" = true' \
+        '.jobs."finalize-release".steps |= map(select(.name != "Promote locked Bicep extensions"))' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")).if = "false"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions"))."continue-on-error" = true' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")).if += " || true"' \
+        '.jobs."finalize-release".permissions."id-token" = "write"' \
+        '.jobs."finalize-release".env.BICEPTYPES_CLIENT_ID = "forbidden"' \
+        '.jobs."finalize-release".steps += [{"name":"Unexpected Azure login","run":"az acr login --name biceptypes"}]' \
+        '.jobs."finalize-release".steps += [{"name":"Private token","uses":"actions/create-github-app-token@abc"}]' \
+        '.jobs."publish-legacy-bicep-types".if += " || true"' \
+        '.jobs."publish-radius-bicep-extension".if = "true"' \
+        '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_RELEASE_PLAN = ""' \
+        '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_EXTENSION_TAG = "latest"' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Authenticate and retain immutable extension pair")).if = "false"' \
+        '.jobs."build-and-push-bicep-types".if += " || true"' \
+        '.jobs."build-and-push-bicep-types".steps += [{"name":"Retired mirror","with":{"script":"await stageMirrors({github, core})"}}]' \
+        '.jobs."build-and-push-bicep-types".permissions."id-token" = "write"' \
+        '.jobs."build-and-push-bicep-types".permissions.packages = "write"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")).env.INPUT_JOB_DEADLINE = ""' \
+        '.jobs."finalize-release".steps |= map(select(.name != "Record Bicep job deadline"))' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Authenticate and retain immutable extension pair")).with.script = "await finalize({github,core,context})"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Recheck RC prerequisites after approval")).if = "false"' \
         '.jobs."coordinate-release".if = "false"'; do
         write_pipeline
@@ -194,6 +349,20 @@ main() {
         "missing release build (release/0.60)"
 
     expect "release commit does not exist" "unknown release commit" refs/heads/missing
+
+    write_pipeline
+    mkdir -p "${REPO}/.github/scripts"
+    cp "${ROOT}/.github/scripts/coordinate-release.mjs" "${REPO}/.github/scripts/"
+    REQUIRE_BICEP_RECIPES=true expect pass "new finals require the recipe coordinator" HEAD --require-sibling-releases
+
+    rm "${REPO}/.github/scripts/coordinate-release.mjs"
+    REQUIRE_BICEP_RECIPES=true expect "does not coordinate the Bicep recipe publisher" \
+        "new final cannot use an old coordination script"
+    yq -i 'del(.jobs."coordinate-release".steps[].env.RECIPE_TOKEN)' \
+        "${WORKFLOWS}/build-release.yaml"
+    expect pass "existing plans need no recipe coordinator"
+    REQUIRE_BICEP_RECIPES=true expect "has no final Bicep recipe coordinator" \
+        "new final cannot use an old tagged workflow"
 
     if ((FAIL > 0)); then
         echo "Release build contract tests failed: ${PASS} passed, ${FAIL} failed"

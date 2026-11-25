@@ -31,6 +31,8 @@ RUNTIME_ASSET="${RELEASE_PARITY_RUNTIME_ASSET:-}"
 STAGED="${RELEASE_PARITY_STAGED:-false}"
 VERSION=""
 OUTPUT_PATH=""
+PLAN_FILE=""
+GHCR_BICEP="false"
 TEMP_DIR=""
 
 cleanup() {
@@ -42,7 +44,7 @@ cleanup() {
 trap cleanup EXIT
 
 usage() {
-    echo "Usage: $0 --version <version> --output <path>"
+    echo "Usage: $0 --version <version> --output <path> [--plan-file <json>]"
 }
 
 fail() {
@@ -52,6 +54,45 @@ fail() {
 
 require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
+}
+
+# Only a confirmed missing file on an already resolved release source is absence.
+read_source_file() {
+    local repository="$1" source="$2" path="$3" output="$4"
+    local error="${TEMP_DIR}/source-read-error"
+    if gh api -H 'Accept: application/vnd.github.raw+json' \
+        "/repos/${repository}/contents/${path}?ref=${source}" \
+        >"${output}" 2>"${error}"; then
+        return 0
+    fi
+    cat "${error}" >&2
+    if grep -Eq '^gh: .* \(HTTP 404\)$' "${error}"; then
+        return 4
+    fi
+    return 1
+}
+
+resolve_source_targets() {
+    local repository="$1" source="$2" tag="$3" status
+    TARGETS_FILE="${TEMP_DIR}/source-targets.json"
+    if read_source_file "${repository}" "${source}" \
+        ".github/release-parity/targets.json" "${TARGETS_FILE}"; then
+        return
+    else
+        status=$?
+    fi
+    [[ "${status}" == 4 && "${STAGED}" == false ]] ||
+        fail "could not read required source targets"
+    # A release with an approved plan must never fall back to a legacy contract.
+    if read_source_file "${repository}" "${source}" \
+        ".github/release-plans/${tag}.yaml" "${TEMP_DIR}/source-plan.yaml"; then
+        fail "approved release plan exists but source targets are missing"
+    else
+        status=$?
+    fi
+    [[ "${status}" == 4 ]] || fail "could not determine historical release contract"
+    cp "${SCRIPT_DIR}/../release-parity/legacy-targets.json" "${TARGETS_FILE}"
+    echo "Using frozen legacy inventory: ${tag} has no source targets or release plan." >&2
 }
 
 require_any_command() {
@@ -240,6 +281,7 @@ collect_cli_assets() {
         --argjson expected "${expected_assets}" \
         --argjson sboms "${expected_sboms}" '
         ($expected + $sboms + [
+            "bicep-extension-lock.json",
             "bicep-image-digests.json",
             "bicep-image-intent.json",
             "core-release-lock.json",
@@ -702,6 +744,11 @@ collect_oci_artifacts() {
     local reference
     local descriptor_path
     local manifest_path
+    local digest
+
+    if [[ "${GHCR_BICEP}" == "true" ]]; then
+        channel="${VERSION}"
+    fi
 
     : >"${entries_file}"
     while IFS= read -r target; do
@@ -717,7 +764,16 @@ collect_oci_artifacts() {
 
         oras manifest fetch --descriptor "${reference}" \
             >"${descriptor_path}"
-        oras manifest fetch "${reference}" >"${manifest_path}"
+        if [[ "${GHCR_BICEP}" == "true" ]]; then
+            digest="$(jq -er '.digest' "${descriptor_path}")"
+            [[ "${digest}" =~ ^sha256:[a-f0-9]{64}$ ]] ||
+                fail "invalid manifest digest for ${reference}"
+            oras manifest fetch "${repository}@${digest}" >"${manifest_path}"
+            [[ "sha256:$(sha256_file "${manifest_path}")" == "${digest}" ]] ||
+                fail "manifest content digest mismatch for ${reference}"
+        else
+            oras manifest fetch "${reference}" >"${manifest_path}"
+        fi
         jq -e --arg expected "${expected_type}" \
             '.artifactType == $expected' "${manifest_path}" >/dev/null ||
             fail "unexpected artifact type for ${reference}"
@@ -764,6 +820,10 @@ main() {
                 ;;
             --output)
                 OUTPUT_PATH="${2:-}"
+                shift 2
+                ;;
+            --plan-file)
+                PLAN_FILE="${2:-}"
                 shift 2
                 ;;
             -h | --help)
@@ -823,6 +883,41 @@ main() {
     fi
     source_commit="$(resolve_tag_commit "${repository}" "${tag}")"
 
+    # Default inspection follows the release's committed contract, not main.
+    # Explicit historical fixtures remain available through RELEASE_PARITY_TARGETS.
+    if [[ -z "${RELEASE_PARITY_TARGETS:-}" ]]; then
+        resolve_source_targets "${repository}" "${source_commit}" "${tag}"
+        jq -e --arg repository "${repository}" \
+            '.repository == $repository' "${TARGETS_FILE}" >/dev/null ||
+            fail "source targets have an unexpected repository"
+        if [[ -z "${PLAN_FILE}" ]] && jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
+            PLAN_FILE="${TEMP_DIR}/source-plan.json"
+            gh api -H 'Accept: application/vnd.github.raw+json' \
+                "/repos/${repository}/contents/.github/release-plans/${tag}.yaml?ref=${source_commit}" |
+                yq -o=json '.' >"${PLAN_FILE}"
+        fi
+    fi
+
+    if jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
+        [[ -f "${PLAN_FILE}" ]] || fail "approved JSON --plan-file is required"
+        require_command node
+        jq -e --arg tag "${tag}" --slurpfile targets "${TARGETS_FILE}" \
+            '.version == $tag and .expectedOutputs == $targets[0]' \
+            "${PLAN_FILE}" >/dev/null || fail "approved Bicep plan differs from targets"
+        node "${SCRIPT_DIR}/release-bicep-extensions.mjs" targets \
+            "${PLAN_FILE}" "${source_commit}" >/dev/null
+        GHCR_BICEP="true"
+    else
+        jq -e 'all(.ociArtifacts[]; .repository | startswith("biceptypes.azurecr.io/"))' \
+            "${TARGETS_FILE}" >/dev/null ||
+            fail "non-ACR Bicep targets require an approved contract selector"
+        if [[ -n "${PLAN_FILE}" ]]; then
+            jq -e --slurpfile targets "${TARGETS_FILE}" \
+                '.expectedOutputs == $targets[0]' "${PLAN_FILE}" >/dev/null ||
+                fail "approved plan differs from targets"
+        fi
+    fi
+
     collect_cli_assets "${release_json}" "${source_commit}" \
         "${cli_assets_json}"
     if [[ "${STAGED}" == "true" ]]; then
@@ -854,6 +949,13 @@ main() {
     collect_helm_chart "${channel}" "${helm_json}"
     collect_sibling_repositories "${tag}" "${sibling_repositories_json}"
     collect_oci_artifacts "${channel}" "${oci_artifacts_json}"
+
+    if [[ "${GHCR_BICEP}" == "true" ]]; then
+        node "${SCRIPT_DIR}/release-bicep-extensions.mjs" verify \
+            "${PLAN_FILE}" "${source_commit}" \
+            "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json" \
+            "${oci_artifacts_json}"
+    fi
 
     mkdir -p "$(dirname "${OUTPUT_PATH}")"
     jq -S -n \
@@ -902,8 +1004,17 @@ main() {
                 ociArtifacts: $oci_artifacts[0]
             }
         }' >"${OUTPUT_PATH}"
+    if [[ "${GHCR_BICEP}" == "true" ]]; then
+        jq --slurpfile lock \
+            "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json" \
+            '.downstream.bicepExtensionLock = $lock[0]' \
+            "${OUTPUT_PATH}" >"${TEMP_DIR}/locked-manifest.json"
+        mv "${TEMP_DIR}/locked-manifest.json" "${OUTPUT_PATH}"
+    fi
 
     echo "Wrote release parity manifest to ${OUTPUT_PATH}"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

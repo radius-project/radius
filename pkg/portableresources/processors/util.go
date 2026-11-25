@@ -23,6 +23,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 )
 
 // GetOutputResourcesFromResourcesField parses a slice of resource references and converts each resource into an OutputResource.
@@ -56,9 +57,10 @@ func GetOutputResourcesFromRecipe(output *recipes.RecipeOutput) ([]rpv1.OutputRe
 			return nil, &ValidationError{Message: fmt.Sprintf("resource id %q returned by recipe is invalid", resource)}
 		}
 
+		// AWS creates read-only resources on its own, so deleting the recipe must not delete them.
 		result := rpv1.OutputResource{
 			ID:                 id,
-			RadiusManaged:      new(true),
+			RadiusManaged:      new(!resources_aws.IsReadOnlyResource(id)),
 			ProviderResourceID: output.ProviderResourceID(resource),
 		}
 

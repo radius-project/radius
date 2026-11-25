@@ -37,6 +37,8 @@ make test
 
 To compile every test without running them, use `make test-compile`.
 
+Unit tests run on Linux in CI. To check that Go code and tests also compile and pass `go vet` on Windows, run `make lint-go-windows`. It runs `GOOS=windows go vet ./...` for amd64; set `WINDOWS_VET_ARCHS="amd64 arm64"` to add arm64. Files that cannot build on Windows, such as envtest-based tests, use `//go:build !windows`. This check catches compile errors only, not runtime bugs such as using `path` instead of `path/filepath` on OS paths.
+
 ### Integration tests
 
 Integration tests exercise a feature together with its dependencies. In Radius they live alongside the unit tests under `./pkg/...` rather than in a separate tree, and they run as part of `make test`. They use in-memory servers and data stores instead of a deployed control plane, which keeps them fast and self-contained. Examples:
@@ -85,6 +87,46 @@ When you are iterating on control-plane images (for example the applications res
 - For functional tests specifically, see [writing functional tests](./writing-functional-tests.md), the [naming conventions](./tests-naming-conventions.md), [test logging](./tests-logging.md), and [using standard images in tests](./tests-images-pushtoghcr.md).
 - For the scheduled OCI state archive end-to-end test, see [Repo Radius GHCR state end-to-end test](./repo-radius-state-e2e.md).
 - For investigating a test reported as flaky, see [Investigating flaky tests](./investigating-flaky-tests.md).
+
+#### RBAC policy storage
+
+Run fast policy checks with `go test -race ./pkg/ucp/authorization ./pkg/components/database/inmemory -short -count=1`. To check that a policy at the full 10,000-assignment/1,000-role limit fits the storage layout, run:
+
+```bash
+go test -race ./pkg/ucp/authorization -run '^TestPolicyStoreManifestCapacity$' -count=1 -v
+```
+
+That test only writes the full-size policy, because decoding it under `-race` takes minutes. `TestPolicyStoreRecordLimits` checks limit rejection with small limits, and `TestPolicyCacheRateLimitedRefresh` checks the refresh read path on a multi-page policy.
+
+Assignment metadata regressions cover description and principal display-label updates, clearing optional metadata, history and generation changes, identical-PUT idempotency, and preservation of identity and ownership. Only metadata is mutable; changing the assignment's role or principal identity still requires a different assignment.
+
+History regressions cover updating and deleting maximum-sized initialized assignments, metadata at its byte limit across generation digit changes, interrupted chunk preparation/publication, delayed recovery after deletion, and missing or corrupted audit chunks. Events up to 128 KiB retain the inline format; larger events use immutable 64 KiB binary chunks, encoded below the 128 KiB per-object limit, with ordered references, an exact byte count and a SHA-256 digest. Reassembly returns the same public access-change resource. Variable actor/request/target/provenance metadata has a separate 128 KiB bound; generated envelope fields have reserved space, so switching from `after` to `before` or adding generation digits cannot exhaust it. Each snapshot can hold the maximum packed policy plus a 128 KiB wrapper reserve, and the derived total bound reserves both snapshots and the envelope. Excessive request metadata fails explicitly before claiming a generation; audit contents are never truncated. Run the full snapshot-boundary and maximum Bootstrap batch checks with:
+
+```bash
+go test -race ./pkg/ucp/authorization -run '^(TestPolicyStoreMaximumHistorySnapshots|TestPolicyStoreBootstrapHistoryCapacity)$' -count=1
+```
+
+The full-size manifest has 86 index pages and an anchor smaller than 1 KiB. Cold-cache and changed-generation refreshes each use one GET for the anchor, one for the root, and two per page, so the full-size policy needs 174 GETs. The fake-clock rate limiter checks the deterministic throttling cost (870 ms at full size) at 200 QPS/200 burst with the burst exhausted; it does not gate race-instrumented validation on wall-clock time. Separate fake-clock tests enforce the unchanged thirty-second freshness boundary. Immutable payload chunks split at 128 entries or 128 KiB; manifests validate their IDs, kinds, entry counts and generation. A root holds at most 128 chunks, so large entries can exhaust this bound before reaching the role/assignment count limits; oversized data fails explicitly with `PolicyCapacityExceeded`.
+
+Policy-load regressions retain unregistered permissions for inspection and remediation but exclude them from grants; role writes still reject unknown permissions. Bootstrap tests start with no assignments, require the trusted Kubernetes settings guard outside `Enforce`, and publish guard-provided Bootstrap administrators atomically with settings. The same generation's audit includes each newly added full assignment resource in `after.roleAssignments`, including its ID, principal and Bootstrap provenance; it is a delta, not the policy inventory. Repeated guard identities do not create duplicate deltas, and same-mode additions and recovery preserve them. Standalone assignment changes retain singular `roleAssignment` snapshots. In `Enforce`, the Radius settings permission remains mandatory. Bootstrap-only policies allow additive changes and authorized same-tuple promotion to permanent ownership; once a permanent administrator exists, its last grant cannot be removed.
+
+**Required before production policy handlers:** each mutation currently rewrites the complete immutable policy and retains old or abandoned preparations. Implement unchanged-chunk reuse and a safe reclamation/retention protocol before exposing production handlers. Validate write counts and bytes at capacity, bound retained storage across repeated writes, and prove that concurrent readers, losing writers, and delayed recovery cannot lose reachable objects or resurrect deleted grants. Garbage collection is deliberately not implemented in this storage layer. Disposable-Postgres CI coverage for concurrent initialization, conflicting changes, and interrupted-write recovery is also required before production enforcement depends on this store.
+
+For policy runtime lifecycle and UCP wiring, run `go test -race ./pkg/ucp/authorization ./pkg/ucp ./pkg/ucp/server -short -count=1`. The `TestPolicyRuntime` tests use `testing/synctest` to verify startup recovery, missing-anchor failures, repeated failures/recovery, generation polling, the exact thirty-second freshness boundary, immediate local-write refresh, and cancellation without wall-clock sleeps. See [UCP policy lifecycle](../../../architecture/ucp.md#user-authorization-policy-lifecycle) for the opt-in configuration, preinitialized-anchor prerequisite, and authorization-specific readiness contract.
+
+For request-target observations and protected-mutation rejection, run `go test -race ./pkg/ucp/authorization ./pkg/ucp/frontend/api -short -run 'TestObserveRequests|TestServiceDryRunRequests|TestServiceProtectedMutationsEveryMode|TestServiceAzureProxyEncodedProtectedMutations|TestServiceRequestHeader' -count=1`. Observer tests cover allowed/denied/unknown/failed checks, unchanged bodies and responses, exact freshness expiry, stopped/missing runtimes, every workload mode, and unchanged committed policy after rejected writes. The frontend integration tests use real TLS request-header authentication, UCP plane/resource-group controllers, and deployment proxy routing; they verify `wouldDeny` evidence, unchanged ordinary deployment PUT/validation responses, and a simulated downstream policy step rejected when it returns through UCP. This does not substitute for live Kubernetes aggregation, a real deployment-engine execution, or full deployment preflight/enforcement coverage. See [request observations](../../../architecture/ucp.md#user-authorization-request-observations) for the deliberately limited `targetOnly` contract.
+
+For the read-only inspection API and CLI, run `go test -race ./pkg/ucp/authorization ./pkg/ucp/frontend/api ./pkg/cli/cmd/auth ./cmd/rad/cmd -short -count=1`. This covers JSON/table output, errors, self and other-principal checks, strict rejection of supplied groups, invalid scopes/permissions, mixed-case IDs, consistent batch generations during concurrent policy changes, every workload mode, unavailable policy, and the unchanged protected-mutation boundary.
+
+To exercise genuine Kubernetes API aggregation, set `KUBEBUILDER_ASSETS` using the envtest setup below and run:
+
+```bash
+go test -race ./pkg/ucp/frontend/api -run '^TestInspectionKubernetesAggregation$' -count=1 -v
+```
+
+The non-Windows test starts its own API server and etcd, registers a real `APIService` with a verified serving CA, and configures a dedicated front-proxy client certificate and request-header CA. A loopback `ExternalName` service avoids needing kube-proxy or exposing a listener on the local network. The actual CLI command tree runs through its workspace kubeconfig, Kubernetes transport, API-server authentication/RBAC gate, front proxy, and UCP handlers. It tests certificate-authenticated users and groups, a Kubernetes-issued service-account token, policy grants/denials, warnings, forged-header replacement at the Kubernetes endpoint, and rejection of missing/untrusted proxy certificates directly at UCP. It explicitly ignores `USE_EXISTING_CLUSTER`, seeds only an in-memory test policy through a fixture verifier, and stops its control plane and listeners after the test; no shared cluster resources or production policy are modified. Short runs skip this test and are not aggregation evidence.
+
+For real backend recovery checks, omit `-short` and select `TestPolicyStoreAPIServer` (envtest setup below) or `TestPolicyStorePostgres` (requires a disposable database via `TEST_POSTGRES_URL`, as shown by `make db-init`). Missing Postgres configuration skips those checks rather than proving concurrency. These tests cover storage recovery against real backends only; they do not start `PolicyRuntime`, management APIs or request enforcement. Runtime lifecycle and readiness are covered by the in-memory `TestPolicyRuntime` tests above.
 
 ## Verification
 

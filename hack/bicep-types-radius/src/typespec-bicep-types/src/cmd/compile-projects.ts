@@ -55,7 +55,8 @@ const PROJECTS: ReadonlyArray<{ projectDir: string; outputBase: string }> = [
   { projectDir: "Applications.Dapr", outputBase: "applications" },
   { projectDir: "Applications.Datastores", outputBase: "applications" },
   { projectDir: "Applications.Messaging", outputBase: "applications" },
-  { projectDir: "Radius.Core", outputBase: "radius" }
+  // Merge UCP and Applications RP contracts only for Bicep, never for RP clients.
+  { projectDir: "Radius.Core/bicep", outputBase: "radius" }
 ];
 
 function getArg(name: string, fallback: string): string {

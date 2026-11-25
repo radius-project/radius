@@ -17,6 +17,46 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 - **Least privilege** — set explicit `permissions:` blocks; default to read-only and grant write only where needed.
 - **Pin and cache** — pin action versions and cache dependencies to keep runs fast and reproducible.
 
+### Manual tests with registry write access
+
+`long-running-azure` publishes Bicep test recipes to GHCR, and `repo-radius-state-e2e` writes and deletes GHCR state artifacts. Both require `packages: write`; a test package name does not limit the token to that package. In the canonical repository, scheduled and manual runs of these workflows require protected main so arbitrary dispatched branches do not execute with that authority. Fork-local manual state tests remain available against the fork's own package.
+
+These restrictions do not change the release pipelines, release tag requirements, snapshot artifacts, or main CLI `edge` publication. Cloud functional-test credential isolation is separate. Workflow conditions supplement, rather than replace, repository protections and registry authorization policies.
+
+### Deploy trusted cloud helpers before workflow activation
+
+Trusted helpers loaded from `main` must merge there before the workflows that import them. Include their local imports, actions, and tool dependencies in the prerequisite change. Helpers present only in a candidate or merge-group checkout cannot satisfy a checkout of `main`; rebasing onto an unmerged helper branch is not sufficient.
+
+Pass the trusted repository variable `TEST_BICEP_TYPES_REGISTRY` to the helpers through the workflow environment, never through candidate receipts or artifacts. The helper accepts a bare lowercase ACR hostname ending in `.azurecr.io`, with a 5 to 50 character alphanumeric registry name, and fixes the types repository to `/test/radius`; changing the configured hostname does not require a helper edit. Hostname validation checks syntax, not registry ownership: repository configuration and Azure authorization remain the trust boundary. GHCR image and recipe destinations remain fixed under `ghcr.io/radius-project/dev`.
+
+Run `make test-cloud-test-helpers` with Node.js 24 for credential-free helper tests and offline prepared-base dependency checks. The target installs pinned yq automatically. The dependency checks load helper exports in a temporary base tree, check local-action and installer dependencies, and fail if required files are removed. Keep that explicit inventory current when helper imports or tool dependencies change. These checks do not verify workflow checkout selection, candidate isolation, or the activation job graph; tests accompanying workflow activation must cover those separately.
+
+Run `make test-cloud-test-helpers-native` with Node.js 24, OpenSSL, curl, Docker, and free localhost port 5000 to verify real TLS export. This separate target installs pinned yq and ORAS automatically; Docker is not required for `make test-cloud-test-helpers`. Both targets add their install directories to the test process's PATH in the same invocation, defaulting to `$HOME/.local/bin`; override `YQ_INSTALL_DIR` and `ORAS_INSTALL_DIR` for isolated installations. First-time tool installation requires network access. The native fixture removes only its own container and temporary files, verifies OCI bytes, and reproduces the failure without `--from-plain-http=false`; it does not contact Azure, GHCR, or ACR.
+
+The native target also reproduces both ORAS's post-copy manifest read failure and explicit tag readback failure against a TLS loopback registry. It tests bounded digest/tag visibility, rejected writes, authorization failures, and mismatched content without repeating uploads. To run only these transport cases without Docker, use `node --test --test-name-pattern='native publisher' .github/scripts/cloud-test-artifacts.integration.test.mjs` with the pinned ORAS on PATH, Node.js 24, and OpenSSL. These are local transport tests, not cloud acceptance. Cloud helper changes must reach protected `main` before live PR, merge-queue, or deployment-engine dispatch runs can exercise them: Setup selects that revision as `TRUSTED_SHA`, even when a manual dispatch selects a candidate source branch. Confirm the uploader checkout contains the changed helper and the cloud functional test jobs actually execute and pass before claiming cloud acceptance.
+
+### Native stacks in cloud functional CI
+
+GitHub [runs workflows for native stacked PRs against the stack's ultimate base](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/optimizing-ci-for-stacked-pull-requests), while `pull_request.base` still names the layer below. When `pull_request.stack` is present, cloud setup uses `stack.base.ref` as the controller branch, which must equal `github.ref`, match `main`, `features/*`, or `release/*`, and be protected. Setup also reads the live PR and fails closed unless its head, immediate base, and stack metadata match the event, so stale, malformed, or cross-fork stack data cannot widen trust; after a stack changes, push or re-request a fresh PR event because rerunning an old event reuses its snapshot. Checkout still uses the event's head SHA and diffs against the immediate base SHA, and existing fork and approval gates are unchanged. Because Setup imports `.github/scripts/cloud-test-context.mjs` from protected `main`, changes to it take effect only after they merge. Run `make test-cloud-test-helpers test-publishing-isolation` to test it locally.
+
+### Cloud publishing credential isolation
+
+Cloud builds have read-only tokens and generate images, recipes and types in a TLS-local registry, then hand off a raw OCI archive through native Actions artifacts. Fresh trusted jobs check the exact run/source/artifact identity and trusted test destinations, reject unsupported OCI content, and use ORAS to copy data without executing candidate code. Images/recipes retain fixed `ghcr.io/radius-project/dev` paths; test types use the registry selected by the repository variable `TEST_BICEP_TYPES_REGISTRY` and the fixed repository path `test/radius`.
+
+**Approved cloud tests are intentionally allowed to write to Test ACR.** Both the `upload-test-types` job and candidate test jobs use the existing `AZURE_SP_TESTS_APPID`, `AZURE_SP_TESTS_TENANTID`, and `AZURE_SUBSCRIPTIONID_TESTS` settings. There is no separate Test ACR publisher identity, environment, or federation prerequisite. Existing contributor approval remains required; Test ACR is a shared test resource, not a credential-isolation boundary against approved candidate code.
+
+The trusted uploader validates source/artifact identity before Azure login and publication, uses producer tags, and records receipts. `TEST_BICEP_TYPES_REGISTRY` must be a bare lowercase public ACR hostname with a 5-50 character alphanumeric registry name followed by `.azurecr.io`; missing values, URLs, paths, ports, and other suffixes are rejected. Login derives the ACR name only after validation and passes it as a quoted argument. The value comes from repository settings, never candidate artifact or receipt metadata. Both uploader checkouts, including its Azure login helper, use `TRUSTED_SHA` rather than a merge-group candidate revision. The trusted helper must support this validated variable contract on protected `main` before workflow activation; editing only the candidate helper or login is insufficient. GHCR destinations remain fixed and write credentials stay isolated in `upload-ghcr`; candidate tests have only `packages: read`. Production registries and credentials are untouched. No live Azure roles, federation, environments, secrets, or registry variables are changed by this workflow update, and it does not claim live access verification.
+
+The build owns the canonical `test-<UNIQUE_ID>-<run_id>-<producing_attempt>` tag, where `UNIQUE_ID` is `func` followed by ten lowercase hexadecimal characters. It exports `REL_VERSION` for both upload jobs and all test image/recipe consumers. Validators bind this tag to the trusted unique ID and authenticated producing run/attempt, including archive metadata and publication receipts. Rerunning only uploads or tests reuses the successful producer's tag; rebuilding generates a new attempt tag even if setup is not rerun. Publication receipts and the final report identify the actual producer tag. Old `pr-func...` artifacts are rejected: start a fresh workflow run rather than retrying old-format work.
+
+Before each upload, the publisher independently hashes the imported root and checks its size and media type against the receipt. Registry diagnostics identify `copy`, `digest-readback`, and `tag-readback` phases and emit only sanitized HTTP methods, allowlisted paths, status codes, and recognized request IDs; raw ORAS debug output, headers, response bodies, and signed URLs are not emitted. A failed copy is recoverable only when its final two HTTP responses prove a successful root tag PUT immediately followed by a 404 for the expected root digest GET, with no unfinished requests. The publisher never repeats the copy: it verifies both digest and tag against the expected bytes, retrying only their manifest GET 404s, at most five reads per reference with 1/2/4/8-second waits and a ten-second timeout per read. Missing or unrecognized evidence, authorization failures, timeouts, and digest mismatches fail closed. Receipts record only fully verified publications, and a publisher failure still prevents cloud tests from running. Capture remains a standalone sparse-checkout helper; the full trusted publisher also requires `.github/scripts/release-reconciliation.mjs` for the shared bounded visibility policy.
+
+**Before merging cloud isolation:** configure the repository Actions secrets `RADIUS_TERRAFORM_PRIVATE_MODULES_CLIENT_ID` and `RADIUS_TERRAFORM_PRIVATE_MODULES_PRIVATE_KEY` for a dedicated App installed only on `radius-project/terraform-private-modules`, with **Contents: read** and implicit **Metadata: read**. Verify the App installation, permissions, and repository read access; secret-name presence does not verify them. Each test job checks both credentials and mints a short-lived installation token immediately before running tests, requesting only that repository and Contents read. The token is passed as `GH_TOKEN`, is not exported across jobs or uploaded as an artifact, and uses the action's default post-job revocation. Minting after setup leaves the one-hour lifetime sufficient for the remainder of the 60-minute job.
+
+The dedicated read-only App private key is deliberately used on the same runner as candidate code. Candidate code could obtain that key and mint additional tokens within the App's installation permissions; short token lifetime and revocation do not isolate the key. Keep this App narrowly installed and read-only; it must not be the broad reporting App. The broad functional-test App key stays on trusted controller/reporting runners, never candidate tests. Per-suite results keep the existing checks/PR-scoped `GITHUB_TOKEN`, with contents and packages read-only. Cloud tests retain contributor approval and necessary Test-tenant identities. Verify the full new controller path **after merge from protected main**, or in an explicitly approved isolated environment, not by privileged dispatch from a PR ref.
+
+Cloud isolation does not alter upstream release pipelines, tag requirements, artifact or alias behavior, or the ordinary snapshot build architecture. It adds no protected-release-tag precondition. Before the direct main/edge Bicep publisher's registry cutover, retain the separate manual-writer restrictions and cloud credential boundary, restrict elevated workflow definitions and production credentials to trusted publishers, and ensure Test identities have no production rights. GHCR grants are repository-scoped; read-only defaults, `dev/` prefixes and environment names are not package ACLs. These workflows do not configure secrets, registries, or policies, and there is no publisher enablement flag to defer the prerequisites until after cutover.
+
 ## Steps
 
 1. Find the workflow under `.github/workflows/` and identify any reusable workflows, Make targets, or scripts it calls.
@@ -76,6 +116,87 @@ Run `bash .github/scripts/validate-release-plan_test.sh --snapshots-only` to exe
 
 After a filter change merges, refresh an existing generated release PR through Prepare Release rather than rerunning an old workflow attempt. PR workflows need the updated revision, and cloud tests use the trusted base revision. A plan whose product source is `HEAD` must be regenerated when `main` advances; the release-plan validator deliberately rejects the stale source pin.
 
+### Main Bicep publishing
+
+**Merging the retirement layer stops production Bicep ACR calls.** `build-main.yaml` publishes Radius types through `__publish-bicep-types.yaml`, with no fallback to external regeneration. It retains the upstream snapshot/edge job graph, main queue, Helm gate and protected `publish-bicep` environment. Do not merge until the consumer and writer-drain gates below are satisfied.
+
+The new publisher accepts protected canonical main pushes and manual main runs. Successful `only_changed=true` detection permits a skip; failed/missing detection, unexpected skips, and publication failures fail Build Summary. These main-only requirements do not add a precondition to release-tag publishing.
+
+Read-only generation captures a native Bicep OCI tar once, using pinned tools, isolated `ociEnabled=true` configuration, and a local registry without credentials. A fresh trusted uploader validates source/run/artifact identity, native digest verification and the Bicep provider contract, then uses ORAS without executing downloaded code. Standard source/revision annotations retain provenance.
+
+One serialized job publishes `ghcr.io/radius-project/bicep-types-radius:edge` with `GITHUB_TOKEN`, verifies the uploaded digest, checks Public visibility, and anonymously hashes the manifest by digest before reporting success. It neither requests a private ACR copy nor mints a private Bicep App token. `build-main.yaml` no longer forwards publisher App secrets to this reusable workflow; unrelated uses of the same credentials remain unchanged.
+
+The `bicep-types-radius-<run-id>.tar` snapshot and per-attempt receipts have 30-day retention. Current-main retries reuse the snapshot and original generation evidence without rebuilding. A stale first attempt skips before mutation; a superseded retry fails closed because previous writes may be partial. Inspect the GHCR tag and receipts before recovery from current main; missing/expired snapshots require a new approved run. New receipts contain GHCR evidence only. Historical mirror receipts are not rewritten or accepted as GHCR-only retry state.
+
+#### Before merging the publisher
+
+1. Retain the upstream read-only snapshot architecture, downstream manual-writer restrictions and cloud credential isolation. Restrict elevated workflow definitions and production authority to trusted code, including maintained PR base branches; repository package grants are not per-workflow ACLs.
+2. Allow the source repository's `GITHUB_TOKEN` to create the canonical package; the trusted uploader requests `packages: write`. No PAT is needed.
+3. Verify required GHCR version/channel/RC/digest references and supported consumers, including the released CLI defaults. Public `edge` alone is insufficient.
+4. Finish unpublished legacy releases and transitional GHCR releases whose tagged workflows still require ACR mirrors. Drain queued/running old main and private receiver work before retiring either source caller. New code cannot revoke old tagged workflow revisions. Preserve the existing release environment and shared credentials; this change performs no live setup.
+
+Follow the [ordered merge and writer handoff](../../contributing-releases/README.md#ordered-merge-and-writer-handoff). After consumer coverage and old work are verified, retire both Radius and AWS source callers, then deploy the private production receiver guard last. Preserve explicit Test targets and unrelated private services.
+
+#### After the first upload
+
+The first GHCR upload may create a private package. Radius uploads, verifies and persists its digest before checking public visibility and anonymous digest access. Private/internal visibility, lookup failure or failed anonymous access leaves an honest `uploaded` receipt with the GHCR digest and fails the job. A package admin must use **Packages -> bicep-types-radius -> Package settings -> Change visibility -> Public**, then rerun using the original snapshot. Visibility is never changed automatically; `published` requires all three checks.
+
+Run the focused checks without registry credentials:
+
+```bash
+make install-yq
+PATH="${YQ_INSTALL_DIR:-$HOME/.local/bin}:$PATH" node --test .github/scripts/bicep-types.test.mjs .github/scripts/monitor-remote-workflow_test.mjs
+actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-types.yaml
+```
+
+For the actual main-publisher capture-to-prepare roundtrip, have Docker running and Node.js, curl and tar available, then run:
+
+```bash
+make install-bicep install-oras install-yq
+PATH="$HOME/.local/bin:$PATH" make test-bicep-types-native
+```
+
+The test checks the tool versions against `build/tools.yaml` and uses the committed generated Radius types without regenerating or copying them. It runs the real `capture()` and `prepare()` with native Bicep and ORAS against an owned plaintext registry on a random loopback port. An OCI-disabled control uses the same absolute index path; successful capture exercises the publisher's isolated scratch configuration. It checks the raw archive, native manifest/config/layer digests and bytes, source-only annotation stamping, and original-generation evidence across preparation retries. The owned container, volume and temporary files are removed afterward. No credentials, external registry publishing or global trust changes are used. Ubuntu unit CI installs the tools in a preceding step and runs this target separately from the cloud TLS capture test.
+
+### GHCR consumer cutover
+
+Active Radius configs read `ghcr.io/radius-project/bicep-types-radius` and `ghcr.io/radius-project/bicep-types-aws` with `experimentalFeaturesEnabled.ociEnabled=true`. Development uses `edge`, not the former ACR development `latest`; release channels, full version/RC tags and digest pins retain their meaning. The shared CLI config writer and general Bicep image configs use these defaults; existing user configs are not rewritten. Tagged Bicep image builds instead pass `BICEP_RELEASE_PLAN` and the exact `BICEP_EXTENSION_TAG`: approved `ghcr-v1` plans select GHCR full-version refs with OCI enabled, selector-free legacy plans retain ACR full-version refs, and unknown selectors fail closed. A new CLI release must ship the CLI defaults; already released binaries do not change.
+
+Keep the consumer cutover draft until all gates are satisfied:
+
+1. Keep the migration stack based on `main` and preserve its ordered dependencies; each upper PR targets the preceding layer until it lands.
+2. Radius publishers and release integration, plus the actual AWS companion publisher/release changes, are complete.
+3. Both canonical GHCR packages are public and anonymous restore/build succeeds for required `edge`, channel and full version/RC references. Backfill needed old channels and RCs with their exact historical manifest digests before changing pinned consumers; do not rebuild or invent historical provenance.
+4. Verify a newly built CLI's generated configs and arrange a CLI release containing the changes. Do not infer generated defaults or public package availability from a Bicep binary version alone.
+
+Keep ACR resources readable for historical consumers. The final retirement layer removes the compatibility mirror; release parity baselines, design inventories and historical verification remain. Private `TEST_BICEP_TYPES_REGISTRY`/`test/radius`, `testresources`, and unrelated recipe/image registries are not part of this cutover.
+
+Publishing, consumer configuration and retirement land separately. The intermediate publishing layer uses full-version ACR mirrors, the consumer layer switches `ghcr-v1` containers to GHCR, and final retirement removes mirror staging/readback and private promotion together. Legacy config interpretation remains ACR; it does not authorize new publication.
+
+The secure CI registry certificate already covers `localhost` and `radius-registry`. Native Bicep OCI publication treats loopback names as HTTP, so Bicep extension and recipe targets use `radius-registry:5000`; Docker/ORAS capture retains `localhost:5000`. The secure Kind action adds the registry's network address to CoreDNS because Docker's alias alone is not visible to pods; workloads retain the existing `global.rootCA.cert` trust mount. Exercise native `bicep publish-extension`, `rad bicep publish-extension`, restore/build and recipe publication with isolated certificates; JSON checks alone do not verify transport. A failed loopback publication does not imply loopback restore fails. Local generic OCI success is not proof that the public GHCR packages or AWS release artifacts exist.
+
+#### Consumer coverage and remaining ACR references
+
+The active production defaults use canonical GHCR refs in the shared CLI/init writer, downloaded-template fallback, general image generator, `ghcr-v1` release-container config, checked-in root/`.radius`/dynamic-RP configs, functional cloud/noncloud/long-running config writers, state-test generator, local functional runner's AWS extension, and isolated vendored recipe-pack compiler. The local runner retains its built Radius and `testresources` extensions. Existing user configs and explicit custom registries are not rewritten; full-version, channel and digest pins are not silently replaced by `edge`. Recipe and container-image registries are separate from extension defaults.
+
+The long-running workflow migrates canonical production refs in both the temporary released-source root config and its nested dynamic-RP config. Only ACR development `latest` maps to GHCR `edge`; existing GHCR `latest`, exact tags and digest pins keep their meaning. Custom refs, unrelated extensions and formatting are retained; only the nested test config gets the existing private `testresources` and credential settings. This does not edit the release branch or its approved plan. Missing versioned GHCR refs fail rather than falling back to edge.
+
+Remaining production ACR references are intentional and must be classified before retirement:
+
+| Class                                                   | Files or surfaces                                                                                                                                               | Required treatment                                                                                                                          |
+|---------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| Retired transitional publishing and readback            | Main private-copy interface, release mirror staging, private promotion helper and mandatory GHCR-to-ACR parity readback                                         | Removed together in final retirement. New publication verifies GHCR only.                                                                   |
+| Explicit legacy approved contract                       | `release-bicep-extensions.mjs`, `verify-release-build-contract.sh` and selector-free plan handling                                                              | Preserve exact historical ACR semantics; reject new mutation requiring the retired writer before approval/tag creation.                     |
+| Historical evidence and intentional compatibility tests | `.github/release-plans/`, `.github/release-parity/baselines/`, release collector/promotion/parity/manifest/build-contract tests, historical `eng/design-notes/` | Retain published plans, locks, digest evidence and tests of the legacy path. They are not active consumer defaults.                         |
+| Exact old-to-new reference migration                    | Long-running workflow's canonical-registry match                                                                                                                | Retain the old hostname only to recognize old released-source configs. It is not a read or publish destination.                             |
+| Test-only or explicit overrides                         | `TEST_BICEP_TYPES_REGISTRY`, private `testresources`, `purge-azure-test-resources.yaml` targeting `test/radius`, custom config/pin tests                        | Outside production extension retirement; retain Test ACR and user-selected references. Unrelated image/recipe registries are also excluded. |
+
+#### Final publishing-retirement dependency
+
+The final retirement PR follows consumer rollout. First establish required canonical version/channel/RC/digest coverage and a CLI/container release that uses it, update supported external consumers, and finish unpublished legacy and transitional mirror-dependent releases. Public `edge` alone is insufficient. Preserve already-published plans, release branches, locks, receipts and read-only reconciliation; stopping publication does not authorize deleting ACR data or shared credentials.
+
+The final layer retains GHCR native digest, source, retry and public-access checks; paired locks, AWS evidence, attestation, staged installation, post-approval rechecks and channel/latest eligibility remain required. Published historical resume authenticates the exact Radius tag/source, retained verified release manifest and existing AWS tag before inspecting the old workflow contract. It preserves downstream recovery but never recreates the AWS tag or regenerates missing published AWS evidence. Unsupported old contracts fail explicitly. The source retirements precede the private receiver guard; no new identity system or global credential gate is introduced.
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).
@@ -85,6 +206,8 @@ After a filter change merges, refresh an existing generated release PR through P
 - Run `bash .github/actions/go-mod-download/test.sh` for changes to the module download action. It checks retries, exponential backoff, failure propagation, directory handling, and input validation without network access. The unit-test workflow also exercises the action on Ubuntu and Windows.
 - Run `bash .github/actions/create-local-registry/test.sh` for changes to the image pull retry. It checks cached images, retry limits, random-delay bounds, timeout settings, permanent errors, and exit codes with fake commands, so it needs no network.
 - Run `bash .github/scripts/purge-old-images_test.sh` for changes to package cleanup. It checks transient read and delete retries, package and tag filtering, pagination, protected-version skips, rejected versions, primary and secondary rate limits, and permanent failure handling with fake HTTP responses.
+- With Node.js and OpenSSL installed, run `make test-cloud-test-helpers test-publishing-isolation test-build-summary`. The prerequisite owns runtime, producer-tag, retry, and base-dependency tests. Activation tests independently parse the current workflow to validate checkout refs and helper imports against a separate prepared-base directory; mutations to candidate refs or missing required base helpers must fail. Set `CLOUD_TEST_PREPARED_BASE` to an exported prerequisite tree to check that exact base instead of copying dependencies from the workspace. These are offline contract checks, not a simulation of GitHub checkout or proof of a live merge-group run.
+- Run `make test-cloud-test-helpers-native` with the prerequisites described above for pinned-ORAS TLS capture. The activation reuses that target and adds no duplicate native fixture or CI execution.
 
 ## Troubleshooting
 
@@ -93,6 +216,8 @@ After a filter change merges, refresh an existing generated release PR through P
 - **Logic works in CI but cannot be reproduced locally.** Extract the logic into a Make target or script and keep only GitHub-specific orchestration in the YAML.
 - **A reusable workflow change has unexpected callers.** Search `.github/workflows/` and the [`radius-project/.github`](https://github.com/radius-project/.github) repository for every `uses:` reference before changing its inputs, secrets, or outputs.
 - **Change detection fails after Filter.** Inspect the trusted checkout and import failure. Do not bypass the failed step or import the helper from the PR to recover.
+- **Cloud tests report missing private-module App credentials or token creation fails.** Have a maintainer verify both repository Actions secrets, the dedicated App installation, and its repository read permission; do not restore the status App key to candidate jobs. Dispatch the cloud controller from main and supply the candidate branch through its `branch` input.
+- **An upload rejects an artifact.** Inspect the validation error; rerun the producer for missing/expired inputs rather than relaxing source, digest or destination checks. Downstream-only reruns reuse the same run's validated inputs.
 
 ## Related docs
 

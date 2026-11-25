@@ -91,7 +91,7 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 		return HostOptions{}, err
 	}
 
-	ucp_conn, err := config.NewConnectionFromUCPConfig(&conf.UCP, k8s)
+	ucp_conn, err := config.NewConnectionFromUCPConfig(&conf.UCP, k8s, conf.Authorization)
 	if err != nil {
 		return HostOptions{}, err
 	}

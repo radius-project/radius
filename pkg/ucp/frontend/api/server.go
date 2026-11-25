@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,9 +30,12 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/datamodel/converter"
 	aws_frontend "github.com/radius-project/radius/pkg/ucp/frontend/aws"
@@ -45,11 +49,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Service implements the hosting.Service interface for the UCP frontend API.
 type Service struct {
-	options *ucp.Options
+	options                    *ucp.Options
+	loadRequestHeaderConfigMap func(context.Context) (*corev1.ConfigMap, error)
 }
 
 // DefaultModules returns a list of default modules that will be registered with the router.
@@ -66,7 +72,8 @@ var _ hosting.Service = (*Service)(nil)
 // NewService creates a server to serve UCP API requests.
 func NewService(options *ucp.Options) *Service {
 	return &Service{
-		options: options,
+		options:                    options,
+		loadRequestHeaderConfigMap: loadRequestHeaderConfigMap,
 	}
 }
 
@@ -79,6 +86,27 @@ func (s *Service) Name() string {
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
+	config := s.options.Config
+	if config.CallerAuthentication != nil && config.KubernetesCallerAuthentication != nil {
+		return nil, fmt.Errorf("callerAuthentication and kubernetesCallerAuthentication are mutually exclusive")
+	}
+	if (config.CallerAuthentication != nil || config.KubernetesCallerAuthentication != nil) && config.Server.TLSCertificateDirectory == "" {
+		return nil, fmt.Errorf("caller authentication requires a TLS server certificate directory")
+	}
+	authenticator, err := authorization.NewRequestHeaderAuthenticator(config.CallerAuthentication)
+	if err != nil {
+		return nil, err
+	}
+	if config.KubernetesCallerAuthentication != nil {
+		configMap, err := s.loadRequestHeaderConfigMap(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("load Kubernetes request-header trust: %w", err)
+		}
+		authenticator, err = authorization.NewKubernetesRequestHeaderAuthenticator(configMap, *config.KubernetesCallerAuthentication)
+		if err != nil {
+			return nil, fmt.Errorf("configure Kubernetes request-header trust: %w", err)
+		}
+	}
 	r := chi.NewRouter()
 
 	// Allow tests to override the default modules.
@@ -88,7 +116,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		modules = DefaultModules(s.options)
 	}
 
-	err := Register(ctx, r, modules, s.options)
+	err = Register(ctx, r, modules, s.options)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +129,9 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app := http.Handler(r)
 	app = servicecontext.ARMRequestCtx(s.options.Config.Server.PathBase, s.options.Config.Environment.RoleLocation)(app)
 	app = middleware.WithLogger(app)
+	app = authorization.Inspection(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
+	app = authorization.ObserveRequests(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
+	app = authenticator.Middleware(app)
 
 	app = otelhttp.NewHandler(
 		middleware.NormalizePath(app),
@@ -113,7 +144,8 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = middleware.RemoveRemoteAddr(app)
 
 	server := &http.Server{
-		Addr: s.options.Config.Server.Address(),
+		Addr:      s.options.Config.Server.Address(),
+		TLSConfig: authenticator.TLSConfig(),
 		// Need to be able to respond to requests with planes and resourcegroups segments with any casing e.g.: /Planes, /resourceGroups
 		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
 		// the path for only these segments and preserves the case for the other parts of the path.
@@ -232,11 +264,37 @@ func (s *Service) Run(ctx context.Context) error {
 		_ = service.Shutdown(ctx)
 	}()
 
+	internalErr := make(chan error, 1)
+	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
+		if s.options.Config.Server.InternalPort == 0 {
+			return errors.New("server.internalPort is required when the authorization mode is not off")
+		}
+		internal := s.internalServer(service)
+		go func() {
+			<-ctx.Done()
+			_ = internal.Shutdown(ctx)
+		}()
+		go func() {
+			logger.Info(fmt.Sprintf("listening for internal traffic on: '%s'...", internal.Addr))
+			err := mtls.ListenAndServe(ctx, internal, s.options.Config.Authorization, mtls.Receiver{Name: "ucp"})
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				internalErr <- fmt.Errorf("internal endpoint failed: %w", err)
+				_ = service.Shutdown(ctx)
+			}
+		}()
+	}
+
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
 	if s.options.Config.Server.TLSCertificateDirectory == "" {
 		err = service.ListenAndServe()
 	} else {
 		err = service.ListenAndServeTLS(s.options.Config.Server.TLSCertificateDirectory+"/tls.crt", s.options.Config.Server.TLSCertificateDirectory+"/tls.key")
+	}
+
+	select {
+	case ierr := <-internalErr:
+		return ierr
+	default:
 	}
 
 	if err == http.ErrServerClosed {
@@ -249,4 +307,15 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
+}
+
+// internalServer returns a server for internal component traffic. It serves the same
+// routes as the aggregation endpoint on InternalPort, so the Kubernetes API aggregation
+// endpoint and its certificate are unchanged.
+func (s *Service) internalServer(aggregation *http.Server) *http.Server {
+	return &http.Server{
+		Addr:        fmt.Sprintf("%s:%d", s.options.Config.Server.Host, s.options.Config.Server.InternalPort),
+		Handler:     aggregation.Handler,
+		BaseContext: aggregation.BaseContext,
+	}
 }

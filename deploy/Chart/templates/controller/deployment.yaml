@@ -10,6 +10,10 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
+  # No leader election: stop the old dispatcher before starting its replacement.
+  strategy:
+    type: Recreate
+    rollingUpdate: null
   selector:
     matchLabels:
       app.kubernetes.io/name: controller
@@ -20,7 +24,7 @@ spec:
         app.kubernetes.io/name: controller
         app.kubernetes.io/part-of: radius
       annotations:
-        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/authz-config: {{ include "radius.authz.checksumInput" . | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -94,6 +98,8 @@ spec:
           subPath: bicepconfig.json
         - name: config-volume
           mountPath: /etc/config
+        {{- with include "radius.authz.caBundle.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -112,6 +118,8 @@ spec:
         - name: config-volume
           configMap:
             name: controller-config
+        {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

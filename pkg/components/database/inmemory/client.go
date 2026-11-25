@@ -223,6 +223,36 @@ func (c *Client) Query(ctx context.Context, query database.Query, options ...dat
 	return result, nil
 }
 
+var _ database.Enumerator = (*Client)(nil)
+
+// Enumerate implements database.Enumerator. It visits defensive copies taken before the first call to fn, so fn may
+// use the client.
+func (c *Client) Enumerate(ctx context.Context, fn func(obj *database.Object) error) error {
+	if ctx == nil {
+		return &database.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
+	}
+
+	c.mutex.Lock()
+	items := make([]database.Object, 0, len(c.resources))
+	for _, entry := range c.resources {
+		copy, err := entry.obj.DeepCopy()
+		if err != nil {
+			c.mutex.Unlock()
+			return err
+		}
+		items = append(items, *copy)
+	}
+	c.mutex.Unlock()
+
+	for i := range items {
+		if err := fn(&items[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Save implements database.Client.
 func (c *Client) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 	if ctx == nil {
@@ -246,9 +276,14 @@ func (c *Client) Save(ctx context.Context, obj *database.Object, options ...data
 	defer c.mutex.Unlock()
 
 	config := database.NewSaveConfig(options...)
+	if config.CreateOnly && config.ETag != "" {
+		return &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"}
+	}
 
 	entry, ok := c.resources[strings.ToLower(converted.String())]
-	if !ok && config.ETag != "" {
+	if ok && config.CreateOnly {
+		return &database.ErrConcurrency{}
+	} else if !ok && config.ETag != "" {
 		return &database.ErrConcurrency{}
 	} else if ok && config.ETag != "" && config.ETag != entry.obj.ETag {
 		return &database.ErrConcurrency{}

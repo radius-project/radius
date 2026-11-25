@@ -26,6 +26,8 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
@@ -38,6 +40,11 @@ import (
 // For testability, all fields on this struct MUST be constructed from the NewOptions function without any
 // additional initialization required.
 type Options struct {
+	// AWSClients are the AWS clients that the AWS plane's frontend and backend share. NewOptions leaves them unset, and
+	// server.NewServer creates the ones that are still unset before the frontend and backend start. Tests set them
+	// first to use mocks.
+	AWSClients ucp_aws.Clients
+
 	// Config is the configuration for the server.
 	Config *Config
 
@@ -62,6 +69,10 @@ type Options struct {
 
 	// UCP is the connection to UCP
 	UCP sdk.Connection
+
+	// UserAuthorization is nil unless the policy runtime is configured.
+	// Its State/Ready methods distinguish unconfigured from unavailable policy.
+	UserAuthorization *authorization.PolicyRuntime
 }
 
 // NewOptions creates a new Options instance from the given configuration.
@@ -79,6 +90,21 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	databaseClient, err := options.DatabaseProvider.GetClient(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	if config.UserAuthorization.Enabled {
+		catalog, err := authorization.NewCatalog(nil)
+		if err != nil {
+			return nil, fmt.Errorf("create user authorization catalog: %w", err)
+		}
+		store, err := authorization.NewPolicyStore(databaseClient, catalog, nil, nil)
+		if err != nil {
+			return nil, fmt.Errorf("create user authorization store: %w", err)
+		}
+		options.UserAuthorization, err = authorization.NewPolicyRuntime(store, nil)
+		if err != nil {
+			return nil, fmt.Errorf("create user authorization runtime: %w", err)
+		}
 	}
 
 	queueClient, err := options.QueueProvider.GetClient(ctx)
@@ -106,7 +132,7 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		}
 	}
 
-	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, cfg)
+	options.UCP, err = ucpconfig.NewConnectionFromUCPConfig(&config.UCP, cfg, config.Authorization)
 	if err != nil {
 		return nil, err
 	}

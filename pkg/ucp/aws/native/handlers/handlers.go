@@ -1,0 +1,139 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+// Package handlers lists the native AWS handlers UCP registers.
+package handlers
+
+import (
+	"github.com/aws/aws-sdk-go-v2/aws"
+	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
+	chimesdkvoicesdk "github.com/aws/aws-sdk-go-v2/service/chimesdkvoice"
+	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	codebuildsdk "github.com/aws/aws-sdk-go-v2/service/codebuild"
+	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
+	daxsdk "github.com/aws/aws-sdk-go-v2/service/dax"
+	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
+	ec2sdk "github.com/aws/aws-sdk-go-v2/service/ec2"
+	elbv2sdk "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
+	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
+	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
+	gluesdk "github.com/aws/aws-sdk-go-v2/service/glue"
+	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
+	iotsdk "github.com/aws/aws-sdk-go-v2/service/iot"
+	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
+	kmssdk "github.com/aws/aws-sdk-go-v2/service/kms"
+	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
+	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	neptunesdk "github.com/aws/aws-sdk-go-v2/service/neptune"
+	rdssdk "github.com/aws/aws-sdk-go-v2/service/rds"
+	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
+	s3controlsdk "github.com/aws/aws-sdk-go-v2/service/s3control"
+	s3tablessdk "github.com/aws/aws-sdk-go-v2/service/s3tables"
+	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
+	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
+	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
+	transfersdk "github.com/aws/aws-sdk-go-v2/service/transfer"
+
+	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/chime"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dms"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/ec2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/elbv2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/glue"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iot"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kms"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/neptune"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/rds"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/s3tables"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/transfer"
+)
+
+// All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
+// is in pkg/aws/schemas.
+func All(cfg aws.Config) []native.Handler {
+	chimeAPI := chimesdkvoicesdk.NewFromConfig(cfg)
+	docdbAPI := docdbsdk.NewFromConfig(cfg)
+	ec2API := ec2sdk.NewFromConfig(cfg)
+	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
+	rdsAPI := rdssdk.NewFromConfig(cfg)
+	s3API := s3sdk.NewFromConfig(cfg)
+	stsAPI := stssdk.NewFromConfig(cfg)
+	return []native.Handler{
+		docdb.NewCluster(docdbAPI),
+		docdb.NewInstance(docdbAPI),
+		dax.NewCluster(daxsdk.NewFromConfig(cfg)),
+		dms.NewReplicationInstance(dmssdk.NewFromConfig(cfg)),
+		emr.NewCluster(emrsdk.NewFromConfig(cfg)),
+		fsx.NewFileSystem(fsxsdk.NewFromConfig(cfg)),
+		ec2.NewClientVpnEndpoint(ec2API),
+		ec2.NewClientVpnTargetNetworkAssociation(ec2API),
+		ec2.NewNetworkAclEntry(ec2API),
+		ec2.NewNetworkInterfacePermission(ec2API),
+		ec2.NewVPNGatewayRoutePropagation(ec2API),
+		ec2.NewInstanceState(ec2API),
+		elbv2.NewListenerCertificate(elbv2sdk.NewFromConfig(cfg)),
+		lakeformation.NewDataLakeSettings(lakeformationAPI),
+		lakeformation.NewPermissions(lakeformationAPI, stsAPI),
+		lakeformation.NewResource(lakeformationAPI),
+		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
+		medialive.NewChannel(medialivesdk.NewFromConfig(cfg)),
+		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3API),
+		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stsAPI),
+		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
+		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
+		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
+		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		neptune.NewClusterEndpoint(neptunesdk.NewFromConfig(cfg)),
+		glue.NewPartitionIndex(gluesdk.NewFromConfig(cfg)),
+		rds.NewActivityStream(rdsAPI),
+		rds.NewDBInstanceState(rdsAPI),
+		rds.NewTenantDatabase(rdsAPI),
+		s3.NewBucketRequestPayment(s3API),
+		s3.NewMultiRegionAccessPointRoutes(s3controlsdk.NewFromConfig(cfg)),
+		s3tables.NewTableReplication(s3tablessdk.NewFromConfig(cfg)),
+		iot.NewThingGroupMembership(iotsdk.NewFromConfig(cfg)),
+		transfer.NewAccess(transfersdk.NewFromConfig(cfg)),
+		chime.NewLoggingConfiguration(chimeAPI),
+		chime.NewStreamingConfiguration(chimeAPI),
+		chime.NewOrigination(chimeAPI),
+		chime.NewTermination(chimeAPI),
+		kms.NewGrant(kmssdk.NewFromConfig(cfg)),
+	}
+}
+
+// NewRegistry returns the registry of every handler All returns, with the schemas built into Radius.
+func NewRegistry(cfg aws.Config) (*native.Registry, error) {
+	catalog, err := schemas.Load()
+	if err != nil {
+		return nil, err
+	}
+	return native.NewRegistry(catalog, All(cfg)...)
+}

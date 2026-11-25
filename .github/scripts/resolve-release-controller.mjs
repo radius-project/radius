@@ -16,6 +16,12 @@
 
 // @ts-check
 
+import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { tool } from "./bicep-types.mjs";
+import { readPublishedReleaseManifest } from "./release-assets.mjs";
+
 const versionPattern = /^v\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?$/;
 const releasePullPattern =
   /^automation\/prepare-release-(\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?)$/;
@@ -145,3 +151,72 @@ export default async function resolveReleaseController({
 }
 
 export { findReleasePull, releasePullVersion };
+
+export async function verifyReleaseBuildSource({ github, core, run = tool }) {
+  const version = core.getInput("VERSION", { required: true });
+  const sourceSha = core.getInput("SOURCE_SHA", { required: true });
+  assert.match(version, versionPattern);
+  assert.match(sourceSha, commitPattern);
+  const planFile = core.getInput("PLAN_FILE", { required: true });
+  const plan = JSON.parse(await run(["yq", "-o=json", ".", planFile]));
+  assert.equal(plan.version, version);
+  const manifest = await readPublishedReleaseManifest(
+    github,
+    version,
+    sourceSha
+  );
+  let engine;
+  if (manifest) {
+    assert.equal(manifest.channel, plan.channel);
+    assert.equal(manifest.releaseType, plan.releaseType);
+    const engines = manifest.observed?.imageLocks?.filter(
+      (entry) => entry.name === "deployment-engine"
+    );
+    assert.equal(
+      engines?.length,
+      1,
+      "Missing published Deployment Engine lock"
+    );
+    [engine] = engines;
+    assert.match(engine.sourceSha, commitPattern);
+    assert.match(engine.digest, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(
+      engine.reference,
+      `ghcr.io/radius-project/deployment-engine:${version.slice(1)}`
+    );
+    const siblings = plan.siblingRepositories.filter(
+      (entry) => entry.name === "bicep-types-aws"
+    );
+    assert.equal(siblings.length, 1, "Expected exactly one planned AWS source");
+    assert.equal(siblings[0].repository, "radius-project/bicep-types-aws");
+    const { data: tag } = await github.rest.repos.getCommit({
+      owner: "radius-project",
+      repo: "bicep-types-aws",
+      ref: `refs/tags/${version}`
+    });
+    assert.equal(
+      tag.sha,
+      siblings[0].sourceCommit,
+      "Published release AWS tag is missing or differs from the approved source; never recreate it"
+    );
+  }
+  const targetsFile = join(dirname(planFile), "approved-targets.json");
+  await writeFile(targetsFile, JSON.stringify(plan.expectedOutputs));
+  const args = [
+    "bash",
+    "./.github/scripts/verify-release-build-contract.sh",
+    sourceSha,
+    "--expected-targets",
+    targetsFile
+  ];
+  if (plan.changelogPolicy === "stable-only")
+    args.push("--require-sibling-releases");
+  if (!manifest)
+    args.push("--require-current-bicep", "--require-current-engine");
+  await run(args);
+  if (engine) {
+    core.setOutput("de-source-commit", engine.sourceSha);
+    core.setOutput("de-digest", engine.digest);
+  }
+  core.setOutput("published", String(Boolean(manifest)));
+}

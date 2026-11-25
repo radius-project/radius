@@ -54,7 +54,8 @@ func NewDefaultProviderConfig(resourceGroup string) ProviderConfig {
 	return config
 }
 
-// GenerateProviderConfig generates a ProviderConfig object based on the given scopes.
+// GenerateProviderConfig generates a ProviderConfig object based on the given scopes. When resourceGroup is set, the
+// AWS provider also gets the owner of a template deployed to that resource group, with no application or environment.
 func GenerateProviderConfig(resourceGroup, awsScope, azureScope string) ProviderConfig {
 	providerConfig := ProviderConfig{}
 	if awsScope != "" {
@@ -63,6 +64,9 @@ func GenerateProviderConfig(resourceGroup, awsScope, azureScope string) Provider
 			Value: Value{
 				Scope: awsScope,
 			},
+		}
+		if resourceGroup != "" {
+			providerConfig.AWS.Value.Owner = AWSDeploymentOwner(resourceGroup, "", "")
 		}
 	}
 	if azureScope != "" {

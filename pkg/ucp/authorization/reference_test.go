@@ -1,0 +1,461 @@
+// Copyright 2026 The Radius Authors.
+// Licensed under the Apache License, Version 2.0.
+
+package authorization
+
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+
+	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/authorization/internal/cataloggen"
+	"github.com/stretchr/testify/require"
+)
+
+func TestBuiltInReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	targets := append(cataloggen.ApplicationTypes(), "Radius.Core/environments", "Applications.Core/environments")
+	for _, typ := range targets {
+		t.Run(typ, func(t *testing.T) {
+			body := map[string]any{"properties": map[string]any{
+				"environment": envA,
+				"application": appA,
+				"connections": map[string]any{"database": map[string]any{
+					"source": teamB + "/providers/Applications.Datastores/mongoDatabases/shared",
+				}},
+			}}
+			checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/"+typ+"/test", body, ReferenceOptions{})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []Check{
+				{"Radius.Core/environments/use/action", lowerTarget(envA)},
+				{"Radius.Core/applications/write", lowerTarget(appA)},
+				{"Applications.Datastores/mongoDatabases/connect/action", lowerTarget(teamB + "/providers/Applications.Datastores/mongoDatabases/shared")},
+			}, checks)
+			again, err := catalog.ReferenceChecks("PATCH", teamA+"/providers/"+typ+"/test", body, ReferenceOptions{})
+			require.NoError(t, err)
+			require.Equal(t, checks, again, "unchanged references must still be checked")
+			for _, method := range []string{"GET", "DELETE"} {
+				checks, err := catalog.ReferenceChecks(method, "not-used", body, ReferenceOptions{})
+				require.NoError(t, err)
+				require.Empty(t, checks)
+			}
+			for _, property := range []string{"environment", "application"} {
+				for _, value := range []any{nil, "", 42, plane, teamA + "/providers/Team.Data/widgets/other"} {
+					_, err := catalog.ReferenceChecks("PUT", teamA+"/providers/"+typ+"/test",
+						map[string]any{"properties": map[string]any{property: value}}, ReferenceOptions{})
+					require.Error(t, err, "%s=%v", property, value)
+				}
+			}
+		})
+	}
+}
+
+func TestRegisteredResourceReferences(t *testing.T) {
+	for _, registration := range []Registration{
+		{Type: "Team.Data/widgets", PermissionSets: []string{ApplicationResources}},
+		{Type: "Team.Data/gadgets"},
+		{Type: "Applications.Custom/widgets"},
+		{Type: "Radius.Custom/widgets"},
+	} {
+		t.Run(registration.Type, func(t *testing.T) {
+			catalog, err := NewCatalog([]Registration{registration})
+			require.NoError(t, err)
+			target := teamA + "/providers/" + strings.ToUpper(registration.Type) + "/test"
+			body := map[string]any{"properties": map[string]any{
+				"environment": envA,
+				"application": appA,
+				"connections": []any{"custom-schema-value"},
+			}}
+			for _, method := range []string{"PUT", "PATCH"} {
+				for _, connections := range []any{
+					[]any{"custom-schema-value"},
+					map[string]any{"custom": map[string]any{"source": appA}},
+				} {
+					body["properties"].(map[string]any)["connections"] = connections
+					checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.NoError(t, err)
+					require.ElementsMatch(t, []Check{
+						{"Radius.Core/environments/use/action", lowerTarget(envA)},
+						{"Radius.Core/applications/write", lowerTarget(appA)},
+					}, checks)
+				}
+			}
+			checks, err := catalog.ReferenceChecks("PUT", target, body, ReferenceOptions{
+				References: []ReferenceDescriptor{{
+					Path: []string{"properties", "connections", "*", "source"}, ResourceType: "Radius.Core/applications",
+				}},
+			})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []Check{
+				{"Radius.Core/environments/use/action", lowerTarget(envA)},
+				{"Radius.Core/applications/write", lowerTarget(appA)},
+				{"Radius.Core/applications/read", lowerTarget(appA)},
+			}, checks)
+			for _, property := range []string{"environment", "application"} {
+				for _, value := range []any{nil, "", 42, plane, target} {
+					_, err := catalog.ReferenceChecks("PUT", target,
+						map[string]any{"properties": map[string]any{property: value}}, ReferenceOptions{})
+					require.Error(t, err, "%s=%v", property, value)
+				}
+			}
+		})
+	}
+}
+
+func TestReferenceChecksRejectPropertiesAliases(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets"}})
+	require.NoError(t, err)
+	for _, alias := range []string{"Properties", "PROPERTIES", "pRoPeRtIeS"} {
+		for _, method := range []string{"PUT", "PATCH"} {
+			t.Run(method+"/"+alias, func(t *testing.T) {
+				raw := `{"properties":{"environment":"` + envA + `"},"` + alias +
+					`":{"environment":"` + teamB + `/providers/Radius.Core/environments/other"}}`
+				var backend struct {
+					Properties map[string]any `json:"properties"`
+				}
+				require.NoError(t, json.Unmarshal([]byte(raw), &backend))
+				require.Equal(t, teamB+"/providers/Radius.Core/environments/other", backend.Properties["environment"])
+				for _, target := range []string{appA, teamA + "/providers/Team.Data/widgets/test"} {
+					var body map[string]any
+					require.NoError(t, json.Unmarshal([]byte(raw), &body))
+					_, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.ErrorContains(t, err, "noncanonical properties field")
+					delete(body, "properties")
+					_, err = catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+					require.ErrorContains(t, err, "noncanonical properties field")
+				}
+			})
+		}
+	}
+}
+
+func lowerTarget(target string) string {
+	return strings.ToLower(target)
+}
+
+func TestConnectionSources(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	target := teamA + "/providers/Applications.Core/containers/frontend"
+	planes := ReferenceOptions{CloudPlanes: map[string]string{"azure": "/planes/azure/production", "aws": "/planes/aws/local"}}
+	put := func(source any, options ReferenceOptions) ([]Check, error) {
+		return catalog.ReferenceChecks("PUT", target, map[string]any{"properties": map[string]any{
+			"connections": map[string]any{"backend": map[string]any{"source": source}},
+		}}, options)
+	}
+	azure := []Check{{"System.Azure/credentials/use/action", "/planes/azure/production"}}
+	for _, tc := range []struct {
+		name   string
+		source string
+		want   []Check
+	}{
+		{"http URL", "http://cyclea:3000", []Check{}},
+		{"https URL", "https://example.com/api", []Check{}},
+		{"Azure ARM ID", "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.DocumentDB/databaseAccounts/db", azure},
+		{"Azure UCP ID", "/planes/azure/azurecloud/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/sa", azure},
+		{"AWS UCP ID", "/planes/aws/aws/accounts/000/regions/us-west-2/providers/AWS.S3/Bucket/b",
+			[]Check{{"System.AWS/credentials/use/action", "/planes/aws/local"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			checks, err := put(tc.source, planes)
+			require.NoError(t, err)
+			require.Equal(t, tc.want, checks)
+		})
+	}
+	t.Run("cloud source without a trusted plane fails closed", func(t *testing.T) {
+		_, err := put("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/sa", ReferenceOptions{})
+		require.ErrorContains(t, err, "resolve azure credential plane")
+	})
+	for _, source := range []any{nil, "", 42, "/subscriptions/sub", "not a url", "/planes/radius/local/../x"} {
+		_, err := put(source, planes)
+		require.Error(t, err, "source=%v", source)
+	}
+}
+
+func TestContainerNestedReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	target := teamA + "/providers/Applications.Core/containers/frontend"
+	store := func(scope string) string { return scope + "/providers/Applications.Core/secretStores/creds" }
+	volume := func(scope string) string { return scope + "/providers/Applications.Core/volumes/data" }
+	container := func(env, volumes map[string]any) map[string]any {
+		inner := map[string]any{"image": "nginx"}
+		if env != nil {
+			inner["env"] = env
+		}
+		if volumes != nil {
+			inner["volumes"] = volumes
+		}
+		return map[string]any{"properties": map[string]any{
+			"container": inner,
+			"connections": map[string]any{
+				"db": map[string]any{"source": teamB + "/providers/Applications.Datastores/mongoDatabases/shared"},
+			},
+		}}
+	}
+	secretEnv := func(source any) map[string]any {
+		return map[string]any{"valueFrom": map[string]any{"secretRef": map[string]any{"source": source, "key": "k"}}}
+	}
+	body := container(map[string]any{
+		"PLAIN":      map[string]any{"value": "x"},
+		"K8S":        secretEnv("my-secret"),
+		"K8S_NS":     secretEnv("default/my-secret"),
+		"STORE":      secretEnv(store(teamB)),
+		"STORE_SAME": secretEnv(store(teamB)),
+	}, map[string]any{
+		"scratch": map[string]any{"kind": "ephemeral", "managedStore": "memory", "mountPath": "/tmp"},
+		"data":    map[string]any{"kind": "persistent", "source": volume(teamB), "mountPath": "/data"},
+	})
+	for _, method := range []string{"PUT", "PATCH"} {
+		checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+		require.NoError(t, err, method)
+		require.ElementsMatch(t, []Check{
+			{"Applications.Core/secretStores/connect/action", lowerTarget(store(teamB))},
+			{"Applications.Core/volumes/connect/action", lowerTarget(volume(teamB))},
+			{"Applications.Datastores/mongoDatabases/connect/action", lowerTarget(teamB + "/providers/Applications.Datastores/mongoDatabases/shared")},
+		}, checks, method)
+	}
+
+	t.Run("Kubernetes secret names are not references", func(t *testing.T) {
+		checks, err := catalog.ReferenceChecks("PUT", target, map[string]any{"properties": map[string]any{
+			"container": map[string]any{"env": map[string]any{"K": secretEnv("my-secret")}},
+		}}, ReferenceOptions{})
+		require.NoError(t, err)
+		require.Empty(t, checks)
+	})
+
+	t.Run("other types ignore container fields", func(t *testing.T) {
+		checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Applications.Core/gateways/gw",
+			container(map[string]any{"S": secretEnv(store(teamB))}, nil), ReferenceOptions{})
+		require.NoError(t, err)
+		require.NotContains(t, checks, Check{"Applications.Core/secretStores/connect/action", lowerTarget(store(teamB))})
+	})
+
+	for name, properties := range map[string]map[string]any{
+		"env secret wrong type":   container(map[string]any{"S": secretEnv(teamB + "/providers/Applications.Dapr/secretStores/s")}, nil),
+		"env secret scope not ID": container(map[string]any{"S": secretEnv(teamB)}, nil),
+		"env secret malformed ID": container(map[string]any{"S": secretEnv("/not/a/resource")}, nil),
+		"env secret empty":        container(map[string]any{"S": secretEnv("")}, nil),
+		"env secret not a string": container(map[string]any{"S": secretEnv(42)}, nil),
+		"env not an object":       container(map[string]any{"S": "x"}, nil),
+		"secretRef not an object": container(map[string]any{"S": map[string]any{"valueFrom": map[string]any{"secretRef": "x"}}}, nil),
+		"volume wrong type":       container(nil, map[string]any{"v": map[string]any{"kind": "persistent", "source": store(teamB)}}),
+		"volume source missing":   container(nil, map[string]any{"v": map[string]any{"kind": "persistent"}}),
+		"volume source malformed": container(nil, map[string]any{"v": map[string]any{"kind": "persistent", "source": "data"}}),
+		"volume unknown kind":     container(nil, map[string]any{"v": map[string]any{"kind": "other", "source": volume(teamB)}}),
+		"volume kind missing":     container(nil, map[string]any{"v": map[string]any{"source": volume(teamB)}}),
+		"volume not an object":    container(nil, map[string]any{"v": "x"}),
+		"volumes not a map":       {"properties": map[string]any{"container": map[string]any{"volumes": []any{}}}},
+		"container not an object": {"properties": map[string]any{"container": "x"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := catalog.ReferenceChecks("PUT", target, properties, ReferenceOptions{})
+			require.Error(t, err)
+		})
+	}
+
+	t.Run("team boundary", func(t *testing.T) {
+		identity := testIdentity()
+		evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{
+			testAssignment("grant", builtInID("application-developer"), teamA, identity.Principal),
+		})
+		require.NoError(t, err)
+		for scope, allowed := range map[string]bool{teamA: true, teamB: false} {
+			checks, err := catalog.ReferenceChecks("PUT", target, container(
+				map[string]any{"S": secretEnv(store(scope))},
+				map[string]any{"v": map[string]any{"kind": "persistent", "source": volume(scope)}},
+			), ReferenceOptions{})
+			require.NoError(t, err)
+			var nested []Check
+			for _, check := range checks {
+				if !strings.Contains(check.Permission, "mongoDatabases") {
+					nested = append(nested, check)
+				}
+			}
+			require.Len(t, nested, 2)
+			results, err := evaluator.Evaluate(identity, nested)
+			require.NoError(t, err)
+			for _, result := range results {
+				require.Equal(t, allowed, result.Allowed, "%s on %s", result.Permission, scope)
+			}
+		}
+	})
+}
+
+func TestEnvironmentReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	pack := plane + "/providers/Radius.Core/recipePacks/pack"
+	body := map[string]any{"properties": map[string]any{
+		"recipePacks": []any{pack},
+		"providers":   map[string]any{"azure": map[string]any{"scope": "/subscriptions/sub/resourceGroups/rg"}, "aws": map[string]any{}},
+	}}
+	checks, err := catalog.ReferenceChecks("PUT", envA, body, ReferenceOptions{CloudPlanes: map[string]string{"azure": "/planes/azure/production", "aws": "/planes/aws/local"}})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []Check{
+		{"Radius.Core/recipePacks/use/action", lowerTarget(pack)},
+		{"System.Azure/credentials/use/action", "/planes/azure/production"},
+		{"System.AWS/credentials/use/action", "/planes/aws/local"},
+	}, checks)
+	_, err = catalog.ReferenceChecks("PUT", envA, body, ReferenceOptions{})
+	require.ErrorContains(t, err, "resolve azure credential plane")
+	_, err = catalog.ReferenceChecks("PUT", envA, body, ReferenceOptions{CloudPlanes: map[string]string{"azure": plane}})
+	require.ErrorContains(t, err, "invalid azure credential plane")
+}
+
+func TestEnvironmentSettingsReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	legacyEnv := teamA + "/providers/Applications.Core/environments/legacy"
+	terraform := plane + "/providers/Radius.Core/terraformSettings/tf"
+	bicep := plane + "/providers/Radius.Core/bicepSettings/bicep"
+	store := func(name string) string { return teamB + "/providers/Applications.Core/secretStores/" + name }
+	recipeConfig := map[string]any{
+		"terraform": map[string]any{
+			"authentication": map[string]any{"git": map[string]any{"pat": map[string]any{
+				"github.com":    map[string]any{"secret": store("pat")},
+				"dev.azure.com": map[string]any{},
+			}}},
+			"providers": map[string]any{"azurerm": []any{
+				map[string]any{"subscriptionId": "sub", "secrets": map[string]any{"clientSecret": map[string]any{"source": store("provider"), "key": "secret"}}},
+				map[string]any{"alias": "other"},
+			}},
+		},
+		"bicep":      map[string]any{"authentication": map[string]any{"myregistry.azurecr.io": map[string]any{"secret": store("registry")}}},
+		"env":        map[string]any{"PLAIN": "value"},
+		"envSecrets": map[string]any{"TOKEN": map[string]any{"source": store("env"), "key": "token"}},
+	}
+	for _, method := range []string{"PUT", "PATCH"} {
+		t.Run(method, func(t *testing.T) {
+			checks, err := catalog.ReferenceChecks(method, envA, map[string]any{"properties": map[string]any{
+				"terraformSettings": terraform, "bicepSettings": bicep,
+			}}, ReferenceOptions{})
+			require.NoError(t, err)
+			require.ElementsMatch(t, []Check{
+				{"Radius.Core/terraformSettings/use/action", lowerTarget(terraform)},
+				{"Radius.Core/bicepSettings/use/action", lowerTarget(bicep)},
+			}, checks)
+			checks, err = catalog.ReferenceChecks(method, legacyEnv, map[string]any{"properties": map[string]any{"recipeConfig": recipeConfig}}, ReferenceOptions{})
+			require.NoError(t, err)
+			want := []Check{}
+			for _, name := range []string{"pat", "provider", "registry", "env"} {
+				want = append(want, Check{"Applications.Core/secretStores/use/action", lowerTarget(store(name))})
+			}
+			require.ElementsMatch(t, want, checks)
+			// PATCH checks only the fields it sends.
+			checks, err = catalog.ReferenceChecks(method, legacyEnv, map[string]any{"properties": map[string]any{
+				"recipeConfig": map[string]any{"env": map[string]any{"PLAIN": "value"}},
+			}}, ReferenceOptions{})
+			require.NoError(t, err)
+			require.Empty(t, checks)
+		})
+	}
+	for name, tc := range map[string]struct {
+		target     string
+		properties map[string]any
+	}{
+		"terraformSettings wrong type": {envA, map[string]any{"terraformSettings": bicep}},
+		"bicepSettings wrong type":     {envA, map[string]any{"bicepSettings": terraform}},
+		"terraformSettings empty":      {envA, map[string]any{"terraformSettings": ""}},
+		"bicepSettings not a string":   {envA, map[string]any{"bicepSettings": 42}},
+		"settings on legacy env":       {legacyEnv, map[string]any{"terraformSettings": terraform}},
+		"pat secret wrong type":        {legacyEnv, map[string]any{"recipeConfig": map[string]any{"terraform": map[string]any{"authentication": map[string]any{"git": map[string]any{"pat": map[string]any{"h": map[string]any{"secret": teamB + "/providers/Applications.Dapr/secretStores/s"}}}}}}}},
+		"registry secret empty":        {legacyEnv, map[string]any{"recipeConfig": map[string]any{"bicep": map[string]any{"authentication": map[string]any{"h": map[string]any{"secret": ""}}}}}},
+		"envSecrets source missing ID": {legacyEnv, map[string]any{"recipeConfig": map[string]any{"envSecrets": map[string]any{"T": map[string]any{"source": nil}}}}},
+		"provider secrets not a map":   {legacyEnv, map[string]any{"recipeConfig": map[string]any{"terraform": map[string]any{"providers": map[string]any{"p": []any{map[string]any{"secrets": []any{}}}}}}}},
+		"providers entry not an array": {legacyEnv, map[string]any{"recipeConfig": map[string]any{"terraform": map[string]any{"providers": map[string]any{"p": map[string]any{}}}}}},
+		"recipeConfig not an object":   {legacyEnv, map[string]any{"recipeConfig": "x"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := catalog.ReferenceChecks("PUT", tc.target, map[string]any{"properties": tc.properties}, ReferenceOptions{})
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestEnvironmentSettingsRoleBoundary(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	identity := testIdentity()
+	checks := []Check{
+		{"Radius.Core/terraformSettings/use/action", lowerTarget(plane + "/providers/Radius.Core/terraformSettings/tf")},
+		{"Radius.Core/bicepSettings/use/action", lowerTarget(plane + "/providers/Radius.Core/bicepSettings/bicep")},
+		{"Applications.Core/secretStores/use/action", lowerTarget(teamA + "/providers/Applications.Core/secretStores/s")},
+	}
+	for role, allowed := range map[string]bool{"platform-administrator": true, "application-developer": false, "environment-deployer": false} {
+		t.Run(role, func(t *testing.T) {
+			evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{testAssignment(role, builtInID(role), plane, identity.Principal)})
+			require.NoError(t, err)
+			results, err := evaluator.Evaluate(identity, checks)
+			require.NoError(t, err)
+			for _, result := range results {
+				require.Equal(t, allowed, result.Allowed, result.Permission)
+			}
+		})
+	}
+}
+
+func TestResolvedSchemaReferences(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets"}})
+	require.NoError(t, err)
+	descriptor := ReferenceDescriptor{Path: []string{"properties", "databases", "*", "source"}, ResourceType: "Applications.Datastores/mongoDatabases", Required: true}
+	source := teamB + "/providers/Applications.Datastores/mongoDatabases/shared"
+	for _, collection := range []any{
+		[]any{map[string]any{"source": source}, map[string]any{"source": source}},
+		map[string]any{"first": map[string]any{"source": source}},
+	} {
+		body := map[string]any{"properties": map[string]any{"databases": collection}}
+		checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Team.Data/widgets/test", body, ReferenceOptions{References: []ReferenceDescriptor{descriptor}})
+		require.NoError(t, err)
+		require.Equal(t, []Check{{"Applications.Datastores/mongoDatabases/read", lowerTarget(source)}}, checks)
+	}
+	for _, body := range []map[string]any{
+		{}, {"properties": map[string]any{}},
+		{"properties": map[string]any{"databases": []any{}}},
+		{"properties": map[string]any{"databases": []any{map[string]any{"source": nil}}}},
+		{"properties": map[string]any{"databases": []any{map[string]any{"source": appA}}}},
+	} {
+		_, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Team.Data/widgets/test", body, ReferenceOptions{References: []ReferenceDescriptor{descriptor}})
+		require.Error(t, err)
+	}
+	descriptor.Required = false
+	checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Team.Data/widgets/test", map[string]any{}, ReferenceOptions{References: []ReferenceDescriptor{descriptor}})
+	require.NoError(t, err)
+	require.Empty(t, checks)
+}
+
+func TestReferenceBoundaryDecisions(t *testing.T) {
+	catalog, err := NewCatalog([]Registration{{Type: "Team.Data/widgets", PermissionSets: []string{ApplicationResources}}})
+	require.NoError(t, err)
+	identity := testIdentity()
+	evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{testAssignment("developer", builtInID("application-developer"), teamA, identity.Principal)})
+	require.NoError(t, err)
+	for _, tt := range []struct{ typ, environment string }{
+		{"Radius.Core/applications", envA},
+		{"Team.Data/widgets", teamB + "/providers/Radius.Core/environments/other"},
+	} {
+		for _, method := range []string{"PUT", "PATCH"} {
+			t.Run(method+"/"+tt.typ, func(t *testing.T) {
+				target := teamA + "/providers/" + tt.typ + "/test"
+				body := map[string]any{"properties": map[string]any{
+					"environment": tt.environment,
+					"application": teamB + "/providers/Radius.Core/applications/other",
+				}}
+				checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+				require.NoError(t, err)
+				require.ElementsMatch(t, []Check{
+					{"Radius.Core/environments/use/action", lowerTarget(tt.environment)},
+					{"Radius.Core/applications/write", lowerTarget(teamB + "/providers/Radius.Core/applications/other")},
+				}, checks)
+				results, err := evaluator.Evaluate(identity, append([]Check{{tt.typ + "/write", target}}, checks...))
+				require.NoError(t, err)
+				require.True(t, results[0].Allowed)
+				for _, result := range results[1:] {
+					require.False(t, result.Allowed, result.Permission+" "+result.Target)
+				}
+			})
+		}
+	}
+}

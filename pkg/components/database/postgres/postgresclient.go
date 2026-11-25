@@ -299,6 +299,42 @@ LIMIT $6`
 	return &result, nil
 }
 
+var _ database.Enumerator = (*PostgresClient)(nil)
+
+// Enumerate implements database.Enumerator. It reads every row before calling fn, so fn may use the client.
+func (p *PostgresClient) Enumerate(ctx context.Context, fn func(obj *database.Object) error) error {
+	if ctx == nil {
+		return &database.ErrInvalid{Message: "invalid argument. 'ctx' is required"}
+	}
+
+	rows, err := p.api.Query(ctx, "SELECT original_id, etag, resource_data FROM resources ORDER BY created_at ASC")
+	if err != nil {
+		return err
+	}
+
+	items := []database.Object{}
+	for rows.Next() {
+		obj := database.Object{}
+		if err := rows.Scan(&obj.ID, &obj.ETag, &obj.Data); err != nil {
+			rows.Close()
+			return err
+		}
+		items = append(items, obj)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for i := range items {
+		if err := fn(&items[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Save implements database.Client.
 func (p *PostgresClient) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 	if ctx == nil {
@@ -325,6 +361,9 @@ func (p *PostgresClient) Save(ctx context.Context, obj *database.Object, options
 	}
 
 	config := database.NewSaveConfig(options...)
+	if config.CreateOnly && config.ETag != "" {
+		return &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"}
+	}
 
 	// Compute ETag for the current state of the object.
 	raw, err := json.Marshal(obj.Data)
@@ -364,7 +403,21 @@ END AS result;`
 		obj.Data,
 	}
 
-	if config.ETag != "" {
+	if config.CreateOnly {
+		// This query only inserts. An existing row is left unchanged and reported as ErrConcurrency.
+		sql = `
+WITH inserted AS (
+	INSERT INTO resources (id, original_id, resource_type, root_scope, routing_scope, etag, resource_data)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
+	ON CONFLICT (id) DO NOTHING
+	RETURNING id
+)
+SELECT
+CASE
+	WHEN EXISTS (SELECT 1 FROM inserted) THEN 'Success'
+	ELSE 'ErrConcurrency'
+END AS result;`
+	} else if config.ETag != "" {
 		// This is the simpler query that only performs updates. It requires an etag.
 		// NOTE: we want to report ErrConcurrency for all failure cases here. This is what the tests do.
 		sql = `

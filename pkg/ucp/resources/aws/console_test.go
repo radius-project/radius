@@ -30,6 +30,7 @@ func Test_ConsoleURL(t *testing.T) {
 	tests := []struct {
 		name string
 		id   string
+		arn  string
 		want string
 	}{
 		{
@@ -84,7 +85,7 @@ func Test_ConsoleURL(t *testing.T) {
 			id:   "/planes/aws/other/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
 		},
 		{
-			name: "unknown type has no link",
+			name: "unknown type with no ARN has no link",
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/t",
 		},
 		{
@@ -113,8 +114,44 @@ func Test_ConsoleURL(t *testing.T) {
 			want: "https://console.aws.amazon.com/iam/home#/users",
 		},
 		{
-			name: "global console page in the China partition has no link",
+			name: "global console page in the China partition",
 			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket",
+			want: "https://console.amazonaws.cn/s3/buckets",
+		},
+		{
+			name: "AWS IAM role",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/Role/my-role",
+			want: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/roles",
+		},
+		{
+			name: "AWS IAM managed policy",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/ManagedPolicy/my-policy",
+			want: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/policies",
+		},
+		{
+			name: "AWS IAM instance profile links to roles",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.IAM/InstanceProfile/my-profile",
+			want: "https://us-west-2.console.aws.amazon.com/iam/home?region=us-west-2#/roles",
+		},
+		{
+			name: "Terraform IAM role in the global region",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/my-role",
+			want: "https://console.aws.amazon.com/iam/home#/roles",
+		},
+		{
+			name: "Terraform IAM policy in the global region",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_policy/my-policy",
+			want: "https://console.aws.amazon.com/iam/home#/policies",
+		},
+		{
+			name: "Terraform IAM instance profile in the GovCloud global region",
+			id:   "/planes/aws/aws-us-gov/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_instance_profile/my-profile",
+			want: "https://console.amazonaws-us-gov.com/iam/home#/roles",
+		},
+		{
+			name: "Terraform IAM role in the China global region",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/my-role",
+			want: "https://console.amazonaws.cn/iam/home#/roles",
 		},
 		{
 			name: "regional console page in the global region has no link",
@@ -133,8 +170,49 @@ func Test_ConsoleURL(t *testing.T) {
 			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2.evil.com/providers/AWS.S3/Bucket/b",
 		},
 		{
-			name: "China region has no link",
-			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/cn-north-1/providers/AWS.S3/Bucket/b",
+			name: "China region uses the China console",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/cn-north-1/providers/AWS.RDS/DBInstance/db",
+			want: "https://console.amazonaws.cn/rds/home?region=cn-north-1#databases:",
+		},
+		{
+			name: "Terraform type in a China region",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/cn-northwest-1/providers/Terraform.AWS/aws_lambda_function/f",
+			want: "https://console.amazonaws.cn/lambda/home?region=cn-northwest-1#/functions",
+		},
+		{
+			name: "European Sovereign Cloud region uses its console",
+			id:   "/planes/aws/aws-eusc/accounts/123456789012/regions/eusc-de-east-1/providers/AWS.RDS/DBInstance/db",
+			want: "https://console.amazonaws-eusc.eu/rds/home?region=eusc-de-east-1#databases:",
+		},
+		{
+			name: "global console page in the European Sovereign Cloud partition",
+			id:   "/planes/aws/aws-eusc/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/my-role",
+			want: "https://console.amazonaws-eusc.eu/iam/home#/roles",
+		},
+		{
+			name: "region number with two digits",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/ap-southeast-10/providers/AWS.S3/Bucket/b",
+			want: "https://ap-southeast-10.console.aws.amazon.com/s3/buckets?region=ap-southeast-10",
+		},
+		{
+			name: "US ISO region has no link",
+			id:   "/planes/aws/aws-iso/accounts/123456789012/regions/us-iso-east-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "US ISOB region has no link",
+			id:   "/planes/aws/aws-iso-b/accounts/123456789012/regions/us-isob-east-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "EU ISOE region has no link",
+			id:   "/planes/aws/aws-iso-e/accounts/123456789012/regions/eu-isoe-west-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "US ISOF region has no link",
+			id:   "/planes/aws/aws-iso-f/accounts/123456789012/regions/us-isof-south-1/providers/AWS.S3/Bucket/b",
+		},
+		{
+			name: "global console page in an ISO partition has no link",
+			id:   "/planes/aws/aws-iso/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
 		},
 		{
 			name: "AWS scope has no link",
@@ -155,19 +233,182 @@ func Test_ConsoleURL(t *testing.T) {
 			t.Parallel()
 			id, err := resources.Parse(tt.id)
 			require.NoError(t, err)
-			require.Equal(t, tt.want, ConsoleURL(id))
+			require.Equal(t, tt.want, ConsoleURL(id, tt.arn))
 		})
 	}
 }
 
-func Test_consolePages(t *testing.T) {
+func Test_ConsoleURL_ResourcePage(t *testing.T) {
 	t.Parallel()
 
-	for resourceType, page := range consolePages {
+	tests := []struct {
+		name string
+		id   string
+		arn  string
+		want string
+	}{
+		{
+			name: "regional resource",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Af",
+		},
+		{
+			name: "global resource",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.IAM/Role/r",
+			arn:  "arn:aws:iam::123456789012:role/r",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Aiam%3A%3A123456789012%3Arole%2Fr",
+		},
+		{
+			name: "S3 bucket ARN with no region or account",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
+			arn:  "arn:aws:s3:::b",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3As3%3A%3A%3Ab",
+		},
+		{
+			name: "Terraform type",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/l",
+			arn:  "arn:aws:logs:us-east-2:123456789012:log-group:/aws/lambda/f",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alogs%3Aus-east-2%3A123456789012%3Alog-group%3A%2Faws%2Flambda%2Ff",
+		},
+		{
+			name: "type matching is case-insensitive",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-east-1/providers/aws.sqs/queue/q",
+			arn:  "arn:aws:sqs:us-east-1:123456789012:q",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Asqs%3Aus-east-1%3A123456789012%3Aq",
+		},
+		{
+			name: "query and fragment characters in the ARN are escaped",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-east-1/providers/AWS.SQS/Queue/q",
+			arn:  "arn:aws:sqs:us-east-1:123456789012:q&x=y#z",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Asqs%3Aus-east-1%3A123456789012%3Aq%26x%3Dy%23z",
+		},
+		{
+			name: "no ARN uses the list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "value that is not an ARN uses the list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
+			arn:  "https://evil.example.com",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "type with a list page that was not checked on the live console",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.IAM/InstanceProfile/p",
+			arn:  "arn:aws:iam::123456789012:instance-profile/p",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Aiam%3A%3A123456789012%3Ainstance-profile%2Fp",
+		},
+		{
+			name: "type with no list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Kinesis/Stream/s",
+			arn:  "arn:aws:kinesis:us-west-2:123456789012:stream/s",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Akinesis%3Aus-west-2%3A123456789012%3Astream%2Fs",
+		},
+		{
+			name: "Terraform type with no list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_kinesis_stream/s",
+			arn:  "arn:aws:kinesis:us-west-2:123456789012:stream/s",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Akinesis%3Aus-west-2%3A123456789012%3Astream%2Fs",
+		},
+		{
+			name: "GovCloud ARN uses the GovCloud console",
+			id:   "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.SQS/Queue/q",
+			arn:  "arn:aws-us-gov:sqs:us-gov-west-1:123456789012:q",
+			want: "https://console.amazonaws-us-gov.com/go/view?arn=arn%3Aaws-us-gov%3Asqs%3Aus-gov-west-1%3A123456789012%3Aq",
+		},
+		{
+			name: "China ARN uses the China console",
+			id:   "/planes/aws/aws-cn/accounts/123456789012/regions/cn-north-1/providers/AWS.RDS/DBInstance/db",
+			arn:  "arn:aws-cn:rds:cn-north-1:123456789012:db:db",
+			want: "https://console.amazonaws.cn/go/view?arn=arn%3Aaws-cn%3Ards%3Acn-north-1%3A123456789012%3Adb%3Adb",
+		},
+		{
+			name: "European Sovereign Cloud ARN uses its console",
+			id:   "/planes/aws/aws-eusc/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/b",
+			arn:  "arn:aws-eusc:s3:::b",
+			want: "https://console.amazonaws-eusc.eu/go/view?arn=arn%3Aaws-eusc%3As3%3A%3A%3Ab",
+		},
+		{
+			name: "ARN in a partition with no known console uses the list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
+			arn:  "arn:aws-iso:lambda:us-iso-east-1:123456789012:function:f",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "ISO resource with an ARN has no link",
+			id:   "/planes/aws/aws-iso/accounts/123456789012/regions/us-iso-east-1/providers/AWS.Lambda/Function/f",
+			arn:  "arn:aws-iso:lambda:us-iso-east-1:123456789012:function:f",
+		},
+		{
+			name: "partition matching is case-sensitive",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
+			arn:  "arn:AWS:lambda:us-west-2:123456789012:function:f",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "resource that is not an AWS resource has no link",
+			id:   "/planes/radius/local/resourceGroups/g/providers/AWS.Lambda/Function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			id, err := resources.Parse(tt.id)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, ConsoleURL(id, tt.arn))
+		})
+	}
+}
+
+// Test_ConsoleURL_ResourcePageDenyList is not parallel because it changes resourcePageDenyList. Parallel tests in
+// this package wait until it has finished and restored the list.
+func Test_ConsoleURL_ResourcePageDenyList(t *testing.T) {
+	resourcePageDenyList["aws.lambda/function"] = struct{}{}
+	t.Cleanup(func() { delete(resourcePageDenyList, "aws.lambda/function") })
+
+	tests := []struct {
+		name string
+		id   string
+		arn  string
+		want string
+	}{
+		{
+			name: "denied type uses the list page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Lambda/Function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "denied type matching is case-insensitive",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/aws.lambda/function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+			want: "https://us-west-2.console.aws.amazon.com/lambda/home?region=us-west-2#/functions",
+		},
+		{
+			name: "other types still get their resource page",
+			id:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_lambda_function/f",
+			arn:  "arn:aws:lambda:us-west-2:123456789012:function:f",
+			want: "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Af",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, err := resources.Parse(tt.id)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, ConsoleURL(id, tt.arn))
+		})
+	}
+}
+
+func Test_resourcePageDenyList(t *testing.T) {
+	t.Parallel()
+
+	for resourceType := range resourcePageDenyList {
 		require.Equal(t, strings.ToLower(resourceType), resourceType, "keys must be lower case")
-		require.True(t, strings.HasPrefix(resourceType, "aws.") || strings.HasPrefix(resourceType, "terraform.aws/aws_"),
-			"%s must be an AWS or Terraform AWS type", resourceType)
-		require.True(t, strings.HasPrefix(page.path, "/"), "%s path must start with /", resourceType)
-		require.True(t, page.hash == "" || strings.HasPrefix(page.hash, "#"), "%s hash must start with #", resourceType)
 	}
 }

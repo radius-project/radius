@@ -30,6 +30,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 )
 
 // ProviderConfig includes the resource provider configuration.
@@ -49,6 +50,9 @@ type ProviderConfig struct {
 	Bicep            BicepOptions                         `yaml:"bicep,omitempty"`
 	Terraform        TerraformOptions                     `yaml:"terraform,omitempty"`
 	Authorization    authz.Options                        `yaml:"authorization,omitempty"`
+
+	// SHA256Migration configures the automatic migration of values that older versions of Radius derived with SHA-1.
+	SHA256Migration hashmigration.Config `yaml:"sha256Migration,omitempty"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
@@ -72,6 +76,12 @@ type ServerOptions struct {
 	// - tls.crt: The server's certificate.
 	// - tls.key: The server's private key.
 	TLSCertificateDirectory string `yaml:"tlsCertificateDirectory,omitempty"`
+
+	// InternalPort is the port UCP serves internal component traffic on with its SPIFFE server
+	// certificate and ServiceAccount token authentication. It is
+	// separate from Port, which serves Kubernetes API aggregation traffic. UCP only listens
+	// on it when internal component authorization is on.
+	InternalPort int `yaml:"internalPort,omitempty"`
 }
 
 // Address returns the address of the server in host:port format.

@@ -15,6 +15,37 @@ To install the chart with the release name `radius`:
 helm upgrade --wait --install radius deploy/Chart -n radius-system
 ```
 
+### Upgrading with component authorization settings
+
+The v0.62.0 chart described `global.rbac.enabled` and `global.rbac.dryRun` as reserved settings with no runtime effect. In this chart, setting either one to `true` creates cert-manager Issuers and Certificates, so an upgrade that retains either setting now requires cert-manager v1.20.0 or later. With both settings `false` (the default), the chart does not create these resources and does not require cert-manager.
+
+`rad install kubernetes` and `rad upgrade kubernetes` manage this prerequisite when a non-off mode is selected, including when upgrade reuses saved values. A plain `helm install` or `helm upgrade` does not install cert-manager: install a supported cert-manager, including its CRDs, and wait for its controller and webhook to be ready before applying the Radius chart with either setting enabled. Otherwise the upgrade fails because the cert-manager resource types are missing. See [cert-manager installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#cert-manager) for supported versions and ownership rules.
+
+With either setting enabled, ucp, applications-rp, and dynamic-rp also mount their `<component>-spiffe` server certificate Secret at `/var/run/radius/spiffe`, and ucp, applications-rp, dynamic-rp, and controller mount `ca.crt` of the `radius-ca` Secret at `/var/run/radius/ca` as their Radius CA bundle. bicep-de mounts neither. Both Secrets are required volumes, so pods wait until cert-manager has issued them. See [server certificate troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#server-certificates-and-the-radius-ca-bundle).
+
+Pre-release builds that authenticated internal calls with client certificates cannot call components that use ServiceAccount tokens, in either direction. To move an installation with either setting enabled across that change, or to roll back across it, first upgrade with both settings `false` on the current chart, then change the chart version, then re-enable the setting. With both settings `false`, components use the Kubernetes API connection and plain HTTP, so old and new pods interoperate during the rollout.
+
+Changing `global.rbac.spiffe.trustDomain` on an enabled installation reissues the three server certificates and restarts ucp, applications-rp, dynamic-rp, and controller, because callers read the expected server identity only at startup. Internal calls fail until cert-manager has issued the new certificates and every caller has restarted. Change it in a maintenance window, or upgrade with both settings `false`, change the domain, then re-enable.
+
+### Upgrading the controller rollout strategy
+
+The controller now uses `Recreate` to prevent old and new dispatchers from running concurrently during an upgrade. Existing installations, including v0.62.0, used the API-defaulted `RollingUpdate` strategy. Helm 4 server-side apply cannot remove those defaulted fields merely by applying `rollingUpdate: null`, so an unprepared upgrade fails with `rollingUpdate: Forbidden: may not be specified when strategy type is Recreate`.
+
+The current `rad upgrade kubernetes` and `rad install kubernetes --reinstall` migrate the controller strategy automatically when the target chart requests `Recreate`. The migration preserves the Deployment, replica count, and pod template; `--preflight-only` does not perform it. A failed migration stops the upgrade, and retrying an already-migrated installation is safe.
+
+For plain Helm or older CLIs, select the intended cluster and release namespace, verify that `deployment/controller` belongs to the Radius release, and patch the strategy before upgrading to this chart:
+
+```sh
+CONTEXT=your-cluster
+NAMESPACE=radius-system
+kubectl --context "$CONTEXT" -n "$NAMESPACE" get deployment controller \
+  -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}{"\n"}{.metadata.annotations.meta\.helm\.sh/release-namespace}{"\n"}'
+kubectl --context "$CONTEXT" -n "$NAMESPACE" patch deployment controller \
+  --type=merge -p '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'
+```
+
+The ownership output must match your release name and namespace. This atomic patch does not change the pod template or restart the controller by itself. Then run the normal upgrade against the same cluster and namespace; `Recreate` stops the old controller before starting its replacement. Do not delete the Deployment, use force replacement, or revert to `RollingUpdate`. If a previous attempt left a failed Helm revision, apply the patch and retry the upgrade. This is a strategy migration, not a supported downgrade procedure for coordinator-managed workloads.
+
 ## Configuration Options
 
 ### In-Cluster Container Image Builds

@@ -17,6 +17,9 @@ limitations under the License.
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -24,7 +27,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
+	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/statearchive/factory"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,8 +41,16 @@ func Test_VersionWithoutArchiveConfiguration(t *testing.T) {
 	if os.Getenv(childEnv) == "1" {
 		configPath := filepath.Join(t.TempDir(), "config.yaml")
 		require.NoError(t, os.WriteFile(configPath, []byte("{}"), 0o600))
+		var stdout, stderr bytes.Buffer
+		RootCmd.SetOut(&stdout)
+		RootCmd.SetErr(&stderr)
 		RootCmd.SetArgs([]string{"version", "--cli", "--output", "json", "--config", configPath})
 		require.NoError(t, RootCmd.ExecuteContext(t.Context()))
+		var actual map[string]any
+		require.NoError(t, json.Unmarshal(stdout.Bytes(), &actual))
+		require.Contains(t, actual, "version")
+		require.Contains(t, actual, "bicep")
+		require.Empty(t, stderr.String())
 		return
 	}
 
@@ -51,13 +67,19 @@ func Test_VersionWithoutArchiveConfiguration(t *testing.T) {
 			cmd := exec.CommandContext(t.Context(), executable, "-test.run=^Test_VersionWithoutArchiveConfiguration$")
 			result, err := cmd.CombinedOutput()
 			require.NoError(t, err, "%s", result)
-			require.Contains(t, string(result), `"version":`)
-			require.Contains(t, string(result), `"bicep":`)
 		})
 	}
 }
 
 func Test_HandlePanic(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	RootCmd.SetOut(&stdout)
+	RootCmd.SetErr(&stderr)
+	t.Cleanup(func() {
+		RootCmd.SetOut(nil)
+		RootCmd.SetErr(nil)
+	})
+
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatal("handlePanic should recover and not propagate panic")
@@ -68,6 +90,183 @@ func Test_HandlePanic(t *testing.T) {
 		defer handlePanic()
 		panic("test panic")
 	}()
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "test panic")
+}
+
+func TestAuthCommandsRegistered(t *testing.T) {
+	for _, path := range [][]string{{"auth", "whoami"}, {"auth", "status"}, {"auth", "access", "check"}} {
+		t.Run(strings.Join(path, "/"), func(t *testing.T) {
+			command, remaining, err := RootCmd.Find(path)
+			require.NoError(t, err)
+			require.Empty(t, remaining)
+			require.Equal(t, path[len(path)-1], command.Name())
+			require.NotNil(t, command.RunE)
+			require.NotNil(t, command.Flags().Lookup("output"))
+			require.NotNil(t, command.InheritedFlags().Lookup("workspace"))
+			if command.Name() == "check" {
+				for _, flag := range []string{"scope", "action", "target", "principal", "issuer"} {
+					require.NotNil(t, command.Flags().Lookup(flag))
+				}
+			}
+		})
+	}
+}
+
+func Test_ConfigureOutput(t *testing.T) {
+	t.Cleanup(func() { output.SetLogWriter(nil) })
+	for _, localFlag := range []bool{false, true} {
+		for _, format := range []string{output.FormatJson, " JSON ", output.FormatTable, output.FormatPlainText} {
+			t.Run(fmt.Sprintf("local=%t/format=%s", localFlag, format), func(t *testing.T) {
+				for _, flagArgs := range [][]string{nil, {"--output", format}, {"-o", format}, {"--output=" + format}} {
+					var stdout, stderr bytes.Buffer
+					writer := &output.OutputWriter{}
+					root := &cobra.Command{Use: "rad"}
+					root.SetOut(&stdout)
+					root.SetErr(&stderr)
+					root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+						configureOutput(cmd, writer)
+					}
+					command := &cobra.Command{
+						Use: "show",
+						RunE: func(cmd *cobra.Command, args []string) error {
+							writer.LogInfo("Before")
+							if err := writer.WriteFormatted(format, struct {
+								Name string `json:"name"`
+							}{Name: "example"}, output.FormatterOptions{
+								Columns: []output.Column{{Heading: "NAME", JSONPath: "{ .Name }"}},
+							}); err != nil {
+								return err
+							}
+							writer.LogInfo("After")
+							return nil
+						},
+					}
+					if localFlag {
+						command.Flags().StringP("output", "o", format, "")
+					} else {
+						root.PersistentFlags().StringP("output", "o", format, "")
+					}
+					root.AddCommand(command)
+					root.SetArgs(append([]string{"show"}, flagArgs...))
+					require.NoError(t, root.ExecuteContext(t.Context()))
+					if strings.EqualFold(strings.TrimSpace(format), output.FormatJson) {
+						output.LogInfo("Legacy")
+						var actual map[string]string
+						require.NoError(t, json.Unmarshal(stdout.Bytes(), &actual))
+						require.Equal(t, map[string]string{"name": "example"}, actual)
+						require.Equal(t, "Before\nAfter\nLegacy\n", stderr.String())
+					} else {
+						require.Same(t, os.Stdout, output.LogWriter())
+						require.Contains(t, stdout.String(), "Before\nNAME")
+						require.Contains(t, stdout.String(), "example\nAfter\n")
+						require.Empty(t, stderr.String())
+					}
+				}
+			})
+		}
+	}
+}
+
+func Test_ConfigureOutput_InitIgnoresFormat(t *testing.T) {
+	t.Cleanup(func() { output.SetLogWriter(nil) })
+	for _, alias := range []string{"init", "initialize"} {
+		for _, format := range []string{"json", "table", "plain-text", "", " JSON ", "xml"} {
+			for _, flagName := range []string{"--output", "-o"} {
+				for _, before := range []bool{false, true} {
+					t.Run(fmt.Sprintf("%s/%s/%s/before=%t", alias, format, flagName, before), func(t *testing.T) {
+						var stdout, stderr bytes.Buffer
+						writer := &output.OutputWriter{}
+						root := &cobra.Command{Use: "rad"}
+						root.PersistentFlags().StringP("output", "o", output.DefaultFormat, "output format")
+						root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+							configureOutput(cmd, writer)
+						}
+						command, _ := radinit.NewCommand(&framework.Impl{})
+						command.RunE = func(cmd *cobra.Command, args []string) error {
+							require.True(t, cmd.Flags().Changed("output"))
+							actual, err := cmd.Flags().GetString("output")
+							require.NoError(t, err)
+							require.Equal(t, format, actual)
+							writer.LogInfo("Human-readable status")
+							return nil
+						}
+						root.AddCommand(command)
+						root.SetOut(&stdout)
+						root.SetErr(&stderr)
+						args := []string{alias, flagName, format}
+						if before {
+							args = []string{flagName, format, alias}
+						}
+						root.SetArgs(args)
+
+						require.NoError(t, root.ExecuteContext(t.Context()))
+						require.Equal(t, "Human-readable status\n", stdout.String())
+						require.Empty(t, stderr.String())
+						require.Same(t, os.Stdout, output.LogWriter())
+						require.False(t, root.PersistentFlags().Lookup("output").Hidden)
+					})
+				}
+			}
+		}
+	}
+}
+
+func Test_Execute_ErrorsUseStderr(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte("{}"), 0o600))
+	originalRoot, originalConfig := RootCmd, *ConfigHolder
+	t.Cleanup(func() {
+		RootCmd = originalRoot
+		*ConfigHolder = originalConfig
+	})
+	ConfigHolder.ConfigFilePath = configPath
+
+	for _, expected := range []error{clierrors.Message("Expected failure."), errors.New("unexpected failure")} {
+		t.Run(expected.Error(), func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			RootCmd = &cobra.Command{
+				Use:           "rad",
+				SilenceErrors: true,
+				SilenceUsage:  true,
+				RunE: func(cmd *cobra.Command, args []string) error {
+					return expected
+				},
+			}
+			RootCmd.SetArgs([]string{})
+			RootCmd.SetOut(&stdout)
+			RootCmd.SetErr(&stderr)
+
+			require.ErrorIs(t, Execute(), expected)
+			require.Empty(t, stdout.String())
+			require.Contains(t, stderr.String(), expected.Error())
+		})
+	}
+}
+
+func Test_Execute_ConfigErrorUsesStderr(t *testing.T) {
+	const childEnv = "RADIUS_TEST_CONFIG_ERROR_STDERR"
+	if os.Getenv(childEnv) == "1" {
+		configPath := filepath.Join(t.TempDir(), "config.yaml")
+		require.NoError(t, os.WriteFile(configPath, []byte("invalid: ["), 0o600))
+		RootCmd.SetArgs([]string{"version", "--cli", "--output", "json", "--config", configPath})
+		_ = Execute()
+		return
+	}
+
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	t.Setenv(childEnv, "1")
+	cmd := exec.CommandContext(t.Context(), executable, "-test.run=^Test_Execute_ConfigErrorUsesStderr$")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	var exitError *exec.ExitError
+	require.ErrorAs(t, err, &exitError)
+	require.Equal(t, 1, exitError.ExitCode())
+	require.Empty(t, stdout.String())
+	require.Contains(t, stderr.String(), "Error: failed to load config:")
 }
 
 func Test_prettyPrintRPError(t *testing.T) {
@@ -179,6 +378,9 @@ func Test_InitAndWorkspaceCreate_RegisteredWithoutPreview(t *testing.T) {
 			require.Nil(t, cmd.Flags().Lookup("preview"), "rad %s must not expose --preview", strings.Join(tc.args, " "))
 			for _, flag := range tc.flags {
 				require.NotNilf(t, cmd.Flags().Lookup(flag), "rad %s must expose --%s", strings.Join(tc.args, " "), flag)
+			}
+			if tc.name == "initialize" {
+				require.True(t, cmd.Flags().Lookup("output").Hidden, "initialization only accepts output for compatibility")
 			}
 		})
 	}

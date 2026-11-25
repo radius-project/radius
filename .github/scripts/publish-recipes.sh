@@ -63,7 +63,7 @@ wait_publish_workers() {
     done
     return "${status}"
 }
-trap 'trap "" INT TERM; wait_publish_workers || true' EXIT
+trap 'trap "" INT TERM; wait' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
@@ -74,7 +74,7 @@ GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
 echo "## Recipes published to $REGISTRY_PATH" >>"$GITHUB_STEP_SUMMARY"
 
 while IFS= read -r -d '' RECIPE; do
-    FILENAME=$(basename "$RECIPE")
+    FILENAME="${RECIPE##*/}"
     PUBLISH_REF="$REGISTRY_PATH/${FILENAME%.*}:$RECIPE_VERSION"
 
     # Skip files that start with _. These are not recipes, they are modules that are

@@ -35,7 +35,34 @@ type ResourceTypeSchema struct {
 	WriteOnlyProperties             []string       `json:"writeOnlyProperties,omitempty"`
 }
 
+var (
+	pathSegmentEscaper   = strings.NewReplacer("~", "~0", "/", "~1")
+	pathSegmentUnescaper = strings.NewReplacer("~1", "/", "~0", "~")
+)
+
+// JoinPath returns the property path of segments: each segment escaped as a JSON Pointer reference token, "~" as "~0"
+// and "/" as "~1", with "/" between them. A key that holds neither, such as every CloudFormation property name, is
+// unchanged.
+func JoinPath(segments []string) string {
+	escaped := make([]string, len(segments))
+	for i, s := range segments {
+		escaped[i] = pathSegmentEscaper.Replace(s)
+	}
+	return strings.Join(escaped, "/")
+}
+
+// PathSegments returns the segments of a property path, such as a key of FlattenProperties or a schema path relative
+// to the properties object, unescaped as JoinPath escapes them.
+func PathSegments(path string) []string {
+	segments := strings.Split(path, "/")
+	for i, s := range segments {
+		segments[i] = pathSegmentUnescaper.Replace(s)
+	}
+	return segments
+}
+
 // FlattenProperties takes a string-keyed map, which may contain nested objects, and recursively flattens it into a single-level map.
+// Each key is a property path, as JoinPath makes it, so a key that holds "/" or "~" stays one segment.
 // For example:
 //
 //	"NumShards": 1
@@ -53,8 +80,9 @@ func FlattenProperties(state map[string]any) map[string]any {
 	flattenedState := map[string]any{}
 
 	for k, v := range state {
+		k = pathSegmentEscaper.Replace(k)
 		// If the value is a map, flatten it
-		if reflect.TypeOf(v).Kind() == reflect.Map {
+		if v != nil && reflect.TypeOf(v).Kind() == reflect.Map {
 			flattenedSubState := FlattenProperties(v.(map[string]any))
 
 			for subK, subV := range flattenedSubState {
@@ -70,7 +98,7 @@ func FlattenProperties(state map[string]any) map[string]any {
 }
 
 // UnflattenProperties takes in a map of strings to any type and returns an object with the nested
-// properties unflattened.
+// properties unflattened. It reverses FlattenProperties: each key is split into segments by PathSegments.
 // For example:
 //
 //	"NumShards": 1
@@ -88,7 +116,7 @@ func UnflattenProperties(state map[string]any) map[string]any {
 	unflattenedState := map[string]any{}
 
 	for k, v := range state {
-		splitPath := strings.Split(k, "/")
+		splitPath := PathSegments(k)
 		rootKey := splitPath[0]
 
 		if len(splitPath) == 1 {
@@ -117,14 +145,76 @@ func UnflattenProperties(state map[string]any) map[string]any {
 	return unflattenedState
 }
 
+// PatchOptions carries what UCP knows from its record of the last successful deploy of a resource.
+type PatchOptions struct {
+	// Removed are the property paths the last deploy set that the template no longer sets, relative to the properties
+	// object, like the keys of FlattenProperties. The patch removes them, except read-only and create-only properties,
+	// which AWS cannot clear.
+	Removed []string
+
+	// Equivalent, when set, reports whether AWS's value at path, a key of FlattenProperties, means the same as the
+	// template's, for a value AWS returns in another form that the schema's rules don't cover. Such a value counts as
+	// unchanged. It is used at a path only when Radius knows it owns nothing there that the template drops (see
+	// LastApplied and Unresolved).
+	Equivalent func(path string, template any, aws any) bool
+
+	// LastApplied is what the last successful deploy set, or nil when UCP has no record of it. Equivalent may count
+	// AWS's value as matching when it holds more than the template, such as defaults AWS fills in inside the items of
+	// a list, so it can't tell those from a field the last deploy set and the template now leaves out. Removed can't
+	// name such a field either when it is inside a list item. So when LastApplied is set, Equivalent is used at a path
+	// only when the template's value there is exactly LastApplied's: then the template drops nothing Radius owns
+	// there. Otherwise the patch sends the template's value, and AWS clears what it no longer has.
+	LastApplied map[string]any
+
+	// Unresolved are paths whose value in LastApplied isn't confirmed in AWS, because an operation that changed them
+	// failed partway or UCP can't tell how it ended. AWS may still hold values LastApplied no longer has there, so
+	// Equivalent isn't used at a path at, under, or over one of them, and one the template sets nothing at, under, or
+	// over is removed at exactly that path.
+	Unresolved []string
+
+	// LegacyUnresolved are Unresolved paths that UCP saved before it escaped keys in paths, with each key as it is.
+	// They are matched against each path written the same way, so they work as they did when UCP saved them.
+	LegacyUnresolved []string
+
+	// FailUncertain makes GeneratePatchWithOptions return an *UncertainError instead of a patch when it can't tell
+	// whether an update is needed at a path: Equivalent counts AWS's value as the template's, but LastApplied doesn't
+	// show that AWS added the values beyond the template's (see UncertainError). Set it for a type whose update restarts
+	// or interrupts the resource, so an update UCP may not need costs more than a deploy that fails. Otherwise the
+	// patch sends the template's value, so a mistake is an update AWS can undo, never a value Radius set left behind.
+	FailUncertain bool
+}
+
+// UncertainError means GeneratePatchWithOptions can't tell whether an update is needed at Paths, and opts.FailUncertain
+// is set. AWS's value there counts as the template's by Equivalent, but holds values LastApplied doesn't show AWS
+// added.
+type UncertainError struct {
+	Paths []string
+}
+
+func (e *UncertainError) Error() string {
+	return fmt.Sprintf("UCP can't tell whether an update is needed at %s", strings.Join(e.Paths, ", "))
+}
+
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
 // current state to the desired state, taking into account read-only, create-only and conditional-create-only properties.
+// It is GeneratePatchWithOptions without a record of the last deploy, so it never removes a property.
+func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
+	return GeneratePatchWithOptions(currentState, desiredState, schema, PatchOptions{})
+}
+
+// GeneratePatchWithOptions returns a JSON patch that updates the current state to the desired state.
 //
 // A value AWS reports in a different form than the template set it counts as unchanged, using the schema's rules: an
 // array the schema marks "insertionOrder": false is compared ignoring order, and a property with a supported
 // "propertyTransform" is compared through it. An empty object AWS reports is kept unless the template sets values
 // inside it.
-func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
+//
+// A property in the current state that the desired state does not set is kept, because AWS or someone else may have
+// set it, unless it is in opts.Removed: Radius set it in the last deploy, so the patch clears it. Inside list items,
+// with a record of the last deploy (opts.LastApplied), the same holds for a field AWS has that the template doesn't
+// set, such as a default AWS fills in: it is kept unless the last deploy may have set it. A list whose items don't all
+// match AWS's on the values the template sets is sent as the template sets it.
+func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema []byte, opts PatchOptions) (jsondiff.Patch, error) {
 	// See: https://github.com/radius-project/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
 
 	// Get the resource type schema - this will tell us the properties of the
@@ -158,19 +248,101 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	flattenedDesiredStateObject := FlattenProperties(desiredStateObject)
 
 	rules := parseSchemaRules(schema)
+	applied, err := decodedLastApplied(opts.LastApplied)
+	if err != nil {
+		return nil, err
+	}
+	var owned map[string]any
+	if applied != nil {
+		owned = FlattenProperties(applied)
+	}
+	writeOnly := [][]string{}
+	for _, p := range PropertyPaths(resourceTypeSchema.WriteOnlyProperties) {
+		writeOnly = append(writeOnly, PathSegments(p))
+	}
+	// LastApplied never holds write-only values, so the template is compared with it without them, as UCP stores it.
+	var stored map[string]any
+	if applied != nil {
+		withoutWriteOnly := map[string]any{}
+		// desiredState decoded above, so it decodes again.
+		_ = json.Unmarshal(desiredState, &withoutWriteOnly)
+		RemovePaths(withoutWriteOnly, PropertyPaths(resourceTypeSchema.WriteOnlyProperties))
+		stored = FlattenProperties(withoutWriteOnly)
+	}
 
 	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
-	// use AWS's value so the patch leaves it alone.
+	// use AWS's value so the patch leaves it alone. Equivalent is used only where Radius knows what it owns (see
+	// PatchOptions.LastApplied). Elsewhere the template's value is sent, unless the type fails instead.
+	uncertain := []string{}
 	for k, v := range flattenedDesiredStateObject {
-		if current, ok := flattenedCurrentStateObject[k]; ok && rules.equivalentAt(k, v, current, desiredStateObject) {
+		current, ok := flattenedCurrentStateObject[k]
+		if !ok {
+			continue
+		}
+		if rules.equivalentAt(k, v, current, desiredStateObject) {
 			flattenedDesiredStateObject[k] = current
+			continue
+		}
+		resolved := !opts.unresolvedAt(k)
+		known := resolved && ownsSame(owned, k, v)
+		if opts.Equivalent != nil {
+			if known && opts.Equivalent(k, v, current) {
+				flattenedDesiredStateObject[k] = current
+				continue
+			} else if !known && opts.FailUncertain && !(resolved && ownsAll(owned, k, current)) && opts.Equivalent(k, v, current) {
+				uncertain = append(uncertain, k)
+				continue
+			}
+		}
+		// AWS may fill in fields inside list items, such as a default security group. With a record of the last
+		// deploy, keep each one Radius didn't set: the template's list is the last deploy's, or the last deploy set
+		// nothing at that field in any item. Without one, such as on a take-over, UCP can't tell AWS's defaults from
+		// values set outside the template, so the template's list is sent.
+		list, isList := v.([]any)
+		if !isList || !resolved || applied == nil {
+			continue
+		}
+		// The last deploy set nothing the template drops from this list when its values, without write-only ones,
+		// are the last deploy's.
+		unchanged := ownsSame(owned, k, stored[k])
+		fields := listFields{
+			writeOnly: writeOnly,
+			awsOwned:  func(path []string) bool { return unchanged || !setsAt(applied, path) },
+		}
+		if filled, ok := rules.fillAt(k, list, current, desiredStateObject, fields); ok {
+			flattenedDesiredStateObject[k] = filled
+		}
+	}
+	if len(uncertain) > 0 {
+		slices.Sort(uncertain)
+		return nil, &UncertainError{Paths: uncertain}
+	}
+
+	// An unresolved path the template no longer sets may hold a value Radius set, such as a list an interrupted update
+	// was changing into an object, so AWS's value at exactly that path is removed. Values AWS has under it aren't:
+	// Radius owned the path's value, not fields AWS has since reported inside it.
+	omitted := map[string]bool{}
+	for _, p := range opts.Unresolved {
+		if !setsAny(flattenedDesiredStateObject, p) {
+			omitted[p] = true
+		}
+	}
+	legacyDesired := map[string]any{}
+	for k := range flattenedDesiredStateObject {
+		legacyDesired[legacyPath(k)] = nil
+	}
+	legacyOmitted := map[string]bool{}
+	for _, p := range opts.LegacyUnresolved {
+		if !setsAny(legacyDesired, p) {
+			legacyOmitted[p] = true
 		}
 	}
 
 	// Add read-only and create-only properties from current state to the desired state
 	for k, v := range flattenedCurrentStateObject {
-		if emptyObjectPaths[k] && hasPathUnder(flattenedDesiredStateObject, k) {
-			// The template sets values inside an object AWS reports as empty; copying {} would overwrite them.
+		if hasPathUnder(flattenedDesiredStateObject, k) {
+			// The template sets values inside k, where AWS has a value of another shape, such as a list the template
+			// changed into an object, or an object AWS reports as empty. Copying AWS's value would overwrite them.
 			continue
 		}
 
@@ -178,6 +350,13 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 
 		isCreateOnlyProperty := slices.Contains(resourceTypeSchema.CreateOnlyProperties, property)
 		isWriteOnlyProperty := slices.Contains(resourceTypeSchema.WriteOnlyProperties, property)
+
+		if _, exists := flattenedDesiredStateObject[k]; !exists && (underAny(k, opts.Removed) || omitted[k] || legacyOmitted[legacyPath(k)]) &&
+			!overlapsAny(k, PropertyPaths(resourceTypeSchema.ReadOnlyProperties)) && !overlapsAny(k, PropertyPaths(resourceTypeSchema.CreateOnlyProperties)) {
+			// Radius set this property in the last deploy and the template no longer sets it: leave it out, so the
+			// patch clears it.
+			continue
+		}
 
 		// If the property is create-only and write-only, then upsert it to the desired state.
 		// this will cause a no-op in the patch since it will exactly match the current state
@@ -208,6 +387,78 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
 }
 
+// decodedLastApplied returns lastApplied decoded from JSON as the template's values are, so they compare equal to the
+// same template values. It returns nil when lastApplied is nil.
+func decodedLastApplied(lastApplied map[string]any) (map[string]any, error) {
+	if lastApplied == nil {
+		return nil, nil
+	}
+	b, err := json.Marshal(lastApplied)
+	if err != nil {
+		return nil, err
+	}
+	// b is a marshaled map, so it always decodes.
+	decoded := map[string]any{}
+	_ = json.Unmarshal(b, &decoded)
+	return decoded, nil
+}
+
+// setsAt reports whether obj has a value at the path given by segments. A "*" segment stands for every item of a list,
+// and for the key "*" of an object.
+func setsAt(obj any, segments []string) bool {
+	if len(segments) == 0 {
+		return obj != nil
+	}
+	if list, ok := obj.([]any); ok && segments[0] == "*" {
+		for _, item := range list {
+			if setsAt(item, segments[1:]) {
+				return true
+			}
+		}
+		return false
+	}
+	m, _ := obj.(map[string]any)
+	v, ok := m[segments[0]]
+	return ok && setsAt(v, segments[1:])
+}
+
+// setsAny reports whether flattened has a key at, under, or over path.
+func setsAny(flattened map[string]any, path string) bool {
+	for k := range flattened {
+		if overlapsAny(k, []string{path}) {
+			return true
+		}
+	}
+	return false
+}
+
+// ownsAll reports whether AWS's value at k is exactly what the last deploy set there: when k is resolved, Radius set
+// every value AWS has at k, so any value the template leaves out is one Radius set, and an update is needed.
+func ownsAll(owned map[string]any, k string, current any) bool {
+	applied, ok := owned[k]
+	return ok && reflect.DeepEqual(applied, current)
+}
+
+// unresolvedAt reports whether the path k is at, under, or over a path of Unresolved or LegacyUnresolved.
+func (opts PatchOptions) unresolvedAt(k string) bool {
+	return overlapsAny(k, opts.Unresolved) || overlapsAny(legacyPath(k), opts.LegacyUnresolved)
+}
+
+// legacyPath returns path with each key as it is, as UCP wrote paths before it escaped keys.
+func legacyPath(path string) string {
+	return strings.Join(PathSegments(path), "/")
+}
+
+// ownsSame reports whether the template's value v at path k drops nothing the last deploy set there: UCP has no
+// record of the last deploy (owned is nil), or its value at k is exactly v.
+func ownsSame(owned map[string]any, k string, v any) bool {
+	if owned == nil {
+		return true
+	}
+	applied, ok := owned[k]
+	return ok && reflect.DeepEqual(applied, v)
+}
+
 // emptyObjects returns the flattened paths of the empty objects in state, which FlattenProperties leaves out.
 func emptyObjects(state map[string]any, prefix string) map[string]bool {
 	out := map[string]bool{}
@@ -216,11 +467,12 @@ func emptyObjects(state map[string]any, prefix string) map[string]bool {
 		if !ok {
 			continue
 		}
+		path := prefix + pathSegmentEscaper.Replace(k)
 		if len(m) == 0 {
-			out[prefix+k] = true
+			out[path] = true
 			continue
 		}
-		maps.Copy(out, emptyObjects(m, prefix+k+"/"))
+		maps.Copy(out, emptyObjects(m, path+"/"))
 	}
 	return out
 }
@@ -235,6 +487,90 @@ func hasPathUnder(flattened map[string]any, path string) bool {
 	return false
 }
 
+// RemovedPaths returns the paths of lastApplied, the properties of the last deploy, that desired no longer sets. Paths
+// are relative to the properties object, like the keys of FlattenProperties, and the result is sorted. Arrays are one
+// value, so a removed array item is not a removed path: the array itself changed.
+func RemovedPaths(lastApplied map[string]any, desired map[string]any) []string {
+	flatDesired := FlattenProperties(desired)
+	out := []string{}
+	for path := range FlattenProperties(lastApplied) {
+		if _, ok := flatDesired[path]; !ok {
+			out = append(out, path)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// RemovedCreateOnly returns the create-only properties among removed that the current state still has. AWS cannot
+// clear them, so the template has to keep setting them. Removed paths are relative to the properties object, like the
+// keys of FlattenProperties, and the result is sorted.
+func RemovedCreateOnly(currentState map[string]any, schema []byte, removed []string) ([]string, error) {
+	var resourceTypeSchema ResourceTypeSchema
+	if err := json.Unmarshal(schema, &resourceTypeSchema); err != nil {
+		return nil, err
+	}
+	createOnly := PropertyPaths(resourceTypeSchema.CreateOnlyProperties)
+	readOnly := PropertyPaths(resourceTypeSchema.ReadOnlyProperties)
+
+	current := FlattenProperties(currentState)
+	out := []string{}
+	for _, r := range removed {
+		if !overlapsAny(r, createOnly) || underAny(r, readOnly) || slices.Contains(out, r) {
+			continue
+		}
+		if _, ok := current[r]; ok || hasPathUnder(current, r) {
+			out = append(out, r)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
+}
+
+// PropertyPaths returns the paths of a schema property list, such as createOnlyProperties, relative to the properties
+// object: "/properties/A/B" becomes "A/B".
+func PropertyPaths(schemaPaths []string) []string {
+	out := []string{}
+	for _, p := range schemaPaths {
+		if name, ok := strings.CutPrefix(p, "/properties/"); ok {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
+// overlapsAny reports whether removing the flattened path k removes one of paths or a value inside one: k is one of
+// paths, inside one, or holds one. Arrays are one value, so removing an array such as "Members" also removes a
+// property inside its items, such as "Members/*/Name". A "*" segment matches any segment.
+func overlapsAny(k string, paths []string) bool {
+	segments := strings.Split(k, "/")
+	for _, p := range paths {
+		pattern := strings.Split(p, "/")
+		n := min(len(segments), len(pattern))
+		match := true
+		for i := range n {
+			if pattern[i] != "*" && pattern[i] != segments[i] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+// underAny reports whether the flattened path k is one of paths or inside one of them.
+func underAny(k string, paths []string) bool {
+	for _, p := range paths {
+		if k == p || strings.HasPrefix(k, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // ParsePropertyName transforms a propertyIdentifer of the form /properties/<propertyName> to <propertyName>.
 // It returns an error if the property identifier is not in the expected format.
 func ParsePropertyName(propertyIdentifier string) (string, error) {
@@ -243,4 +579,42 @@ func ParsePropertyName(propertyIdentifier string) (string, error) {
 		return after, nil
 	}
 	return "", fmt.Errorf("property identifier %s is not in the format /properties/<propertyName>", propertyIdentifier)
+}
+
+// RemovePaths removes the properties at paths from properties in place, as UCP leaves write-only and secret values
+// out of a record and a response. Paths are relative to the properties object, like the keys of FlattenProperties. A
+// "*" segment matches every array item.
+func RemovePaths(properties map[string]any, paths []string) {
+	for _, p := range paths {
+		removePath(properties, PathSegments(p))
+	}
+}
+
+func removePath(obj map[string]any, segments []string) {
+	if obj == nil || len(segments) == 0 {
+		return
+	}
+	if len(segments) == 1 {
+		delete(obj, segments[0])
+		return
+	}
+
+	value := obj[segments[0]]
+	if segments[1] == "*" {
+		if len(segments) == 2 {
+			delete(obj, segments[0])
+			return
+		}
+		items, _ := value.([]any)
+		for _, item := range items {
+			if m, ok := item.(map[string]any); ok {
+				removePath(m, segments[2:])
+			}
+		}
+		return
+	}
+
+	if m, ok := value.(map[string]any); ok {
+		removePath(m, segments[1:])
+	}
 }

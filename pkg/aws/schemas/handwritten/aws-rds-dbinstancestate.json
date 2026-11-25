@@ -1,0 +1,42 @@
+{
+  "typeName": "AWS::RDS::DBInstanceState",
+  "description": "Keeps an existing Amazon RDS DB instance running or stopped, with RDS's StartDBInstance and StopDBInstance. A deploy starts or stops the DB instance only when its state differs from the template's. RDS starts a stopped DB instance on its own after 7 days, and the next deploy stops it again. Deleting it changes nothing in AWS: the DB instance stays as it is.",
+  "properties": {
+    "DBInstanceIdentifier": {
+      "type": "string",
+      "description": "The identifier of the DB instance. RDS stores it in lowercase. A DB instance of an Aurora DB cluster starts and stops only with its cluster, and one of a Multi-AZ DB cluster can't be stopped."
+    },
+    "State": {
+      "type": "string",
+      "description": "The state to keep the DB instance in: running or stopped. A read returns running for every status in which the DB instance runs, such as available or backing-up, and RDS's status while it starts or stops, such as starting.",
+      "enum": ["running", "stopped"]
+    },
+    "DBInstanceStatus": {
+      "type": "string",
+      "description": "The status RDS reports for the DB instance, such as available, backing-up, or stopped."
+    }
+  },
+  "required": ["DBInstanceIdentifier", "State"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/DBInstanceIdentifier"],
+  "createOnlyProperties": ["/properties/DBInstanceIdentifier"],
+  "readOnlyProperties": ["/properties/DBInstanceStatus"],
+  "propertyTransform": {
+    "/properties/DBInstanceIdentifier": "$lowercase(DBInstanceIdentifier)"
+  },
+  "handlers": {
+    "create": {
+      "permissions": ["rds:DescribeDBInstances"]
+    },
+    "read": {
+      "permissions": ["rds:DescribeDBInstances"]
+    },
+    "update": {
+      "permissions": [
+        "rds:DescribeDBInstances",
+        "rds:StartDBInstance",
+        "rds:StopDBInstance"
+      ]
+    }
+  }
+}
