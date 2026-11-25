@@ -311,6 +311,13 @@ func enhanceOCIError(target string, err error) error {
 	// All OCI validation errors from oras-go (invalid repository, invalid tag,
 	// invalid registry, missing registry or repository) wrap errdef.ErrInvalidReference.
 	if errors.Is(err, oraserr.ErrInvalidReference) {
+		if repoPath := repositoryPath(target); repoPath != strings.ToLower(repoPath) {
+			return clierrors.MessageWithCause(err,
+				"Invalid OCI reference in target %q.\n\n"+
+					"OCI repository paths must be all lowercase (found %q). This applies only to the registry path; "+
+					"the local Bicep file name may contain uppercase characters.\n\n"+helpMessage,
+				displayTarget, repoPath)
+		}
 		return clierrors.MessageWithCause(err,
 			"Invalid OCI reference in target %q.\n\n"+helpMessage,
 			displayTarget)
@@ -318,6 +325,23 @@ func enhanceOCIError(target string, err error) error {
 
 	// Return the original error if we don't recognize it
 	return err
+}
+
+// repositoryPath returns the repository path of an OCI reference of the form
+// '<host>/<path>[:<tag>][@<digest>]', without the host, tag, or digest.
+func repositoryPath(target string) string {
+	_, path, found := strings.Cut(target, "/")
+	if !found {
+		return ""
+	}
+	if i := strings.Index(path, "@"); i >= 0 {
+		path = path[:i]
+	}
+	// A tag separator is a ':' after the last '/'.
+	if i := strings.LastIndex(path, ":"); i > strings.LastIndex(path, "/") {
+		path = path[:i]
+	}
+	return path
 }
 
 // extractDestination extracts the host, repo, tag, and name from the target
