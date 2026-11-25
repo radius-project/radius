@@ -101,7 +101,7 @@ Removing an entry holds that source's templates; it does not delete their resour
 
 #### Target changes and cleanup
 
-Moving an existing entry to another namespace while retaining its template name and Radius deployment scope is held while the old DeploymentTemplate exists, including while it is deleting. First remove the entry and wait for its template and resources to finish deletion, then add it in the new namespace. This sequence deletes and recreates the workload; it is not a live transfer. Initial cross-namespace targets and moves to a different deployment scope remain supported.
+Moving an existing entry to another namespace while retaining its template name drains the old DeploymentTemplate and its resources before creating the new target, even when the Radius deployment scope changes. This sequence deletes and recreates the workload; it is not a live transfer. Initial cross-namespace targets remain supported.
 
 New deployments wait for previous cleanup to finish unless an application or environment is waiting on other outputs of the same template. In that case, changed desired content can proceed so it can remove those dependencies. If the update restores the parent before its deletion has started, the controller keeps the backend resource and its tracking object.
 
@@ -136,7 +136,7 @@ These steps keep the old controller stopped until the new build is installed, so
    ```sh
    CHART=deploy/Chart
    kubectl apply -f "$CHART/crds/radius/radapp.io_deploymenttemplates.yaml"
-   helm upgrade radius "$CHART" -n radius-system -f reviewed-values.yaml --reuse-values \
+   helm upgrade radius "$CHART" -n radius-system -f reviewed-values.yaml --reset-then-reuse-values \
      --set controller.flux.enabled=false --set-json 'controller.flux.sources=[]' --wait
    ```
 

@@ -152,8 +152,10 @@ func (s *Service) Run(ctx context.Context) error {
 
 	if sourcePolicy.Enabled() {
 		err = (&reconciler.FluxController{
-			Client:         mgr.GetClient(),
-			SourcePolicy:   sourcePolicy,
+			Client:       mgr.GetClient(),
+			SourcePolicy: sourcePolicy,
+			//nolint:staticcheck // SA1019: keep event recorder behavior consistent with the other controllers.
+			EventRecorder:  mgr.GetEventRecorderFor("flux-controller"),
 			ArchiveFetcher: reconciler.NewArchiveFetcher(),
 			FileSystem:     filesystem.NewOSFS(),
 			Bicep: &bicep.Impl{

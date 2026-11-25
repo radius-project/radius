@@ -143,8 +143,9 @@ func (p *FluxSourcePolicy) checkTemplate(ctx context.Context, template *radappio
 	if hold != nil {
 		return hold
 	}
-	if source.UID != ref.UID || source.Generation != ref.Generation {
-		return &sourceHold{"SourceIdentityChanged", "DeploymentTemplate must be reconciled from the current source identity and generation"}
+	if source.UID != ref.UID || source.Generation != ref.Generation ||
+		source.Status.Artifact.Revision != ref.Revision || source.Status.Artifact.Digest != ref.Digest {
+		return &sourceHold{"SourceIdentityChanged", "DeploymentTemplate must be reconciled from the current source identity, generation, and artifact"}
 	}
 	return nil
 }

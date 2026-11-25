@@ -144,6 +144,39 @@ func TestFluxSourcePolicyReadiness(t *testing.T) {
 	}
 }
 
+func TestFluxSourcePolicyHoldsChangedArtifact(t *testing.T) {
+	t.Parallel()
+
+	for _, field := range []string{"revision", "digest"} {
+		t.Run(field, func(t *testing.T) {
+			t.Parallel()
+			source := readyFluxSource()
+			ref := sourceReference(source)
+			template := &radappiov1alpha3.DeploymentTemplate{
+				ObjectMeta: metav1.ObjectMeta{Name: "app.bicep", Namespace: "target"},
+				Spec: radappiov1alpha3.DeploymentTemplateSpec{
+					Repository: source.Name,
+					SourceRef:  ref,
+				},
+			}
+			s := newFluxPolicyTestScheme(t)
+			c := fake.NewClientBuilder().WithScheme(s).WithObjects(source, template).Build()
+			policy := selectedSourcePolicy(t, c, source)
+
+			updated := source.DeepCopy()
+			if field == "revision" {
+				updated.Status.Artifact.Revision = "main@sha1:new"
+			} else {
+				updated.Status.Artifact.Digest = "sha256:new"
+			}
+			require.NoError(t, c.Update(t.Context(), updated))
+
+			err := policy.checkTemplate(t.Context(), template)
+			require.ErrorContains(t, err, "SourceIdentityChanged")
+		})
+	}
+}
+
 func TestFluxSourcePolicyTemplateSchema(t *testing.T) {
 	t.Parallel()
 	data, err := os.ReadFile("../../../deploy/Chart/crds/radius/radapp.io_deploymenttemplates.yaml")

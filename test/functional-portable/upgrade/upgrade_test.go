@@ -67,6 +67,7 @@ func Test_Flux_SourceMigration(t *testing.T) {
 	cleanupAndWait(t, ctx, k8sClient)
 
 	crdsPath := filepath.Join(relativeChartPath, "crds")
+	safeToUninstall := true
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
 		defer cancel()
@@ -86,6 +87,10 @@ func Test_Flux_SourceMigration(t *testing.T) {
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
 		defer cancel()
+		if !safeToUninstall {
+			t.Log("Leaving Radius installed because Flux migration cleanup could not safely drain its templates")
+			return
+		}
 		helmUninstall(t, cleanupCtx)
 	})
 	requireRelease(t, ctx, fluxMigrationVersion)
@@ -99,7 +104,15 @@ func Test_Flux_SourceMigration(t *testing.T) {
 
 	const namespace = "flux-source-migration"
 	require.NoError(t, opts.Client.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}))
-	source := createMigrationSource(t, ctx, opts, namespace)
+	source := createMigrationSource(t, ctx, opts, namespace, &safeToUninstall)
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
+		defer cancel()
+		if err := cleanupFluxSourceMigration(cleanupCtx, opts, source, namespace, registry, tag, deImage); err != nil {
+			safeToUninstall = false
+			t.Errorf("failed to drain Flux migration fixtures before uninstall: %v", err)
+		}
+	})
 	// Only the released Flux controller creates this template and its output trackers.
 	dt := &radappiov1alpha3.DeploymentTemplate{}
 	key := controllerclient.ObjectKey{Name: "env.bicep", Namespace: namespace}
@@ -219,6 +232,127 @@ func migrationSourceValues(source *sourcev1.GitRepository) map[string]string {
 	}
 }
 
+func cleanupFluxSourceMigration(ctx context.Context, opts rp.RPTestOptions, source *sourcev1.GitRepository, namespace, registry, tag string, deImage deploymentEngineImage) error {
+	templateKey := controllerclient.ObjectKey{Name: "env.bicep", Namespace: namespace}
+	var template radappiov1alpha3.DeploymentTemplate
+	if err := opts.Client.Get(ctx, templateKey, &template); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("reading migration template: %w", err)
+	} else if apierrors.IsNotFound(err) {
+		return deleteFluxMigrationResources(ctx, opts, source, namespace)
+	}
+
+	if err := runCommand(ctx, []string{"kubectl", "apply", "-f",
+		filepath.Join(relativeChartPath, "crds", "radius", "radapp.io_deploymenttemplates.yaml")}); err != nil {
+		return fmt.Errorf("restoring the current DeploymentTemplate schema: %w", err)
+	}
+	readySource, err := ensureMigrationSourceReady(ctx, opts.Client, source)
+	if err != nil {
+		return err
+	}
+	if err := helmUpgrade(ctx, registry, tag, deImage, migrationSourceValues(readySource)); err != nil {
+		return fmt.Errorf("enabling the selected source for fixture cleanup: %w", err)
+	}
+
+	if err := opts.Client.Get(ctx, templateKey, &template); err == nil {
+		template.Spec.Repository = readySource.Name
+		template.Spec.SourceRef = &radappiov1alpha3.DeploymentTemplateSourceReference{
+			Kind: sourcev1.GitRepositoryKind, Namespace: readySource.Namespace, Name: readySource.Name, UID: readySource.UID,
+			Generation: readySource.Generation, Revision: readySource.Status.Artifact.Revision, Digest: readySource.Status.Artifact.Digest,
+		}
+		if err := opts.Client.Update(ctx, &template); err != nil {
+			return fmt.Errorf("associating migration template for cleanup: %w", err)
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("reading migration template for cleanup: %w", err)
+	}
+	if err := writePrunedMigrationSource(ctx, readySource.Name); err != nil {
+		return fmt.Errorf("removing migration outputs from the source: %w", err)
+	}
+	if err := waitForMigrationTemplateDeletion(ctx, opts.Client, templateKey); err != nil {
+		return err
+	}
+	return deleteFluxMigrationResources(ctx, opts, readySource, namespace)
+}
+
+func ensureMigrationSourceReady(ctx context.Context, client controllerclient.Client, source *sourcev1.GitRepository) (*sourcev1.GitRepository, error) {
+	key := controllerclient.ObjectKeyFromObject(source)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		var current sourcev1.GitRepository
+		err := client.Get(ctx, key, &current)
+		if apierrors.IsNotFound(err) {
+			current = *source.DeepCopy()
+			current.ResourceVersion = ""
+			current.UID = ""
+			current.Generation = 0
+			current.CreationTimestamp = metav1.Time{}
+			current.DeletionTimestamp = nil
+			current.ManagedFields = nil
+			current.Finalizers = nil
+			current.Status = sourcev1.GitRepositoryStatus{}
+			if err := client.Create(ctx, &current); err != nil && !apierrors.IsAlreadyExists(err) {
+				return nil, fmt.Errorf("recreating migration GitRepository for cleanup: %w", err)
+			}
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("reading migration GitRepository for cleanup: %w", err)
+		}
+		ready := apimeta.FindStatusCondition(current.Status.Conditions, fluxmeta.ReadyCondition)
+		if current.DeletionTimestamp.IsZero() && current.Status.Artifact != nil && ready != nil &&
+			ready.Status == metav1.ConditionTrue && ready.ObservedGeneration == current.Generation &&
+			current.Status.ObservedGeneration == current.Generation {
+			return &current, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("waiting for migration GitRepository to become Ready: %w", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func waitForMigrationTemplateDeletion(ctx context.Context, client controllerclient.Client, key controllerclient.ObjectKey) error {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		var template radappiov1alpha3.DeploymentTemplate
+		err := client.Get(ctx, key, &template)
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("checking migration template cleanup: %w", err)
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("waiting for migration template cleanup: %w", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func deleteFluxMigrationResources(ctx context.Context, opts rp.RPTestOptions, source *sourcev1.GitRepository, namespace string) error {
+	var current sourcev1.GitRepository
+	key := controllerclient.ObjectKeyFromObject(source)
+	if err := opts.Client.Get(ctx, key, &current); err == nil {
+		if source.UID != "" && current.UID != source.UID {
+			return fmt.Errorf("migration GitRepository %s was replaced before cleanup", key)
+		}
+		uid := current.UID
+		if err := opts.Client.Delete(ctx, &current, controllerclient.Preconditions{UID: &uid}); err != nil && !apierrors.IsNotFound(err) {
+			return fmt.Errorf("deleting migration GitRepository: %w", err)
+		}
+	} else if !apierrors.IsNotFound(err) {
+		return fmt.Errorf("reading migration GitRepository before cleanup: %w", err)
+	}
+	if err := opts.Client.Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("deleting migration namespace: %w", err)
+	}
+	return nil
+}
+
 func waitMigrationTemplate(t *testing.T, ctx context.Context, client controllerclient.Client, key controllerclient.ObjectKey, phrase radappiov1alpha3.DeploymentTemplatePhrase, dt *radappiov1alpha3.DeploymentTemplate) {
 	t.Helper()
 	require.EventuallyWithT(t, func(check *assert.CollectT) {
@@ -261,13 +395,17 @@ func associateMigrationTemplate(t *testing.T, ctx context.Context, client contro
 	require.NoError(t, client.Patch(ctx, dt, controllerclient.RawPatch(types.JSONPatchType, patch)))
 }
 
-func createMigrationSource(t *testing.T, ctx context.Context, opts rp.RPTestOptions, namespace string) *sourcev1.GitRepository {
+func createMigrationSource(t *testing.T, ctx context.Context, opts rp.RPTestOptions, namespace string, cleanupAllowed *bool) *sourcev1.GitRepository {
 	t.Helper()
 	const fixtureNamespace = "flux-migration-git"
 	const username = "migration"
 	password := rand.Text()
 	require.NoError(t, runCommand(ctx, []string{"bash", "../../../.github/actions/install-git-http-backend/install-git-http-backend.sh", username, password, fixtureNamespace}))
 	t.Cleanup(func() {
+		if !*cleanupAllowed {
+			t.Log("Leaving the Git fixture namespace in place because its templates did not drain")
+			return
+		}
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 		defer cancel()
 		err := opts.Client.Delete(cleanupCtx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: fixtureNamespace}})
@@ -305,6 +443,10 @@ chmod -R u+rwX,go+rX "$repo"
 	}
 	require.NoError(t, opts.Client.Create(ctx, secret))
 	t.Cleanup(func() {
+		if !*cleanupAllowed {
+			t.Log("Leaving the Git source Secret in place because its templates did not drain")
+			return
+		}
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 		defer cancel()
 		require.NoError(t, controllerclient.IgnoreNotFound(opts.Client.Delete(cleanupCtx, secret)))
@@ -325,6 +467,10 @@ chmod -R u+rwX,go+rX "$repo"
 
 func pruneMigrationSource(t *testing.T, ctx context.Context, source *sourcev1.GitRepository) {
 	t.Helper()
+	require.NoError(t, writePrunedMigrationSource(ctx, source.Name))
+}
+
+func writePrunedMigrationSource(ctx context.Context, sourceName string) error {
 	script := `set -eu
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -337,8 +483,8 @@ git -C "$work" -c safe.directory="$repo" push origin main
 git --git-dir="$repo" -c safe.directory="$repo" update-server-info
 chown -R nginx:nginx "$repo"
 `
-	require.NoError(t, runCommand(ctx, []string{"kubectl", "exec", "deployment/git-http-backend", "-n", "flux-migration-git",
-		"--", "sh", "-c", script, "sh", source.Name}))
+	return runCommand(ctx, []string{"kubectl", "exec", "deployment/git-http-backend", "-n", "flux-migration-git",
+		"--", "sh", "-c", script, "sh", sourceName})
 }
 
 const (
