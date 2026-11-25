@@ -325,6 +325,303 @@ func Test_GeneratePatchWithOptions_ListItemFields(t *testing.T) {
 	}
 }
 
+// Test_GeneratePatchWithOptions_EmptyList covers a template's empty list where AWS reports nothing, as a native
+// handler's read leaves out an empty list: it is unchanged unless the last deploy may have set items there.
+func Test_GeneratePatchWithOptions_EmptyList(t *testing.T) {
+	t.Parallel()
+
+	tag := map[string]any{"Key": "team", "Value": "a"}
+	tests := []struct {
+		name        string
+		schema      string
+		lastApplied map[string]any
+		unresolved  []string
+		current     map[string]any
+		desired     map[string]any
+		want        []string
+	}{
+		{
+			name:        "AWS leaves the list out",
+			lastApplied: map[string]any{"Tags": []any{}},
+			current:     map[string]any{},
+			desired:     map[string]any{"Tags": []any{}},
+		},
+		{
+			name:        "AWS reports the list as null",
+			lastApplied: map[string]any{"Tags": []any{}},
+			current:     map[string]any{"Tags": nil},
+			desired:     map[string]any{"Tags": []any{}},
+		},
+		{
+			name:    "no record of the last deploy",
+			current: map[string]any{},
+			desired: map[string]any{"Tags": []any{}},
+			want:    []string{"add /Tags"},
+		},
+		{
+			name:        "a list inside an object",
+			lastApplied: map[string]any{"Vpc": map[string]any{"Id": "v", "Subnets": []any{}}},
+			current:     map[string]any{"Vpc": map[string]any{"Id": "v"}},
+			desired:     map[string]any{"Vpc": map[string]any{"Id": "v", "Subnets": []any{}}},
+		},
+		{
+			name:        "AWS has items",
+			lastApplied: map[string]any{"Tags": []any{}},
+			current:     map[string]any{"Tags": []any{tag}},
+			desired:     map[string]any{"Tags": []any{}},
+			want:        []string{"remove /Tags/0"},
+		},
+		{
+			name:        "AWS reports the object above the list as empty",
+			lastApplied: map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+			current:     map[string]any{"Vpc": map[string]any{}},
+			desired:     map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+		},
+		{
+			name:        "AWS has an object at the path",
+			lastApplied: map[string]any{"Config": []any{}},
+			current:     map[string]any{"Config": map[string]any{"Mode": "fast"}},
+			desired:     map[string]any{"Config": []any{}},
+			want:        []string{"replace /Config"},
+		},
+		{
+			name:        "AWS has a value above the path",
+			lastApplied: map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+			current:     map[string]any{"Vpc": "v"},
+			desired:     map[string]any{"Vpc": map[string]any{"Subnets": []any{}}},
+			want:        []string{"replace /Vpc"},
+		},
+		{
+			name:        "the last deploy set items",
+			lastApplied: map[string]any{"Tags": []any{tag}},
+			current:     map[string]any{},
+			desired:     map[string]any{"Tags": []any{}},
+			want:        []string{"add /Tags"},
+		},
+		{
+			name:        "an unresolved path",
+			lastApplied: map[string]any{"Tags": []any{}},
+			unresolved:  []string{"Tags"},
+			current:     map[string]any{},
+			desired:     map[string]any{"Tags": []any{}},
+			want:        []string{"add /Tags"},
+		},
+		{
+			name:        "a write-only list, which the record never holds",
+			schema:      `{"properties": {}, "writeOnlyProperties": ["/properties/Keys"]}`,
+			lastApplied: map[string]any{},
+			current:     map[string]any{},
+			desired:     map[string]any{"Keys": []any{}},
+			want:        []string{"add /Keys"},
+		},
+		{
+			name:        "a list whose items have write-only fields",
+			schema:      `{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Password"]}`,
+			lastApplied: map[string]any{"Users": []any{}},
+			current:     map[string]any{},
+			desired:     map[string]any{"Users": []any{}},
+		},
+		{
+			name:        "a list inside a list item",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+		},
+		{
+			name:        "a list inside a list item where AWS reports null",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": nil}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+		},
+		{
+			name:        "an object of empty lists inside a list item, which a read leaves out",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Config": map[string]any{"Names": []any{}}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Config": map[string]any{"Names": []any{}}}}},
+		},
+		{
+			name:        "a list inside a list item where the last deploy set items",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{"x"}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Names": []any{}}}},
+			want:        []string{"add /Rules/0/Names"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			schema := tt.schema
+			if schema == "" {
+				schema = `{}`
+			}
+			require.ElementsMatch(t, orEmpty(tt.want), patchOps(t, tt.current, tt.desired, []byte(schema), PatchOptions{
+				LastApplied: tt.lastApplied,
+				Unresolved:  tt.unresolved,
+				Removed:     RemovedPaths(tt.lastApplied, tt.desired),
+			}))
+		})
+	}
+}
+
+// Test_GeneratePatchWithOptions_EmptyString covers a template's "" where AWS reports nothing, as a native handler's
+// read leaves out an empty string: it is unchanged unless the last deploy may have set a value there.
+func Test_GeneratePatchWithOptions_EmptyString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		schema      string
+		lastApplied map[string]any
+		unresolved  []string
+		current     map[string]any
+		desired     map[string]any
+		want        []string
+	}{
+		{
+			name:        "AWS leaves the string out",
+			lastApplied: map[string]any{"Description": ""},
+			current:     map[string]any{},
+			desired:     map[string]any{"Description": ""},
+		},
+		{
+			name:        "AWS reports the string as null",
+			lastApplied: map[string]any{"Description": ""},
+			current:     map[string]any{"Description": nil},
+			desired:     map[string]any{"Description": ""},
+		},
+		{
+			name:    "no record of the last deploy",
+			current: map[string]any{},
+			desired: map[string]any{"Description": ""},
+			want:    []string{"add /Description"},
+		},
+		{
+			name:        "the last deploy set a value",
+			lastApplied: map[string]any{"Description": "x"},
+			current:     map[string]any{},
+			desired:     map[string]any{"Description": ""},
+			want:        []string{"add /Description"},
+		},
+		{
+			name:        "the template changes the string to empty",
+			lastApplied: map[string]any{"Description": "x"},
+			current:     map[string]any{"Description": "x"},
+			desired:     map[string]any{"Description": ""},
+			want:        []string{"replace /Description"},
+		},
+		{
+			name:        "the template changes the empty string to a value",
+			lastApplied: map[string]any{"Description": ""},
+			current:     map[string]any{},
+			desired:     map[string]any{"Description": "x"},
+			want:        []string{"add /Description"},
+		},
+		{
+			name:        "AWS reports a value, such as a default",
+			lastApplied: map[string]any{"EncryptionKey": ""},
+			current:     map[string]any{"EncryptionKey": "alias/aws/s3"},
+			desired:     map[string]any{"EncryptionKey": ""},
+			want:        []string{"replace /EncryptionKey"},
+		},
+		{
+			name:        "an unresolved path",
+			lastApplied: map[string]any{"Description": ""},
+			unresolved:  []string{"Description"},
+			current:     map[string]any{},
+			desired:     map[string]any{"Description": ""},
+			want:        []string{"add /Description"},
+		},
+		{
+			name:        "a write-only string, which the record never holds",
+			schema:      `{"properties": {}, "writeOnlyProperties": ["/properties/Password"]}`,
+			lastApplied: map[string]any{},
+			current:     map[string]any{},
+			desired:     map[string]any{"Password": ""},
+			want:        []string{"add /Password"},
+		},
+		{
+			name:        "a string inside an object",
+			lastApplied: map[string]any{"Environment": map[string]any{"Type": "LINUX", "Image": ""}},
+			current:     map[string]any{"Environment": map[string]any{"Type": "LINUX"}},
+			desired:     map[string]any{"Environment": map[string]any{"Type": "LINUX", "Image": ""}},
+		},
+		{
+			name:        "AWS reports the object above the string as empty",
+			lastApplied: map[string]any{"Logs": map[string]any{"Group": ""}},
+			current:     map[string]any{"Logs": map[string]any{}},
+			desired:     map[string]any{"Logs": map[string]any{"Group": ""}},
+		},
+		{
+			name:        "a string inside a list item",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+		},
+		{
+			name:        "a string inside a list item where the last deploy set a value",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": "x"}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+			want:        []string{"add /Rules/0/Note"},
+		},
+		{
+			name:        "a string inside a list item where AWS reports null",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": nil}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+		},
+		{
+			name:        "an object of empty strings inside a list item, which a read leaves out",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+		},
+		{
+			name:        "an object of empty strings inside an item of a list in any order",
+			schema:      `{"properties": {"Rules": {"type": "array", "insertionOrder": false}}}`,
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}, map[string]any{"Name": "b"}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "b"}, map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}, map[string]any{"Name": "b"}}},
+		},
+		{
+			name:        "an object of empty strings inside a list item where the last deploy set a value",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": "x"}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+			want:        []string{"add /Rules/0/Info"},
+		},
+		{
+			name:        "an object with a write-only empty string inside a list item",
+			schema:      `{"properties": {}, "writeOnlyProperties": ["/properties/Rules/*/Info/Secret"]}`,
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": ""}}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Info": map[string]any{"Note": "", "Secret": ""}}}},
+			want:        []string{"add /Rules/0/Info"},
+		},
+		{
+			name:        "a string inside a list item where AWS reports a value",
+			lastApplied: map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+			current:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": "d"}}},
+			desired:     map[string]any{"Rules": []any{map[string]any{"Name": "a", "Note": ""}}},
+			want:        []string{"replace /Rules/0/Note"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			schema := tt.schema
+			if schema == "" {
+				schema = `{}`
+			}
+			require.ElementsMatch(t, orEmpty(tt.want), patchOps(t, tt.current, tt.desired, []byte(schema), PatchOptions{
+				LastApplied: tt.lastApplied,
+				Unresolved:  tt.unresolved,
+				Removed:     RemovedPaths(tt.lastApplied, tt.desired),
+			}))
+		})
+	}
+}
+
 // patchOps returns the patch from current to desired as "op path" strings.
 func patchOps(t *testing.T, current map[string]any, desired map[string]any, schema []byte, opts PatchOptions) []string {
 	t.Helper()

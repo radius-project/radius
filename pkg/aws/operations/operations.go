@@ -207,7 +207,8 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 // A value AWS reports in a different form than the template set it counts as unchanged, using the schema's rules: an
 // array the schema marks "insertionOrder": false is compared ignoring order, and a property with a supported
 // "propertyTransform" is compared through it. An empty object AWS reports is kept unless the template sets values
-// inside it.
+// inside it. An empty list or "" in the template where AWS reports nothing is unchanged when the last deploy set the
+// same value, because a native handler's read leaves out empty lists and strings.
 //
 // A property in the current state that the desired state does not set is kept, because AWS or someone else may have
 // set it, unless it is in opts.Removed: Radius set it in the last deploy, so the patch clears it. Inside list items,
@@ -276,6 +277,18 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	uncertain := []string{}
 	for k, v := range flattenedDesiredStateObject {
 		current, ok := flattenedCurrentStateObject[k]
+		if isEmptyValue(v) && reportsNothingAt(flattenedCurrentStateObject, k) && owned != nil && !opts.unresolvedAt(k) && ownsSame(owned, k, v) {
+			// AWS reports nothing, and a read may leave out an empty list or string, such as a native handler's read
+			// of Tags or a Description. The last deploy set the same value, so leave AWS's value as it is. Without a
+			// record, such as on a take-over, the template's value is sent, because AWS may not have reported values
+			// it has.
+			if ok {
+				flattenedDesiredStateObject[k] = current
+			} else {
+				delete(flattenedDesiredStateObject, k)
+			}
+			continue
+		}
 		if !ok {
 			continue
 		}
@@ -457,6 +470,27 @@ func ownsSame(owned map[string]any, k string, v any) bool {
 	}
 	applied, ok := owned[k]
 	return ok && reflect.DeepEqual(applied, v)
+}
+
+// isEmptyValue reports whether v is a list with no items or "".
+func isEmptyValue(v any) bool {
+	list, ok := v.([]any)
+	return (ok && len(list) == 0) || v == ""
+}
+
+// reportsNothingAt reports whether the flattened state has no value at, under, or over path, other than null at path
+// and empty objects above it, such as an object AWS reports where the template sets a list or string.
+func reportsNothingAt(flattened map[string]any, path string) bool {
+	for k, v := range flattened {
+		if !overlapsAny(k, []string{path}) || (k == path && v == nil) {
+			continue
+		}
+		if m, ok := v.(map[string]any); ok && len(m) == 0 && strings.HasPrefix(path, k+"/") {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // emptyObjects returns the flattened paths of the empty objects in state, which FlattenProperties leaves out.
