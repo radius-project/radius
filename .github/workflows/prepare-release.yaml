@@ -284,8 +284,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           GITHUB_REPO: ${{ github.repository }}
-          # A previously frozen candidate retains its original sibling contract.
-          PLAN_AWS_PIN: ${{ steps.preflight.outputs.reuse-frozen-plan != 'true' }}
+          PLAN_AWS_PIN: "true"
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
           PREFLIGHT_VERSION: ${{ steps.preflight.outputs.version }}

@@ -8,7 +8,7 @@ import {
   readReceipt,
   releaseBot,
   signedByReleaseApp,
-  writeReceipt
+  writeReceipt,
 } from "./aws-pin-receipt.mjs";
 import { verifyFinalInputs } from "./verify-aws-final-inputs.mjs";
 
@@ -28,11 +28,11 @@ async function getRef(github, branch) {
     const { data } = await github.rest.git.getRef({
       owner,
       repo,
-      ref: `heads/${branch}`
+      ref: `heads/${branch}`,
     });
     assert(
       data.ref === `refs/heads/${branch}` && sha.test(data.object.sha),
-      `Unexpected ref returned for ${branch}`
+      `Unexpected ref returned for ${branch}`,
     );
     return data.object.sha;
   } catch (error) {
@@ -49,7 +49,7 @@ async function createRef(github, branch, commit) {
       owner,
       repo,
       ref: `refs/heads/${branch}`,
-      sha: commit
+      sha: commit,
     });
   } catch (error) {
     if ((await getRef(github, branch)) !== commit) throw error;
@@ -65,7 +65,7 @@ function verifyContent(commit, parent, tree) {
     commit.parents.length === 1 &&
       commit.parents[0].sha === parent &&
       commit.commit.tree.sha === tree,
-    `AWS commit ${commit.sha} does not contain exactly the planned pin on ${parent}`
+    `AWS commit ${commit.sha} does not contain exactly the planned pin on ${parent}`,
   );
 }
 
@@ -73,7 +73,7 @@ function verifyProposal(commit, parent, tree) {
   verifyContent(commit, parent, tree);
   assert(
     signedByReleaseApp(commit),
-    `AWS pin proposal ${commit.sha} is not signed by the release App`
+    `AWS pin proposal ${commit.sha} is not signed by the release App`,
   );
 }
 
@@ -84,7 +84,7 @@ async function signedProposal(
   baseTree,
   product,
   tree,
-  version
+  version,
 ) {
   const existing = await getRef(github, branch);
   if (existing) {
@@ -95,7 +95,7 @@ async function signedProposal(
     owner,
     repo,
     base_tree: baseTree,
-    tree: [{ path: "radius", mode: "160000", type: "commit", sha: product }]
+    tree: [{ path: "radius", mode: "160000", type: "commit", sha: product }],
   });
   assert(replacement.sha === tree, "GitHub returned an unexpected AWS tree");
   const head = await createReleaseAppCommit(
@@ -103,7 +103,7 @@ async function signedProposal(
     { owner, repo },
     parent,
     tree,
-    `chore(release): pin Radius for ${version}`
+    `chore(release): pin Radius for ${version}`,
   );
   verifyProposal(await commitAt(github, head), parent, tree);
   await createRef(github, branch, head);
@@ -117,7 +117,7 @@ async function findPull(github, branch, target) {
     head: `${owner}:${branch}`,
     base: target,
     state: "all",
-    per_page: 2
+    per_page: 2,
   });
   assert(data.length < 2, `Ambiguous AWS pin PR for ${branch}`);
   return data[0];
@@ -133,7 +133,7 @@ async function ensurePull(github, branch, target, head, product, version) {
         head: branch,
         base: target,
         title: `chore(release): pin Radius for ${version}`,
-        body: `Prepare Release selected Radius \`${product}\` for \`${version}\`. Only the \`radius\` submodule changes.`
+        body: `Prepare Release selected Radius \`${product}\` for \`${version}\`. Only the \`radius\` submodule changes.`,
       }));
     } catch (error) {
       pull = await findPull(github, branch, target);
@@ -147,7 +147,7 @@ async function ensurePull(github, branch, target, head, product, version) {
       pull.head.sha === head &&
       pull.base.repo.full_name === repository &&
       pull.base.ref === target,
-    `Unexpected owner, head or base for AWS pin PR #${pull.number}`
+    `Unexpected owner, head or base for AWS pin PR #${pull.number}`,
   );
   return pull.number;
 }
@@ -159,20 +159,20 @@ async function buildPassed(github, head) {
     ref: head,
     check_name: buildCheck,
     filter: "latest",
-    per_page: 100
+    per_page: 100,
   });
   assert(data.total_count <= 100, `Ambiguous AWS build results for ${head}`);
   const runs = data.check_runs.filter(
     (run) =>
       run.app?.id === actionsApp &&
       run.name === buildCheck &&
-      run.head_sha === head
+      run.head_sha === head,
   );
   for (const run of runs) {
     if (run.status === "completed") {
       assert(
         run.conclusion === "success",
-        `AWS ${buildCheck} ${run.conclusion}: ${run.html_url}`
+        `AWS ${buildCheck} ${run.conclusion}: ${run.html_url}`,
       );
     }
   }
@@ -185,33 +185,33 @@ async function land(github, pr, head, target, parent, tree, wait) {
     const { data: pull } = await github.rest.pulls.get(args);
     assert(
       pull.head.sha === head && pull.base.ref === target,
-      `AWS pin PR #${pr} changed`
+      `AWS pin PR #${pr} changed`,
     );
     if (pull.merged) {
       assert(
         await buildPassed(github, head),
-        `Missing successful AWS build for merged pin PR #${pr}`
+        `Missing successful AWS build for merged pin PR #${pr}`,
       );
       assert(
         sha.test(pull.merge_commit_sha),
-        `Missing landed SHA on AWS pin PR #${pr}`
+        `Missing landed SHA on AWS pin PR #${pr}`,
       );
       // GitHub rebase-merges can rewrite the signature and SHA. Verify the
       // actual landed parent and entire tree against the verified App proposal.
       verifyContent(
         await commitAt(github, pull.merge_commit_sha),
         parent,
-        tree
+        tree,
       );
       return pull.merge_commit_sha;
     }
     assert(
       pull.state === "open",
-      `AWS pin PR #${pr} was closed without merging`
+      `AWS pin PR #${pr} was closed without merging`,
     );
     assert(
       (await getRef(github, target)) === parent,
-      `AWS ${target} advanced during preparation`
+      `AWS ${target} advanced during preparation`,
     );
     assert(pull.mergeable_state !== "dirty", `AWS pin PR #${pr} conflicts`);
     if ((await buildPassed(github, head)) && pull.mergeable_state === "clean") {
@@ -219,7 +219,7 @@ async function land(github, pr, head, target, parent, tree, wait) {
         const { data } = await github.rest.pulls.merge({
           ...args,
           sha: head,
-          merge_method: "rebase"
+          merge_method: "rebase",
         });
         assert(data.merged, `AWS pin PR #${pr} did not merge`);
       } catch (error) {
@@ -230,7 +230,7 @@ async function land(github, pr, head, target, parent, tree, wait) {
     await wait(20_000);
   }
   throw new Error(
-    `Timed out waiting for required checks or reviews: https://github.com/${repository}/pull/${pr}`
+    `Timed out waiting for required checks or reviews: https://github.com/${repository}/pull/${pr}`,
   );
 }
 
@@ -240,29 +240,29 @@ async function pinState(github, target, base, baseTree, tree, sourceRef) {
   const tip = await getRef(github, target);
   assert(
     tip || sourceRef === "main",
-    `Captured AWS branch ${sourceRef} disappeared`
+    `Captured AWS branch ${sourceRef} disappeared`,
   );
   if (baseTree === tree) return { tip, landed: base };
   if (!tip) return { tip, parent: base };
   const { data } = await github.rest.repos.compareCommitsWithBasehead({
     owner,
     repo,
-    basehead: `${base}...${tip}`
+    basehead: `${base}...${tip}`,
   });
   assert(
     ["ahead", "identical"].includes(data.status) &&
       data.commits.length === data.total_commits,
-    `AWS ${target} no longer descends from ${base}`
+    `AWS ${target} no longer descends from ${base}`,
   );
   const landed = data.commits.find((c) => c.commit.tree.sha === tree);
   if (landed) return { tip, landed: landed.sha };
   const tipTree =
-    tip === base ? baseTree : (
-      data.commits.find((c) => c.sha === tip)?.commit.tree.sha
-    );
+    tip === base
+      ? baseTree
+      : data.commits.find((c) => c.sha === tip)?.commit.tree.sha;
   assert(
     tipTree === baseTree,
-    `AWS ${target} has changes outside the approved plan; revert them through a reviewed pull request, then resume the release`
+    `AWS ${target} has changes outside the approved plan; revert them through a reviewed pull request, then resume the release`,
   );
   return { tip, parent: tip };
 }
@@ -277,7 +277,7 @@ export async function reconcile({
   version,
   sourceRef,
   log,
-  wait = sleep
+  wait = sleep,
 }) {
   const target = `release/${channel}`;
   await requireCheck(github, repo, target, buildCheck);
@@ -287,7 +287,7 @@ export async function reconcile({
     base,
     baseTree,
     tree,
-    sourceRef
+    sourceRef,
   );
   if (!tip) await createRef(github, target, base);
   if (landed) return landed;
@@ -300,7 +300,7 @@ export async function reconcile({
     baseTree,
     product,
     tree,
-    version
+    version,
   );
   const pr = await ensurePull(github, branch, target, head, product, version);
   log(`AWS pin proposal: https://github.com/${repository}/pull/${pr}`);
@@ -309,14 +309,14 @@ export async function reconcile({
 
 function parsePlan(raw) {
   return JSON.parse(
-    execFileSync("yq", ["-o=json", ".", "-"], { input: raw, encoding: "utf8" })
+    execFileSync("yq", ["-o=json", ".", "-"], { input: raw, encoding: "utf8" }),
   );
 }
 
 function blob(raw) {
   return execFileSync("git", ["hash-object", "--stdin"], {
     input: raw,
-    encoding: "utf8"
+    encoding: "utf8",
   }).trim();
 }
 
@@ -324,7 +324,7 @@ async function finalParity(github, plan, checkout) {
   const rc = plan.previousVersion;
   assert(
     /^v\d+\.\d+\.0-rc\.[1-9]\d*$/.test(rc) && rc.split("-")[0] === plan.version,
-    "Final release does not reference its last validated RC"
+    "Final release does not reference its last validated RC",
   );
   const path = `.github/release-plans/${rc}.yaml`;
   const raw = execFileSync("git", ["show", `refs/tags/${rc}:${path}`]);
@@ -334,12 +334,12 @@ async function finalParity(github, plan, checkout) {
     prior.radiusPin && (await readReceipt(github, previous, blob(raw)));
   assert(
     !prior.radiusPin || lock,
-    "Last RC is missing its approved AWS pin receipt"
+    "Last RC is missing its approved AWS pin receipt",
   );
   const landed = lock ? lock.landedCommit : prior.sourceCommit;
   assert(
     git(checkout, "rev-parse", `refs/tags/${rc}^{commit}`) === landed,
-    "The AWS RC tag no longer identifies its validated inputs"
+    "The AWS RC tag no longer identifies its validated inputs",
   );
   verifyFinalInputs({
     radius: ".",
@@ -348,7 +348,7 @@ async function finalParity(github, plan, checkout) {
     version: rc,
     product: plan.source.productCommit,
     landed,
-    base: awsSource(plan).sourceCommit
+    base: awsSource(plan).sourceCommit,
   });
 }
 
@@ -356,7 +356,7 @@ export default async function controller({ github, core, context }) {
   const mode = core.getInput("MODE", { required: true });
   assert(
     context.repo.owner === owner && context.repo.repo === "radius",
-    "Unexpected release repository"
+    "Unexpected release repository",
   );
   const raw = readFileSync(core.getInput("PLAN_FILE", { required: true }));
   const plan = parsePlan(raw),
@@ -365,6 +365,8 @@ export default async function controller({ github, core, context }) {
     base = aws.sourceCommit,
     product = plan.source.productCommit;
   const checkout = core.getInput("AWS_CHECKOUT");
+  if (mode === "inspect" && plan.releaseType === "final")
+    await finalParity(github, plan, checkout);
   if (!Object.hasOwn(aws, "radiusPin")) {
     assert(mode === "inspect", "Legacy plans cannot create an AWS pin record");
     core.setOutput("commit", base);
@@ -372,22 +374,22 @@ export default async function controller({ github, core, context }) {
   }
   assert(
     /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-rc\.[1-9]\d*)?$/.test(
-      plan.version
+      plan.version,
     ) && plan.version.startsWith(`v${plan.channel}.`),
-    "Invalid release version"
+    "Invalid release version",
   );
   const branch = `automation/release-state-aws-${plan.version.slice(1)}`;
   if (mode === "inspect") {
     verifyIntent(checkout, aws, product);
     const rules = await github.paginate(
       "GET /repos/{owner}/{repo}/rules/branches/{branch}",
-      { owner, repo: "radius", branch, per_page: 100 }
+      { owner, repo: "radius", branch, per_page: 100 },
     );
     assert(
       ["update", "deletion"].every((type) =>
-        rules.some((rule) => rule.type === type)
+        rules.some((rule) => rule.type === type),
       ),
-      `Protect ${branch} against updates and deletion before releasing`
+      `Protect ${branch} against updates and deletion before releasing`,
     );
     await requireCheck(github, repo, `release/${plan.channel}`, buildCheck);
     const record = await readReceipt(github, plan, planBlob);
@@ -396,10 +398,10 @@ export default async function controller({ github, core, context }) {
         await github.rest.git.getRef({
           owner,
           repo,
-          ref: `tags/${plan.version}`
+          ref: `tags/${plan.version}`,
         });
         throw new Error(
-          "AWS tag exists without its approved pin receipt; refusing to adopt it"
+          "AWS tag exists without its approved pin receipt; refusing to adopt it",
         );
       } catch (error) {
         if (error.status !== 404) throw error;
@@ -411,22 +413,21 @@ export default async function controller({ github, core, context }) {
         base,
         git(checkout, "rev-parse", `${base}^{tree}`),
         aws.radiusPin.expectedTree,
-        aws.sourceRef
+        aws.sourceRef,
       );
     }
-    if (plan.releaseType === "final") await finalParity(github, plan, checkout);
     // No releasable SHA until the approved pin is locked. The base is only a preflight input.
     core.setOutput("commit", record?.landedCommit ?? "");
     await core.summary
       .addRaw(
-        `AWS ${plan.version}: base \`${base}\`, Radius product \`${product}\`, expected tree \`${aws.radiusPin.expectedTree}\`, receipt \`${branch}\`.`
+        `AWS ${plan.version}: base \`${base}\`, Radius product \`${product}\`, expected tree \`${aws.radiusPin.expectedTree}\`, receipt \`${branch}\`.`,
       )
       .write();
     return;
   }
   assert(
     core.getInput("APP_SLUG") === "radius-release",
-    "Unexpected release App identity"
+    "Unexpected release App identity",
   );
   if (mode === "pin") {
     verifyIntent(checkout, aws, product);
@@ -439,7 +440,7 @@ export default async function controller({ github, core, context }) {
       channel: plan.channel,
       version: plan.version,
       sourceRef: aws.sourceRef,
-      log: core.info
+      log: core.info,
     });
     core.setOutput("commit", commit);
   } else if (mode === "lock") {
@@ -447,7 +448,7 @@ export default async function controller({ github, core, context }) {
       github,
       plan,
       planBlob,
-      core.getInput("LANDED_COMMIT", { required: true })
+      core.getInput("LANDED_COMMIT", { required: true }),
     );
     core.setOutput("commit", record.landedCommit);
   } else throw new Error(`Unknown AWS pin mode: ${mode}`);

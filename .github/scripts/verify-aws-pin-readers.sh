@@ -25,3 +25,21 @@ require_reader() {
 require_reader build-release.yaml verify-release
 require_reader build-release.yaml finalize-release
 require_reader build-release.yaml publish-sibling-releases
+
+git show "${commit}:.github/scripts/stage-release-bicep.mjs" |
+    grep -Fq 'plan = await tagPlan({ github, context });' ||
+    fail ".github/scripts/stage-release-bicep.mjs does not use the receipt-resolved plan"
+
+git show "${commit}:.github/workflows/build-release.yaml" |
+    yq -o=json '.' |
+    jq -e '
+        any(.jobs["verify-release"].steps[]?;
+            .env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}") and
+        any(.jobs["verify-release"].steps[]?;
+            .env.RELEASE_VERIFY_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}") and
+        any(.jobs["finalize-release"].steps[]?;
+            .env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}") and
+        any(.jobs["publish-sibling-releases"].steps[]?;
+            .env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}")
+    ' > /dev/null ||
+    fail ".github/workflows/build-release.yaml does not pass the receipt-resolved plan to consumers"

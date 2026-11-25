@@ -31,6 +31,7 @@ REQUIRE_SIBLING_RELEASES=false
 BICEP_DUAL_PIPELINE=false
 GHCR_ONLY=false
 REQUIRE_CURRENT_BICEP=false
+REQUIRE_AWS_PIN_RECEIPT=false
 
 fail() {
     echo "Error: $*" >&2
@@ -367,7 +368,8 @@ verify_bicep_contract() {
 }
 
 verify_ghcr_only_bicep() {
-    git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' | jq -e '
+    git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' | jq -e \
+        --argjson require_pin "${REQUIRE_AWS_PIN_RECEIPT}" '
         def normalized: gsub("\\s"; "");
         def exact_if($condition):
             (.if | normalized) == ($condition | normalized) and
@@ -407,7 +409,9 @@ verify_ghcr_only_bicep() {
                 (.with.script | contains("promote-release-bicep.mjs")) and
                 .env.INPUT_LOCK_FILE == "dist/verification/assets/bicep-extension-lock.json" and
                 .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
-                .env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}" and
+                ((.env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}") or
+                 (($require_pin | not) and
+                  .env.INPUT_PLAN_FILE == "dist/verification/plan.json")) and
                 .env.INPUT_JOB_DEADLINE == "${{ env.BICEP_JOB_DEADLINE }}" and
                 .env.INPUT_PROMOTE_CHANNEL == "${{ steps.alias-policy.outputs.promote_channel }}" and
                 .env.INPUT_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")) and
@@ -480,7 +484,7 @@ verify_historical_bicep_resume_gate() {
 main() {
     local job name
 
-    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep]"
+    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep] [--require-aws-pin-receipt]"
     local revision="$1"
     shift
     EXPECTED_TARGETS=""
@@ -488,6 +492,7 @@ main() {
         case "$1" in
             --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true; shift ;;
             --require-current-bicep) REQUIRE_CURRENT_BICEP=true; shift ;;
+            --require-aws-pin-receipt) REQUIRE_AWS_PIN_RECEIPT=true; shift ;;
             --expected-targets)
                 [[ $# -ge 2 && -f "$2" ]] || fail "expected targets JSON is required"
                 EXPECTED_TARGETS="$2"; shift 2 ;;

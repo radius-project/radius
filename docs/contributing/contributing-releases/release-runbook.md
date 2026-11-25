@@ -33,11 +33,11 @@ gh workflow run prepare-release.yaml --repo radius-project/radius --ref main -f 
 
 For a final or patch, change `release-type=rc` to `release-type=final` or `release-type=patch`. Preparation computes the full version; do not choose an RC number yourself. For an existing channel, optionally select merged main PRs with `-f backport-pr-numbers="12345,12346"`, using their actual numbers.
 
-For a first RC, preparation freezes the checked-out `main` commit. To select an earlier reachable cutoff, add `-f product-commit="<full-40-character-SHA>"`; preparation verifies that its release metadata and build tooling are compatible. Later `main` or merge-queue changes do not enter that release. This override is not available for subsequent RCs, finals, or patches.
+For a first RC, preparation uses the checked-out `main` commit at the workflow run's start. The workflow does not accept a product-commit override. A rerun captures the main and sibling commits again, so later commits can enter the regenerated plan.
 
 Open the run and follow **Summary > Release pull request**. If the CLI did not return a run URL, find your invocation in that workflow's Actions page.
 
-While the first-RC PR remains open, rerunning with the same type/channel retains its cutoff, sibling commits, release date, and curated Highlights/Upgrading. Normally omit `product-commit` on reruns; a different cutoff for the same open preparation is rejected.
+While a preparation PR remains open, a rerun regenerates its source selections and release date; review the new product/sibling SHAs, backports, expected outputs, and notes before merging. The allowed curated Highlights/Upgrading are preserved, but the prior cutoff and sibling commit selection are not. Do not treat rerunning as a retry of the same frozen inputs.
 
 ### 2. Review and merge the release PR
 

@@ -783,8 +783,9 @@ const github = { rest: {
 } };
 process.env.GITHUB_WORKSPACE = root;
 process.env.RELEASE_PARITY_VERSION = "0.60.0";
-const context = { repo: { owner: "radius-project", repo: "radius" },
-  ref: "refs/heads/main", sha: "0".repeat(40) };
+const context = Object.assign(Object.create({
+  get repo() { return { owner: "radius-project", repo: "radius" }; }
+}), { ref: "refs/heads/main", sha: "0".repeat(40) });
 const run = async () => {
   const outputs = {};
   const core = { setOutput: (name, value) => { outputs[name] = value; }, info: () => {} };

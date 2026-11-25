@@ -33,19 +33,30 @@ function fixture(t, state = "wrong") {
         "commit.gpgsign=false",
         "-C",
         dir,
-        ...args
+        ...args,
       ],
-      { encoding: "utf8" }
+      { encoding: "utf8" },
     ).trim();
   git("init", "--quiet", "-b", "main");
   writeFileSync(join(dir, "keep"), "original\n");
   git("add", "keep");
+  if (state !== "legacy" && state !== "missing-config") {
+    const url =
+      state === "foreign-url"
+        ? "https://github.com/attacker/radius"
+        : "https://github.com/radius-project/radius";
+    writeFileSync(
+      join(dir, ".gitmodules"),
+      `[submodule "radius"]\n\tpath = radius\n\turl = ${url}\n`,
+    );
+    git("add", ".gitmodules");
+  }
   if (state !== "legacy" && state !== "file")
     git(
       "update-index",
       "--add",
       "--cacheinfo",
-      `160000,${state === "match" ? product : wrong},radius`
+      `160000,${state === "match" ? product : wrong},radius`,
     );
   if (state === "file") {
     writeFileSync(join(dir, "radius"), "not a gitlink\n");
@@ -64,8 +75,8 @@ function fixture(t, state = "wrong") {
       name: "bicep-types-aws",
       repository: aws,
       sourceRef: "main",
-      sourceCommit: base
-    }
+      sourceCommit: base,
+    },
   ];
   const config = {
     signed: true,
@@ -73,26 +84,27 @@ function fixture(t, state = "wrong") {
     committer: "web-flow",
     rules: true,
     build: "success",
-    blockedPolls: 0
+    blockedPolls: 0,
   };
   const calls = [];
   let pull;
   const result = (data) => ({ data });
   const github = {
     paginate: async (route, { repo }) =>
-      repo === "radius" ? [{ type: "update" }, { type: "deletion" }]
-      : config.rules ?
-        [
-          {
-            type: "required_status_checks",
-            parameters: {
-              required_status_checks: [
-                { context: "Build and test", integration_id: 15368 }
-              ]
-            }
-          }
-        ]
-      : [],
+      repo === "radius"
+        ? [{ type: "update" }, { type: "deletion" }]
+        : config.rules
+          ? [
+              {
+                type: "required_status_checks",
+                parameters: {
+                  required_status_checks: [
+                    { context: "Build and test", integration_id: 15368 },
+                  ],
+                },
+              },
+            ]
+          : [],
     rest: {
       checks: {
         async listForRef({ ref, check_name }) {
@@ -109,18 +121,18 @@ function fixture(t, state = "wrong") {
                 head_sha: ref,
                 status: "completed",
                 conclusion: config.build,
-                html_url: "https://example.invalid/build"
-              }
-            ]
+                html_url: "https://example.invalid/build",
+              },
+            ],
           });
-        }
+        },
       },
       git: {
         async getRef({ ref }) {
           const exists = git(
             "for-each-ref",
             "--format=%(objectname)",
-            `refs/${ref}`
+            `refs/${ref}`,
           );
           if (!exists)
             throw Object.assign(new Error("not found"), { status: 404 });
@@ -132,7 +144,7 @@ function fixture(t, state = "wrong") {
         },
         async createTree({ base_tree, tree }) {
           assert.deepEqual(tree, [
-            { path: "radius", type: "commit", mode: "160000", sha: product }
+            { path: "radius", type: "commit", mode: "160000", sha: product },
           ]);
           git("read-tree", base_tree);
           git("update-index", "--cacheinfo", `160000,${product},radius`);
@@ -142,13 +154,13 @@ function fixture(t, state = "wrong") {
           calls.push("commit");
           assert.deepEqual(args, {
             owner: "radius-project",
-            repo: "bicep-types-aws"
+            repo: "bicep-types-aws",
           });
           assert.match(message, /Signed-off-by: radius-release\[bot\]/);
           return result({
-            sha: git("commit-tree", tree, "-p", parents[0], "-m", message)
+            sha: git("commit-tree", tree, "-p", parents[0], "-m", message),
           });
-        }
+        },
       },
       users: { getByUsername: async () => result(actor) },
       repos: {
@@ -160,8 +172,8 @@ function fixture(t, state = "wrong") {
             parents: [{ sha: git("rev-parse", `${ref}^`) }],
             commit: {
               tree: { sha: git("rev-parse", `${ref}^{tree}`) },
-              verification: { verified: config.signed }
-            }
+              verification: { verified: config.signed },
+            },
           }),
         async compareCommitsWithBasehead({ basehead }) {
           const [from, to] = basehead.split("...");
@@ -178,14 +190,16 @@ function fixture(t, state = "wrong") {
             .filter(Boolean)
             .map((sha) => ({
               sha,
-              commit: { tree: { sha: git("rev-parse", `${sha}^{tree}`) } }
+              commit: { tree: { sha: git("rev-parse", `${sha}^{tree}`) } },
             }));
           const status =
-            from === to ? "identical"
-            : ancestor(from, to) ? "ahead"
-            : "diverged";
+            from === to
+              ? "identical"
+              : ancestor(from, to)
+                ? "ahead"
+                : "diverged";
           return result({ status, total_commits: commits.length, commits });
-        }
+        },
       },
       pulls: {
         list: async () => result(pull ? [pull] : []),
@@ -199,9 +213,9 @@ function fixture(t, state = "wrong") {
             head: {
               ref: head,
               sha: git("rev-parse", head),
-              repo: { full_name: aws }
+              repo: { full_name: aws },
             },
-            base: { ref: base, repo: { full_name: aws } }
+            base: { ref: base, repo: { full_name: aws } },
           };
           return result(pull);
         },
@@ -213,7 +227,7 @@ function fixture(t, state = "wrong") {
           const tip = git("rev-parse", `refs/heads/${target}`);
           const tree = git(
             "rev-parse",
-            `${config.badMerge ? tip : sha}^{tree}`
+            `${config.badMerge ? tip : sha}^{tree}`,
           );
           const landed = git(
             "commit-tree",
@@ -221,29 +235,29 @@ function fixture(t, state = "wrong") {
             "-p",
             tip,
             "-m",
-            "rebased by GitHub"
+            "rebased by GitHub",
           );
           git("update-ref", `refs/heads/${target}`, landed, tip);
           Object.assign(pull, {
             merged: true,
             merged_at: "now",
             merge_commit_sha: landed,
-            state: "closed"
+            state: "closed",
           });
           if (config.dropResponse) throw new Error("response lost");
           return result({ merged: true });
-        }
-      }
-    }
+        },
+      },
+    },
   };
   const plan = () =>
     capture(
       {
         channel,
         source: { productCommit: product },
-        siblingRepositories: structuredClone(siblings)
+        siblingRepositories: structuredClone(siblings),
       },
-      dir
+      dir,
     );
   const approve = async (input = plan()) => {
     const source = input[2];
@@ -259,7 +273,7 @@ function fixture(t, state = "wrong") {
       version,
       sourceRef: source.sourceRef,
       log() {},
-      wait: async () => {}
+      wait: async () => {},
     });
   };
   // Commit on parent with the given keep content and optional Radius gitlink.
@@ -280,11 +294,15 @@ function fixture(t, state = "wrong") {
     github,
     dir,
     siblings,
-    base
+    base,
   };
 }
 
-async function inspect(f, siblingRepositories) {
+async function inspect(
+  f,
+  siblingRepositories,
+  { releaseType = "rc", previousVersion } = {},
+) {
   const file = join(f.dir, "plan.json");
   writeFileSync(
     file,
@@ -292,10 +310,11 @@ async function inspect(f, siblingRepositories) {
       schemaVersion: 2,
       version,
       channel,
-      releaseType: "rc",
+      releaseType,
+      ...(previousVersion ? { previousVersion } : {}),
       source: { productCommit: product },
-      siblingRepositories
-    })
+      siblingRepositories,
+    }),
   );
   const output = {};
   await controller({
@@ -307,8 +326,8 @@ async function inspect(f, siblingRepositories) {
       setOutput: (key, value) => {
         output[key] = value;
       },
-      summary: { addRaw: () => ({ write: async () => {} }) }
-    }
+      summary: { addRaw: () => ({ write: async () => {} }) },
+    },
   });
   return output.commit;
 }
@@ -317,6 +336,18 @@ test("inspection returns a legacy SHA but never the base as a pending pin's rele
   const f = fixture(t);
   assert.equal(await inspect(f, f.siblings), f.base);
   assert.equal(await inspect(f, f.plan()), "");
+  assert.deepEqual(f.calls, []);
+});
+
+test("legacy final inspection still validates the RC-to-final boundary", async (t) => {
+  const f = fixture(t, "legacy");
+  await assert.rejects(
+    inspect(f, f.siblings, {
+      releaseType: "final",
+      previousVersion: "not-an-rc",
+    }),
+    /Final release does not reference its last validated RC/,
+  );
   assert.deepEqual(f.calls, []);
 });
 
@@ -337,14 +368,14 @@ test("first RC corrects the wrong-repository SHA; replay adopts the exact rebase
   assert.equal(frozen[2].sourceRef, "main");
   assert.equal(
     frozen[2].radiusPin.expectedTree,
-    f.git("rev-parse", `${landed}^{tree}`)
+    f.git("rev-parse", `${landed}^{tree}`),
   );
   // The PR head may have been deleted, and the protected branch may have
   // legitimately advanced after merge. Neither changes the approved tree.
   f.git(
     "update-ref",
     "-d",
-    `refs/heads/automation/radius-pin-${version}-${product.slice(0, 12)}-${f.base.slice(0, 12)}`
+    `refs/heads/automation/radius-pin-${version}-${product.slice(0, 12)}-${f.base.slice(0, 12)}`,
   );
   const next = f.git(
     "commit-tree",
@@ -352,7 +383,7 @@ test("first RC corrects the wrong-repository SHA; replay adopts the exact rebase
     "-p",
     landed,
     "-m",
-    "later change"
+    "later change",
   );
   f.git("update-ref", `refs/heads/${target}`, next);
   assert.equal(await f.approve(frozen), landed);
@@ -377,26 +408,34 @@ for (const state of ["match", "legacy", "file", "removed"]) {
   });
 }
 
+for (const state of ["foreign-url", "missing-config"]) {
+  test(`frozen ${state} Radius submodule mapping is rejected`, async (t) => {
+    const f = fixture(t, state);
+    assert.throws(f.plan, /Malformed radius submodule/);
+    assert.deepEqual(f.calls, []);
+  });
+}
+
 for (const [description, options, failure] of [
   ["unsigned proposal", { signed: false }, /not signed by the release App/],
   [
     "wrong author",
     { actor: { login: "someone", type: "User" } },
-    /not signed by the release App/
+    /not signed by the release App/,
   ],
   [
     "unexpected signer",
     { committer: "contributor" },
-    /not signed by the release App/
+    /not signed by the release App/,
   ],
   ["skipped required build", { build: "skipped" }, /Build and test skipped/],
   ["failed required build", { build: "failure" }, /Build and test failure/],
   [
     "missing required check",
     { rules: false },
-    /Require the GitHub Actions check/
+    /Require the GitHub Actions check/,
   ],
-  ["landed tree differs", { badMerge: true }, /exactly the planned pin/]
+  ["landed tree differs", { badMerge: true }, /exactly the planned pin/],
 ]) {
   test(`no tagged AWS source on ${description}`, async (t) => {
     const f = fixture(t);
@@ -447,7 +486,7 @@ test("after a reviewed revert the pin is proposed on the current AWS tip", async
   assert.equal(f.git("rev-parse", `${landed}^`), revert);
   assert.equal(
     f.git("rev-parse", `${landed}^{tree}`),
-    frozen[2].radiusPin.expectedTree
+    frozen[2].radiusPin.expectedTree,
   );
   assert.deepEqual(f.calls, ["commit", "ref", "pr", "merge"]);
 });

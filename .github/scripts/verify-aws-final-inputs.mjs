@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 const schemas = [
   "pkg/aws/schemas/native",
   "pkg/aws/schemas/handwritten",
-  "pkg/aws/extraproperties/extra_properties.json"
+  "pkg/aws/extraproperties/extra_properties.json",
 ];
 
 function git(repo, ...args) {
@@ -14,12 +14,12 @@ function git(repo, ...args) {
     encoding: "utf8",
     env: {
       ...Object.fromEntries(
-        Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_"))
+        Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_")),
       ),
       GIT_NO_LAZY_FETCH: "1",
       GIT_ALLOW_PROTOCOL: "",
-      GIT_OPTIONAL_LOCKS: "0"
-    }
+      GIT_OPTIONAL_LOCKS: "0",
+    },
   });
 }
 
@@ -31,7 +31,7 @@ function entries(repo, commit, paths) {
     "-tz",
     commit,
     "--",
-    ...paths
+    ...paths,
   );
   return new Map(
     tree
@@ -40,7 +40,7 @@ function entries(repo, commit, paths) {
       .map((row) => {
         const tab = row.indexOf("\t");
         return [row.slice(tab + 1), row.slice(0, tab)];
-      })
+      }),
   );
 }
 
@@ -57,7 +57,7 @@ function changes(repo, from, to) {
     "--ignore-submodules=none",
     from,
     to,
-    "--"
+    "--",
   ).split("\0");
   const result = new Map();
   for (let i = 0; i < fields.length - 1; i += 2) {
@@ -67,24 +67,24 @@ function changes(repo, from, to) {
   return result;
 }
 
-function pin(repo, commit) {
+export function radiusSubmodulePin(repo, commit) {
   const tree = entries(repo, commit, ["radius", ".gitmodules"]);
   const entry = tree.get("radius");
   const link = /^160000 commit ([a-f0-9]{40})$/.exec(entry);
   if (entry)
     assert(
       link,
-      `AWS commit ${commit} has a radius path that is not a gitlink`
+      `AWS commit ${commit} has a radius path that is not a gitlink`,
     );
   else
     assert(
       !git(repo, "rev-list", "--full-history", "-1", commit, "--", "radius"),
-      `AWS commit ${commit} removed its radius submodule`
+      `AWS commit ${commit} removed its radius submodule`,
     );
   if (!link && !tree.has(".gitmodules")) return null;
   assert(
     /^100644 blob /.test(tree.get(".gitmodules")),
-    `Malformed radius submodule at ${commit}`
+    `Malformed radius submodule at ${commit}`,
   );
   const config = git(
     repo,
@@ -93,16 +93,16 @@ function pin(repo, commit) {
     "--null",
     "--blob",
     `${commit}:.gitmodules`,
-    "--list"
+    "--list",
   ).split("\0");
   const mapping = config.filter((kv) =>
-    /^submodule\..+\.path\nradius$/.test(kv)
+    /^submodule\..+\.path\nradius$/.test(kv),
   );
   if (!link) {
     assert(
       !mapping.length &&
         !config.some((kv) => kv.startsWith("submodule.radius.")),
-      "AWS declares radius without a gitlink"
+      "AWS declares radius without a gitlink",
     );
     return null;
   }
@@ -117,7 +117,7 @@ function pin(repo, commit) {
       values(`${section}.path`).length === 1 &&
       urls.length === 1 &&
       /^https:\/\/github\.com\/radius-project\/radius(?:\.git)?$/.test(urls[0]),
-    `Malformed radius submodule at ${commit}`
+    `Malformed radius submodule at ${commit}`,
   );
   return link[1];
 }
@@ -126,9 +126,9 @@ function schemaInputs(repo, commit) {
   const paths = [
     ...new Set(
       schemas.flatMap((path) =>
-        path.split("/").map((_, i, parts) => parts.slice(0, i + 1).join("/"))
-      )
-    )
+        path.split("/").map((_, i, parts) => parts.slice(0, i + 1).join("/")),
+      ),
+    ),
   ];
   const tree = entries(repo, commit, paths);
   for (const path of paths) {
@@ -136,9 +136,9 @@ function schemaInputs(repo, commit) {
     if (!entry) continue;
     assert(
       (path.endsWith(".json") ? /^100(?:644|755) blob / : /^040000 tree /).test(
-        entry
+        entry,
       ),
-      `Malformed Radius schema input ${path} at ${commit}`
+      `Malformed Radius schema input ${path} at ${commit}`,
     );
   }
   return schemas.map((path) => tree.get(path));
@@ -151,7 +151,7 @@ export function verifyFinalInputs({
   version,
   product,
   landed,
-  base
+  base,
 }) {
   const raw = rcPlan.source.productCommit;
   try {
@@ -159,13 +159,13 @@ export function verifyFinalInputs({
       [radius, raw],
       [radius, product],
       [aws, landed],
-      [aws, base]
+      [aws, base],
     ]) {
       assert(/^[a-f0-9]{40}$/.test(cutoff), "Expected a full commit SHA");
       assert.equal(
         git(repo, "cat-file", "-t", cutoff).trim(),
         "commit",
-        `${cutoff} is not a commit`
+        `${cutoff} is not a commit`,
       );
     }
     // Both checkouts are fetch-depth: 0; a shallow history cannot prove a submodule never existed.
@@ -173,7 +173,7 @@ export function verifyFinalInputs({
       assert.equal(
         git(repo, "rev-parse", "--is-shallow-repository").trim(),
         "false",
-        "Expected a full checkout"
+        "Expected a full checkout",
       );
 
     const path = `.github/release-plans/${version}.yaml`;
@@ -181,22 +181,22 @@ export function verifyFinalInputs({
       rcPlan.version === version &&
         rcPlan.releaseType === "rc" &&
         rcPlan.releasePlanPath === path,
-      `Invalid committed ${version} RC plan`
+      `Invalid committed ${version} RC plan`,
     );
     assert.equal(
       git(radius, "rev-parse", `refs/tags/${version}^{commit}`).trim(),
       product,
-      "Final product is not the tagged commit of its validated RC"
+      "Final product is not the tagged commit of its validated RC",
     );
     assert.equal(
       git(radius, "show", "-s", "--format=%P", product).trim(),
       raw,
-      "RC product must be the only parent"
+      "RC product must be the only parent",
     );
     const metadata = new Map([
       [path, "000000:100644"],
       [`docs/release-notes/${version}.md`, "000000:100644"],
-      ["versions.yaml", "100644:100644"]
+      ["versions.yaml", "100644:100644"],
     ]);
     if (rcPlan.schemaVersion === 2 && rcPlan.changelogPolicy == null)
       metadata.set("CHANGELOG.md", "100644:100644");
@@ -204,32 +204,34 @@ export function verifyFinalInputs({
       assert.equal(
         rcPlan.changelogPolicy,
         "stable-only",
-        "Unknown RC changelog policy"
+        "Unknown RC changelog policy",
       );
     const changed = changes(radius, raw, product);
     for (const dir of [
       ".github",
       ".github/release-plans",
       "docs",
-      "docs/release-notes"
+      "docs/release-notes",
     ]) {
       if (["000000:040000", "040000:040000"].includes(changed.get(dir)))
         changed.delete(dir);
     }
     assert.deepEqual(changed, metadata, "Unexpected Radius product change");
 
-    const rcPin = pin(aws, landed);
+    const rcPin = radiusSubmodulePin(aws, landed);
     const awsChanges = changes(aws, landed, base);
-    const nextPin = awsChanges.has("radius") ? pin(aws, base) : rcPin;
+    const nextPin = awsChanges.has("radius")
+      ? radiusSubmodulePin(aws, base)
+      : rcPin;
     assert(
       [...awsChanges.keys()].every((name) => name === "radius"),
-      "AWS build input changed"
+      "AWS build input changed",
     );
     // No other change, including .gitmodules, is permitted. Only the gitlink can differ.
     assert.equal(
       Boolean(rcPin),
       Boolean(nextPin),
-      "AWS radius gitlink was added or removed"
+      "AWS radius gitlink was added or removed",
     );
     if (!rcPin) return;
     assert.equal(rcPin, raw, `AWS RC pin is not RC product ${raw}`);
@@ -240,18 +242,18 @@ export function verifyFinalInputs({
       assert.equal(
         git(radius, "cat-file", "-t", nextPin).trim(),
         "commit",
-        "AWS base pin is not a Radius commit"
+        "AWS base pin is not a Radius commit",
       );
       assert.deepEqual(
         schemaInputs(radius, nextPin),
         tested,
-        "AWS gitlink changes Radius schema inputs"
+        "AWS gitlink changes Radius schema inputs",
       );
     }
   } catch (error) {
     throw new Error(
       `${error.message}. Cut another RC and validate it before releasing the final.`,
-      { cause: error }
+      { cause: error },
     );
   }
 }

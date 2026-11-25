@@ -113,6 +113,14 @@ main() {
 
     write_pipeline
     expect pass "current release pipeline beside non-publishing push workflows"
+    expect pass "pinned published source requires receipt-aware build workflow" \
+        HEAD --require-aws-pin-receipt
+    yq -i '(.jobs."finalize-release".steps[] |
+        select(.name == "Promote locked Bicep extensions")).env.INPUT_PLAN_FILE =
+        "dist/verification/plan.json"' "${WORKFLOWS}/build-release.yaml"
+    expect pass "legacy published GHCR source retains historical plan path"
+    expect "does not enforce the publication gate for GHCR-only Bicep" \
+        "pinned published source rejects historical plan path" HEAD --require-aws-pin-receipt
     local intended="${REPO}/intended-targets.json"
     cp "${ROOT}/.github/release-parity/targets.json" "${intended}"
     TEST_EXPECTED_TARGETS="${intended}" expect pass "matching intended targets"

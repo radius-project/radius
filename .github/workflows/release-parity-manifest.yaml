@@ -81,7 +81,9 @@ jobs:
               entry.name === 'bicep-types-aws' && Object.hasOwn(entry, 'radiusPin'))) return
             const { default: materializeTagPlan } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-receipt.mjs`)
             await materializeTagPlan({
-              github, core, context: { ...context, ref: `refs/tags/${version}`, sha }
+              github, core, context: {
+                repo: context.repo, ref: `refs/tags/${version}`, sha
+              }
             })
 
       - name: Collect manifest

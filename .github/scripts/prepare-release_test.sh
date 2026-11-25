@@ -236,6 +236,12 @@ test_first_rc_reviews_pin_without_writing_aws() {
     local base product tree before
     setup_repo v0.60.0
     git init -q -b main "${aws}"
+    cat >"${aws}/.gitmodules" <<'EOF'
+[submodule "radius"]
+    path = radius
+    url = https://github.com/radius-project/radius.git
+EOF
+    git -C "${aws}" add .gitmodules
     git -C "${aws}" update-index --add --cacheinfo \
         "160000,6816fbfe9e9aeb84f7aba1046967061ce90f76c0,radius"
     git -C "${aws}" -c user.name=Fixture -c user.email=fixture@example.invalid \
@@ -246,15 +252,18 @@ test_first_rc_reviews_pin_without_writing_aws() {
         > "${REPO}/out/base.json"
     cp "${REPO}/out/base.json" "${REPO}/siblings.json"
     mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
-    cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" "${REPO}/.github/scripts/"
+    cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" \
+        "${SCRIPT_DIR}/stage-release-bicep.mjs" "${REPO}/.github/scripts/"
     cp "${root}/.github/workflows/build-release.yaml" \
         "${REPO}/.github/workflows/"
     git -C "${REPO}" add .github siblings.json
     git -C "${REPO}" commit -qm "Install receipt readers"
     git -C "${REPO}" tag v0.60.0
     product="$(git -C "${REPO}" rev-parse HEAD)"
-    tree="$(printf '160000 commit %s\tradius\n' "${product}" |
-        git -C "${aws}" mktree --missing)"
+    git -C "${aws}" read-tree "${base}"
+    git -C "${aws}" update-index --cacheinfo \
+        "160000,${product},radius"
+    tree="$(git -C "${aws}" write-tree)"
     PLAN_AWS_PIN=true GIT_CONFIG_COUNT=1 \
         GIT_CONFIG_KEY_0="url.file://${aws}.insteadOf" \
         GIT_CONFIG_VALUE_0=https://github.com/radius-project/bicep-types-aws.git \
