@@ -787,8 +787,9 @@ func Test_Native_DeleteTokenClearedByFailedDelete(t *testing.T) {
 }
 
 // Test_Native_RedeliveredWithoutRecord runs a native operation again after its record is gone, as when the worker
-// stops after a delete removes the record and before it saves the operation's result. UCP never asks Cloud Control
-// about a native operation, even for a type that has a CloudFormation type.
+// stops after a delete removes the record and before it saves the operation's result, or a new request replaced a
+// waiting create. UCP never asks Cloud Control about a native operation, even for a type that has a CloudFormation
+// type.
 func Test_Native_RedeliveredWithoutRecord(t *testing.T) {
 	for _, method := range []string{http.MethodDelete, http.MethodPut} {
 		t.Run(method, func(t *testing.T) {
@@ -818,7 +819,8 @@ func Test_Native_RedeliveredWithoutRecord(t *testing.T) {
 			if method == http.MethodDelete {
 				require.Nil(t, result.Error)
 			} else {
-				require.Equal(t, `UCP has no record of the AWS resource "app-native". Deploy again.`, result.Error.Message)
+				require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
+				require.Equal(t, `A newer operation on the AWS resource "app-native" replaced this one.`, result.Error.Message)
 			}
 		})
 	}

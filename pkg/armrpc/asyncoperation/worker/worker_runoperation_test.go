@@ -502,6 +502,55 @@ func TestRunOperation_Successfully(t *testing.T) {
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
 }
 
+// TestRunOperation_KeepResourceState checks that a result that keeps the resource's state sets only the operation's
+// status, and that the message stays when that fails, so the worker runs it again.
+func TestRunOperation_KeepResourceState(t *testing.T) {
+	cases := map[string]struct {
+		resourceID string
+		updateErr  error
+		updates    int
+		finished   bool
+	}{
+		"status saved":        {updates: 1, finished: true},
+		"status save fails":   {updateErr: errors.New("database is down"), updates: 1},
+		"invalid resource ID": {resourceID: "not-a-resource-id"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			tCtx, mctrl := newTestContext(t, defaultTestLockTime)
+			defer mctrl.Finish()
+
+			tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), v1.ProvisioningStateCanceled, gomock.Any(), gomock.Any()).Return(tc.updateErr).Times(tc.updates)
+
+			testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
+			if tc.resourceID != "" {
+				testMessage = queue.NewMessage(&ctrl.Request{OperationID: uuid.New(), OperationType: "APPLICATIONS.CORE/ENVIRONMENTS|PUT", ResourceID: tc.resourceID})
+			}
+			require.NoError(t, tCtx.testQueue.Enqueue(tCtx.ctx, testMessage))
+			worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
+			testCtrl := &testAsyncController{
+				BaseController: ctrl.NewBaseAsyncController(ctrl.Options{DatabaseClient: tCtx.mockSC}),
+				fn: func(ctx context.Context) (ctrl.Result, error) {
+					result := ctrl.NewCanceledResult("a newer operation replaced this one")
+					result.KeepResourceState = true
+					return result, nil
+				},
+			}
+
+			msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
+			require.NoError(t, err)
+			worker.runOperation(t.Context(), msg, testCtrl)
+			if tc.finished {
+				require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
+			} else {
+				require.Equal(t, 1, tCtx.internalQ.Len(), "message stays")
+			}
+		})
+	}
+}
+
 func TestRunOperation_ExtendMessageLock(t *testing.T) {
 	tCtx, mctrl := newTestContext(t, defaultTestLockTime)
 	defer mctrl.Finish()

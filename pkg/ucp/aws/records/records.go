@@ -32,6 +32,7 @@ import (
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/database"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -445,9 +446,18 @@ func FailUnfinished(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 }
 
 func finish(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
+	ClearStart(rec)
 	rec.Properties.LastRequestToken = rec.Properties.RequestToken
 	rec.Properties.LastRequestError = failure
 	rec.Properties.RequestToken = ""
+}
+
+// FailStart finishes an operation whose start call failed in the worker, after StartFailed set the record's values.
+// Unlike Fail, it keeps the pending values StartFailed kept: a create AWS may have keeps the values the next request
+// finds it with (see native.Recovery). The request token moves to LastRequestToken with failure.
+func FailStart(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
+	finish(rec, failure)
+	rec.SetProvisioningState(v1.ProvisioningStateFailed)
 }
 
 // FinishCreate marks the first create as finished: it clears the client token, and keeps it as the create token, so a
@@ -467,6 +477,125 @@ func ClearUpdateToken(rec *datamodel.AWSResource) {
 	rec.Properties.UpdateToken = ""
 	rec.Properties.UpdateState = ""
 	rec.Properties.UpdateIntent = ""
+}
+
+// OutcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports
+// with a *native.Failure, OutcomeRejected for a client fault, such as an invalid property, for a resource of another
+// product, which the handler refuses before it changes anything, and for a call AWS can't take yet
+// (native.NotReady), and OutcomeUnknown otherwise, because a transport or server error does not show that AWS changed
+// nothing.
+func OutcomeOf(err error) native.Outcome {
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failure.Outcome
+	}
+	var other *native.OtherProductError
+	var notReady *native.NotReady
+	if errors.As(err, &other) || errors.As(err, &notReady) || ucp_aws.IsClientFault(err) {
+		return native.OutcomeRejected
+	}
+	return native.OutcomeUnknown
+}
+
+// Start states of a native operation whose first call waits for AWS to take it (see native.NotReady), saved in
+// StartState.
+const (
+	// StartWaiting means nothing of the operation has reached AWS, so a new request can replace it.
+	StartWaiting = "waiting"
+
+	// StartSending means the worker may be sending the call, so AWS may have it.
+	StartSending = "sending"
+)
+
+// IsWaiting reports whether the record's operation waits to send its first call and nothing of it has reached AWS.
+func IsWaiting(rec *datamodel.AWSResource) bool {
+	return rec.Properties.StartState == StartWaiting
+}
+
+// IsSendingNow reports whether a worker saved that it sends the record's call less than StaleAfter ago, so it may still
+// run. A claim with no time, or an older one, has no running sender.
+func IsSendingNow(rec *datamodel.AWSResource) bool {
+	sent := rec.Properties.StartSentAt
+	return rec.Properties.StartState == StartSending && sent != nil && Now().Sub(*sent) <= StaleAfter
+}
+
+// ClearStart drops what the record keeps for a first call that waits for AWS, once AWS took it or the operation
+// ended.
+func ClearStart(rec *datamodel.AWSResource) {
+	rec.Properties.StartState = ""
+	rec.Properties.StartReason = ""
+	rec.Properties.StartSentAt = nil
+	rec.Properties.StartPatch = nil
+	rec.Properties.StartCurrent = nil
+}
+
+// StartFailed sets the record's values after the call that starts op failed with outcome, the same way whether UCP
+// made the call at the request or in the worker after waiting. created is the identifier a create returned with its
+// error. resend is true when the call sent again an operation that may already be in AWS: a create of a record that
+// already had a client token, or an update with the token of an earlier attempt.
+//
+//   - create: the record keeps created. When AWS applied all of it and UCP has the identifier, the create is finished
+//     and its values are last-applied. A rejected first create leaves nothing in AWS, so it returns true: the request
+//     removes the record, and the worker clears the create from it (DropCreate). Otherwise the record keeps its client token, so the next request finds the resource.
+//   - update: the values are set by outcome (Settle). A rejected first attempt clears the update token, so the next
+//     update gets a new one. A rejected resend keeps it, because AWS may have taken an earlier attempt.
+//   - delete: the pending values are dropped. When AWS applied all of it, it returns true: the caller removes the
+//     record.
+//
+// It leaves the provisioning state and the request token to the caller.
+func StartFailed(rec *datamodel.AWSResource, op string, outcome native.Outcome, created string, resend bool) bool {
+	ClearStart(rec)
+	switch op {
+	case OperationCreate:
+		if created != "" {
+			rec.Properties.AWSIdentifier = created
+		}
+		if outcome == native.OutcomeRejected && !resend {
+			return true
+		}
+		if outcome == native.OutcomeApplied && rec.Properties.AWSIdentifier != "" {
+			Settle(rec, outcome)
+			FinishCreate(rec)
+		}
+	case OperationUpdate:
+		Settle(rec, outcome)
+		if outcome == native.OutcomeRejected && !resend {
+			ClearUpdateToken(rec)
+		}
+	case OperationDelete:
+		ClearPending(rec)
+		return outcome == native.OutcomeApplied
+	}
+	return false
+}
+
+// DropCreate clears a first create AWS never had from the record, so the record holds nothing but its owner, its
+// handler, and its operation, like a new record: the next PUT creates a resource with a new client token or takes one
+// over, a DELETE removes only the record, and no other alias is kept from the identifier. The record keeps nothing of a
+// resource it held before, such as one deleted outside Radius, as a request that removes the record would. UCP's
+// worker keeps such a record, rather than removing it, so a redelivered operation still reports the failure saved on
+// it.
+func DropCreate(rec *datamodel.AWSResource) {
+	p := rec.Properties
+	rec.Properties = datamodel.AWSResourceProperties{
+		Owner:            p.Owner,
+		Handler:          p.Handler,
+		RequestToken:     p.RequestToken,
+		LastRequestToken: p.LastRequestToken,
+		LastRequestError: p.LastRequestError,
+	}
+}
+
+// DropWaiting ends the record's waiting operation (see IsWaiting) as if AWS rejected its first call, because nothing
+// of it reached AWS: a waiting first create returns true, and the caller removes the record or clears the create from
+// it (DropCreate); an update drops its values
+// and token; a delete drops its values and its delete token, which no call took, so the next delete is a new one. It
+// leaves the provisioning state and the request token to the caller.
+func DropWaiting(rec *datamodel.AWSResource) bool {
+	if PendingOperation(rec) == OperationDelete {
+		rec.Properties.DeleteToken = ""
+	}
+	return StartFailed(rec, PendingOperation(rec), native.OutcomeRejected, "", false)
 }
 
 // AliasOf returns the alias, the last segment, of a record's resource ID.

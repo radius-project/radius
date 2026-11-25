@@ -28,6 +28,11 @@ type Result struct {
 	// Error represents the error when status is Cancelled or Failed.
 	Error *v1.ErrorDetails
 
+	// KeepResourceState makes the worker set only the operation's status, and leave the resource's
+	// provisioningState as it is. A controller sets it for an operation a newer one replaced, because the resource
+	// then shows the newer operation.
+	KeepResourceState bool
+
 	// state represents the provisioning status.
 	state *v1.ProvisioningState
 }

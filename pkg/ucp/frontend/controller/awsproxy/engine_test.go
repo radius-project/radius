@@ -283,7 +283,9 @@ func (h *harness) finish() []ctrl.Result {
 		require.NoError(h.t, err)
 		result, err := controller.Run(h.t.Context(), req)
 		require.NoError(h.t, err)
-		h.setState(req.ResourceID, result.ProvisioningState())
+		if !result.KeepResourceState {
+			h.setState(req.ResourceID, result.ProvisioningState())
+		}
 		id, err := resources.ParseResource(req.ResourceID)
 		require.NoError(h.t, err)
 		require.NoError(h.t, h.sm.Update(h.t.Context(), id, req.OperationID, result.ProvisioningState(), nil, result.Error))

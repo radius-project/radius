@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -160,12 +161,104 @@ func operationType(r *request) string {
 	return records.OperationType
 }
 
-// operationTimeout returns how long UCP's async operation for op runs.
-func operationTimeout(r *request, op string) time.Duration {
+// operationTimeout returns how long UCP's async operation for op on rec runs. An operation whose first call waits for
+// AWS to take it (see waitToStart) also runs for the handler's ReadyTimeout, and for records.StaleAfter, how long a
+// worker waits for a call another worker claimed before it takes that worker for stopped.
+func operationTimeout(r *request, rec *datamodel.AWSResource, op string) time.Duration {
 	if r.handler == nil {
 		return ucp_aws.OperationTimeout
 	}
-	return r.handler.Options().Timeout(native.Operation(op)) + nativeTimeoutMargin
+	options := r.handler.Options()
+	timeout := options.Timeout(native.Operation(op)) + nativeTimeoutMargin
+	if rec.Properties.StartState != "" {
+		timeout += options.ReadyTimeout + records.StaleAfter
+	}
+	return timeout
+}
+
+// canWait reports whether UCP waits for AWS to take a start call of r that failed with err, instead of failing the
+// request: the handler reported that something the resource depends on is busy (native.NotReady), it sets
+// Options.ReadyTimeout, and eligible is true. A caller sets eligible only for the first attempt of an operation whose
+// call carries no write-only or secret value, because UCP never stores them. A call that sends again an operation AWS
+// may have never waits, because a new request could replace a waiting operation.
+func canWait(r *request, err error, eligible bool) bool {
+	var notReady *native.NotReady
+	return eligible && errors.As(err, &notReady) && r.handler != nil && r.handler.Options().ReadyTimeout > 0
+}
+
+// waitToStart marks rec's operation as waiting for AWS to take its first call, which the worker sends (see
+// awsresources), and returns the operation ID for track to save and queue. err is the native.NotReady the call
+// returned. Nothing reached AWS, so the reservation keeps the operation's tokens, and a new request can replace it
+// (see replaceWaiting).
+func waitToStart(ctx context.Context, r *request, rec *datamodel.AWSResource, err error) string {
+	var notReady *native.NotReady
+	errors.As(err, &notReady)
+	rec.Properties.StartState = records.StartWaiting
+	rec.Properties.StartReason = notReady.Reason
+	ucplog.FromContextOrDiscard(ctx).Info("AWS can't take the call yet; the worker sends it when it can", "alias", r.id.Name(), "reason", notReady.Reason)
+	return uuid.New().String()
+}
+
+// setsSecret reports whether properties set a value at one of the secret paths, which UCP never stores.
+func setsSecret(properties map[string]any, secrets []string) bool {
+	return !reflect.DeepEqual(withoutSecrets(properties, secrets), properties)
+}
+
+// patchTouchesSecret reports whether an operation of patch is at, inside, or above one of the secret paths, so it may
+// carry a secret value, which UCP never stores. A "*" segment of a secret path matches any segment.
+func patchTouchesSecret(patch jsondiff.Patch, secrets []string) bool {
+	for _, op := range patch {
+		if strings.TrimPrefix(op.Path, "/") == "" {
+			// The operation replaces every property.
+			return len(secrets) > 0
+		}
+		path := strings.Split(strings.TrimPrefix(op.Path, "/"), "/")
+		for _, secret := range secrets {
+			pattern := strings.Split(secret, "/")
+			if matchesPrefix(path, pattern[:min(len(path), len(pattern))]) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// patchMaps returns patch as the record stores it. A patch of JSON values always converts.
+func patchMaps(patch jsondiff.Patch) []map[string]any {
+	out := []map[string]any{}
+	b, _ := json.Marshal(patch)
+	_ = json.Unmarshal(b, &out)
+	return out
+}
+
+// replaceWaiting ends the record's operation that waits for AWS to take its first call (see waitToStart), so a new
+// PUT or DELETE replaces it: nothing of it reached AWS. It is dropped as if AWS rejected the call, with a save that
+// checks the ETag, so either this request wins and the worker never sends the call, or the worker saved first that it
+// sends it, and this request gets 409. The old operation ends canceled when the worker finds the record changed.
+//
+// A waiting first create removes the record: a DELETE then returns 204, and a PUT continues with no record. Otherwise
+// the record continues without an operation in progress. The request is routed again, because the waiting operation
+// no longer decides the handler.
+func (e *engine) replaceWaiting(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, method v1.OperationMethod) (*datamodel.AWSResource, string, armrpc_rest.Response, error) {
+	ucplog.FromContextOrDiscard(ctx).Info("Replacing an AWS operation that sent nothing to AWS", "alias", r.id.Name(), "operation", records.PendingOperation(rec))
+	if records.DropWaiting(rec) {
+		if err := e.store.DeleteIfUnchanged(ctx, r.id, etag); err != nil {
+			resp, err := saveError(r.id, err)
+			return nil, "", resp, err
+		}
+		if method == v1.OperationDelete {
+			return nil, "", armrpc_rest.NewNoContentResponse(), nil
+		}
+		return nil, "", nil, e.route(ctx, r)
+	}
+	rec.Properties.RequestToken = ""
+	rec.SetProvisioningState(v1.ProvisioningStateCanceled)
+	etag, err := e.store.Save(ctx, rec, etag)
+	if err != nil {
+		resp, err := saveError(r.id, err)
+		return nil, "", resp, err
+	}
+	return rec, etag, nil, e.route(ctx, r)
 }
 
 // isNotFound reports whether err means AWS has no such resource, from either handler.
@@ -258,23 +351,10 @@ func hasEncoder(t *native.Type) bool {
 // last-applied properties stay the template's, without the name, and a later deploy that still leaves it out doesn't
 // clear it.
 func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[string]any) (map[string]any, error) {
-	if r.handler == nil || r.native.NameRules == nil {
+	if r.handler == nil {
 		return properties, nil
 	}
-	rules := r.native.NameRules
-	if value, ok := properties[rules.Property]; ok && value != nil {
-		return properties, nil
-	}
-	name, err := rules.Generate(rec.Properties.ClientToken)
-	if err != nil {
-		return nil, err
-	}
-	out := maps.Clone(properties)
-	if out == nil {
-		out = map[string]any{}
-	}
-	out[rules.Property] = name
-	return out, nil
+	return r.native.WithName(properties, rec.Properties.ClientToken)
 }
 
 // identifierRequired returns the 400 for a create whose identifier the template doesn't give, of a type whose native
@@ -470,30 +550,12 @@ func (e *engine) prepareDelete(ctx context.Context, r *request, rec *datamodel.A
 	return saved, nil
 }
 
-// startDeleteCall starts a delete and returns the token the worker polls. For a type whose onDelete metadata is reset,
-// the native handler resets the resource instead (native.Resetter). A native handler that removes only the members it
-// manages (native.ScopedDeleter) gets the record's managed values, even when it also sends a delete token, and one
-// that sends the same value on every attempt (native.DeletePreparer) gets deleteToken. Where Cloud Control serves the type, Cloud Control deletes it as
-// CloudFormation defines.
+// startDeleteCall starts a delete and returns the token the worker polls. A native handler gets the call its type
+// declares (see native.Type.StartDelete), with the record's managed values and deleteToken. Where Cloud Control serves
+// the type, Cloud Control deletes it as CloudFormation defines.
 func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string, deleteToken string) (string, error) {
 	if r.handler != nil {
-		var err error
-		resetter, resets := r.handler.(native.Resetter)
-		scoped, isScoped := r.handler.(native.ScopedDeleter)
-		preparer, prepares := r.handler.(native.DeletePreparer)
-		switch {
-		case resets && onDelete(r) == schemas.OnDeleteReset:
-			err = resetter.Reset(ctx, r.region, identifier)
-		case isScoped:
-			// DeleteScoped removes only the members the alias manages, so it comes before a delete token, which
-			// deletes the whole resource.
-			err = scoped.DeleteScoped(ctx, r.region, identifier, r.managed)
-		case prepares && deleteToken != "":
-			err = preparer.DeleteWithToken(ctx, r.region, identifier, deleteToken)
-		default:
-			err = r.handler.Delete(ctx, r.region, identifier)
-		}
-		if err != nil {
+		if err := r.native.StartDelete(ctx, r.region, identifier, r.managed, deleteToken); err != nil {
 			return "", err
 		}
 		return uuid.New().String(), nil
@@ -931,24 +993,9 @@ func equivalentFor(r *request, recorded bool, properties map[string]any) func(pa
 	}
 }
 
-// outcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports
-// with a *native.Failure, OutcomeRejected for a client fault, such as an invalid property, and for a resource of
-// another product, which the handler refuses before it changes anything, and OutcomeUnknown otherwise, because a
-// transport or server error does not show that AWS changed nothing.
-func outcomeOf(err error) native.Outcome {
-	var failure *native.Failure
-	if errors.As(err, &failure) {
-		return failure.Outcome
-	}
-	var other *native.OtherProductError
-	if errors.As(err, &other) || ucp_aws.IsClientFault(err) {
-		return native.OutcomeRejected
-	}
-	return native.OutcomeUnknown
-}
-
 // handleError returns the response for an error from AWS or a native handler of the resource id: 409 for an
-// identifier of another product, the failure a native handler reports, and otherwise as ucp_aws.HandleAWSError does.
+// identifier of another product, the failure a native handler reports, 409 for a call AWS can't take yet
+// (native.NotReady) that UCP doesn't wait for, and otherwise as ucp_aws.HandleAWSError does.
 func handleError(ctx context.Context, id resources.ID, err error) (armrpc_rest.Response, error) {
 	var other *native.OtherProductError
 	if errors.As(err, &other) {
@@ -957,6 +1004,10 @@ func handleError(ctx context.Context, id resources.ID, err error) (armrpc_rest.R
 	var failure *native.Failure
 	if errors.As(err, &failure) {
 		return failureResponse(id, failure), nil
+	}
+	var notReady *native.NotReady
+	if errors.As(err, &notReady) {
+		return conflict("AWS can't change the AWS resource %q yet: %s. UCP changed nothing. Retry later.", id.Name(), notReady.Reason), nil
 	}
 	return ucp_aws.HandleAWSError(ctx, err)
 }

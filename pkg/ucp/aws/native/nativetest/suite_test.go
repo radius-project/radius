@@ -24,6 +24,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -71,8 +72,10 @@ func Test_Suite_NativeType(t *testing.T) {
 			h.CreateOnly = []string{"Name", "Engine"}
 			h.ReturnsWriteOnly = true
 			h.ProductProperty, h.Product = "Engine", "docdb"
+			h.Opts.ReadyTimeout = time.Hour
 			return h
 		},
+		Busy:               busyFake,
 		IdentifierProperty: "Name",
 		WriteOnly:          []string{"MasterUserPassword"},
 		Properties:         cluster(nil),
@@ -91,6 +94,13 @@ func Test_Suite_NativeType(t *testing.T) {
 			handler.(*nativefake.Handler).FailOn(call, err)
 		},
 	})
+}
+
+// busyFake makes every start call of a nativefake handler report a busy parent until the returned function runs.
+func busyFake(handler native.Handler, store *awsfake.CloudControl, properties map[string]any) func() {
+	fake := handler.(*nativefake.Handler)
+	fake.SetBusy(-1)
+	return func() { fake.SetBusy(0) }
 }
 
 // settingSuite returns the suite for a fake handler of an account or region setting with no CloudFormation type, whose
@@ -117,8 +127,10 @@ func settingSuite(onDelete schemas.OnDelete, scope schemas.IdentityScope, resetT
 			h := nativefake.New(typeName, store)
 			h.CreateOnly = []string{"Id"}
 			h.ResetTo = resetTo
+			h.Opts.ReadyTimeout = time.Hour
 			return h
 		},
+		Busy:               busyFake,
 		IdentifierProperty: "Id",
 		Properties:         map[string]any{"Id": "default", "MinimumLength": 12, "RequireSymbols": true},
 		Identifier:         "default",

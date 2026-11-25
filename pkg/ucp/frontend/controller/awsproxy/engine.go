@@ -251,12 +251,16 @@ func mustResume(rec *datamodel.AWSResource) bool {
 	return rec.Properties.RequestToken != ""
 }
 
-// checkRecord runs the checks every PUT and DELETE makes on an existing record: the owner, an operation in progress,
-// and an interrupted operation, which it resumes. It returns the record to continue with, or a response that ends
-// the request.
+// checkRecord runs the checks every PUT and DELETE makes on an existing record: the owner, an operation that waits to
+// send its first call, which it replaces, an operation in progress, and an interrupted operation, which it resumes. It
+// returns the record to continue with, which is nil when replacing a waiting first create removed it, or a response
+// that ends the request.
 func (e *engine) checkRecord(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, owner string, method v1.OperationMethod) (*datamodel.AWSResource, string, armrpc_rest.Response, error) {
 	if resp := checkOwner(rec, owner); resp != nil {
 		return nil, "", resp, nil
+	}
+	if records.IsWaiting(rec) {
+		return e.replaceWaiting(ctx, r, rec, etag, method)
 	}
 	if records.IsRunning(rec) && !records.IsStale(rec) {
 		return nil, "", conflict("Another operation on the AWS resource %q is still running. Retry when it finishes.", r.id.Name()), nil
@@ -507,10 +511,11 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		if resp != nil || err != nil {
 			return resp, err
 		}
-		if name != "" && rec.Properties.AWSIdentifier != "" && name != rec.Properties.AWSIdentifier {
+		if rec != nil && name != "" && rec.Properties.AWSIdentifier != "" && name != rec.Properties.AWSIdentifier {
 			return conflict("The alias %q already refers to the AWS resource %q, so it cannot take over %q.", r.id.Name(), rec.Properties.AWSIdentifier, name), nil
 		}
-	} else {
+	}
+	if rec == nil {
 		rec = records.NewRecord(r.id, owner)
 	}
 
@@ -699,6 +704,12 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 
 	logger.Info("Updating AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
 	requestToken, err := e.startUpdate(ctx, r, rec, identifier, currentProperties, properties, patch)
+	resend := previousToken != "" && previousToken == rec.Properties.UpdateToken
+	if canWait(r, err, !resend && !patchTouchesSecret(patch, secrets)) {
+		rec.Properties.StartPatch = patchMaps(patch)
+		rec.Properties.StartCurrent = withoutSecrets(currentProperties, secrets)
+		requestToken, err = waitToStart(ctx, r, rec, err), nil
+	}
 	if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			// When AWS rejected the update, it changed nothing, and the previous last-applied properties stay. A
@@ -707,12 +718,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 			// deploy that omits one clears it. That deploy sends the update token again, in case AWS has this update.
 			// A rejected resend keeps the token too: AWS rejected only this attempt, such as by throttling, and may
 			// have accepted an earlier one.
-			outcome := outcomeOf(err)
-			records.Settle(rec, outcome)
-			resend := previousToken != "" && previousToken == rec.Properties.UpdateToken
-			if outcome == native.OutcomeRejected && !resend {
-				records.ClearUpdateToken(rec)
-			}
+			records.StartFailed(rec, records.OperationUpdate, records.OutcomeOf(err), "", resend)
 			rec.SetProvisioningState(prior)
 		})
 		return handleError(ctx, r.id, err)
@@ -781,9 +787,17 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 
 	logger.Info("Creating AWS resource", "alias", r.id.Name(), "handler", handlerName(r))
 	created, requestToken, err := e.startCreate(ctx, r, rec, properties)
+	if canWait(r, err, !replay && !setsSecret(properties, secrets)) {
+		requestToken, err = waitToStart(ctx, r, rec, err), nil
+	}
 	if err != nil {
-		outcome := outcomeOf(err)
-		if !replay && outcome == native.OutcomeRejected {
+		outcome := records.OutcomeOf(err)
+		if replay {
+			if token, ok := ucp_aws.ConflictingRequestToken(err, rec.Properties.ClientToken); ok {
+				return e.recoverReplay(ctx, r, rec, etag, token, previous, properties, applied, typeInfo, parsed, secrets)
+			}
+		}
+		if records.StartFailed(rec, records.OperationCreate, outcome, created, replay) {
 			// AWS rejected the first attempt, so nothing exists: remove the record, so the next deploy starts over.
 			delErr := e.store.DeleteIfUnchanged(ctx, r.id, etag)
 			if delErr == nil {
@@ -791,26 +805,17 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 			}
 			logger.Error(delErr, "Failed to remove the record after AWS rejected a create", "alias", r.id.Name())
 		}
-		if replay {
-			if token, ok := ucp_aws.ConflictingRequestToken(err, rec.Properties.ClientToken); ok {
-				return e.recoverReplay(ctx, r, rec, etag, token, previous, properties, applied, typeInfo, parsed, secrets)
-			}
-		}
 		// Otherwise AWS may have accepted the create. A client fault on a replay, such as throttling or a client token
 		// conflict UCP cannot read, does not show that the original create failed. A native create that failed partway,
 		// or after its last change, left a resource. The record keeps its client token, so the next deploy finds the
 		// resource (see resumeNativeCreate), or sends the create again with it and Cloud Control returns the first
 		// request instead of creating a second resource.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			if created != "" {
-				rec.Properties.AWSIdentifier = created
-			}
 			switch {
 			case outcome == native.OutcomeApplied && rec.Properties.AWSIdentifier != "":
-				// The native handler made every change, and UCP has the identifier, so the create is finished: its
-				// values and fingerprints are last-applied, and the next deploy updates the resource as usual.
-				records.Settle(rec, outcome)
-				records.FinishCreate(rec)
+				// The native handler made every change, and UCP has the identifier, so StartFailed finished the
+				// create: its values and fingerprints are last-applied, and the next deploy updates the resource as
+				// usual.
 				rec.SetProvisioningState(v1.ProvisioningStateFailed)
 				return
 			case replay && outcome == native.OutcomeRejected:
@@ -920,7 +925,7 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 		return uuid.UUID{}, fmt.Errorf("AWS accepted the request for the alias %q, but UCP failed to save it. Deploy again to continue it: %w", r.id.Name(), err)
 	}
 
-	if err := e.queue(ctx, r, method, operationID, operationTimeout(r, op)); err != nil {
+	if err := e.queue(ctx, r, method, operationID, operationTimeout(r, rec, op)); err != nil {
 		// Nothing polls the operation, so it is not in progress: the next request polls the request token right away.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
@@ -995,8 +1000,8 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 // first. When AWS has no resource, or the identifier now names a resource of another product, only the record is
 // removed (see isGoneForDelete).
 //
-// The type's onDelete metadata can change that: nothing removes only the record, leave keeps the record and returns
-// 204, and reset has the native handler reset the resource instead of deleting it (see startDeleteCall). Neither
+// The type's onDelete metadata can change that, for a record that holds a resource: nothing removes only the record,
+// leave keeps the record and returns 204, and reset has the native handler reset the resource instead of deleting it (see startDeleteCall). Neither
 // nothing nor leave calls AWS. reject returns 400 and changes nothing when AWS has the resource, and removes the record
 // when it doesn't: a record whose create may have reached AWS finds the resource first, as for any delete, except that
 // it never sends the create again, so a create only a resend could find removes only the record.
@@ -1008,6 +1013,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	}
 	r.managed = managed
 	r.recorded = recordedValues(rec)
+	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
+		// The record holds no resource, such as after a first create AWS never had, so there is nothing to leave.
+		return e.removeRecord(ctx, r, etag)
+	}
 	switch onDelete(r) {
 	case schemas.OnDeleteNothing:
 		logger.Info("Removing the record of an AWS resource without changing it in AWS", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
@@ -1015,9 +1024,6 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	case schemas.OnDeleteLeave:
 		logger.Info("Leaving an AWS resource and its record as they are", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
 		return armrpc_rest.NewNoContentResponse(), nil
-	}
-	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
-		return e.removeRecord(ctx, r, etag)
 	}
 	// A native first create is found below, with the steps a PUT takes. Any other record with an identifier is read by it,
 	// including a Cloud Control first create, whose identifier the template gave.
@@ -1038,6 +1044,9 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		return e.removeRecord(ctx, r, etag)
 	}
 
+	// A delete whose earlier attempt may have reached AWS keeps its delete token, or its reservation, which a resumed
+	// delete finds. Sending it again never waits (see canWait).
+	resend := rec.Properties.DeleteToken != "" || rec.Properties.PendingOperation == records.OperationDelete
 	// A resumed delete finds the record still marked in progress; if AWS rejects the delete, it is released as Failed.
 	prior := rec.ProvisioningState()
 	if records.IsRunning(rec) {
@@ -1080,10 +1089,13 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	}
 	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
 	requestToken, err := e.startDeleteCall(ctx, r, identifier, rec.Properties.DeleteToken)
+	if canWait(r, err, !resend) {
+		requestToken, err = waitToStart(ctx, r, rec, err), nil
+	}
 	if isGoneForDelete(err) {
 		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {
-		if outcomeOf(err) == native.OutcomeApplied {
+		if records.StartFailed(rec, records.OperationDelete, records.OutcomeOf(err), "", false) {
 			// The native handler made every change, so the delete or reset is done, as when the worker finds it so.
 			delErr := e.store.DeleteIfUnchanged(ctx, r.id, etag)
 			if delErr == nil {
@@ -1092,7 +1104,6 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 			logger.Error(delErr, "Failed to remove the record after AWS applied a delete", "alias", r.id.Name())
 		}
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			records.ClearPending(rec)
 			rec.SetProvisioningState(prior)
 		})
 		return handleError(ctx, r.id, err)
