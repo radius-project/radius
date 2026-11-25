@@ -53,6 +53,8 @@ Usage: prepare-release.sh --release-type <rc|final|patch> --channel <X.Y> \
     --backports-file <path> --sibling-repositories-file <path> \
     --output-dir <path> [file options]
 
+Final preparation requires RECIPE_SOURCE_COMMIT from contrib main.
+
 File options:
     --versions-file <path>
     --changelog-file <path>
@@ -547,6 +549,10 @@ write_release_plan() {
             } | ... style = ""
         ' > "${plan_file}"
 
+    if [[ "${RELEASE_TYPE}" == final ]]; then
+        yq -i '.recipeSourceCommit = strenv(RECIPE_SOURCE_COMMIT)' \
+            "${plan_file}"
+    fi
     mkdir -p "$(dirname "${tracked_plan_file}")"
     cp "${plan_file}" "${tracked_plan_file}"
 
@@ -567,6 +573,9 @@ write_release_plan() {
         echo "- [ ] Curate Highlights in the generated release notes."
         echo "- [ ] Review and update the Upgrading guidance."
         echo "- [ ] Verify the source commit and included backports."
+        if [[ "${RELEASE_TYPE}" == final ]]; then
+            echo "- [ ] Review the [Bicep recipe source](https://github.com/radius-project/resource-types-contrib/commit/${RECIPE_SOURCE_COMMIT}) and its signed recipe inventory."
+        fi
         if [[ "${requires_backport}" == "true" ]]; then
             echo "- [ ] Rebase-merge this PR's generated backport after merge."
         fi
@@ -681,6 +690,9 @@ main() {
     fi
     [[ -f "${PATCH_NOTES_TEMPLATE}" ]] \
                                        || fail "patch notes template not found"
+    if [[ "${RELEASE_TYPE}" == final && ! "${RECIPE_SOURCE_COMMIT:-}" =~ ^[0-9a-f]{40}$ ]]; then
+        fail "final preparation requires a full RECIPE_SOURCE_COMMIT"
+    fi
     [[ -f "${TARGETS_FILE}" ]] || fail "release targets file not found"
     [[ -f "${CLIFF_CONFIG}" ]] || fail "git-cliff config not found"
     require_command jq

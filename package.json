@@ -3,7 +3,7 @@
   "packageManager": "pnpm@12.16.1",
   "devDependencies": {
     "markdown-table-formatter": "2.1.0",
-    "markdownlint-cli2": "0.24.0",
+    "markdownlint-cli2": "0.24.1",
     "prettier": "3.10.0"
   }
 }
