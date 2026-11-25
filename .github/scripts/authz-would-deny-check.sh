@@ -24,9 +24,10 @@
 # functional tests on an installation with global.rbac.dryRun=true to catch
 # false positives before enforcement is turned on.
 #
-# By default it reads current and previous container logs from every pod in
-# the radius-system namespace. With --logs-dir it scans saved log files
-# instead; add --cluster to scan both. --require-dry-run also reads the cluster
+# By default it reads current and previous container logs from every Radius
+# pod (labeled app.kubernetes.io/part-of=radius) in the radius-system namespace.
+# Other pods, such as Contour, log no authorization decisions and are skipped.
+# With --logs-dir it scans saved log files instead; add --cluster to scan both. --require-dry-run also reads the cluster
 # and requires current startup logs from all four Radius components. With
 # --collector-dir, startup evidence comes from a completed collector's files
 # matching each current pod UID and container restart count.
@@ -46,8 +47,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly WOULD_DENY_PATTERN='authzWouldDeny"?[[:space:]]*[:=][[:space:]]*"?true'
 readonly ISSUE_PATTERN='^(https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[0-9]+|[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+)$'
-# One line per pod: "<pod>\t<uid>\t<container>=<restartCount> ...".
-readonly PODS_JSONPATH='{range .items[*]}{.metadata.name}{"\t"}{.metadata.uid}{"\t"}{range .status.containerStatuses[*]}{.name}{"="}{.restartCount}{" "}{end}{"\n"}{end}'
+# One line per pod: "<pod>\t<uid>\tpart-of=<label>\t<container>=<restartCount> ...".
+# The label field has a prefix so an unlabeled pod does not produce an empty field.
+readonly PODS_JSONPATH='{range .items[*]}{.metadata.name}{"\t"}{.metadata.uid}{"\t"}part-of={.metadata.labels.app\.kubernetes\.io/part-of}{"\t"}{range .status.containerStatuses[*]}{.name}{"="}{.restartCount}{" "}{end}{"\n"}{end}'
 
 NAMESPACE="${AUTHZ_NAMESPACE:-radius-system}"
 ALLOWLIST="${AUTHZ_WOULD_DENY_ALLOWLIST:-${SCRIPT_DIR}/authz-would-deny-allowlist.txt}"
@@ -145,7 +147,7 @@ verify_dry_run() {
 }
 
 collect_cluster_logs() {
-    local out_dir="$1" pods pod uid containers entry container restarts total=0
+    local out_dir="$1" pods pod uid part_of containers entry container restarts total=0
     local component verified=" "
     command -v kubectl >/dev/null || die "kubectl is required to read pod logs"
     pods="$(kubectl get pods --namespace "${NAMESPACE}" --output "jsonpath=${PODS_JSONPATH}")" \
@@ -153,8 +155,18 @@ collect_cluster_logs() {
     [[ -n "${pods//[[:space:]]/}" ]] || die "no pods found in namespace ${NAMESPACE}"
 
     mkdir -p "${out_dir}"
-    while IFS=$'\t' read -r pod uid containers; do
+    while IFS=$'\t' read -r pod uid part_of containers; do
         [[ -n "${pod}" ]] || continue
+        if [[ "${part_of}" != "part-of=radius" ]]; then
+            # A Radius component without the label would otherwise be skipped silently.
+            for entry in ${containers}; do
+                for component in "${RADIUS_COMPONENTS[@]}"; do
+                    [[ "${entry%%=*}" != "${component}" ]] \
+                        || die "pod ${pod} runs Radius component ${component} without the app.kubernetes.io/part-of=radius label"
+                done
+            done
+            continue
+        fi
         ((++total))
 
         kubectl logs "${pod}" --namespace "${NAMESPACE}" \
@@ -179,6 +191,7 @@ collect_cluster_logs() {
         done
     done <<<"${pods}"
 
+    ((total > 0)) || die "no Radius pods found in namespace ${NAMESPACE}"
     if [[ "${REQUIRE_DRY_RUN}" == true ]]; then
         for component in "${RADIUS_COMPONENTS[@]}"; do
             [[ "${verified}" == *" ${component} "* ]] \

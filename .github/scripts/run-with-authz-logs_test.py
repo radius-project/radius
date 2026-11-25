@@ -133,9 +133,10 @@ def replace_log(prefix, content):
 '''
 
 
-def pod(name, restarts=0):
+def pod(name, restarts=0, part_of="radius"):
     return {
-        "metadata": {"name": name, "uid": name + "-uid"},
+        "metadata": {"name": name, "uid": name + "-uid",
+                     "labels": {"app.kubernetes.io/part-of": part_of}},
         "status": {"containerStatuses": [{
             "name": "ucp", "restartCount": restarts,
             "state": {"running": {"startedAt": "2026-10-08T00:00:00Z"}},
@@ -186,6 +187,40 @@ class CollectorTests(unittest.TestCase):
         self.run_collector('wait_for("ucp-initial.ucp.started")\n')
         self.assertTrue((self.output / "complete").is_file())
         self.assertIn("startup", "".join(f.read_text() for f in self.output.glob("*.log")))
+
+    def test_non_radius_pods_are_skipped(self):
+        # Contour restarted and its previous log is gone. It logs no authorization
+        # decisions, so it must not fail collection.
+        contour = pod("contour-1", restarts=1, part_of="contour")
+        contour["status"]["containerStatuses"][0]["name"] = "contour"
+        self.inventory([self.initial, contour])
+        self.run_collector('wait_for("ucp-initial.ucp.started")\n')
+        self.assertTrue((self.output / "complete").is_file())
+        self.assertEqual([], list(self.output.glob("contour-1.*")))
+
+    def assert_unlabeled_radius_component_fails(self, command):
+        # Skipping it would lose its logs if it is gone before the gate runs.
+        result = self.run_collector(command, expected=2)
+        self.assertIn("runs Radius component ucp without the "
+                      "app.kubernetes.io/part-of=radius label", result)
+        self.assertFalse((self.output / "complete").exists())
+
+    def test_unlabeled_radius_component_in_inventory_fails(self):
+        self.inventory([pod("ucp-unlabeled", part_of="")])
+        self.assert_unlabeled_radius_component_fails('time.sleep(.3)\n')
+
+    def test_unlabeled_radius_component_from_watch_fails(self):
+        unlabeled = pod("ucp-unlabeled", part_of="")
+        self.assert_unlabeled_radius_component_fails(
+            f'wait_for("watch-started")\nevent("ADDED", {unlabeled!r})\n'
+            'time.sleep(.3)\n')
+
+    def test_missing_previous_log_of_radius_pod_fails(self):
+        restarted = pod("ucp-initial", restarts=1)
+        self.inventory([restarted])
+        result = self.run_collector('time.sleep(.3)\n', expected=2)
+        self.assertIn("authz log collection failed", result)
+        self.assertFalse((self.output / "complete").exists())
 
     def test_inventory_preserves_server_resource_version(self):
         self.run_collector('wait_for("watch-started")\n')
