@@ -589,6 +589,9 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, []*releasev1.Release, error) {
 	var history []*releasev1.Release
 	var deployed map[string]any
+	var prior *chartAuthSettings
+	var deployedVersion int
+	var failedBootstrap *releasev1.Release
 	if installed {
 		var err error
 		history, err = i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
@@ -600,12 +603,33 @@ func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOpt
 			return nil, nil, nil, err
 		}
 		options.RadiusReleaseChart, options.RadiusReleaseValues = baseline.Chart, baseline.Config
+		if revisionStatus(baseline) == releasecommon.StatusFailed && options.Radius.Reinstall {
+			failedBootstrap = baseline
+		} else if revisionStatus(baseline) != releasecommon.StatusDeployed {
+			return nil, nil, nil, fmt.Errorf("cannot establish deployed TLS provider: no deployed Radius revision")
+		}
+		settings, err := historicalProviderSettings(baseline)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		prior = &settings
+		deployedVersion = baseline.Version
 		options.RadiusInstalled = true
 		deployed = resolveEffectiveChartValues(baseline.Chart.Values, nil, baseline.Config)
+	}
+	if _, _, err := i.prepareTLSProvider(*options, selected, current, prior); err != nil {
+		return nil, nil, nil, err
 	}
 	target, plan, err := i.prepareSelectedCertificates(ctx, *options, selected, current, kubeContext, deployed)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	var recheckBootstrap func() error
+	if failedBootstrap != nil {
+		recheckBootstrap, err = i.failedBootstrapRetry(ctx, *options, selected, target, failedBootstrap, kubeContext)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 	}
 	if installed {
 		if plan == nil {
@@ -617,10 +641,21 @@ func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOpt
 			if err != nil {
 				return err
 			}
-			if _, err := certificatePolicyBaseline(*options, revisions); err != nil {
+			baseline, err := certificatePolicyBaseline(*options, revisions)
+			if err != nil {
 				return err
 			}
-			if latestRevision(revisions).Version != version {
+			if baseline.Version != deployedVersion || latestRevision(revisions).Version != version {
+				return fmt.Errorf("Radius revision changed since certificate preflight; retry the operation")
+			}
+			if failedBootstrap != nil {
+				if !reflect.DeepEqual(baseline, failedBootstrap) {
+					return fmt.Errorf("failed bootstrap release changed since certificate preflight; retry the identical install")
+				}
+				if err := recheckBootstrap(); err != nil {
+					return err
+				}
+			} else if revisionStatus(baseline) != releasecommon.StatusDeployed {
 				return fmt.Errorf("Radius revision changed since certificate preflight; retry the operation")
 			}
 			return plan.recheckSigningSecret(ctx)

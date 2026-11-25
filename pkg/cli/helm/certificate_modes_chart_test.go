@@ -423,6 +423,14 @@ func TestIssuerRefContinuity(t *testing.T) {
 		f := newCertificateChartFixture(t)
 		f.upgrade = true
 		f.objects = append(f.objects, &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "v1", "kind": "ConfigMap",
+			"metadata": map[string]any{"namespace": RadiusSystemNamespace, "name": "ucp-config",
+				"uid": "config-uid", "resourceVersion": "1",
+				"labels": map[string]any{helmManagedByLabel: helmManagedByValue},
+				"annotations": map[string]any{helmReleaseNameAnnotation: radiusReleaseName,
+					helmReleaseNamespaceAnnotation: RadiusSystemNamespace, "radius.io/tls-provider": "radius"}},
+		}})
+		f.objects = append(f.objects, &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "cert-manager.io/v1", "kind": "Certificate",
 			"metadata": map[string]any{"namespace": RadiusSystemNamespace, "name": "ucp-cert"},
 			"spec":     map[string]any{"issuerRef": map[string]any{"group": "cert-manager.io", "kind": "Issuer", "name": prior}},
@@ -478,6 +486,14 @@ func TestBYOAggregationSecretNames(t *testing.T) {
 func TestOffCertificateJournal(t *testing.T) {
 	f := newCertificateChartFixture(t)
 	f.upgrade = true
+	f.objects = append(f.objects, &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "v1", "kind": "ConfigMap",
+		"metadata": map[string]any{"namespace": RadiusSystemNamespace, "name": "ucp-config",
+			"uid": "config-uid", "resourceVersion": "1",
+			"labels": map[string]any{helmManagedByLabel: helmManagedByValue},
+			"annotations": map[string]any{helmReleaseNameAnnotation: radiusReleaseName,
+				helmReleaseNamespaceAnnotation: RadiusSystemNamespace, "radius.io/tls-provider": "radius"}},
+	}})
 	nestedValue(f.values, "global", "rbac").(map[string]any)["enabled"] = false
 	_, err := f.renderChart(t)
 	require.NoError(t, err)

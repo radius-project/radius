@@ -324,7 +324,9 @@ func (w *certificateExecutionWriter) check(ctx context.Context) error {
 	if w.state.Execution == nil {
 		return errors.New("certificate writes require a durable execution plan")
 	}
-	if err := w.operation.checkProviderJournal(ctx, w.store.release, nil); err != nil {
+	if err := w.operation.checkProviderJournal(ctx, w.store.release, func(cm *corev1.ConfigMap) error {
+		return validateCompletedProviderTransitionJournal(cm, w.store.namespace, w.store.release)
+	}); err != nil {
 		return err
 	}
 	if err := w.state.validate(w.store.now()); err != nil {

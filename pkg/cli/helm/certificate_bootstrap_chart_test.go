@@ -18,7 +18,9 @@ package helm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -33,9 +35,27 @@ import (
 )
 
 func TestPublishedIssuerJournalConnectedRender(t *testing.T) {
-	b, _ := initialControllerFixture(t, "issuerRef", "external")
+	checkPublishedIssuerJournalConnectedRender(t, "external", "", false)
+}
+
+func TestPublishedBootstrapRetryConnectedRender(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		for _, change := range []string{"", "provider", "values", "complete", "foreign journal", "foreign config", "namespace", "source"} {
+			t.Run(provider+"/"+change, func(t *testing.T) {
+				checkPublishedIssuerJournalConnectedRender(t, provider, change, true)
+			})
+		}
+	}
+}
+
+func checkPublishedIssuerJournalConnectedRender(t *testing.T, provider, change string, upgrade bool) {
+	t.Helper()
+	b, _ := initialControllerFixture(t, "issuerRef", provider)
 	b.applyFixture = func(ctx context.Context) error {
 		fixture := newCertificateChartFixture(t)
+		// The failed first Helm action did not create ucp-config. Retry still
+		// renders as an upgrade against the published bootstrap transaction.
+		fixture.upgrade = upgrade
 		fixture.values = b.values
 		fixture.objects[0].SetUID(b.state.NamespaceUID)
 		issuer, err := b.store.dynamic.Resource(rotationIssuerResource).Namespace(b.store.namespace).Get(ctx, "operator-issuer", metav1.GetOptions{})
@@ -45,16 +65,64 @@ func TestPublishedIssuerJournalConnectedRender(t *testing.T) {
 		fixture.objects[1] = issuer
 		src, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
 		require.NoError(t, err)
-		for kind, object := range map[string]any{"Secret": src, "ConfigMap": b.journal} {
+		journal := b.journal.DeepCopy()
+		state := b.state
+		switch change {
+		case "provider":
+			state.Provider = "external"
+			if provider == "external" {
+				state.Provider = "radius"
+			}
+		case "values":
+			state.ValuesSHA256 = "changed"
+		case "complete":
+			state.Phase = "complete"
+		case "foreign journal":
+			journal.Labels["radius.io/trust-owner"] = "another-release"
+		case "foreign config":
+			fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "v1", "kind": "ConfigMap",
+				"metadata": map[string]any{"name": "ucp-config", "namespace": b.store.namespace,
+					"uid": "foreign", "resourceVersion": "1"},
+			}})
+		case "namespace":
+			fixture.objects[0].SetUID("replaced")
+		case "source":
+			src.Data["ca.crt"] = []byte("changed")
+		}
+		data, err := json.Marshal(state)
+		require.NoError(t, err)
+		journal.Data[rotationJournalKey] = string(data)
+		objects := []runtime.Object{src, journal}
+		if provider == "radius" {
+			internal, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Get(ctx, "radius-mtls-ca", metav1.GetOptions{})
+			require.NoError(t, err)
+			objects = append(objects, internal)
+		}
+		for _, object := range objects {
 			data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
 			require.NoError(t, err)
+			kind := "ConfigMap"
+			if object == src {
+				kind = "Secret"
+			}
 			data["apiVersion"], data["kind"] = "v1", kind
 			fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: data})
 		}
 		_, err = fixture.renderChart(t)
 		return err
 	}
-	require.NoError(t, b.run(t.Context()))
+	err := b.run(t.Context())
+	if change == "" {
+		require.NoError(t, err)
+	} else {
+		want := map[string]string{
+			"provider": "retry changed", "values": "retry changed", "complete": "ucp-config is missing",
+			"foreign journal": "invalid ownership", "namespace": "namespace identity changed",
+			"foreign config": "foreign ownership", "source": "public Secret radius-apiserver-trust",
+		}
+		require.ErrorContains(t, err, want[change])
+	}
 }
 
 func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
@@ -75,6 +143,128 @@ func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
 				"Capabilities": common.DefaultCapabilities,
 				"Release":      map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace, "Service": "Helm", "IsInstall": true}})
 			require.ErrorContains(t, err, "bootstrap intent without its journal")
+		})
+	}
+}
+
+func TestProviderContinuityConnectedUpgrade(t *testing.T) {
+	for _, old := range []string{"radius", "external"} {
+		for _, next := range []string{"radius", "external"} {
+			for _, mode := range []string{"enforce", "dryRun", "off"} {
+				t.Run(old+"/"+next+"/"+mode, func(t *testing.T) {
+					fixture := newCertificateChartFixture(t)
+					selected, err := loader.Load("../../../deploy/Chart")
+					require.NoError(t, err)
+					values := copyValues(fixture.values)
+					setValue(values, mode == "enforce", "global", "rbac", "enabled")
+					setValue(values, mode == "dryRun", "global", "rbac", "dryRun")
+					setValue(values, next, "global", "rbac", "tls", "provider")
+					values, err = valuesutil.CoalesceValues(selected, values)
+					require.NoError(t, err)
+					fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+						"apiVersion": "v1", "kind": "ConfigMap",
+						"metadata": map[string]any{"name": "ucp-config", "namespace": RadiusSystemNamespace,
+							"uid": "config-uid", "resourceVersion": "1",
+							"labels": map[string]any{"app.kubernetes.io/managed-by": "Helm"},
+							"annotations": map[string]any{"meta.helm.sh/release-name": radiusReleaseName,
+								"meta.helm.sh/release-namespace": RadiusSystemNamespace, "radius.io/tls-provider": old}},
+						"data": map[string]any{"ucp-config.yaml": "authorization:\n  mode: enforce\n  tlsProvider: " + old + "\n"},
+					}})
+					server := fixture.server(t)
+					renderer := engine.New(&rest.Config{Host: server.URL})
+					rendered, err := renderer.RenderWithContext(t.Context(), selected, common.Values{
+						"Values": values, "Chart": selected.Metadata, "Capabilities": common.DefaultCapabilities,
+						"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace, "Service": "Helm", "IsUpgrade": true},
+					})
+					if old != next {
+						require.ErrorContains(t, err, "TLS provider transition")
+						require.Empty(t, rendered)
+					} else {
+						require.NoError(t, err)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestProviderContinuityLegacyAndOwnership(t *testing.T) {
+	// This is the active pre-selector A6 identityConfig, not a configuration
+	// with an explicit tlsProvider added by later charts.
+	const historical = "authorization:\n  mode: enforce\n  certificateDirectory: /var/run/radius/spiffe\n  caDirectory: /var/run/radius/ca\n  tokenDirectory: /var/run/radius/tokens\n  trustDomain: radius.internal\n  namespace: radius-system\n"
+	for _, tc := range []struct {
+		name, raw, record, target, want string
+	}{
+		{name: "legacy radius", raw: "authorization:\n  mode: enforce\n  tlsProvider: radius\n"},
+		{name: "historical tokens enforce", raw: historical},
+		{name: "historical tokens dryRun", raw: strings.Replace(historical, "enforce", "dryRun", 1)},
+		{name: "historical tokens to external", raw: historical, target: "external", want: "TLS provider transition"},
+		{name: "pre-token", raw: strings.Replace(historical, "  tokenDirectory: /var/run/radius/tokens\n", "", 1), want: "invalid provider record"},
+		{name: "historical wrong token path", raw: strings.Replace(historical, "/var/run/radius/tokens", "/other", 1), want: "invalid provider record"},
+		{name: "historical missing CA", raw: strings.Replace(historical, "  caDirectory: /var/run/radius/ca\n", "", 1), want: "invalid provider record"},
+		{name: "historical wrong certificate path", raw: strings.Replace(historical, "/var/run/radius/spiffe", "/other", 1), want: "invalid provider record"},
+		{name: "historical wrong namespace", raw: strings.Replace(historical, "namespace: radius-system", "namespace: other", 1), want: "invalid provider record"},
+		{name: "historical invalid trust domain", raw: strings.Replace(historical, "radius.internal", "false", 1), want: "invalid provider record"},
+		{name: "historical missing trust domain", raw: strings.Replace(historical, "  trustDomain: radius.internal\n", "", 1), want: "invalid provider record"},
+		{name: "historical extra field", raw: historical + "  unknown: true\n", want: "invalid provider record"},
+		{name: "historical explicit empty provider", raw: historical + "  tlsProvider: ''\n", want: "invalid provider record"},
+		{name: "legacy external", raw: "authorization:\n  mode: dryRun\n  tlsProvider: external\n", want: "TLS provider transition"},
+		{name: "legacy Off", raw: "server:\n  port: 9443\n"},
+		{name: "legacy Off to external", raw: "server:\n  port: 9443\n"},
+		{name: "legacy null", raw: "authorization: null\n", want: "legacy ucp-config"},
+		{name: "legacy invalid", raw: "authorization: [", want: "legacy ucp-config"},
+		{name: "legacy absent", want: "legacy ucp-config"},
+		{name: "invalid record", record: "unknown", want: "invalid provider record"},
+		{name: "foreign release", record: "radius", want: "foreign ownership"},
+		{name: "foreign namespace", record: "radius", want: "foreign ownership"},
+		{name: "terminating", record: "radius", want: "foreign ownership"},
+		{name: "missing identity", record: "radius", want: "incomplete identity"},
+		{name: "missing config", want: "ucp-config is missing"},
+		{name: "forbidden lookup", record: "radius", want: "forbidden"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newCertificateChartFixture(t)
+			f.upgrade = true
+			if tc.target != "" {
+				setValue(f.values, tc.target, "global", "rbac", "tls", "provider")
+			}
+			config := &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "v1", "kind": "ConfigMap",
+				"metadata": map[string]any{"name": "ucp-config", "namespace": RadiusSystemNamespace,
+					"uid": "config-uid", "resourceVersion": "1",
+					"labels":      map[string]any{"app.kubernetes.io/managed-by": "Helm"},
+					"annotations": map[string]any{"meta.helm.sh/release-name": radiusReleaseName, "meta.helm.sh/release-namespace": RadiusSystemNamespace}},
+				"data": map[string]any{"ucp-config.yaml": tc.raw},
+			}}
+			annotations := config.GetAnnotations()
+			if tc.record != "" {
+				annotations["radius.io/tls-provider"] = tc.record
+			}
+			switch tc.name {
+			case "legacy Off to external":
+				setValue(f.values, "external", "global", "rbac", "tls", "provider")
+			case "foreign release":
+				annotations["meta.helm.sh/release-name"] = "another"
+			case "foreign namespace":
+				annotations["meta.helm.sh/release-namespace"] = "another"
+			case "terminating":
+				require.NoError(t, unstructured.SetNestedField(config.Object, "2026-11-23T00:00:00Z", "metadata", "deletionTimestamp"))
+			case "missing identity":
+				config.SetUID("")
+			case "missing config":
+				config.SetName("unrelated")
+			case "forbidden lookup":
+				f.forbiddenPath = "/api/v1/namespaces/radius-system/configmaps/ucp-config"
+			}
+			config.SetAnnotations(annotations)
+			f.objects = append(f.objects, config)
+			rendered, err := f.renderChart(t)
+			if tc.want != "" {
+				require.ErrorContains(t, err, tc.want)
+				require.Empty(t, rendered)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

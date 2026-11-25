@@ -122,7 +122,7 @@ func (o *identityOperation) checkProviderJournal(ctx context.Context, release st
 		cm.Labels[identityProviderMarker] != release || len(cm.OwnerReferences) != 0 ||
 		cm.Annotations["meta.helm.sh/release-name"] != "" || len(cm.Data) != 1 ||
 		len(cm.BinaryData) != 0 || len(raw) == 0 || len(raw) > maxIdentityProviderBytes {
-		return errors.New("invalid provider transition journal ownership or content")
+		return fmt.Errorf("invalid provider transition journal %s ownership or content", identityProviderJournal)
 	}
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	first, err := decoder.Token()
@@ -147,7 +147,10 @@ func (o *identityOperation) checkProviderJournal(ctx context.Context, release st
 	if err := decoder.Decode(&envelope); err != nil {
 		return fmt.Errorf("invalid provider transition envelope: %w", err)
 	}
-	if envelope.Version != 1 || envelope.Phase != "complete" || len(envelope.Plan) == 0 {
+	if envelope.Version != 2 {
+		return errors.New("legacy or unsupported provider journal; preserve v1 state and use the matching pre-token release for investigation")
+	}
+	if envelope.Phase != "complete" || len(envelope.Plan) == 0 {
 		return errors.New("finish the provider transition before changing CA trust")
 	}
 	if validate == nil {

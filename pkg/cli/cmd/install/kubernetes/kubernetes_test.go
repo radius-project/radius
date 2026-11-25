@@ -146,6 +146,17 @@ func Test_Run_CertificateFlagsInstalledRequiresReinstall(t *testing.T) {
 	require.ErrorContains(t, runner.Run(t.Context()), "use --reinstall")
 }
 
+func Test_Run_TLSProviderInstalledRequiresReinstall(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			mock := helm.NewMockInterface(gomock.NewController(t))
+			mock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{RadiusInstalled: true}, nil)
+			runner := &Runner{Helm: mock, Output: &output.MockOutput{}, KubeContext: "test-context", TLS: helm.TLSProviderOptions{Provider: provider}}
+			require.ErrorContains(t, runner.Run(t.Context()), "--reinstall")
+		})
+	}
+}
+
 // Test_TimeoutFlag covers the `--timeout` flag added so that a slow cluster can be given more
 // than the default readiness budget instead of failing the install.
 // See https://github.com/radius-project/radius/issues/10236.

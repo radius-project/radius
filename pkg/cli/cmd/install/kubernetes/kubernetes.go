@@ -154,6 +154,7 @@ rad install kubernetes --timeout 15m
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
 	runner.Certificates.AddFlags(cmd.Flags())
+	runner.TLS.AddFlags(cmd.Flags())
 	cmd.Flags().BoolVar(&runner.Reinstall, "reinstall", false, "Specify to force reinstallation of Radius")
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -181,6 +182,7 @@ type Runner struct {
 	Set          []string
 	SetFile      []string
 	Certificates helm.CertificateOptions
+	TLS          helm.TLSProviderOptions
 
 	// Contour
 	ContourDisabled bool
@@ -213,7 +215,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if cmd != nil {
+		if err := r.TLS.ValidateFlags(cmd.Flags()); err != nil {
+			return err
+		}
 		return r.Certificates.ValidateFlags(cmd.Flags())
+	}
+	if err := r.TLS.ValidateFlags(nil); err != nil {
+		return err
 	}
 	return r.Certificates.Validate()
 }
@@ -232,6 +240,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.KubeContext = kubeContext
 	cliOptions := helm.CLIClusterOptions{
 		Certificates: r.Certificates,
+		TLS:          r.TLS,
 		Radius: helm.ChartOptions{
 			Reinstall:   r.Reinstall,
 			ChartPath:   r.Chart,
@@ -255,6 +264,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	if state.RadiusInstalled && !r.Reinstall {
 		if state.RadiusBootstrapPending {
 			return helm.ErrBootstrapPending
+		}
+		if r.TLS.Provider != "" {
+			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged TLS provider settings. Provider changes require coordinated migration")
 		}
 		if r.Certificates.Specified() {
 			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged certificate settings. Certificate mode or CA changes require coordinated migration")

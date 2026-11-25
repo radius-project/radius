@@ -6,6 +6,14 @@ not an override of a subsequent CA lifecycle.
 {{- define "radius.initialCertificateGuard" -}}
 {{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-certificate-bootstrap" -}}
 {{- $namespace := lookup "v1" "Namespace" "" .Release.Namespace -}}
+{{- include "radius.initialCertificateGuardForState" (dict "root" . "journal" $journal "namespace" $namespace) -}}
+{{- end -}}
+
+{{- define "radius.initialCertificateGuardForState" -}}
+{{- $journal := .journal -}}
+{{- $namespace := .namespace -}}
+{{- $ := .root -}}
+{{- with .root -}}
 {{- if and (not $journal) (hasKey (dig "metadata" "annotations" (dict) $namespace) "radius.io/certificate-bootstrap") -}}
 {{- fail "Initial certificate bootstrap intent without its journal: retry the matching rad install before applying the chart." -}}
 {{- end -}}
@@ -121,6 +129,7 @@ not an override of a subsequent CA lifecycle.
 {{- if or (empty $object) (ne $object.metadata.uid $pin.uid) (ne $object.metadata.resourceVersion $pin.resourceVersion)
     (ne (sha256sum (toJson $object.spec)) $pin.specSHA256) -}}
 {{- fail "Initial external issuer identity or configuration changed." -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

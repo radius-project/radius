@@ -26,6 +26,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -257,6 +258,9 @@ func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOpti
 }
 
 func (i *Impl) prepareCertificateTargetForBaseline(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, deployed map[string]any) (*certificateTarget, *certificatePlan, error) {
+	if (options.Certificates.RotateCA || options.Certificates.RotationPhase != "") && options.TLS.Provider != "" {
+		return nil, nil, errors.New("CA rotation cannot be combined with a TLS provider selection")
+	}
 	plan, err := i.prepareCertificateSelection(ctx, options, selected, current, kubeContext, deployed)
 	if err != nil {
 		return nil, nil, err

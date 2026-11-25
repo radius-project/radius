@@ -292,6 +292,12 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		}
 		ctx = logr.NewContext(ctx, logger)
 
+		mode := s.mode
+		// A receipt is evidence of authentication, even on a dryRun listener.
+		if r.URL.Path == InternalIdentityPath {
+			w.Header().Set("Cache-Control", "no-store")
+			mode = authz.ModeEnforce
+		}
 		// Plain HTTP in dryRun is logged once per connection by the listener. A request whose
 		// token cannot be checked because the signing keys are stale is not checked further.
 		trusted := s.source == nil || r.TLS != nil
@@ -309,7 +315,7 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 			}
 		}
 
-		if err := authz.Apply(ctx, s.mode, decision); err != nil {
+		if err := authz.Apply(ctx, mode, decision); err != nil {
 			writeDenied(ctx, w, r, err)
 			return
 		}
@@ -317,6 +323,7 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		r = r.WithContext(r.Context())
 		r.Header = r.Header.Clone()
 		r.Header.Del("Authorization")
+		r = r.WithContext(authz.WithoutIdentity(r.Context()))
 		if decision.Allowed && trusted {
 			r = r.WithContext(authz.WithIdentity(r.Context(), id))
 		}

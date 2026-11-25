@@ -19,14 +19,63 @@ package helm
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// failedBootstrapRetry is an exception for a published first-install transaction,
+// not a provider baseline for maintenance of arbitrary failed releases.
+func (i *Impl) failedBootstrapRetry(ctx context.Context, options ClusterOptions, selected *chart.Chart, target *certificateTarget, previous *releasev1.Release, kubeContext string) (func() error, error) {
+	store, err := i.rotationStoreForContext(kubeContext, options.Radius.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	journal, state, err := readInitialCertificateJournal(ctx, store)
+	if err != nil {
+		return nil, fmt.Errorf("cannot establish deployed TLS provider: no deployed Radius revision; identical bootstrap retry requires its published journal: %w", err)
+	}
+	if state.Phase != "published" || previous.Labels[initialCertificateIntent] != state.ID ||
+		target.mode == authz.ModeOff || target.Mode != state.Mode || target.Provider != state.Provider {
+		return nil, errors.New("failed bootstrap retry does not match the published transaction")
+	}
+	for _, c := range []*chart.Chart{previous.Chart, selected} {
+		digest, err := bootstrapDigest(c)
+		if err != nil || digest != state.ChartSHA256 {
+			return nil, errors.New("failed bootstrap retry changed the recorded chart")
+		}
+	}
+	for _, values := range []map[string]any{resolveEffectiveChartValues(previous.Chart.Values, nil, previous.Config), target.Values} {
+		digest, err := bootstrapDigest(values)
+		if err != nil || digest != state.ValuesSHA256 || digest != state.IntentSHA256 {
+			return nil, errors.New("failed bootstrap retry changed the recorded values")
+		}
+	}
+	recheck := func() error {
+		current, _, err := readInitialCertificateJournal(ctx, store)
+		if err != nil {
+			return err
+		}
+		if current.UID != journal.UID || current.ResourceVersion != journal.ResourceVersion {
+			return errors.New("failed bootstrap journal changed since preflight")
+		}
+		namespace, err := store.kube.CoreV1().Namespaces().Get(ctx, store.namespace, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if namespace.UID != state.NamespaceUID || namespace.DeletionTimestamp != nil {
+			return errors.New("failed bootstrap namespace identity changed")
+		}
+		return nil
+	}
+	return recheck, recheck()
+}
 
 func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterOptions, selected *chart.Chart,
 	configuration *helm.Configuration, values map[string]any, kubeContext string, imported *certificatePlan, target *certificateTarget) (*initialCertificateInstaller, error) {

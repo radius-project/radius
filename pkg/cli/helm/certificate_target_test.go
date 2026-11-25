@@ -76,6 +76,7 @@ func TestInstalledChartDefaultsCannotSwitchIssuer(t *testing.T) {
 	old.Values = resolveEffectiveChartValues(old.Values, nil, issuerReleaseValues(ca))
 	stored := map[string]any{}
 	setValue(stored, true, "global", "rbac", "enabled")
+	setValue(stored, false, "global", "rbac", "dryRun")
 	runInstalledChartSwitchCommands(t, old, selected, stored, "selected-context")
 }
 
@@ -91,6 +92,7 @@ spec:
 	opts := NewDefaultClusterOptions()
 	opts.Radius.ChartPath = "chart"
 	opts.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
+	opts.RadiusReleaseValues = providerTestValues("external")
 	mock := NewMockHelmClient(gomock.NewController(t))
 	mock.EXPECT().LoadChart("chart").Return(c, nil)
 	opts.RadiusReleaseChart = c
@@ -101,7 +103,7 @@ spec:
 		t.Run(action, func(t *testing.T) {
 			opts := opts
 			opts.Contour.Disabled, opts.RadiusInstalled = true, true
-			opts.RadiusReleaseValues = authzOnValues
+			opts.RadiusReleaseValues = providerTestValues("external")
 			opts.CertManager.ChartPath = "cert-manager"
 			client := NewMockHelmClient(gomock.NewController(t))
 			client.EXPECT().LoadChart("chart").Return(c, nil)
@@ -152,6 +154,7 @@ func TestExternalProviderOperatorTargetClusterSecret(t *testing.T) {
 	opts.Radius.ChartPath = "chart"
 	opts.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external",
 		"global.targetCluster.enabled=true", "global.targetCluster.secretName=platform-spiffe"}
+	opts.RadiusReleaseValues = providerTestValues("external")
 	client := NewMockHelmClient(gomock.NewController(t))
 	client.EXPECT().LoadChart("chart").Return(c, nil)
 	expectRadiusBaseline(t, client, opts)
@@ -171,6 +174,7 @@ func TestExternalProviderReservedReceiver(t *testing.T) {
 			opts := NewDefaultClusterOptions()
 			opts.Radius.ChartPath = "chart"
 			opts.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
+			opts.RadiusReleaseValues = providerTestValues("external")
 			client := NewMockHelmClient(gomock.NewController(t))
 			client.EXPECT().LoadChart("chart").Return(c, nil)
 			expectRadiusBaseline(t, client, opts)
@@ -459,6 +463,9 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 				options := NewDefaultClusterOptions()
 				options.Contour.Disabled = true
 				options.RadiusInstalled = true
+				// Keep the deployed provider external even on reset, without a saved provider override.
+				setValue(c.Values, "external", "global", "rbac", "tls", "provider")
+				options.RadiusReleaseChart = c
 				options.RadiusReleaseValues = authzOnValues
 				options.Radius.Reinstall = action == "reinstall"
 				options.ResetValues = action == "reset"
@@ -477,7 +484,8 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: c, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil)
 					}
 				}
-				impl := newStageCluster(t, nil, true).impl(client)
+				cluster := newStageCluster(t, nil, true)
+				impl := cluster.impl(client)
 				if action == "fresh" && !invalid {
 					options.CertManager.ChartPath = "cert-manager"
 					client.EXPECT().LoadChart("cert-manager").Return(&chart.Chart{}, nil)
@@ -500,6 +508,7 @@ func TestCertificateActionRenderOrdering(t *testing.T) {
 				switch {
 				case invalid:
 					require.ErrorContains(t, err, "provider")
+					requireOnlyCertificateGuardReads(t, cluster)
 				default:
 					require.ErrorContains(t, err, "rendered upgrade")
 				}

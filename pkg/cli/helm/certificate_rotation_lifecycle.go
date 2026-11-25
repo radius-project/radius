@@ -90,6 +90,9 @@ func (i *Impl) checkRotationGuard(ctx context.Context, kubeContext, namespace, o
 	if err != nil {
 		return fmt.Errorf("cannot check Radius CA rotation before %s: %w", operation, err)
 	}
+	if err := i.checkCompletedProviderJournal(ctx, store); err != nil {
+		return err
+	}
 	initialJournal, initial, initialErr := readInitialCertificateJournal(ctx, store)
 	if initialErr != nil && !apierrors.IsNotFound(initialErr) {
 		return initialErr

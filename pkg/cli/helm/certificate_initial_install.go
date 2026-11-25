@@ -229,7 +229,7 @@ func decodeInitialCertificateState(raw string, store *rotationStore, bound bool)
 }
 
 func (b *initialCertificateInstaller) check(ctx context.Context) error {
-	if err := b.operation.checkProviderJournal(ctx, b.store.release, b.impl.validateCompletedProviderJournal); err != nil {
+	if err := b.operation.checkProviderJournal(ctx, b.store.release, b.impl.completedProviderJournalValidator(b.store.namespace, b.store.release)); err != nil {
 		return err
 	}
 	return b.checkJournal(ctx)
@@ -328,6 +328,11 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 	b.state.NamespaceUID = namespace.UID
 	return withIdentityOperation(ctx, b.store.kube, b.store.namespace, func(operation *identityOperation) error {
 		b.operation = operation
+		if b.importPlan != nil && b.importPlan.recheck != nil {
+			if err := b.importPlan.recheck(); err != nil {
+				return err
+			}
+		}
 		if b.journal == nil {
 			if err := b.checkFresh(ctx); err != nil {
 				return err
