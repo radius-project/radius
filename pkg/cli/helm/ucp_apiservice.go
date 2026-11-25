@@ -99,13 +99,8 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 	}
 
 	output.LogInfo("Waiting for the Kubernetes API server to trust and reach UCP...")
-	var problem string
-	err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-		problem, err = ucpAPIServiceProblem(ctx, client)
-		if err != nil {
-			return false, err
-		}
-		return problem == "", nil
+	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
+		return ucpAPIServiceProblem(ctx, client)
 	})
 	if err == nil {
 		return nil
@@ -406,4 +401,27 @@ func condition(object *unstructured.Unstructured, conditionType string) (objectC
 		return objectCondition{status: status, reason: reason, message: message}, true
 	}
 	return objectCondition{}, false
+}
+
+// ucpAPIServerUnchecked is the problem pollUCPAPIServer reports when no check finished before the wait ended.
+const ucpAPIServerUnchecked = "rad could not finish a check before the wait ended"
+
+// pollUCPAPIServer calls check every ucpAPIServicePollInterval until it reports no problem, an error, or
+// ucpAPIServiceTimeout passes. It returns the problem of the last check that finished, or ucpAPIServerUnchecked if
+// none did, with the error of the wait, which wait.Interrupted reports for the timeout. A check that fails because the
+// wait ended reports nothing about Radius, so it does not replace the problem of the check before it.
+func pollUCPAPIServer(ctx context.Context, check func(context.Context) (string, error)) (string, error) {
+	problem := ucpAPIServerUnchecked
+	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
+		p, err := check(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				return false, ctx.Err()
+			}
+			return false, err
+		}
+		problem = p
+		return p == "", nil
+	})
+	return problem, err
 }

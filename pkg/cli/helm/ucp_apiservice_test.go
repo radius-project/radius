@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
@@ -325,4 +326,34 @@ func Test_deployedAuthzMode(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func Test_pollUCPAPIServer_KeepsTheLastProblem(t *testing.T) {
+	t.Run("a check cut short by the deadline", func(t *testing.T) {
+		expireUCPAPIServiceWait(t)
+		checks := 0
+		problem, err := pollUCPAPIServer(t.Context(), func(ctx context.Context) (string, error) {
+			if checks++; checks == 1 {
+				return "its CA is expired", nil
+			}
+			<-ctx.Done()
+			return "", fmt.Errorf("failed to read Secret: %w", ctx.Err())
+		})
+		require.True(t, wait.Interrupted(err), err)
+		require.Equal(t, "its CA is expired", problem)
+	})
+	t.Run("no check finishes", func(t *testing.T) {
+		expireUCPAPIServiceWait(t)
+		problem, err := pollUCPAPIServer(t.Context(), func(ctx context.Context) (string, error) {
+			<-ctx.Done()
+			return "", fmt.Errorf("failed to read Secret: %w", ctx.Err())
+		})
+		require.True(t, wait.Interrupted(err), err)
+		require.Equal(t, ucpAPIServerUnchecked, problem)
+	})
+	t.Run("another error", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		_, err := pollUCPAPIServer(t.Context(), func(context.Context) (string, error) { return "", errors.New("forbidden") })
+		require.EqualError(t, err, "forbidden")
+	})
 }

@@ -102,10 +102,11 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 	output.LogInfo("Waiting for the CA of UCP's API server certificate...")
 	var ca *x509.Certificate
 	var caBundle []byte
-	var problem string
-	err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
+	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
+		var problem string
+		var err error
 		ca, caBundle, problem, err = readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
-		return ca != nil, err
+		return problem, err
 	})
 	if err != nil {
 		if wait.Interrupted(err) {
@@ -141,10 +142,9 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		}
 		if len(trusted) > 1 {
 			output.LogInfo("Waiting for UCP to serve a certificate from %s before the API server stops trusting earlier CAs...", ucpAPIServerCASecretName)
-			err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-				var leaf *x509.Certificate
-				leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName, ca)
-				return leaf != nil, err
+			problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
+				_, problem, err := ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName, ca)
+				return problem, err
 			})
 			if err != nil {
 				if wait.Interrupted(err) {

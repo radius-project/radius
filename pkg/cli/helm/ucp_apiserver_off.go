@@ -357,16 +357,16 @@ func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool
 // waitForUCPOffCertificate waits until every UCP pod serves the certificate in Secret ucp-cert, issued by one of
 // offCAs, so removing the other CAs from the caBundle cannot make the API server reject UCP.
 func waitForUCPOffCertificate(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, radiusNamespace string, offCAs []*x509.Certificate) error {
-	var problem string
-	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
+	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
+		problem := "no CA is given"
 		for _, ca := range offCAs {
-			leaf, p, err := ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpOffCertificateSecretName, "the CA in its "+caCertificateKey, ca)
-			if err != nil || leaf != nil {
-				return leaf != nil, err
+			_, p, err := ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpOffCertificateSecretName, "the CA in its "+caCertificateKey, ca)
+			if err != nil || p == "" {
+				return p, err
 			}
 			problem = p
 		}
-		return false, nil
+		return problem, nil
 	})
 	if wait.Interrupted(err) {
 		return fmt.Errorf("UCP does not serve the certificate in Secret %s after %s: %s. The API server still trusts %s; run the command again once %s succeeds",

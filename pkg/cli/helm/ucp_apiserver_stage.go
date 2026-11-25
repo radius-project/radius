@@ -222,10 +222,11 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	}
 
 	var ca *x509.Certificate
-	var problem string
-	err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
+	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
+		var problem string
+		var err error
 		ca, _, problem, err = readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
-		return ca != nil, err
+		return problem, err
 	})
 	if err != nil {
 		if wait.Interrupted(err) {
@@ -419,11 +420,9 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		}
 	}
 
-	var problem string
-	err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-		var leaf *x509.Certificate
-		leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpOffCertificateSecretName, "the CA in its "+caCertificateKey, issuer)
-		return leaf != nil, err
+	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
+		_, problem, err := ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpOffCertificateSecretName, "the CA in its "+caCertificateKey, issuer)
+		return problem, err
 	})
 	if err != nil {
 		if wait.Interrupted(err) {

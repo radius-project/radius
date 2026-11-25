@@ -913,6 +913,40 @@ func Test_UpgradeRadius_StageUCPAPIServerCAWaitsForAValidCA(t *testing.T) {
 	require.Equal(t, []string{"ucp-ca"}, trustedSubjects(t, c.kube), "the overlap must not hold an expired CA")
 }
 
+// When the wait ends during a read of radius-apiserver-ca, that read fails with the deadline, and the error still names
+// the problem that the read before it found.
+func Test_UpgradeRadius_StageUCPAPIServerCATimeoutNamesTheProblem(t *testing.T) {
+	expireUCPAPIServiceWait(t)
+	u := newStageUpgrade(t, map[string]any{}, "upgrade")
+	c := newStageCluster(t, nil, false)
+	require.NoError(t, c.dynamic.Tracker().Add(c.offAPIService(t)))
+	expired := apiServerCASecret(c.apiServerCA)
+	pem := expiredTestCA(t, "radius-apiserver-ca")
+	expired.Data[corev1.TLSCertKey], expired.Data[caCertificateKey] = pem, pem
+	_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), expired, metav1.CreateOptions{})
+	require.NoError(t, err)
+	// rad applies the Certificate radius-apiserver-ca just before it waits for its Secret. The first read in the wait
+	// finds the expired CA; the next one ends with the deadline.
+	applied, reads := false, 0
+	c.dynamic.PrependReactor("create", "certificates", func(clienttesting.Action) (bool, runtime.Object, error) {
+		applied = true
+		return false, nil, nil
+	})
+	c.kube.PrependReactor("get", "secrets", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		if !applied || action.(clienttesting.GetAction).GetName() != ucpAPIServerCASecretName {
+			return false, nil, nil
+		}
+		if reads++; reads == 1 {
+			return false, nil, nil
+		}
+		return true, nil, context.DeadlineExceeded
+	})
+
+	err = u.run(t, c.impl(u.mock(t, 0, func() {})), []string{"global.rbac.enabled=true"})
+	require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-ca is not usable after 50ms: its tls.crt CA is expired or not yet valid. ")
+	require.Equal(t, 2, reads)
+}
+
 // deployedMode returns a function that returns mode, as stageUCPAPIServerCA reads the deployed mode.
 func deployedMode(mode authz.Mode) func() (authz.Mode, error) {
 	return func() (authz.Mode, error) { return mode, nil }
