@@ -291,8 +291,9 @@ databaseProvider:
 ```
 
 To sign in to Azure Database for PostgreSQL with a Microsoft Entra token
-instead of a password, set `authMode: azure`. No password may be set in the
-URL, `PGPASSWORD`, a PostgreSQL service file, or a matching password file
+instead of a password, set `authMode: azure`. No password, even an empty one,
+may be set in the connection string (URL or keyword/value form), and none may
+come from `PGPASSWORD`, a PostgreSQL service file, or a matching password file
 entry. The connection must verify
 the server certificate and hostname, so use `sslmode=verify-full`. Before each
 new connection, the pool requests a token for the configured identity, bounded

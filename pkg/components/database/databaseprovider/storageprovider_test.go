@@ -270,6 +270,31 @@ func Test_newPostgreSQLPoolConfig(t *testing.T) {
 			expectErr: "remove it from the connection string",
 		},
 		{
+			name:      "azure mode rejects an empty quoted password keyword",
+			options:   PostgreSQLOptions{URL: "host=example.postgres.database.azure.com user=ucp sslmode=verify-full password=''", AuthMode: PostgreSQLAuthAzure},
+			expectErr: "remove it from the connection string",
+		},
+		{
+			name:      "azure mode rejects an empty trailing password keyword",
+			options:   PostgreSQLOptions{URL: "host=example.postgres.database.azure.com user=ucp sslmode=verify-full password=", AuthMode: PostgreSQLAuthAzure},
+			expectErr: "remove it from the connection string",
+		},
+		{
+			name:      "azure mode rejects an empty password keyword after a value with an escaped quote",
+			options:   PostgreSQLOptions{URL: `host=example.postgres.database.azure.com application_name='it\'s' password='' user=ucp sslmode=verify-full`, AuthMode: PostgreSQLAuthAzure},
+			expectErr: "remove it from the connection string",
+		},
+		{
+			name:        "azure mode accepts password text after an escaped quote inside another keyword value",
+			options:     PostgreSQLOptions{URL: `host=example.postgres.database.azure.com user=radius-identity dbname=ucp sslmode=verify-full application_name='it\'s password='`, AuthMode: PostgreSQLAuthAzure},
+			expectToken: true,
+		},
+		{
+			name:        "azure mode accepts escaped password text in an unquoted keyword value",
+			options:     PostgreSQLOptions{URL: `host=example.postgres.database.azure.com user=radius-identity dbname=ucp sslmode=verify-full application_name=a\ password=`, AuthMode: PostgreSQLAuthAzure},
+			expectToken: true,
+		},
+		{
 			name:        "azure mode accepts password text inside another keyword value",
 			options:     PostgreSQLOptions{URL: "host=example.postgres.database.azure.com user=radius-identity dbname=ucp sslmode=verify-full application_name='my password=none'", AuthMode: PostgreSQLAuthAzure},
 			expectToken: true,

@@ -167,6 +167,9 @@ func newPostgreSQLPoolConfig(opt PostgreSQLOptions, newCredential azureCredentia
 	if urlHasPassword(url) {
 		return nil, errors.New("authMode azure does not use a password: remove it from the URL")
 	}
+	if keywordHasPassword(url) {
+		return nil, errors.New("authMode azure does not use a password: remove it from the connection string")
+	}
 	if config.ConnConfig.Password != "" {
 		return nil, errors.New("authMode azure does not use a password: remove it from the connection string, the PostgreSQL service file (PGSERVICEFILE), or the password file (PGPASSFILE)")
 	}
@@ -188,8 +191,7 @@ func newPostgreSQLPoolConfig(opt PostgreSQLOptions, newCredential azureCredentia
 
 // urlHasPassword reports whether a postgres:// URL sets a password, even an empty one, in the user
 // information or as a query parameter. An empty password there can hide a password from another
-// source in the parsed configuration. Nonempty keyword/value passwords are caught after parsing.
-// The URL is split by hand because net/url rejects the multi-host form that pgx accepts.
+// source in the parsed configuration. The URL is split by hand because net/url rejects the multi-host form that pgx accepts.
 func urlHasPassword(connString string) bool {
 	rest, ok := strings.CutPrefix(connString, "postgresql://")
 	if !ok {
@@ -208,6 +210,50 @@ func urlHasPassword(connString string) bool {
 	_, query, _ := strings.Cut(rest, "?")
 	values, _ := neturl.ParseQuery(query)
 	return values.Has("password")
+}
+
+// keywordHasPassword reports whether a keyword/value connection string sets the password keyword,
+// even to an empty value. It follows the libpq quoting and backslash-escaping rules that pgx uses, so
+// text such as password= inside another keyword's quoted value is not mistaken for the keyword.
+func keywordHasPassword(connString string) bool {
+	if strings.HasPrefix(connString, "postgres://") || strings.HasPrefix(connString, "postgresql://") {
+		return false
+	}
+	const space = " \t\n\r\v\f"
+	s := strings.TrimLeft(connString, space)
+	for s != "" {
+		key, rest, ok := strings.Cut(s, "=")
+		if !ok {
+			return false
+		}
+		if strings.Trim(key, space) == "password" {
+			return true
+		}
+		s = strings.TrimLeft(rest, space)
+		end := 0
+		if strings.HasPrefix(s, "'") {
+			s = s[1:]
+			for end < len(s) && s[end] != '\'' {
+				if s[end] == '\\' {
+					end++
+				}
+				end++
+			}
+			end++ // the closing quote
+		} else {
+			for end < len(s) && !strings.ContainsRune(space, rune(s[end])) {
+				if s[end] == '\\' {
+					end++
+				}
+				end++
+			}
+		}
+		if end > len(s) {
+			return false
+		}
+		s = strings.TrimLeft(s[end:], space)
+	}
+	return false
 }
 
 // verifiesServer reports whether every connection attempt, including fallbacks, uses TLS with
