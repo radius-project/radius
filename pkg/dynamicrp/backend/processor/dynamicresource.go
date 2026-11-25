@@ -21,8 +21,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -285,7 +287,10 @@ func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientF
 		apiVersion,
 		nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrNoSchemaFound, err)
+		if respErr, ok := errors.AsType[*azcore.ResponseError](err); ok && respErr.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf("%w: %v", ErrNoSchemaFound, err)
+		}
+		return nil, err
 	}
 
 	if response.Properties == nil || response.Properties.Schema == nil {
