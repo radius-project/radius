@@ -18,12 +18,19 @@ package databaseprovider
 
 import (
 	context "context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	neturl "net/url"
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	store "github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/apiserverstore"
@@ -115,15 +122,147 @@ func initPostgreSQLClient(ctx context.Context, opt Options) (store.Client, error
 		return nil, errors.New("failed to initialize PostgreSQL client: URL is required")
 	}
 
-	url, err := expandEnvURL(opt.PostgreSQL.URL)
+	config, err := newPostgreSQLPoolConfig(opt.PostgreSQL, newAzureTokenCredential)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize PostgreSQL client: %w", err)
 	}
 
-	pool, err := pgxpool.New(ctx, url)
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize PostgreSQL client: %w", err)
 	}
 
 	return postgres.NewPostgresClient(pool), nil
+}
+
+// azureCredentialFactory creates the token credential for Microsoft Entra authentication.
+type azureCredentialFactory func(PostgreSQLAzureOptions) (azcore.TokenCredential, error)
+
+// newPostgreSQLPoolConfig parses the connection URL and configures authentication.
+func newPostgreSQLPoolConfig(opt PostgreSQLOptions, newCredential azureCredentialFactory) (*pgxpool.Config, error) {
+	url, err := expandEnvURL(opt.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return nil, err
+	}
+
+	switch opt.AuthMode {
+	case "", PostgreSQLAuthPassword:
+		if opt.Azure != (PostgreSQLAzureOptions{}) {
+			return nil, errors.New("azure options require authMode azure")
+		}
+		return config, nil
+	case PostgreSQLAuthAzure:
+	default:
+		return nil, fmt.Errorf("unsupported authMode %q", opt.AuthMode)
+	}
+
+	if os.Getenv("PGPASSWORD") != "" {
+		return nil, errors.New("authMode azure does not use a password: unset PGPASSWORD")
+	}
+	if urlHasPassword(url) {
+		return nil, errors.New("authMode azure does not use a password: remove it from the URL")
+	}
+	if config.ConnConfig.Password != "" {
+		return nil, errors.New("authMode azure does not use a password: remove it from the connection string, the PostgreSQL service file (PGSERVICEFILE), or the password file (PGPASSFILE)")
+	}
+	if !verifiesServer(config.ConnConfig) {
+		return nil, errors.New("authMode azure requires TLS with certificate and hostname verification (sslmode=verify-full) so the access token is only sent to a verified server")
+	}
+
+	credential, err := newCredential(opt.Azure)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Azure credential: %w", err)
+	}
+	tokenTimeout := config.ConnConfig.ConnectTimeout
+	if tokenTimeout <= 0 {
+		tokenTimeout = defaultAzureTokenTimeout
+	}
+	config.BeforeConnect = azureTokenBeforeConnect(credential, tokenTimeout)
+	return config, nil
+}
+
+// urlHasPassword reports whether a postgres:// URL sets a password, even an empty one, in the user
+// information or as a query parameter. An empty password there can hide a password from another
+// source in the parsed configuration. Nonempty keyword/value passwords are caught after parsing.
+// The URL is split by hand because net/url rejects the multi-host form that pgx accepts.
+func urlHasPassword(connString string) bool {
+	rest, ok := strings.CutPrefix(connString, "postgresql://")
+	if !ok {
+		if rest, ok = strings.CutPrefix(connString, "postgres://"); !ok {
+			return false
+		}
+	}
+	rest, _, _ = strings.Cut(rest, "#")
+	authority := rest
+	if i := strings.IndexAny(rest, "/?"); i >= 0 {
+		authority = rest[:i]
+	}
+	if i := strings.LastIndex(authority, "@"); i >= 0 && strings.Contains(authority[:i], ":") {
+		return true
+	}
+	_, query, _ := strings.Cut(rest, "?")
+	values, _ := neturl.ParseQuery(query)
+	return values.Has("password")
+}
+
+// verifiesServer reports whether every connection attempt, including fallbacks, uses TLS with
+// certificate and hostname verification. Only sslmode=verify-full satisfies this.
+func verifiesServer(config *pgx.ConnConfig) bool {
+	verified := func(tlsConfig *tls.Config) bool {
+		return tlsConfig != nil && !tlsConfig.InsecureSkipVerify
+	}
+	if !verified(config.TLSConfig) {
+		return false
+	}
+	for _, fallback := range config.Fallbacks {
+		if !verified(fallback.TLSConfig) {
+			return false
+		}
+	}
+	return true
+}
+
+// newAzureTokenCredential creates the Azure credential selected by the options.
+func newAzureTokenCredential(opt PostgreSQLAzureOptions) (azcore.TokenCredential, error) {
+	switch opt.Credential {
+	case "", PostgreSQLAzureWorkloadIdentity:
+		return azidentity.NewWorkloadIdentityCredential(&azidentity.WorkloadIdentityCredentialOptions{ClientID: opt.ClientID})
+	case PostgreSQLAzureManagedIdentity:
+		options := &azidentity.ManagedIdentityCredentialOptions{}
+		if opt.ClientID != "" {
+			options.ID = azidentity.ClientID(opt.ClientID)
+		}
+		return azidentity.NewManagedIdentityCredential(options)
+	default:
+		return nil, fmt.Errorf("unsupported azure credential %q", opt.Credential)
+	}
+}
+
+// azurePostgreSQLScope is the Microsoft Entra scope for Azure Database for PostgreSQL in the public cloud.
+const azurePostgreSQLScope = "https://ossrdbms-aad.database.windows.net/.default"
+
+// defaultAzureTokenTimeout bounds token requests when the connection string does not set connect_timeout.
+const defaultAzureTokenTimeout = 30 * time.Second
+
+// azureTokenBeforeConnect returns a pgxpool hook that sets a Microsoft Entra access token as the
+// password of each new connection. The server checks the token only at login, so open connections
+// are unaffected when it expires; the credential caches tokens and renews them before expiry.
+// The token request is bounded by timeout because it runs before pgx applies connect_timeout.
+func azureTokenBeforeConnect(credential azcore.TokenCredential, timeout time.Duration) func(context.Context, *pgx.ConnConfig) error {
+	return func(ctx context.Context, config *pgx.ConnConfig) error {
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		token, err := credential.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{azurePostgreSQLScope}})
+		if err != nil {
+			return fmt.Errorf("failed to get Microsoft Entra token for PostgreSQL: %w", err)
+		}
+		config.Password = token.Token
+		return nil
+	}
 }

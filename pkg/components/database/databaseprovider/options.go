@@ -56,4 +56,46 @@ type PostgreSQLOptions struct {
 	// In place of the actual URL, you can substitute an environment variable by using the format:
 	// 	${ENV_VAR_NAME}
 	URL string `yaml:"url"`
+
+	// AuthMode selects how the client authenticates to the server. Defaults to PostgreSQLAuthPassword.
+	AuthMode PostgreSQLAuthMode `yaml:"authMode,omitempty"`
+
+	// Azure configures Microsoft Entra authentication. Used only when AuthMode is PostgreSQLAuthAzure.
+	Azure PostgreSQLAzureOptions `yaml:"azure,omitempty"`
+}
+
+// PostgreSQLAuthMode is the authentication method for the PostgreSQL store.
+type PostgreSQLAuthMode string
+
+const (
+	// PostgreSQLAuthPassword authenticates with the password in the connection URL.
+	PostgreSQLAuthPassword PostgreSQLAuthMode = "password"
+
+	// PostgreSQLAuthAzure authenticates to Azure Database for PostgreSQL with a Microsoft Entra access
+	// token, requested for each new connection. The URL user must be the PostgreSQL role mapped to the
+	// identity, the URL must not contain a password, and sslmode must be verify-full so the token is only
+	// sent to a verified server. Only the Azure public cloud is supported.
+	PostgreSQLAuthAzure PostgreSQLAuthMode = "azure"
+)
+
+// PostgreSQLAzureCredential is the Azure identity used for Microsoft Entra authentication.
+type PostgreSQLAzureCredential string
+
+const (
+	// PostgreSQLAzureWorkloadIdentity uses Azure workload identity. The tenant ID and federated token file
+	// come from AZURE_TENANT_ID and AZURE_FEDERATED_TOKEN_FILE, which the AKS workload identity webhook sets.
+	PostgreSQLAzureWorkloadIdentity PostgreSQLAzureCredential = "workloadIdentity"
+
+	// PostgreSQLAzureManagedIdentity uses the managed identity of the host, such as a virtual machine.
+	PostgreSQLAzureManagedIdentity PostgreSQLAzureCredential = "managedIdentity"
+)
+
+// PostgreSQLAzureOptions represents options for Microsoft Entra authentication to PostgreSQL.
+type PostgreSQLAzureOptions struct {
+	// Credential selects the Azure identity. Defaults to PostgreSQLAzureWorkloadIdentity.
+	Credential PostgreSQLAzureCredential `yaml:"credential,omitempty"`
+
+	// ClientID is the client ID of the identity. For workload identity it defaults to AZURE_CLIENT_ID.
+	// For a managed identity it is required for a user-assigned identity and empty for a system-assigned one.
+	ClientID string `yaml:"clientId,omitempty"`
 }
