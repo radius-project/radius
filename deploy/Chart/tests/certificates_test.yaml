@@ -387,13 +387,52 @@ tests:
         - name: ucp-spiffe
     asserts:
       - failedTemplate:
-          errorMessage: "global.imagePullSecrets[1].name must not be \"ucp-spiffe\": cert-manager writes ucp's SPIFFE server certificate and key to that Secret, and cannot add them to an existing registry Secret"
+          errorMessage: "global.imagePullSecrets[1].name must not be \"ucp-spiffe\": cert-manager writes ucp's SPIFFE server certificate and key to that Secret, so the key would be written into the registry Secret that pods pull images with"
 
   - it: allows a global.imagePullSecrets name matching a receiver's SPIFFE Secret when authorization is off
     set:
       global.imagePullSecrets:
         - name: registry
         - name: ucp-spiffe
+    asserts:
+      - notFailedTemplate: {}
+      - hasDocuments:
+          count: 0
+
+  - it: fails when a global.imagePullSecrets name is radius-ca in enforce mode
+    set:
+      global.rbac.enabled: true
+      global.imagePullSecrets:
+        - name: radius-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.imagePullSecrets[0].name must not be \"radius-ca\": cert-manager writes the Radius CA certificate and signing key to that Secret, so the key would be written into the registry Secret that pods pull images with"
+
+  - it: fails when a global.imagePullSecrets name is radius-apiserver-ca in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.imagePullSecrets:
+        - name: registry
+        - name: radius-apiserver-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.imagePullSecrets[1].name must not be \"radius-apiserver-ca\": cert-manager writes the UCP API server CA certificate and signing key to that Secret, so the key would be written into the registry Secret that pods pull images with"
+
+  - it: fails when a global.imagePullSecrets name is ucp-apiserver-tls in enforce mode
+    set:
+      global.rbac.enabled: true
+      global.imagePullSecrets:
+        - name: ucp-apiserver-tls
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.imagePullSecrets[0].name must not be \"ucp-apiserver-tls\": cert-manager writes UCP's API server certificate and key to that Secret, so the key would be written into the registry Secret that pods pull images with"
+
+  - it: allows global.imagePullSecrets named after the authorization CA Secrets when authorization is off
+    set:
+      global.imagePullSecrets:
+        - name: radius-ca
+        - name: radius-apiserver-ca
+        - name: ucp-apiserver-tls
     asserts:
       - notFailedTemplate: {}
       - hasDocuments:

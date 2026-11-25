@@ -313,8 +313,9 @@ Fails rendering when an active shared Secret (global.rootCA.secretName or
 global.targetCluster.secretName) is a Secret that cert-manager writes a private key to: a receiver's
 <receiver>-spiffe Secret, a CA Secret, or the UCP API server certificate Secret. The shared Secrets are
 mounted whole into several pods, so reusing one of these names exposes the key. Also fails when a
-global.imagePullSecrets name is a receiver's <receiver>-spiffe Secret: cert-manager cannot add the
-certificate to an existing registry Secret, so the receiver's pod cannot start.
+global.imagePullSecrets name is any of those Secrets: cert-manager writes the certificate and key into
+an existing registry Secret of that name, so one Secret would hold both the registry credential and
+the key.
 Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
 */}}
 {{- define "radius.authz.validateSecretNames" -}}
@@ -340,9 +341,13 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
 {{- end -}}
 {{- end -}}
-{{- range $i, $pullSecret := $.Values.global.imagePullSecrets -}}
-{{- if and (kindIs "map" $pullSecret) (eq (toString $pullSecret.name) (printf "%s-spiffe" $receiver)) -}}
-{{- fail (printf "global.imagePullSecrets[%d].name must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret, and cannot add them to an existing registry Secret" $i $pullSecret.name $receiver) -}}
+{{- $_ := set $reserved (printf "%s-spiffe" $receiver) (printf "cert-manager writes %s's SPIFFE server certificate and key to that Secret" $receiver) -}}
+{{- end -}}
+{{- range $i, $pullSecret := .Values.global.imagePullSecrets -}}
+{{- if kindIs "map" $pullSecret -}}
+{{- $name := toString $pullSecret.name -}}
+{{- if hasKey $reserved $name -}}
+{{- fail (printf "global.imagePullSecrets[%d].name must not be %q: %s, so the key would be written into the registry Secret that pods pull images with" $i $name (get $reserved $name)) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
