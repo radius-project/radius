@@ -8,7 +8,8 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  rmSync
+  rmSync,
+  symlinkSync
 } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -16,6 +17,7 @@ import { dirname, join } from "node:path";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   getIDToken,
   login,
@@ -429,4 +431,21 @@ test("both jobs use the workflow script when the PR checkout lacks it", (t) => {
     assert.match(result.stderr, /AZURE_CLIENT_ID is required/);
     assert.doesNotMatch(result.stderr, /MODULE_NOT_FOUND/);
   }
+});
+
+test("runs when reached through a symlinked directory", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "azure-oidc-login-link-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const link = join(root, "scripts");
+  symlinkSync(dirname(fileURLToPath(import.meta.url)), link, "dir");
+  const result = spawnSync(
+    process.execPath,
+    [join(link, "azure-oidc-login.mjs")],
+    {
+      env: { ...process.env, AZURE_CLIENT_ID: "" },
+      encoding: "utf8"
+    }
+  );
+  assert.notEqual(result.status, 0, "the script did not run its main function");
+  assert.match(result.stderr, /AZURE_CLIENT_ID is required/);
 });

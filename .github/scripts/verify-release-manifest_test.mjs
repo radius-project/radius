@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -825,3 +826,27 @@ test("the manifest command verifies files and rejects a changed approved snapsho
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+for (const script of [
+  "verify-release-manifest.mjs",
+  "release-bicep-extensions.mjs"
+]) {
+  test(`${script} runs when reached through a symlinked directory`, (t) => {
+    const root = mkdtempSync(
+      path.join(os.tmpdir(), "verify-release-manifest-link-")
+    );
+    t.after(() => rmSync(root, { recursive: true, force: true }));
+    const link = path.join(root, "scripts");
+    symlinkSync(path.dirname(fileURLToPath(import.meta.url)), link, "dir");
+    const result = spawnSync(process.execPath, [path.join(link, script)], {
+      env: process.env,
+      encoding: "utf8"
+    });
+    assert.notEqual(
+      result.status,
+      0,
+      "the script did not run its main function"
+    );
+    assert.match(result.stderr, /\S/);
+  });
+}
