@@ -170,6 +170,18 @@ main() {
     write_pipeline
     yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "engine-token")).with.owner = "azure-octo"' "${WORKFLOWS}/build-release.yaml"
     expect "does not publish the transferred Deployment Engine" "reject old installation" HEAD --require-current-engine
+    write_pipeline
+    # shellcheck disable=SC2016 # Literal workflow secrets on the historical tag.
+    yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "engine-token")).with |=
+        (."client-id" = "${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}" |
+         ."private-key" = "${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}")' "${WORKFLOWS}/build-release.yaml"
+    expect pass "published source can retain its original publisher credentials"
+    expect "scoped radius-release token" "new releases must not use publisher credentials" HEAD --require-current-engine
+    write_pipeline
+    # shellcheck disable=SC2016 # Literal workflow token reference.
+    yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "publish")).env.ENGINE_RELEASE_TOKEN =
+        "${{ steps.sibling-token.outputs.token }}"' "${WORKFLOWS}/build-release.yaml"
+    expect "scoped radius-release token" "new release must use its engine-only token" HEAD --require-current-engine
 
     write_pipeline
     yq -i 'del(.jobs."publish-sibling-releases") |

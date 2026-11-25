@@ -109,10 +109,15 @@ test_entry_triggers() {
 }
 
 test_shared_controller_contract() {
+    local workflow
     assert_yq "${ENTRY}" \
         '.jobs.reconcile.uses ==
         "./.github/workflows/__release-controller.yaml"' \
         "default-branch entry must call the shared controller"
+    for workflow in "${ENTRY}" "${CONTROLLER}"; do
+        assert_not_contains "${workflow}" "RADIUS_PUBLISHER_BOT_" \
+            "current release controller must not pass or require publisher credentials"
+    done
     assert_yq "${APPROVE}" \
         '.jobs.dispatch.uses ==
         "./.github/workflows/__dispatch-release-controller.yaml"' \
@@ -350,8 +355,8 @@ test_deployment_engine_tag_automation() {
         assert_json "${WORKFLOWS}/${workflow}" \
             "[.jobs.\"${job}\".steps[] | select(.id == \"${id}\") |
               [.with.owner, .with.repositories, .with.\"client-id\", .with.\"private-key\", .with.\"permission-contents\"]]" \
-            "[[\"radius-project\",\"deployment-engine\",\"\${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}\",\"\${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}\",\"${access}\"]]" \
-            "${job}.${id} must request the scoped publisher App token"
+            "[[\"radius-project\",\"deployment-engine\",\"\${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}\",\"\${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}\",\"${access}\"]]" \
+            "${job}.${id} must request the scoped release App token"
     done
     assert_yq "${WORKFLOWS}/prepare-release.yaml" \
         ".jobs.prepare.steps[] |
@@ -375,9 +380,9 @@ test_deployment_engine_tag_automation() {
         .env.APPROVED_DE_COMMIT ==
             \"\${{ needs.validate.outputs.de-source-commit }}\" and
         .env.APP_SLUG == \"\${{ steps.de-write-token.outputs.app-slug }}\" and
-        (.run | contains(\"== \\\"radius-publisher\\\"\")) and
+        (.run | contains(\"== \\\"radius-release\\\"\")) and
         (.run | contains(\"release-create-tag-and-branch.sh\")))" \
-        "only the Radius Publisher App may create the approved Deployment Engine tag"
+        "only the Radius Release App may create the approved Deployment Engine tag"
     assert_yq "${CONTROLLER}" \
         '.jobs."publish-deployment-engine".steps[] | select(.id == "de-tag") |
         (.run | contains("--allow-absent") | not)' \

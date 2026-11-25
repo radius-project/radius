@@ -523,12 +523,18 @@ main() {
     verify_historical_bicep_resume_gate
     verify_sibling_publication_gate
     if [[ "${REQUIRE_CURRENT_ENGINE}" == true ]]; then
-        yq_true "${BUILD_WORKFLOW}" '
-            [.jobs."publish-sibling-releases".steps[] |
-                select(.id == "engine-token") | .with] |
-            (length == 1 and .[0].owner == "radius-project" and
-                .[0].repositories == "deployment-engine")' ||
-            reject "does not publish the transferred Deployment Engine release"
+        # shellcheck disable=SC2016 # Match literal workflow expressions.
+        git show "${COMMIT}:${BUILD_WORKFLOW}" |
+            yq -o=json '.jobs."publish-sibling-releases".steps' |
+            jq -e '[.[] | select(.id == "engine-token" and
+                (.uses // "" | test("^actions/create-github-app-token@[0-9a-f]{40}$"))) | .with] == [{
+                "owner": "radius-project", "repositories": "deployment-engine",
+                "client-id": "${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}",
+                "private-key": "${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}",
+                "permission-contents": "write", "permission-workflows": "write"
+            }] and any(.[]; .name == "Reconcile sibling release entries" and
+                .env.ENGINE_RELEASE_TOKEN == "${{ steps.engine-token.outputs.token }}")' >/dev/null ||
+            reject "does not publish the transferred Deployment Engine release with the scoped radius-release token"
         local publisher
         publisher="$(git show "${COMMIT}:.github/scripts/publish-sibling-releases.mjs")" ||
             reject "is missing the sibling release publisher"

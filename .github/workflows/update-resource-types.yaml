@@ -49,8 +49,8 @@ name: Update Resource Types
 # updates stay cumulative without the branch ever having to be rebased.
 #
 # Merging the resulting PR triggers the existing `build-and-push-bicep-types`
-# job in build-main.yaml, which dispatches to azure-octo/radius-publisher to
-# republish `radius:latest` with the refreshed contrib types.
+# job in build-main.yaml, which publishes the refreshed extension to GHCR
+# with the `edge` tag.
 #
 # See the design notes:
 #   eng/design-notes/extensibility/2026-05-unified-bicep-extension-publishing.md
