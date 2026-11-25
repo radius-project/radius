@@ -92,6 +92,7 @@ test("published historical sources retain validation and recovery; unpublished s
     "wrong tag",
     "wrong AWS tag",
     "missing manifest",
+    "wrong engine image",
     "wrong manifest",
     "unsupported workflow"
   ]) {
@@ -120,6 +121,16 @@ test("published historical sources retain validation and recovery; unpublished s
       sourceSha: state === "wrong manifest" ? backportCommit : sourceCommit,
       channel: plan.channel,
       releaseType: plan.releaseType,
+      observed: {
+        imageLocks: [
+          {
+            name: "deployment-engine",
+            sourceSha: backportCommit,
+            reference: `ghcr.io/radius-project/deployment-engine:${state === "wrong engine image" ? "latest" : version.slice(1)}`,
+            digest: `sha256:${"a".repeat(64)}`
+          }
+        ]
+      },
       checks: Object.fromEntries(
         mandatoryChecks.map((name) => [name, "verified"])
       )
@@ -192,9 +203,11 @@ test("published historical sources retain validation and recovery; unpublished s
       calls.push("build-contract");
       if (["draft", "absent"].includes(state)) {
         assert.ok(args.includes("--require-current-bicep"));
+        assert.ok(args.includes("--require-current-engine"));
         throw new Error("requires the retired Bicep ACR writer");
       }
       assert.ok(!args.includes("--require-current-bicep"));
+      assert.ok(!args.includes("--require-current-engine"));
       if (state === "unsupported workflow")
         throw new Error("does not enforce the publication gate");
       return "";
@@ -203,6 +216,8 @@ test("published historical sources retain validation and recovery; unpublished s
     if (state === "published") {
       await promise;
       assert.equal(outputs.published, "true");
+      assert.equal(outputs["de-source-commit"], backportCommit);
+      assert.equal(outputs["de-digest"], `sha256:${"a".repeat(64)}`);
       assert.deepEqual(calls, [
         "releases",
         "radius",

@@ -53,6 +53,31 @@ write_fake_gh() {
 #!/bin/bash
 set -euo pipefail
 case "$*" in
+    *"/git/trees/"*)
+        [[ "$2" == *"/git/trees/${FAKE_BASE_COMMIT:?}?recursive=1" ]] || exit 1
+        if [[ "${FAKE_PARSER_MODE:-}" == missing ]]; then
+            echo '{"truncated":false,"tree":[]}'
+        else
+            printf '{"truncated":false,"tree":[{"path":".github/scripts/parse-version.sh","mode":"%s","type":"blob"}]}\n' \
+                "${FAKE_PARSER_MODE:-100755}"
+        fi
+        ;;
+    *"/contents/.github/scripts/require-unused-tag.sh?ref="*)
+        [[ "$2" == *"ref=${FAKE_BASE_COMMIT:?}" ]] || exit 1
+        if [[ -n "${FAKE_HELPER_ERROR:-}" ]]; then
+            echo "gh: ${FAKE_HELPER_ERROR}" >&2
+            exit 1
+        fi
+        printf '%s\n' '{"type":"file","size":1165}'
+        ;;
+    *"/contents/.github/workflows/build-and-push.yaml?ref="*)
+        [[ "$2" == *"ref=${FAKE_BASE_COMMIT:?}" ]] || exit 1
+        if [[ -n "${FAKE_WORKFLOW_ERROR:-}" ]]; then
+            echo "gh: ${FAKE_WORKFLOW_ERROR}" >&2
+            exit 1
+        fi
+        printf '%s\n' "${FAKE_PUBLISHER:-null}"
+        ;;
     *"/git/ref/tags/"*)
         if [[ -z "${FAKE_REF:-}" ]]; then
             printf 'gh: %s\n' "${FAKE_REF_ERROR:-Not Found (HTTP 404)}" >&2
@@ -73,7 +98,7 @@ case "$*" in
         fi
         printf '{"sha":"%s"}\n' "${FAKE_BASE_COMMIT}"
         ;;
-    *) printf '%s\n' 'azure-octo/deployment-engine' ;;
+    *) printf '%s\n' 'radius-project/deployment-engine' ;;
 esac
 EOF
     chmod +x "${TEST_ROOT}/gh"
@@ -111,6 +136,7 @@ repository() {
 }
 
 run_script() {
+    : >"${TEST_ROOT}/outputs"
     set +e
     OUTPUT="$(GITHUB_OUTPUT="${TEST_ROOT}/outputs" GH="${TEST_ROOT}/gh" \
         bash "${SCRIPT}" "$@" 2>&1)"
@@ -233,6 +259,162 @@ test_accepts_tag_at_approved_commit() {
     run_script v0.61.0-rc.1 "${COMMIT_A}"
     expect_outputs "${COMMIT_A}" unsigned \
         "a tag at the approved commit" || return
+    ((++PASS))
+}
+
+test_new_tag_requires_active_tag_publisher() {
+    repository "" "" ahead "${COMMIT_B}"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_failure "lacks the active direct GHCR tag publisher" \
+        "an unmigrated Deployment Engine commit must not be tagged" || return
+    local workflow mutation
+    workflow="$(cat <<'YAML'
+on: {push: {tags: ['v*']}}
+env: {REGISTRY: ghcr.io/radius-project}
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: make test
+    if: github.repository == 'radius-project/deployment-engine' && !github.event.deleted
+  container:
+    runs-on: ubuntu-24.04
+    needs: build
+    if: github.repository == 'radius-project/deployment-engine' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions: {packages: write, contents: read}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - id: version
+        run: .github/scripts/parse-version.sh --ref "$GITHUB_REF" --sha "$GITHUB_SHA" --out "$GITHUB_OUTPUT"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Publish image
+        env:
+          TAG: ${{ steps.version.outputs.ghcr-tag }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            bash .github/scripts/require-unused-tag.sh "$TAG"
+          fi
+          export BUILDX_METADATA_FILE="$RUNNER_TEMP/build-metadata.json"
+          make docker-push REPO="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" COMMIT_SHA="$GITHUB_SHA" COMMIT_REF="$GITHUB_REF"
+YAML
+)"
+    if [[ -n "${DE_PUBLISHER_FIXTURE:-}" ]]; then
+        workflow="$(<"${DE_PUBLISHER_FIXTURE}")"
+    fi
+    export FAKE_PUBLISHER
+    FAKE_PUBLISHER="${workflow}"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "new tag at transferred publisher" || return
+    local mode
+    for mode in missing 100644; do
+        export FAKE_PARSER_MODE="${mode}"
+        run_script --require-publisher --allow-absent main v0.61.0
+        unset FAKE_PARSER_MODE
+        expect_failure "parse-version.sh is missing or not executable at ${COMMIT_B}" "parser: ${mode}" || return
+        [[ ! -s "${TEST_ROOT}/outputs" ]] || { fail_test "invalid parser emitted tag state"; return; }
+    done
+    local error expected
+    for error in 'Not Found (HTTP 404)' 'Service Unavailable (HTTP 503)'; do
+        export FAKE_HELPER_ERROR="${error}"
+        run_script --require-publisher --allow-absent main v0.61.0
+        unset FAKE_HELPER_ERROR
+        expected="require-unused-tag.sh is missing at ${COMMIT_B}"
+        if [[ "${error}" == *503* ]]; then
+            expected="retry the same commit"
+        fi
+        expect_failure "${expected}" "helper lookup: ${error}" || return
+        if [[ "${OUTPUT}" != *"${error}"* || -s "${TEST_ROOT}/outputs" ]]; then
+            fail_test "helper lookup lost its error or emitted tag outputs"
+            return
+        fi
+    done
+    local build_checkout container_checkout login
+    build_checkout='(.jobs.build.steps[] | select(.uses // "" | test("^actions/checkout@")))'
+    container_checkout='(.jobs.container.steps[] | select(.uses // "" | test("^actions/checkout@")))'
+    login='(.jobs.container.steps[] | select(.uses // "" | test("^docker/login-action@")))'
+    FAKE_PUBLISHER="$(yq "${build_checkout}.with.ref = \"\${{ github.sha }}\" | ${container_checkout}.with.ref = \"\${{ github.sha }}\"" <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "both jobs check out the push SHA" || return
+    FAKE_PUBLISHER="$(yq '.permissions = {"contents":"read","packages":"write"} | del(.jobs.container.permissions)' <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "container inherits workflow Packages write" || return
+    FAKE_PUBLISHER="$(yq '(.jobs.container.steps[] | select(.id == "version")).run |= (. + "\n" | ... style="literal")' <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "literal-block version command" || return
+    FAKE_PUBLISHER="$(yq '.permissions.contents = "read" | del(.jobs.build.permissions)' <<< "${workflow}")"
+    run_script --require-publisher --allow-absent main v0.61.0
+    expect_outputs "${COMMIT_B}" absent "build inherits workflow Contents read" || return
+    # Shell variables in the mutated publish command belong to the producer.
+    # shellcheck disable=SC2016
+    for mutation in \
+        "del(${build_checkout})" \
+        "del(${container_checkout})" \
+        "del(${login})" \
+        "${login}.with.registry = \"example.com\"" \
+        '.jobs.build.permissions = {} | .permissions.contents = "read"' \
+        'del(.jobs.container.permissions.contents) | .permissions.contents = "read"' \
+        'del(.jobs.container.permissions.packages) | .permissions.packages = "write"' \
+        "${build_checkout}.with.ref = \"\${{ github.ref }}\"" \
+        "${container_checkout}.with.ref = \"\${{ github.ref }}\"" \
+        "${build_checkout}.with.ref = \"main\"" \
+        "${container_checkout}.with.repository = \"radius-project/radius\"" \
+        '.jobs.container.steps = ([{"run":"make test"}] + .jobs.container.steps)' \
+        '.jobs.build.steps = ([{"uses":"./local-action"}] + .jobs.build.steps)' \
+        ".jobs.container.if = \"github.ref == 'refs/heads/main'\"" \
+        '.jobs.build.if = "false"' \
+        '.jobs.container.steps = []' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).if = "false"' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).env.TAG = "latest"' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).run = "make docker-build"' \
+        '(.jobs.container.steps[] | select(.name == "Publish image")).run |= ("if ! docker manifest inspect \"$REGISTRY/deployment-engine:$TAG\"; then exit 0; fi\n" + .)' \
+        '(.jobs.container.steps[] | select(.id == "version")).run = "echo skipped"'; do
+        FAKE_PUBLISHER="$(yq "${mutation}" <<< "${workflow}")"
+        run_script --require-publisher --allow-absent main v0.61.0
+        expect_failure "lacks the active direct GHCR tag publisher" "${mutation}" || return
+        [[ ! -s "${TEST_ROOT}/outputs" ]] || { fail_test "rejected publisher emitted tag state"; return; }
+    done
+    unset FAKE_PUBLISHER
+    ((++PASS))
+}
+
+test_workflow_lookup_error() {
+    repository "" "" ahead "${COMMIT_B}"
+    local error expected
+    for error in 'Service Unavailable (HTTP 503)' 'Forbidden (HTTP 403)' 'Not Found (HTTP 404)'; do
+        export FAKE_WORKFLOW_ERROR="${error}"
+        run_script --require-publisher --allow-absent v0.61.0-rc.1 v0.61.0 "${COMMIT_B}"
+        unset FAKE_WORKFLOW_ERROR
+        expected="retry the same commit"
+        if [[ "${error}" == *404* ]]; then
+            expected="is missing at ${COMMIT_B}"
+        elif [[ "${OUTPUT}" == *"select a reviewed release source"* ]]; then
+            fail_test "API failure advised changing the release source"
+            return
+        fi
+        expect_failure "${expected}" "workflow lookup: ${error}" || return
+        if [[ "${OUTPUT}" != *"${error}"* || -s "${TEST_ROOT}/outputs" ]]; then
+            fail_test "workflow lookup lost its error or emitted tag outputs"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_missing_pinned_tag_stops_recovery() {
+    repository ""
+    run_script v0.61.0-rc.1 "${COMMIT_A}"
+    expect_failure "refs/tags/v0.61.0-rc.1; expected commit ${COMMIT_A}" \
+        "missing pinned tag must identify the approved ref and commit" || return
+    if [[ -s "${TEST_ROOT}/outputs" || "${OUTPUT}" =~ (git\ push|git\ tag|creat) ]]; then
+        fail_test "pinned recovery planned or suggested creating a missing tag"
+        return
+    fi
     ((++PASS))
 }
 
@@ -381,7 +563,7 @@ test_existing_tag_is_verified_even_when_absence_is_allowed() {
 test_unreadable_repository_is_not_reported_as_missing_tag() {
     write_unreadable_fake_gh
     run_script --allow-absent main v0.61.0-rc.1
-    expect_failure "cannot read azure-octo/deployment-engine" \
+    expect_failure "cannot read radius-project/deployment-engine" \
         "an unreadable repository must fail as an access problem" || return
     if [[ "${OUTPUT}" == *"git tag -s"* || "${OUTPUT}" == *"is absent"* ]]; then
         fail_test "unreadable repository was reported as a missing tag"
@@ -402,9 +584,12 @@ main() {
     test_rejects_non_commit_tag_target
     test_rejects_mismatched_signed_tag_name
     test_accepts_tag_at_approved_commit
+    test_new_tag_requires_active_tag_publisher
+    test_workflow_lookup_error
     test_rejects_tag_moved_after_approval
     test_rejects_malformed_approved_commit
     test_missing_tag_without_plan_prints_recovery_command
+    test_missing_pinned_tag_stops_recovery
     test_absent_tag_plans_base_commit
     test_absent_plan_must_be_on_main
     test_absent_plan_requires_resolvable_base
