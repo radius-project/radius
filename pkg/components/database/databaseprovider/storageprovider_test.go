@@ -214,7 +214,7 @@ func isolatePostgresEnv(t *testing.T) {
 func Test_newPostgreSQLPoolConfig(t *testing.T) {
 	isolatePostgresEnv(t)
 
-	const verifiedURL = "postgresql://radius-identity@example.postgres.database.azure.com:5432/ucp?sslmode=verify-full"
+	const verifiedURL = "postgresql://radius-identity@pg.example.com:5432/ucp?sslmode=verify-full"
 
 	tests := []struct {
 		name        string
@@ -241,67 +241,67 @@ func Test_newPostgreSQLPoolConfig(t *testing.T) {
 		},
 		{
 			name:      "azure mode rejects a password in the URL",
-			options:   PostgreSQLOptions{URL: "postgresql://ucp:s3cret@example.postgres.database.azure.com:5432/ucp?sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "postgresql://ucp:s3cret@pg.example.com:5432/ucp?sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "authMode azure does not use a password",
 		},
 		{
 			name:        "azure mode accepts system roots, which pgx verifies like verify-full",
-			options:     PostgreSQLOptions{URL: "postgresql://radius-identity@example.postgres.database.azure.com:5432/ucp?sslmode=require&sslrootcert=system", AuthMode: PostgreSQLAuthAzure},
+			options:     PostgreSQLOptions{URL: "postgresql://radius-identity@pg.example.com:5432/ucp?sslmode=require&sslrootcert=system", AuthMode: PostgreSQLAuthAzure},
 			expectToken: true,
 		},
 		{
 			name:      "azure mode rejects an empty password in the URL",
-			options:   PostgreSQLOptions{URL: "postgresql://ucp:@example.postgres.database.azure.com:5432/ucp?sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "postgresql://ucp:@pg.example.com:5432/ucp?sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "remove it from the URL",
 		},
 		{
 			name:      "azure mode rejects a password query parameter",
-			options:   PostgreSQLOptions{URL: "postgresql://ucp@example.postgres.database.azure.com:5432/ucp?sslmode=verify-full&password=", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "postgresql://ucp@pg.example.com:5432/ucp?sslmode=verify-full&password=", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "remove it from the URL",
 		},
 		{
 			name:      "azure mode rejects an empty password in a multi-host URL",
-			options:   PostgreSQLOptions{URL: "postgresql://ucp:@host1.postgres.database.azure.com:5432,host2.postgres.database.azure.com/ucp?sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "postgresql://ucp:@host1.example.com:5432,host2.example.com/ucp?sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "remove it from the URL",
 		},
 		{
 			name:      "azure mode rejects a password keyword",
-			options:   PostgreSQLOptions{URL: "host=example.postgres.database.azure.com user=ucp password=s3cret sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "host=pg.example.com user=ucp password=s3cret sslmode=verify-full", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "remove it from the connection string",
 		},
 		{
 			name:      "azure mode rejects an empty quoted password keyword",
-			options:   PostgreSQLOptions{URL: "host=example.postgres.database.azure.com user=ucp sslmode=verify-full password=''", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "host=pg.example.com user=ucp sslmode=verify-full password=''", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "remove it from the connection string",
 		},
 		{
 			name:      "azure mode rejects an empty trailing password keyword",
-			options:   PostgreSQLOptions{URL: "host=example.postgres.database.azure.com user=ucp sslmode=verify-full password=", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "host=pg.example.com user=ucp sslmode=verify-full password=", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "remove it from the connection string",
 		},
 		{
 			name:      "azure mode rejects an empty password keyword after a value with an escaped quote",
-			options:   PostgreSQLOptions{URL: `host=example.postgres.database.azure.com application_name='it\'s' password='' user=ucp sslmode=verify-full`, AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: `host=pg.example.com application_name='it\'s' password='' user=ucp sslmode=verify-full`, AuthMode: PostgreSQLAuthAzure},
 			expectErr: "remove it from the connection string",
 		},
 		{
 			name:        "azure mode accepts password text after an escaped quote inside another keyword value",
-			options:     PostgreSQLOptions{URL: `host=example.postgres.database.azure.com user=radius-identity dbname=ucp sslmode=verify-full application_name='it\'s password='`, AuthMode: PostgreSQLAuthAzure},
+			options:     PostgreSQLOptions{URL: `host=pg.example.com user=radius-identity dbname=ucp sslmode=verify-full application_name='it\'s password='`, AuthMode: PostgreSQLAuthAzure},
 			expectToken: true,
 		},
 		{
 			name:        "azure mode accepts escaped password text in an unquoted keyword value",
-			options:     PostgreSQLOptions{URL: `host=example.postgres.database.azure.com user=radius-identity dbname=ucp sslmode=verify-full application_name=a\ password=`, AuthMode: PostgreSQLAuthAzure},
+			options:     PostgreSQLOptions{URL: `host=pg.example.com user=radius-identity dbname=ucp sslmode=verify-full application_name=a\ password=`, AuthMode: PostgreSQLAuthAzure},
 			expectToken: true,
 		},
 		{
 			name:        "azure mode accepts password text inside another keyword value",
-			options:     PostgreSQLOptions{URL: "host=example.postgres.database.azure.com user=radius-identity dbname=ucp sslmode=verify-full application_name='my password=none'", AuthMode: PostgreSQLAuthAzure},
+			options:     PostgreSQLOptions{URL: "host=pg.example.com user=radius-identity dbname=ucp sslmode=verify-full application_name='my password=none'", AuthMode: PostgreSQLAuthAzure},
 			expectToken: true,
 		},
 		{
 			name:        "azure mode rejects a password from a service file",
-			options:     PostgreSQLOptions{URL: "postgresql://radius-identity@example.postgres.database.azure.com:5432/ucp?sslmode=verify-full&service=radius", AuthMode: PostgreSQLAuthAzure},
+			options:     PostgreSQLOptions{URL: "postgresql://radius-identity@pg.example.com:5432/ucp?sslmode=verify-full&service=radius", AuthMode: PostgreSQLAuthAzure},
 			serviceFile: "[radius]\npassword=s3cret\n",
 			expectErr:   "PGSERVICEFILE",
 		},
@@ -314,22 +314,22 @@ func Test_newPostgreSQLPoolConfig(t *testing.T) {
 		{
 			name:      "azure mode rejects a matching password file entry",
 			options:   PostgreSQLOptions{URL: verifiedURL, AuthMode: PostgreSQLAuthAzure},
-			passfile:  "example.postgres.database.azure.com:5432:ucp:radius-identity:s3cret\n",
+			passfile:  "pg.example.com:5432:ucp:radius-identity:s3cret\n",
 			expectErr: "PGPASSFILE",
 		},
 		{
 			name:      "azure mode rejects sslmode=require",
-			options:   PostgreSQLOptions{URL: "postgresql://ucp@example.postgres.database.azure.com:5432/ucp?sslmode=require", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "postgresql://ucp@pg.example.com:5432/ucp?sslmode=require", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "requires TLS with certificate and hostname verification",
 		},
 		{
 			name:      "azure mode rejects sslmode=verify-ca",
-			options:   PostgreSQLOptions{URL: "postgresql://ucp@example.postgres.database.azure.com:5432/ucp?sslmode=verify-ca", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "postgresql://ucp@pg.example.com:5432/ucp?sslmode=verify-ca", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "requires TLS with certificate and hostname verification",
 		},
 		{
 			name:      "azure mode rejects a plaintext fallback",
-			options:   PostgreSQLOptions{URL: "postgresql://ucp@example.postgres.database.azure.com:5432/ucp?sslmode=prefer", AuthMode: PostgreSQLAuthAzure},
+			options:   PostgreSQLOptions{URL: "postgresql://ucp@pg.example.com:5432/ucp?sslmode=prefer", AuthMode: PostgreSQLAuthAzure},
 			expectErr: "requires TLS with certificate and hostname verification",
 		},
 		{
@@ -427,12 +427,12 @@ func Test_newPostgreSQLPoolConfig_TokenTimeout(t *testing.T) {
 	}{
 		{
 			name:   "connect_timeout bounds the token request",
-			url:    "postgresql://radius-identity@example.postgres.database.azure.com:5432/ucp?sslmode=verify-full&connect_timeout=5",
+			url:    "postgresql://radius-identity@pg.example.com:5432/ucp?sslmode=verify-full&connect_timeout=5",
 			expect: 5 * time.Second,
 		},
 		{
 			name:   "default when connect_timeout is unset",
-			url:    "postgresql://radius-identity@example.postgres.database.azure.com:5432/ucp?sslmode=verify-full",
+			url:    "postgresql://radius-identity@pg.example.com:5432/ucp?sslmode=verify-full",
 			expect: defaultAzureTokenTimeout,
 		},
 	}
