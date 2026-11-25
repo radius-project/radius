@@ -266,7 +266,18 @@ func deployedAuthzMode(history []*releasev1.Release) (authz.Mode, error) {
 // the Helm-generated Secret ucp-cert of authorization off whatever they say. A manifest has the same kind of ucp-cert
 // as a rollback to rel renders, because the chart selects it from values alone, so the kind decides between on and
 // off, as servingAuthzMode describes.
+//
+// It reads the kind before the values: a chart that ignores the values may have stored a combination that a chart
+// implementing them rejects, such as global.rbac.enabled and global.rbac.dryRun both true, and its Secret ucp-cert
+// still decides that it serves with authorization off.
 func servedAuthzMode(rel *releasev1.Release) (authz.Mode, error) {
+	kind, err := ucpServingCertificateKind(rel.Manifest)
+	if err != nil {
+		return "", fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
+	}
+	if kind == "Secret" {
+		return authz.ModeOff, nil
+	}
 	var chartDefaults map[string]any
 	if rel.Chart != nil {
 		chartDefaults = rel.Chart.Values
@@ -274,10 +285,6 @@ func servedAuthzMode(rel *releasev1.Release) (authz.Mode, error) {
 	mode, err := resolveAuthzMode(chartDefaults, rel.Config, nil)
 	if err != nil {
 		return "", err
-	}
-	kind, err := ucpServingCertificateKind(rel.Manifest)
-	if err != nil {
-		return "", fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
 	}
 	return servingAuthzMode(kind, mode), nil
 }

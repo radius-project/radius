@@ -300,6 +300,11 @@ func Test_deployedAuthzMode(t *testing.T) {
 			want:    "",
 		},
 		{name: "chart that ignores its authorization values", history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, enforce, secret)}, want: authz.ModeOff},
+		{
+			name:    "chart that ignores conflicting authorization values",
+			history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "dryRun": true}}}, secret)},
+			want:    authz.ModeOff,
+		},
 		// The manifest decides between on and off; a chart that renders the Certificate serves authorization on.
 		{name: "Certificate with authorization off in values", history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, map[string]any{}, certificate)}, want: authz.ModeEnforce},
 		{

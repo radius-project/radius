@@ -1677,6 +1677,30 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		require.Empty(t, c.clusterWrites()[writes:], "rad must not stage or wait for radius-apiserver-ca for a chart that does not implement authorization")
 		c.requireOffTrust(t)
 	})
+
+	// Such a chart also stores values that a chart implementing authorization rejects, such as global.rbac.enabled and
+	// global.rbac.dryRun both true. Its Secret ucp-cert still decides that it serves authorization off, so Helm runs.
+	t.Run("revision whose chart ignores conflicting authorization values", func(t *testing.T) {
+		expireUCPAPIServiceWait(t)
+		c := newStageCluster(t, nil, true)
+		c.onUCP(t)
+		c.helmAppliesOff(t, nil, nil)
+		require.NoError(t, c.impl(&MockHelmClient{}).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+		writes := len(c.clusterWrites())
+		conflicting := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "dryRun": true}}}
+
+		m := NewMockHelmClient(gomock.NewController(t))
+		m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
+			{Version: 1, Config: conflicting, Manifest: offManifest, Chart: offChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 2, Config: conflicting, Manifest: offManifest, Chart: offChart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+		}, nil)
+		m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
+		m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil)
+
+		require.NoError(t, c.impl(m).RollbackRadiusToRevision(t.Context(), "test-context", 1))
+		require.Empty(t, c.clusterWrites()[writes:])
+		c.requireOffTrust(t)
+	})
 }
 
 // A chart before radius-apiserver-ca, such as v0.62.0, accepts the values of authorization on but serves UCP from the
