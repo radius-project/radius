@@ -18,9 +18,12 @@ package helm
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
 	"time"
 
@@ -63,16 +66,39 @@ var (
 // workloads, and with authorization on the APIService trusts UCP only after cert-manager issues
 // radius-apiserver-ca and its cainjector copies the CA into the APIService. With authorization off, the chart sets
 // the CA bundle itself, and this only removes the trust that authorization on left, as
-// ReconcileUCPOffAPIServerTrust describes. declared holds the objects of the applied release, as manifestObjects
-// returns them, which that cleanup keeps. fresh reports that the release is at its first revision.
-func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode, declared manifestObjectSet, fresh bool) error {
+// ReconcileUCPOffAPIServerTrust describes. The applied manifest identifies declared objects
+// for cleanup and supplies the intended BYO trust. fresh reports a first install.
+func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode, applied *releasev1.Release, fresh bool) error {
+	var declared manifestObjectSet
+	if applied != nil {
+		var err error
+		declared, err = manifestObjects(applied.Manifest)
+		if err != nil {
+			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
+		}
+	}
 	if mode == authz.ModeOff {
 		return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared, fresh)
+	}
+	// A BYO chart owns its public injection source. Do not reconcile it to a self-signed signer.
+	if declared[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && !declared[manifestObjectKey("cert-manager.io", "Certificate", ucpAPIServerCASecretName)] {
+		source, err := renderedSecret(applied.Manifest, ucpAPIServerTrustSecretName)
+		if err != nil {
+			return fmt.Errorf("read applied BYO trust source: %w", err)
+		}
+		if source == nil || (source.Namespace != "" && source.Namespace != radiusNamespace) {
+			return fmt.Errorf("missing applied BYO trust source in %s", radiusNamespace)
+		}
+		selected, err := parseCertificateBundlePEM(source.Data[caCertificateKey])
+		if err != nil {
+			return fmt.Errorf("invalid applied BYO trust source: %w", err)
+		}
+		return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace, selected)
 	}
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace, fresh); err != nil {
 		return err
 	}
-	return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace)
+	return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace, nil)
 }
 
 // waitForAppliedUCPAPIService waits for the UCP APIService after Helm applied rel, in the mode in which rel serves UCP's
@@ -83,16 +109,12 @@ func (i *Impl) waitForAppliedUCPAPIService(ctx context.Context, kubeContext, rad
 	if err != nil {
 		return err
 	}
-	declared, err := manifestObjects(rel.Manifest)
-	if err != nil {
-		return fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
-	}
-	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared, false)
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, rel, false)
 }
 
 // waitForAvailableUCPAPIService waits until the UCP APIService has a CA bundle and the API server reports it
 // Available.
-func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string) error {
+func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, selected []*x509.Certificate) error {
 	client, err := i.certManagerDynamicClient(kubeContext)
 	if err != nil {
 		return err
@@ -100,7 +122,7 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 
 	output.LogInfo("Waiting for the Kubernetes API server to trust and reach UCP...")
 	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
-		return ucpAPIServiceProblem(ctx, client)
+		return ucpAPIServiceProblem(ctx, client, radiusNamespace, selected)
 	})
 	if err == nil {
 		return nil
@@ -125,18 +147,14 @@ func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, kubeContext, r
 	if err != nil {
 		return err
 	}
-	var declared manifestObjectSet
 	if applied != nil {
 		kind, err := ucpServingCertificateKind(applied.Manifest)
 		if err != nil {
 			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
 		}
 		mode = servingAuthzMode(kind, mode)
-		if declared, err = manifestObjects(applied.Manifest); err != nil {
-			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
-		}
 	}
-	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared, applied != nil && applied.Version == 1)
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, applied, applied != nil && applied.Version == 1)
 }
 
 // servingAuthzMode returns the mode in which a manifest whose ucp-cert has kind, as ucpServingCertificateKind returns
@@ -175,7 +193,69 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 		}
 		return deployedAuthzMode(history)
 	}
+	values := resolveEffectiveChartValues(chartDefaults, storedValues, userValues)
+	if mode != authz.ModeOff && byoCertificateMode(values) != "" {
+		var latest *releasev1.Release
+		if upgrade {
+			history, err := i.radiusReleaseHistory(helmConf, options.Radius.ReleaseName)
+			if err != nil {
+				return err
+			}
+			latest = latestRevision(history)
+		}
+		if err := checkSteadyBYOCertificates(latest, values); err != nil {
+			return err
+		}
+		return checkRenderedBYO(ctx, render)
+	}
 	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, deployed, mode, render)
+}
+
+func byoCertificateMode(values map[string]any) string {
+	m, _ := nestedValue(values, "global", "rbac", "certificates", "mode").(string)
+	if m == "caSecret" || m == "issuerRef" {
+		return m
+	}
+	return ""
+}
+
+// checkRenderedBYO checks the action-specific server render, not an offline install of the chart.
+func checkRenderedBYO(ctx context.Context, render renderRadiusManifest) error {
+	manifest, ok, err := render(ctx)
+	if err != nil || !ok {
+		return err
+	}
+	kind, err := ucpServingCertificateKind(manifest)
+	if err != nil {
+		return err
+	}
+	objects, err := manifestObjects(manifest)
+	if err != nil {
+		return err
+	}
+	if kind != "Certificate" || !objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] || objects[manifestObjectKey("cert-manager.io", "Certificate", ucpAPIServerCASecretName)] {
+		return fmt.Errorf("selected chart does not render BYO UCP serving and public aggregation trust; use the certificate lifecycle")
+	}
+	return nil
+}
+
+// Self-signed staging cannot prepare a BYO signer or replace its public trust pin.
+func checkSteadyBYOCertificates(latest *releasev1.Release, target map[string]any) error {
+	if latest != nil && latest.Chart != nil && latest.Info != nil && latest.Info.Status == releasecommon.StatusDeployed {
+		mode, err := servedAuthzMode(latest)
+		if err != nil {
+			return err
+		}
+		previous := resolveEffectiveChartValues(latest.Chart.Values, nil, latest.Config)
+		objects, err := manifestObjects(latest.Manifest)
+		if err != nil {
+			return err
+		}
+		if mode != authz.ModeOff && objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && reflect.DeepEqual(nestedValue(previous, "global", "rbac", "certificates"), nestedValue(target, "global", "rbac", "certificates")) {
+			return nil
+		}
+	}
+	return fmt.Errorf("selecting global.rbac.certificates.mode=%s requires the certificate lifecycle to stage the selected issuer and public trust; Helm has not changed Radius", byoCertificateMode(target))
 }
 
 // radiusReleaseHistory returns the history of release releaseName, or none when the release does not exist.
@@ -250,8 +330,18 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 		mode = servingAuthzMode(kind, mode)
 	}
 	if mode != authz.ModeOff {
+		values := resolveEffectiveChartValues(target.Chart.Values, nil, target.Config)
+		byo := byoCertificateMode(values) != ""
+		if byo {
+			if err := checkSteadyBYOCertificates(latestRevision(history), values); err != nil {
+				return err
+			}
+		}
 		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
 			return err
+		}
+		if byo {
+			return checkRenderedBYO(ctx, i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision))
 		}
 	}
 	deployed := func() (authz.Mode, error) { return deployedAuthzMode(history) }
@@ -365,7 +455,7 @@ const ucpAPIServiceNoCABundle = "it has no CA bundle"
 
 // ucpAPIServiceProblem describes why the UCP APIService is not usable yet, or returns "" when it has a CA bundle and
 // is Available.
-func ucpAPIServiceProblem(ctx context.Context, client dynamic.Interface) (string, error) {
+func ucpAPIServiceProblem(ctx context.Context, client dynamic.Interface, namespace string, selected []*x509.Certificate) (string, error) {
 	apiService, err := client.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return "it does not exist", nil
@@ -373,7 +463,33 @@ func ucpAPIServiceProblem(ctx context.Context, client dynamic.Interface) (string
 	if err != nil {
 		return "", err
 	}
-	if caBundle, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle"); caBundle == "" {
+	caBundle, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	if selected != nil {
+		if problem := foreignUCPAPIServiceProblem(apiService, namespace, radiusReleaseName); problem != "" {
+			return problem, nil
+		}
+		name, _, _ := unstructured.NestedString(apiService.Object, "spec", "service", "name")
+		port, found, err := unstructured.NestedInt64(apiService.Object, "spec", "service", "port")
+		if name != "ucp" || err != nil || (found && port != 443) {
+			return "it does not route to the UCP Service on its aggregation port", nil
+		}
+		a := apiService.GetAnnotations()
+		if a[injectCAFromSecretAnnotation] != ucpAPIServerTrustSource(namespace) || a["cert-manager.io/inject-ca-from"] != "" || a["cert-manager.io/inject-apiserver-ca"] == "true" {
+			return "its injection source is not exclusively the selected BYO trust Secret", nil
+		}
+		skip, _, err := unstructured.NestedBool(apiService.Object, "spec", "insecureSkipTLSVerify")
+		if skip || err != nil {
+			return "it does not verify UCP against the selected CA", nil
+		}
+		data, err := base64.StdEncoding.DecodeString(caBundle)
+		if err != nil {
+			return "its CA bundle is not valid base64", nil
+		}
+		live, err := parseCertificateBundlePEM(data)
+		if err != nil || !containsCertificates(live, selected) || !containsCertificates(selected, live) {
+			return "its CA bundle does not match the selected CA", nil
+		}
+	} else if caBundle == "" {
 		return ucpAPIServiceNoCABundle, nil
 	}
 

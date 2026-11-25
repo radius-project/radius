@@ -39,7 +39,7 @@ func TestDatabasePasswordAcrossEngineRollout(t *testing.T) {
 	configuration := helmTestConfiguration(t, kubeconfig, namespace)
 	chart := loadStageTestChart(t)
 	chart.Templates = slices.DeleteFunc(chart.Templates, func(file *common.File) bool {
-		return file.Name != "templates/_helpers.tpl" && file.Name != "templates/database/configmaps.yaml" &&
+		return file.Name != "templates/_helpers.tpl" && file.Name != "templates/_certificates.tpl" && file.Name != "templates/database/configmaps.yaml" &&
 			file.Name != "templates/ucp/deployment.yaml"
 	})
 	rad := NewHelmClient()

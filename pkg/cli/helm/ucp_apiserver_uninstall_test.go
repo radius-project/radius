@@ -559,7 +559,7 @@ func Test_RadiusUninstallLeftovers_KeepsReferencedTrustSecret(t *testing.T) {
 	trust := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "uid-trust", ResourceVersion: "1",
 			Annotations: trustSecretAnnotations()},
-		Data: map[string][]byte{caCertificateKey: []byte("ca")},
+		Data: map[string][]byte{caCertificateKey: newTestCA(t, "ucp-ca").pem},
 	}
 	kubeClient := kubefake.NewSimpleClientset(trust)
 	impl := trustImpl(kubeClient, fakeCertManagerDynamicClient(nil))

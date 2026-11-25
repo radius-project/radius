@@ -164,16 +164,7 @@ require exactly one SAN, a URI SAN with the receiver's SPIFFE ID, instead of
 matching DNS names; a certificate with any DNS, IP, email, or other SAN is
 rejected. Only after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-UCP, Applications RP, Dynamic RP, and the controller project only `ca.crt`
-from the `radius-ca` Secret (never
-`tls.key`) to `/var/run/radius/ca`; the server certificate volume projects no
-`ca.crt`. Servers chain their certificate to it and clients verify servers
-against it. The `radius-ca` CA signs only these SPIFFE server certificates; in
-the `selfSigned` certificate mode (the only one supported today), UCP's
-aggregated API certificate comes from the separate `radius-apiserver-ca`, which
-Radius components do not trust. Only the Kubernetes API server trusts that CA:
-cert-manager's cainjector copies `ca.crt` of the `radius-apiserver-ca` Secret
-into the APIService `caBundle` and follows its renewals.
+UCP, Applications RP, Dynamic RP, and the controller project only public `ca.crt` to `/var/run/radius/ca`. In `selfSigned` mode, it comes from the `radius-ca` Secret. UCP's aggregated API uses a separate `radius-apiserver-ca` Secret, whose `ca.crt` cainjector copies to the APIService. In `caSecret` and `issuerRef` modes, component trust comes from ConfigMap `radius-mtls-ca` and aggregation trust from Secret `radius-apiserver-trust`. Both contain the selected dedicated signing CA, not the organization root. The serving volume contains the receiver's key and certificate, never the CA's key.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client
