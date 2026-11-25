@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" font-family="Helvetica, Arial, sans-serif" font-size="16">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/></marker></defs>
+<rect width="1200" height="560" fill="#ffffff"/>
+<rect x="30" y="40" width="350" height="480" rx="10" ry="10" fill="#f8f9fa" stroke="#868e96" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="46" y="68" font-size="17" font-weight="bold" fill="#495057">GitHub Repo + CI (GitHub Actions)</text>
+<rect x="420" y="40" width="360" height="480" rx="10" ry="10" fill="#f8f9fa" stroke="#868e96" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="436" y="68" font-size="17" font-weight="bold" fill="#495057">argocd namespace (Plain Argo CD)</text>
+<rect x="820" y="40" width="350" height="480" rx="10" ry="10" fill="#f8f9fa" stroke="#868e96" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="836" y="68" font-size="17" font-weight="bold" fill="#495057">radius-system (Radius owns)</text>
+<rect x="60" y="95" width="290" height="85" rx="10" ry="10" fill="#fff9db" stroke="#1e1e1e" stroke-width="2"/>
+<text x="205.0" y="131.5" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">Git (source)</text>
+<text x="205.0" y="153.5" text-anchor="middle" font-size="15" fill="#495057">app.bicep, app.bicepparam</text>
+<rect x="60" y="235" width="290" height="95" rx="10" ry="10" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text x="205.0" y="265.5" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">CI workflow</text>
+<text x="205.0" y="287.5" text-anchor="middle" font-size="15" fill="#495057">rad bicep</text>
+<text x="205.0" y="309.5" text-anchor="middle" font-size="15" fill="#495057">generate-kubernetes-manifest</text>
+<rect x="60" y="385" width="290" height="95" rx="10" ry="10" fill="#fff9db" stroke="#1e1e1e" stroke-width="2"/>
+<text x="205.0" y="415.5" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">Git (generated YAML)</text>
+<text x="205.0" y="437.5" text-anchor="middle" font-size="15" fill="#495057">generated/app.yaml</text>
+<text x="205.0" y="459.5" text-anchor="middle" font-size="15" fill="#495057">(DeploymentTemplate)</text>
+<rect x="450" y="110" width="300" height="85" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="600.0" y="135.5" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">repo-server</text>
+<text x="600.0" y="157.5" text-anchor="middle" font-size="15" fill="#495057">Checks out commit,</text>
+<text x="600.0" y="179.5" text-anchor="middle" font-size="15" fill="#495057">reads plain YAML (no plugin)</text>
+<rect x="450" y="255" width="300" height="85" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="600.0" y="291.5" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">application-controller</text>
+<text x="600.0" y="313.5" text-anchor="middle" font-size="15" fill="#495057">Diff, apply, prune, self-heal</text>
+<rect x="450" y="395" width="300" height="80" rx="10" ry="10" fill="#d3f9d8" stroke="#2f9e44" stroke-width="2"/>
+<text x="600.0" y="429.0" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">Radius Lua health checks</text>
+<text x="600.0" y="451.0" text-anchor="middle" font-size="15" fill="#495057">new: read DeploymentTemplate status</text>
+<rect x="850" y="110" width="290" height="85" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="995.0" y="146.5" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">Radius API / UCP</text>
+<text x="995.0" y="168.5" text-anchor="middle" font-size="15" fill="#495057">Recipes → cloud resources</text>
+<rect x="850" y="255" width="290" height="85" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="995.0" y="291.5" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">DeploymentTemplate controller</text>
+<text x="995.0" y="313.5" text-anchor="middle" font-size="15" fill="#495057">Richer status (D4, D6)</text>
+<rect x="850" y="395" width="290" height="80" rx="10" ry="10" fill="#ffffff" stroke="#1e1e1e" stroke-width="2"/>
+<text x="995.0" y="429.0" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e1e1e">DeploymentResource controller</text>
+<text x="995.0" y="451.0" text-anchor="middle" font-size="15" fill="#495057">One per Radius resource</text>
+<polyline points="205,180 205,235" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="142.1" y="197" width="125.8" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="205" y="212" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">on PR / merge</text>
+<polyline points="205,330 205,385" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="146.4" y="347" width="117.19999999999999" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="205" y="362" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">commits YAML</text>
+<polyline points="350,432 450,152" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="371.5" y="265" width="57.0" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="400" y="280" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">fetch</text>
+<polyline points="600,195 600,255" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="554.3" y="215" width="91.39999999999999" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="600" y="230" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">manifests</text>
+<polyline points="750,282 850,282" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="771.5" y="252" width="57.0" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="800" y="267" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">apply</text>
+<polyline points="850,315 750,315" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="767.2" y="318" width="65.6" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="800" y="333" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">status</text>
+<polyline points="600,395 600,340" fill="none" stroke="#1e1e1e" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
+<rect x="567.2" y="357" width="65.6" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="600" y="372" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">health</text>
+<polyline points="995,255 995,195" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="962.2" y="215" width="65.6" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="995" y="230" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">deploy</text>
+<polyline points="995,340 995,395" fill="none" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="970.8" y="357" width="48.4" height="20" fill="#ffffff" opacity="0.92"/>
+<text x="995" y="372" text-anchor="middle" font-size="15" font-style="italic" fill="#1e1e1e">owns</text>
+</svg>
