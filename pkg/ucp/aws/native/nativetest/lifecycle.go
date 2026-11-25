@@ -62,10 +62,18 @@ type Lifecycle struct {
 	// SkipDelete leaves the resource in AWS, for a type whose metadata says delete does nothing in AWS. The recording
 	// then deletes the resource itself.
 	SkipDelete bool
+
+	// settle replaces cleanupSettle, so a test of cleanup doesn't wait a minute.
+	settle time.Duration
 }
 
 // cleanupTimeout bounds the delete a failed recording makes in cleanup, including the wait for AWS to finish it.
 const cleanupTimeout = 10 * time.Minute
+
+// cleanupSettle is how long a failed recording's cleanup keeps finding no resource before it concludes there is none.
+// Some AWS reads lag a create by seconds, such as SNS's list of platform applications, so a resource the create made
+// may not show yet.
+const cleanupSettle = time.Minute
 
 // Run creates the resource, waits for it, and checks Read; updates it when Update is set; then deletes it and waits
 // until AWS no longer has it. It returns the resource's identifier. When recording, a run that fails once the create
@@ -156,7 +164,8 @@ func mayHaveCreated(err error) bool {
 
 // cleanup deletes the resource after a failed recording and waits until AWS no longer has it, or ctx ends. When Run
 // already started a delete, it first waits for that delete, and sends it again, with the same token, only when the
-// resource is still there.
+// resource is still there. A delete that finds no resource is sent again every poll until it has found none for the
+// settle time, because AWS may not show a new resource yet.
 func (l Lifecycle) cleanup(ctx context.Context, identifier string, deleting bool, token string) error {
 	if deleting {
 		err := l.waitDeleted(ctx, identifier)
@@ -164,13 +173,30 @@ func (l Lifecycle) cleanup(ctx context.Context, identifier string, deleting bool
 			return err
 		}
 	}
-	if _, err := l.delete(ctx, identifier, token); err != nil {
-		if errors.Is(err, native.ErrNotFound) {
+	start := time.Now()
+	for {
+		var err error
+		token, err = l.delete(ctx, identifier, token)
+		switch {
+		case err == nil:
+			return l.waitDeleted(ctx, identifier)
+		case !errors.Is(err, native.ErrNotFound):
+			return err
+		case ctx.Err() != nil:
+			return ctx.Err()
+		case time.Since(start) >= l.settleTime():
 			return nil
 		}
-		return err
+		l.Session.Wait(l.poll())
 	}
-	return l.waitDeleted(ctx, identifier)
+}
+
+// settleTime returns how long cleanup keeps finding no resource before it concludes there is none.
+func (l Lifecycle) settleTime() time.Duration {
+	if l.settle == 0 {
+		return cleanupSettle
+	}
+	return l.settle
 }
 
 // waitDeleted reads the delete's progress until AWS no longer has the resource, or ctx ends. A delete AWS reports as
