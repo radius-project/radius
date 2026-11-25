@@ -634,7 +634,8 @@ expect_radius_pin_failure() {
 
     output="$(run_validator 2>&1)" || status=$?
     if [[ "${status}" == 0 || "${output}" != *"${expected}"* ||
-        "${output}" != *"#pin-radius-in-bicep-types-aws"* ]]; then
+        "${output}" != *"set the radius submodule on bicep-types-aws release/0.61 to ${BASE_SHA} (the Radius commit this release ships"* ||
+        "${output}" != *"then rerun Prepare Release. See "*"#pin-radius-in-bicep-types-aws"* ]]; then
         fail_test "expected failure containing '${expected}': ${output}"
         return
     fi
@@ -646,6 +647,14 @@ test_rejects_mismatched_radius_pin() {
 
     pin_aws_radius "${pinned}"
     expect_radius_pin_failure "pins Radius ${pinned}, but this release ships Radius ${BASE_SHA}"
+}
+
+test_names_bicep_types_aws_commit_pinned_as_radius() {
+    local pinned
+
+    pinned="$(sibling_main_commit bicep-types-aws)"
+    pin_aws_radius "${pinned}"
+    expect_radius_pin_failure "pins ${pinned}, which is a bicep-types-aws commit, not a Radius commit"
 }
 
 test_rejects_radius_path_without_submodule() {
@@ -717,6 +726,8 @@ main() {
     test_notes_missing_radius_pin
     setup_repo
     test_rejects_mismatched_radius_pin
+    setup_repo
+    test_names_bicep_types_aws_commit_pinned_as_radius
     setup_repo
     test_rejects_radius_path_without_submodule
     setup_repo

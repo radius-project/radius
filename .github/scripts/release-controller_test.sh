@@ -471,6 +471,7 @@ run_radius_pin_step() {
         cd "${root}" &&
             GITHUB_WORKSPACE="${ROOT}" RUNNER_TEMP="${root}" \
                 BICEP_TYPES_AWS_COMMIT="$(git -C "${checkout}" rev-parse HEAD)" \
+                RELEASE_BRANCH="release/0.63" \
                 bash -euo pipefail -c "${script}" 2>&1
     ) || status=$?
     rm -rf "${root}"
@@ -504,7 +505,10 @@ test_controller_checks_radius_pin() {
         "\"steps.plan.outputs.ready == 'true'\"" \
         "the Radius pin check must run whenever the controller can mutate"
     if output="$(run_radius_pin_step "${other}")" ||
-        [[ "${output}" != *"pins Radius ${other}, but this release ships Radius ${matching}"* ]]; then
+        [[ "${output}" != *"pins Radius ${other}, but this release ships Radius ${matching}"* ||
+            "${output}" != *"merged plan can't change"*"#break-glass-recovery"* ||
+            "${output}" != *"pin bicep-types-aws release/0.63 to the Radius commit that preparation ships"* ||
+            "${output}" == *"rerun Prepare Release"* ]]; then
         fail_test "a mismatched bicep-types-aws Radius pin must stop the controller before approval: ${output}"
     else
         ((++PASS))

@@ -178,7 +178,8 @@ verify_planned_siblings() {
         if [[ "${name}" == "bicep-types-aws" ]]; then
             bash "${SCRIPT_DIR}/verify-bicep-types-aws-radius-pin.sh" \
                 "${scratch}" "${source_commit}" \
-                "$(plan_value '.source.productCommit')" < /dev/null
+                "$(plan_value '.source.productCommit')" \
+                "release/${channel}" plan < /dev/null
         fi
     done < <(jq -r '.[] | [.name, .sourceRef, .sourceCommit] | @tsv' \
         "${planned}")
