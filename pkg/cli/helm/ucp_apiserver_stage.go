@@ -217,7 +217,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	// An inject-ca-from-secret annotation left on radius-apiserver-ca, by an earlier switch to authorization off, makes
 	// a cainjector that replaces the caBundle drop the current CA of UCP as soon as cert-manager issues
 	// radius-apiserver-ca. Point the annotation at the trust Secret before the issuers exist.
-	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), trusted, "the current CA of UCP"); err != nil {
+	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), radiusNamespace, releaseName, trusted, "the current CA of UCP"); err != nil {
 		return err
 	}
 
@@ -252,7 +252,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {
 		return err
 	}
-	return trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), trusted, "both the current CA of UCP and "+ucpAPIServerCASecretName)
+	return trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), radiusNamespace, releaseName, trusted, "both the current CA of UCP and "+ucpAPIServerCASecretName)
 }
 
 // releaseUCPAPIServerTLS returns Secret ucp-apiserver-tls, or nil when it does not exist. It returns an error when the
@@ -435,7 +435,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, overlap); err != nil {
 			return err
 		}
-		if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), overlap,
+		if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), radiusNamespace, releaseName, overlap,
 			"both the current CA of UCP and the CA in Secret "+ucpOffCertificateSecretName); err != nil {
 			return err
 		}
@@ -563,7 +563,7 @@ func apiServiceCACertificates(apiService *unstructured.Unstructured) ([]*x509.Ce
 }
 
 // releaseUCPAPIService returns the UCP APIService when the Radius release releaseName in radiusNamespace owns it and it
-// routes to a Service in radiusNamespace, or nil when it does not exist. The APIService is cluster-scoped, so another
+// routes to Service ucp in radiusNamespace, or nil when it does not exist. The APIService is cluster-scoped, so another
 // Radius release, in another namespace, may own it; rad refuses to change it before Helm in that case rather than
 // redirect the trust of another installation.
 func releaseUCPAPIService(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace, releaseName string) (*unstructured.Unstructured, error) {
@@ -590,34 +590,38 @@ func foreignUCPAPIServiceProblem(apiService *unstructured.Unstructured, radiusNa
 		return fmt.Sprintf("is not part of Helm release %s/%s (it names release %q in namespace %q)",
 			radiusNamespace, releaseName, annotations[helmReleaseNameAnnotation], annotations[helmReleaseNamespaceAnnotation])
 	}
-	if namespace, _, _ := unstructured.NestedString(apiService.Object, "spec", "service", "namespace"); namespace != radiusNamespace {
-		return fmt.Sprintf("routes to a Service in namespace %q rather than %q", namespace, radiusNamespace)
+	namespace, _, _ := unstructured.NestedString(apiService.Object, "spec", "service", "namespace")
+	name, _, _ := unstructured.NestedString(apiService.Object, "spec", "service", "name")
+	if namespace != radiusNamespace || name != "ucp" {
+		return fmt.Sprintf("routes to Service %s/%s rather than %s/%s", namespace, name, radiusNamespace, "ucp")
 	}
 	return ""
 }
 
-// trustUCPAPIServerCAs points the inject-ca-from-secret annotation of the UCP APIService at source and sets its
-// caBundle to cas in one patch, then waits until both have held for ucpAPIServerCASettleChecks polls in a row, patching
-// again if cainjector writes back a caBundle it read earlier. trusts describes cas in the timeout error. uid is the UID
-// of the APIService that releaseUCPAPIService checked: rad stops if the APIService is replaced, and the patch carries
-// the UID so the API server rejects it for a replacement created in between.
-func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, uid types.UID, source string, cas []*x509.Certificate, trusts string) error {
-	patch, err := json.Marshal(map[string]any{
-		"metadata": map[string]any{"uid": uid, "annotations": map[string]any{injectCAFromSecretAnnotation: source}},
-		"spec":     map[string]any{"caBundle": base64.StdEncoding.EncodeToString(encodeCertificates(cas))},
-	})
-	if err != nil {
-		return err
-	}
+// trustUCPAPIServerCAs points the inject-ca-from-secret annotation of the UCP APIService at the radius-apiserver-trust
+// Secret in radiusNamespace and sets its caBundle to cas in one patch, then waits until both have held for
+// ucpAPIServerCASettleChecks polls in a row, patching again if cainjector writes back a caBundle it read earlier. trusts
+// describes cas in the timeout error. uid is the UID of the APIService that releaseUCPAPIService checked. On every
+// read, rad stops if the APIService was replaced, no longer belongs to Helm release releaseName in radiusNamespace, or
+// no longer routes to Service ucp in radiusNamespace. Each patch carries the uid and resourceVersion rad read, so the
+// API server rejects it if the APIService changed in between, and rad reads it again.
+func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, uid types.UID, radiusNamespace, releaseName string, cas []*x509.Certificate, trusts string) error {
+	source := ucpAPIServerTrustSource(radiusNamespace)
+	caBundle := base64.StdEncoding.EncodeToString(encodeCertificates(cas))
+	check := kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml")
 	held := 0
-	err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
+	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
 		apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 		if err != nil {
 			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 		}
 		if apiService.GetUID() != uid {
 			return false, fmt.Errorf("APIService %s was replaced while rad updated its caBundle. Helm has not changed the Radius release; check it with %s, then run the command again",
-				ucpAPIServiceName, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
+				ucpAPIServiceName, check)
+		}
+		if problem := foreignUCPAPIServiceProblem(apiService, radiusNamespace, releaseName); problem != "" {
+			return false, fmt.Errorf("APIService %s %s, so rad stopped updating its caBundle. Helm has not changed the Radius release; "+
+				"check which installation owns it with %s, then run the command again", ucpAPIServiceName, problem, check)
 		}
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		bundle, decodeErr := base64.StdEncoding.DecodeString(encoded)
@@ -626,7 +630,23 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 			return held >= ucpAPIServerCASettleChecks, nil
 		}
 		held = 0
-		if _, err := dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
+		patch, err := json.Marshal(map[string]any{
+			"metadata": map[string]any{
+				"uid":             uid,
+				"resourceVersion": apiService.GetResourceVersion(),
+				"annotations":     map[string]any{injectCAFromSecretAnnotation: source},
+			},
+			"spec": map[string]any{"caBundle": caBundle},
+		})
+		if err != nil {
+			return false, err
+		}
+		_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
+		// The APIService changed since rad read it: read and check it again rather than overwrite that change.
+		if apierrors.IsConflict(err) {
+			return false, nil
+		}
+		if err != nil {
 			return false, fmt.Errorf("failed to update the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 		}
 		return false, nil

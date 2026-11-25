@@ -1705,9 +1705,105 @@ func Test_trustUCPAPIServerCAs_ReplacedAPIService(t *testing.T) {
 	replacement.SetUID("replacement")
 	dynamicClient := ucpAPIServiceDynamicClient(replacement).(*dynamicfake.FakeDynamicClient)
 
-	err := trustUCPAPIServerCAs(t.Context(), "test-context", dynamicClient, "checked", ucpAPIServerTrustSource(RadiusSystemNamespace), []*x509.Certificate{ca.cert}, "ucp-ca")
+	err := trustUCPAPIServerCAs(t.Context(), "test-context", dynamicClient, "checked", RadiusSystemNamespace, "radius", []*x509.Certificate{ca.cert}, "ucp-ca")
 	require.ErrorContains(t, err, "was replaced")
 	for _, action := range dynamicClient.Actions() {
 		require.Equal(t, "get", action.GetVerb())
 	}
+}
+
+// trustUCPAPIServerCAs checks the APIService again on every read: it stops without patching when another release took
+// it over or it routes to another Service, even with the UID rad checked.
+func Test_trustUCPAPIServerCAs_ChangedAPIService(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(*unstructured.Unstructured)
+		want   string
+	}{
+		{
+			name: "ownership",
+			change: func(a *unstructured.Unstructured) {
+				a.SetAnnotations(map[string]string{helmReleaseNameAnnotation: "other", helmReleaseNamespaceAnnotation: "other-namespace"})
+			},
+			want: `is not part of Helm release radius-system/radius (it names release "other" in namespace "other-namespace")`,
+		},
+		{
+			name: "service namespace",
+			change: func(a *unstructured.Unstructured) {
+				require.NoError(t, unstructured.SetNestedField(a.Object, "other-namespace", "spec", "service", "namespace"))
+			},
+			want: "routes to Service other-namespace/ucp rather than radius-system/ucp",
+		},
+		{
+			name: "service name",
+			change: func(a *unstructured.Unstructured) {
+				require.NoError(t, unstructured.SetNestedField(a.Object, "other", "spec", "service", "name"))
+			},
+			want: "routes to Service radius-system/other rather than radius-system/ucp",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			ca := newTestCA(t, "ucp-ca")
+			apiService := ucpAPIService("", "", "")
+			apiService.SetUID("checked")
+			tt.change(apiService)
+			dynamicClient := ucpAPIServiceDynamicClient(apiService).(*dynamicfake.FakeDynamicClient)
+
+			err := trustUCPAPIServerCAs(t.Context(), "test-context", dynamicClient, "checked", RadiusSystemNamespace, "radius", []*x509.Certificate{ca.cert}, "ucp-ca")
+			require.ErrorContains(t, err, tt.want)
+			for _, action := range dynamicClient.Actions() {
+				require.Equal(t, "get", action.GetVerb())
+			}
+		})
+	}
+}
+
+// Each patch of trustUCPAPIServerCAs carries the resourceVersion rad read. When the APIService changed in between, the
+// API server rejects the patch, and rad reads the APIService again and checks it before it patches again.
+func Test_trustUCPAPIServerCAs_PatchCarriesResourceVersion(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	ca := newTestCA(t, "ucp-ca")
+	apiService := ucpAPIService("", "", "")
+	apiService.SetUID("checked")
+	apiService.SetResourceVersion("1")
+	dynamicClient := ucpAPIServiceDynamicClient(apiService).(*dynamicfake.FakeDynamicClient)
+	// Another writer repoints the APIService after rad's first read; the fake client does not enforce resourceVersion,
+	// so emulate the API server.
+	patches := 0
+	dynamicClient.PrependReactor("patch", "apiservices", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		patches++
+		var patch struct {
+			Metadata struct {
+				ResourceVersion string `json:"resourceVersion"`
+			} `json:"metadata"`
+		}
+		require.NoError(t, json.Unmarshal(action.(clienttesting.PatchAction).GetPatch(), &patch))
+		live, err := dynamicClient.Tracker().Get(apiServicesResource, "", ucpAPIServiceName)
+		require.NoError(t, err)
+		if rv := patch.Metadata.ResourceVersion; rv != "" && rv != live.(*unstructured.Unstructured).GetResourceVersion() {
+			return true, nil, apierrors.NewConflict(schema.GroupResource{Group: "apiregistration.k8s.io", Resource: "apiservices"}, ucpAPIServiceName, errors.New("changed"))
+		}
+		return false, nil, nil
+	})
+	reads := 0
+	dynamicClient.PrependReactor("get", "apiservices", func(clienttesting.Action) (bool, runtime.Object, error) {
+		if reads++; reads == 1 {
+			moved := apiService.DeepCopy()
+			moved.SetResourceVersion("2")
+			require.NoError(t, unstructured.SetNestedField(moved.Object, "other-namespace", "spec", "service", "namespace"))
+			require.NoError(t, dynamicClient.Tracker().Update(apiServicesResource, moved, ""))
+			return true, apiService.DeepCopy(), nil
+		}
+		return false, nil, nil
+	})
+
+	err := trustUCPAPIServerCAs(t.Context(), "test-context", dynamicClient, "checked", RadiusSystemNamespace, "radius", []*x509.Certificate{ca.cert}, "ucp-ca")
+	require.ErrorContains(t, err, "routes to Service other-namespace/ucp rather than radius-system/ucp")
+	require.Equal(t, 1, patches, "the API server must reject the one patch rad sent with the old resourceVersion")
+	live, err := dynamicClient.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	_, found, _ := unstructured.NestedString(live.Object, "spec", "caBundle")
+	require.False(t, found, "rad must not overwrite the changed APIService")
 }
