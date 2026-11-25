@@ -18,11 +18,36 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/fluxcd/pkg/apis/meta"
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 )
+
+func TestGitRepositoryRevisionChangePredicate_SourceState(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name   string
+		change func(*sourcev1.GitRepository)
+	}{
+		{"generation", func(s *sourcev1.GitRepository) { s.Generation++ }},
+		{"recreated", func(s *sourcev1.GitRepository) { s.UID = "replacement" }},
+		{"suspended", func(s *sourcev1.GitRepository) { s.Spec.Suspend = true }},
+		{"observed generation", func(s *sourcev1.GitRepository) { s.Status.ObservedGeneration++ }},
+		{"ready condition", func(s *sourcev1.GitRepository) { s.Status.Conditions[0].Status = metav1.ConditionFalse }},
+		{"digest", func(s *sourcev1.GitRepository) { s.Status.Artifact.Digest = "sha256:changed" }},
+		{"artifact removed", func(s *sourcev1.GitRepository) { s.Status.Artifact = nil }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			before := readyFluxSource()
+			after := before.DeepCopy()
+			tt.change(after)
+			predicate := GitRepositoryRevisionChangePredicate{}
+			assert.True(t, predicate.Update(event.UpdateEvent{ObjectOld: before, ObjectNew: after}))
+		})
+	}
+}
 
 func TestGitRepositoryRevisionChangePredicate_Create(t *testing.T) {
 	predicate := GitRepositoryRevisionChangePredicate{}

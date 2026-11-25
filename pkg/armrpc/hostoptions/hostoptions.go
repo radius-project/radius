@@ -123,6 +123,9 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load yaml: %w", err)
 	}
+	if err := conf.Controller.Flux.Validate(); err != nil {
+		return nil, err
+	}
 
 	return conf, nil
 }
