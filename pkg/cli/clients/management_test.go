@@ -867,7 +867,7 @@ func Test_Resource(t *testing.T) {
 
 		deleted, err := client.DeleteResource(t.Context(), testResourceType, testResourceID, false)
 		require.NoError(t, err)
-		require.True(t, deleted)
+		require.True(t, deleted.Deleted)
 	})
 
 	t.Run("Radius.Core resources use specific API version", func(t *testing.T) {
@@ -914,62 +914,6 @@ func Test_Resource(t *testing.T) {
 		// This indirectly tests that getGenericClient handles Radius.Core resources correctly
 		_, err := client.GetResource(t.Context(), "Radius.Core/environments", "test-env")
 		require.NoError(t, err)
-	})
-}
-
-func Test_ForceDeletePolicy(t *testing.T) {
-	t.Run("adds force=true query parameter to DELETE requests", func(t *testing.T) {
-		p := &forceDeletePolicy{}
-
-		// Create a minimal pipeline with a transport that captures the request URL.
-		var capturedURL string
-		pipeline := runtime.NewPipeline("test", "v1.0.0", runtime.PipelineOptions{
-			PerCall: []policy.Policy{p},
-		}, &policy.ClientOptions{
-			Transport: &mockTransport{
-				do: func(req *http.Request) (*http.Response, error) {
-					capturedURL = req.URL.String()
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       http.NoBody,
-					}, nil
-				},
-			},
-		})
-
-		req, err := runtime.NewRequest(t.Context(), http.MethodDelete, "http://localhost/test?api-version=2023-10-01-preview")
-		require.NoError(t, err)
-
-		_, err = pipeline.Do(req)
-		require.NoError(t, err)
-		require.Contains(t, capturedURL, "force=true")
-		require.Contains(t, capturedURL, "api-version=2023-10-01-preview")
-	})
-
-	t.Run("skips non-DELETE requests", func(t *testing.T) {
-		p := &forceDeletePolicy{}
-
-		var capturedURL string
-		pipeline := runtime.NewPipeline("test", "v1.0.0", runtime.PipelineOptions{
-			PerCall: []policy.Policy{p},
-		}, &policy.ClientOptions{
-			Transport: &mockTransport{
-				do: func(req *http.Request) (*http.Response, error) {
-					capturedURL = req.URL.String()
-					return &http.Response{
-						StatusCode: http.StatusOK,
-						Body:       http.NoBody,
-					}, nil
-				},
-			},
-		})
-
-		req, err := runtime.NewRequest(t.Context(), http.MethodGet, "http://localhost/test?api-version=2023-10-01-preview")
-		require.NoError(t, err)
-
-		_, err = pipeline.Do(req)
-		require.NoError(t, err)
-		require.NotContains(t, capturedURL, "force=true")
 	})
 }
 
@@ -1331,6 +1275,90 @@ func Test_DeleteResource_ForceQueryParameter(t *testing.T) {
 			} else {
 				require.False(t, foundForce, "did not expect force=true in request URL, got URLs: %v", capturedURLs)
 			}
+		})
+	}
+}
+
+func Test_DeleteResource_ReportsSkippedRecipeDeployments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		finalStatus string
+		deleted     bool
+		skipped     []string
+	}{
+		{
+			name:        "forced delete that skipped recipe deployments",
+			finalStatus: `{"status":"Succeeded","properties":{"skippedRecipeDeployments":["deployment-1","deployment-2"]}}`,
+			deleted:     true,
+			skipped:     []string{"deployment-1", "deployment-2"},
+		},
+		{
+			name:        "delete without skipped recipe deployments",
+			finalStatus: `{"status":"Succeeded"}`,
+			deleted:     true,
+		},
+		{
+			name:    "resource not found",
+			deleted: false,
+		},
+		{
+			name:        "synchronous delete without a body",
+			finalStatus: "sync",
+			deleted:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			transport := &mockTransport{
+				do: func(req *http.Request) (*http.Response, error) {
+					header := http.Header{}
+					header.Set("Content-Type", "application/json")
+					if req.Method == http.MethodDelete {
+						if !tt.deleted {
+							return &http.Response{StatusCode: http.StatusNoContent, Header: header, Body: http.NoBody, Request: req}, nil
+						}
+						if tt.finalStatus == "sync" {
+							return &http.Response{StatusCode: http.StatusOK, Header: header, Body: http.NoBody, Request: req}, nil
+						}
+						statusURL := *req.URL
+						statusURL.Path = "/operationStatuses/operation"
+						statusURL.RawQuery = ""
+						header.Set("Azure-AsyncOperation", statusURL.String())
+						return &http.Response{StatusCode: http.StatusAccepted, Header: header, Body: http.NoBody, Request: req}, nil
+					}
+					require.Equal(t, "/operationStatuses/operation", req.URL.Path)
+					return &http.Response{StatusCode: http.StatusOK, Header: header, Body: io.NopCloser(strings.NewReader(tt.finalStatus)), Request: req}, nil
+				},
+			}
+
+			ctrl := gomock.NewController(t)
+			rpClient := NewMockresourceProviderClient(ctrl)
+			rpClient.EXPECT().
+				GetProviderSummary(gomock.Any(), "local", "Applications.Test", gomock.Any()).
+				Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{
+					Name: new("Applications.Test"),
+					ResourceTypes: map[string]*ucp.ResourceProviderSummaryResourceType{
+						"testResource": {APIVersions: map[string]*ucp.ResourceTypeSummaryResultAPIVersion{version: {}}},
+					},
+				}, nil)
+
+			client := &UCPApplicationsManagementClient{
+				RootScope:     testScope,
+				ClientOptions: &arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}},
+				resourceProviderClientFactory: func() (resourceProviderClient, error) {
+					return rpClient, nil
+				},
+			}
+
+			result, err := client.DeleteResource(t.Context(), "Applications.Test/testResource", testScope+"/providers/Applications.Test/testResource/myresource", true)
+			require.NoError(t, err)
+			require.Equal(t, tt.deleted, result.Deleted)
+			require.Equal(t, tt.skipped, result.SkippedRecipeDeployments)
 		})
 	}
 }

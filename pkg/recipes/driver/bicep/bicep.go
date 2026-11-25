@@ -178,11 +178,28 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		logger.Info("using Azure provider", "deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope)
 	}
 
+	// Earlier failed deployments may have left their inventory pending. Recover what can be read now so garbage
+	// collection and failure handling cover those resources too.
+	pending := d.recoverPendingDeployments(ctx, opts.PendingDeployments)
+	prevState := slices.Clone(opts.PrevState)
+	for _, id := range pending.resources {
+		if !slices.Contains(prevState, id) {
+			prevState = append(prevState, id)
+		}
+	}
+
 	var knownOutput *recipes.RecipeOutput
 	var completedDeployment *clients.ClientCreateOrUpdateResponse
 	submissionRejected := false
 	defer func() {
-		if err == nil || submissionRejected {
+		if err == nil {
+			return
+		}
+		if submissionRejected {
+			// The new deployment created nothing, but inventory recovered from earlier deployments must still be kept.
+			if len(pending.recovered) > 0 {
+				output = &recipes.RecipeOutput{Resources: slices.Clone(pending.resources), ResolvedPendingDeployments: pending.recovered}
+			}
 			return
 		}
 		// Successful deployment outputs remain valid when only old-resource cleanup fails.
@@ -190,10 +207,15 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 			return
 		}
 
-		output = &recipes.RecipeOutput{PendingDeploymentID: deploymentID.String()}
+		output = &recipes.RecipeOutput{PendingDeploymentID: deploymentID.String(), ResolvedPendingDeployments: pending.recovered}
 		if knownOutput != nil {
 			output.Resources = slices.Clone(knownOutput.Resources)
 			output.ProviderResourceIDs = knownOutput.ProviderResourceIDs
+		}
+		for _, id := range pending.resources {
+			if !slices.Contains(output.Resources, id) {
+				output.Resources = append(output.Resources, id)
+			}
 		}
 		var ids []string
 		var inventoryErr error
@@ -269,6 +291,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 
 	d.addAWSProviderResourceIDs(ctx, recipeResponse)
+	// The deployment succeeded, so recovered pending deployments are covered by garbage collection below, and
+	// unrecoverable ones no longer block deletion.
+	recipeResponse.ResolvedPendingDeployments = append(slices.Clone(pending.recovered), pending.unrecoverable...)
 
 	// containerImages recipes may declare an imageBuild output. Check for it first, then run the
 	// embedded build script and merge the resulting image reference into the recipe output.
@@ -287,10 +312,10 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	// as bicep does not take care of automatically deleting the unused resources.
 	// Identify the output resources that are no longer relevant to the recipe.
 	garbageCollectionStartTime := time.Now()
-	diff, err := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
+	diff, err := d.getGCOutputResources(recipeResponse.Resources, prevState)
 	if err != nil {
 		// Nothing was deleted, so keep tracking every previous resource the new output does not contain.
-		for _, previous := range opts.PrevState {
+		for _, previous := range prevState {
 			if !slices.Contains(recipeResponse.Resources, previous) {
 				recipeResponse.UndeletedResources = append(recipeResponse.UndeletedResources, previous)
 			}
@@ -314,21 +339,81 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	return recipeResponse, nil
 }
 
+// pendingRecovery is the result of reading the inventory of pending deployments before a new deployment.
+type pendingRecovery struct {
+	// resources are the resource IDs recovered from pending deployments.
+	resources []string
+	// recovered lists the pending deployments whose inventory was read.
+	recovered []string
+	// unrecoverable lists the pending deployments whose inventory a retry can't recover.
+	unrecoverable []string
+}
+
+// recoverPendingDeployments reads the inventory of each pending deployment. A deployment that fails for another
+// reason, such as an unreachable deployment engine, stays pending.
+func (d *bicepDriver) recoverPendingDeployments(ctx context.Context, deploymentIDs []string) pendingRecovery {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	result := pendingRecovery{}
+	for _, deploymentID := range deploymentIDs {
+		ids, err := d.deploymentOutputResources(ctx, deploymentID)
+		switch {
+		case err == nil:
+			for _, id := range ids {
+				if !slices.Contains(result.resources, id) {
+					result.resources = append(result.resources, id)
+				}
+			}
+			result.recovered = append(result.recovered, deploymentID)
+		case errors.Is(err, errInventoryUnrecoverable):
+			logger.Info("Cannot recover the inventory of a pending recipe deployment; a successful deployment clears it", "deploymentID", deploymentID, "reason", err.Error())
+			result.unrecoverable = append(result.unrecoverable, deploymentID)
+		default:
+			logger.Info("Failed to recover the inventory of a pending recipe deployment; keeping it pending", "deploymentID", deploymentID, "reason", err.Error())
+		}
+	}
+	return result
+}
+
+// errInventoryUnrecoverable marks a deployment whose inventory a retry can't recover: the deployment engine no longer
+// has the deployment, or the deployment finished without a complete inventory.
+var errInventoryUnrecoverable = errors.New("deployment inventory can't be recovered")
+
+// deploymentOutputResources reads a deployment's final owned-resource inventory. An error wraps errInventoryUnrecoverable
+// when retrying can't help.
 func (d *bicepDriver) deploymentOutputResources(ctx context.Context, deploymentID string) ([]string, error) {
 	response, err := d.DeploymentClient.Get(ctx, deploymentID, clients.DeploymentsClientAPIVersion)
 	if err != nil {
+		// The deployment engine answers 204 for a deployment it doesn't have, for example after a restart or once its
+		// retention expired.
+		if responseErr, ok := errors.AsType[*azcore.ResponseError](err); ok &&
+			(responseErr.StatusCode == http.StatusNoContent || responseErr.StatusCode == http.StatusNotFound) {
+			return nil, fmt.Errorf("%w: the deployment engine no longer has the deployment (HTTP %d)", errInventoryUnrecoverable, responseErr.StatusCode)
+		}
 		return nil, err
 	}
-	return deploymentOutputResourceIDs(response.Properties)
+	ids, err := deploymentOutputResourceIDs(response.Properties)
+	if err != nil && isTerminalDeployment(response.Properties) {
+		return nil, fmt.Errorf("%w: %w", errInventoryUnrecoverable, err)
+	}
+	return ids, err
+}
+
+func isTerminalDeployment(properties *armdeployments.DeploymentPropertiesExtended) bool {
+	if properties == nil || properties.ProvisioningState == nil {
+		return false
+	}
+	switch strings.ToLower(string(*properties.ProvisioningState)) {
+	case "succeeded", "failed", "canceled":
+		return true
+	}
+	return false
 }
 
 func deploymentOutputResourceIDs(properties *armdeployments.DeploymentPropertiesExtended) ([]string, error) {
 	if properties == nil || properties.ProvisioningState == nil {
 		return nil, fmt.Errorf("deployment has no provisioning state")
 	}
-	switch strings.ToLower(string(*properties.ProvisioningState)) {
-	case "succeeded", "failed", "canceled":
-	default:
+	if !isTerminalDeployment(properties) {
 		return nil, fmt.Errorf("deployment is still in progress: %s", *properties.ProvisioningState)
 	}
 	if properties.OutputResources == nil {
@@ -354,14 +439,18 @@ func deploymentOutputResourceIDs(properties *armdeployments.DeploymentProperties
 // We don't have context on the dependency ordering here, so we need to try to delete them
 // all in parallel. Since some resources may depend on others, we may need to retry.
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	var skipped []string
 	for i, deploymentID := range opts.PendingDeployments {
-		ids, err := d.deploymentOutputResources(ctx, deploymentID)
+		recovered, err := d.pendingOutputResources(ctx, deploymentID)
 		if err != nil {
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to recover cleanup inventory for deployment %q: %v", deploymentID, err), "", recipes.GetErrorDetails(err))
-		}
-		recovered, err := processors.GetOutputResourcesFromRecipe(&recipes.RecipeOutput{Resources: ids})
-		if err != nil {
-			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+			if opts.Force {
+				// Keep the entry so a later delete without force still reports it if this one fails.
+				logger.Info("Forced delete is skipping a recipe deployment whose resources are unknown; they may remain", "deploymentID", deploymentID, "reason", err.Error())
+				skipped = append(skipped, deploymentID)
+				continue
+			}
+			return pendingInventoryError(opts.Recipe.Name, deploymentID, err)
 		}
 		for _, outputResource := range recovered {
 			if !slices.ContainsFunc(opts.OutputResources, func(existing rpv1.OutputResource) bool {
@@ -371,7 +460,8 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 			}
 		}
 		if opts.PersistCleanup != nil {
-			if err := opts.PersistCleanup(ctx, opts.OutputResources, opts.PendingDeployments[i+1:]); err != nil {
+			remaining := append(slices.Clone(skipped), opts.PendingDeployments[i+1:]...)
+			if err := opts.PersistCleanup(ctx, opts.OutputResources, remaining); err != nil {
 				return fmt.Errorf("failed to persist recovered recipe cleanup inventory: %w", err)
 			}
 		}
@@ -379,6 +469,30 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 
 	_, err := d.deleteOutputResources(ctx, opts)
 	return err
+}
+
+// pendingOutputResources recovers the output resources of a pending deployment.
+func (d *bicepDriver) pendingOutputResources(ctx context.Context, deploymentID string) ([]rpv1.OutputResource, error) {
+	ids, err := d.deploymentOutputResources(ctx, deploymentID)
+	if err != nil {
+		return nil, err
+	}
+	recovered, err := processors.GetOutputResourcesFromRecipe(&recipes.RecipeOutput{Resources: ids})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", errInventoryUnrecoverable, err)
+	}
+	return recovered, nil
+}
+
+// pendingInventoryError explains why a pending deployment blocks deletion and what the user can do.
+func pendingInventoryError(recipeName, deploymentID string, err error) error {
+	if errors.Is(err, errInventoryUnrecoverable) {
+		message := fmt.Sprintf("cannot confirm which resources failed deployment %q of recipe %q created, so they may still exist. %s Cause: %v",
+			deploymentID, recipeName, recipes.ForceDeleteHint, err)
+		return recipes.NewRecipeError(recipes.RecipeCleanupInventoryUnavailable, message, "", recipes.GetErrorDetails(err))
+	}
+	message := fmt.Sprintf("failed to recover cleanup inventory for deployment %q of recipe %q. Try the delete again later. Cause: %v", deploymentID, recipeName, err)
+	return recipes.NewRecipeError(recipes.RecipeDeletionFailed, message, "", recipes.GetErrorDetails(err))
 }
 
 // deleteOutputResources deletes the output resources like Delete. When deletion fails, it also returns the IDs of the

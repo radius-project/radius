@@ -57,7 +57,7 @@ func (d *DynamicProcessor) Delete(ctx context.Context, resource *datamodel.Dynam
 	if !hasManagedSecret(resource) {
 		return nil
 	}
-	return d.SecretMaterializer.Delete(ctx, resource.ID)
+	return d.SecretMaterializer.Delete(ctx, resource.ID, options.Force)
 }
 
 // Process validates resource properties, and applies output values from the recipe output.
@@ -227,7 +227,7 @@ func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resourc
 // clears the public `secrets.name` reference.
 func (d *DynamicProcessor) clearStaleManagedSecret(ctx context.Context, resource *datamodel.DynamicResource) error {
 	if hasManagedSecret(resource) && d.SecretMaterializer != nil {
-		if err := d.SecretMaterializer.Delete(ctx, resource.ID); err != nil {
+		if err := d.SecretMaterializer.Delete(ctx, resource.ID, false); err != nil {
 			return err
 		}
 	}

@@ -40,6 +40,10 @@ func TestStatusFilter(t *testing.T) {
 		"recipe":          map[string]any{"templatePath": "test-path"},
 	}
 	storedStatusWithoutOutputs := map[string]any{"recipe": map[string]any{"templatePath": "test-path"}}
+	storedStatusWithPendingDeployment := map[string]any{
+		"recipe":                   map[string]any{"templatePath": "test-path"},
+		"pendingRecipeDeployments": []any{"/planes/radius/local/resourceGroups/test-group/providers/Microsoft.Resources/deployments/pending"},
+	}
 	resource := func(environment, application string, status map[string]any) *datamodel.DynamicResource {
 		properties := map[string]any{"environment": environment}
 		if application != "" {
@@ -94,6 +98,24 @@ func TestStatusFilter(t *testing.T) {
 			newRes:     resource(envA, appA, nil),
 			oldRes:     resource(envA, "", storedStatus),
 			wantReject: true,
+		},
+		{
+			name:       "environment change with only a pending recipe deployment is rejected",
+			newRes:     resource(envB, "", nil),
+			oldRes:     resource(envA, "", storedStatusWithPendingDeployment),
+			wantReject: true,
+		},
+		{
+			name:       "application change with only a pending recipe deployment is rejected",
+			newRes:     resource(envA, appA, nil),
+			oldRes:     resource(envA, "", storedStatusWithPendingDeployment),
+			wantReject: true,
+		},
+		{
+			name:       "update in the same scope keeps a pending recipe deployment",
+			newRes:     resource(envA, "", clientStatus),
+			oldRes:     resource(envA, "", storedStatusWithPendingDeployment),
+			wantStatus: storedStatusWithPendingDeployment,
 		},
 		{
 			name:       "environment change without output resources is allowed",

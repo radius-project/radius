@@ -54,10 +54,12 @@ func makeStatusFilter() statusUpdateFilter {
 			return nil, nil
 		}
 
-		// Output resources are deleted using the environment and application they were deployed with.
-		// Moving a resource that has them would delete or orphan them with the wrong configuration.
+		// Output resources, and the resources of pending recipe deployments, are deleted using the environment and
+		// application they were deployed with. Moving a resource that has them would delete or orphan them with the
+		// wrong configuration.
 		oldScope, newScope := oldResource.ResourceMetadata(), newResource.ResourceMetadata()
-		if len(oldResource.OutputResources()) > 0 && !rpv1.ScopesEqual(oldScope, newScope) {
+		hasCleanupState := len(oldResource.OutputResources()) > 0 || len(oldScope.GetResourceStatus().PendingRecipeDeployments) > 0
+		if hasCleanupState && !rpv1.ScopesEqual(oldScope, newScope) {
 			serviceCtx := v1.ARMRequestContextFromContext(ctx)
 			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldScope, newScope), nil
 		}

@@ -39,4 +39,7 @@ type AsyncOperationStatus struct {
 
 	// Error represents the error occurred during provisioning.
 	Error *ErrorDetails `json:"error,omitempty"`
+
+	// Properties holds operation-specific results reported when the operation completes.
+	Properties map[string]any `json:"properties,omitempty"`
 }

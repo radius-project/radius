@@ -157,6 +157,15 @@ func (c *Operation[P, T]) PrepareResource(ctx context.Context, req *http.Request
 
 // PrepareAsyncOperation saves the initial state and queue the async operation.
 func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource *T, initialState v1.ProvisioningState, asyncTimeout time.Duration, etag *string) (rest.Response, error) {
+	return c.prepareAsyncOperation(ctx, newResource, initialState, asyncTimeout, etag, false)
+}
+
+// PrepareAsyncDeleteOperation is PrepareAsyncOperation for a delete. force is passed to the backend controller as Request.Force.
+func (c *Operation[P, T]) PrepareAsyncDeleteOperation(ctx context.Context, resource *T, asyncTimeout time.Duration, etag *string, force bool) (rest.Response, error) {
+	return c.prepareAsyncOperation(ctx, resource, v1.ProvisioningStateAccepted, asyncTimeout, etag, force)
+}
+
+func (c *Operation[P, T]) prepareAsyncOperation(ctx context.Context, newResource *T, initialState v1.ProvisioningState, asyncTimeout time.Duration, etag *string, force bool) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	P(newResource).SetProvisioningState(initialState)
@@ -170,6 +179,7 @@ func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource
 	options := sm.QueueOperationOptions{
 		OperationTimeout: asyncTimeout,
 		RetryAfter:       v1.DefaultRetryAfterDuration,
+		Force:            force,
 	}
 	if c.resourceOptions.AsyncOperationRetryAfter != 0 {
 		options.RetryAfter = c.resourceOptions.AsyncOperationRetryAfter

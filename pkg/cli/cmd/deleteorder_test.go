@@ -295,7 +295,7 @@ func TestDeleteResourcesInTiers_WaitsForTierToComplete(t *testing.T) {
 
 	client.EXPECT().
 		DeleteResource(gomock.Any(), "Radius.Compute/containers", gomock.Any(), false).
-		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (bool, error) {
+		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (clients.DeleteResourceResult, error) {
 			// Hold the workload delete open and watch for the environment delete starting beside
 			// it, which is exactly the overlap that leaves the workload unable to tear itself down.
 			select {
@@ -304,15 +304,15 @@ func TestDeleteResourcesInTiers_WaitsForTierToComplete(t *testing.T) {
 			case <-time.After(barrierProbe):
 			}
 
-			return true, nil
+			return clients.DeleteResourceResult{Deleted: true}, nil
 		}).Times(1)
 
 	client.EXPECT().
 		DeleteResource(gomock.Any(), "Radius.Core/environments", gomock.Any(), false).
-		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (bool, error) {
+		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (clients.DeleteResourceResult, error) {
 			close(environmentStarted)
 
-			return true, nil
+			return clients.DeleteResourceResult{Deleted: true}, nil
 		}).Times(1)
 
 	// Listed environment-first so that a flat, unordered delete would submit the environment before
@@ -340,10 +340,10 @@ func TestDeleteResourcesInTiers_CollectsErrors(t *testing.T) {
 
 	client.EXPECT().
 		DeleteResource(gomock.Any(), "Radius.Compute/containers", gomock.Any(), false).
-		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (bool, error) {
+		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (clients.DeleteResourceResult, error) {
 			attempted.Add(1)
 
-			return false, errors.New("recipe failed for " + resourceID)
+			return clients.DeleteResourceResult{}, errors.New("recipe failed for " + resourceID)
 		}).Times(3)
 
 	resources := newTieredResources(
@@ -372,7 +372,7 @@ func TestDeleteResourcesInTiers_StopsAfterFailedTier(t *testing.T) {
 
 	client.EXPECT().
 		DeleteResource(gomock.Any(), "Radius.Compute/containers", gomock.Any(), false).
-		Return(false, errors.New("recipe failed")).Times(1)
+		Return(clients.DeleteResourceResult{}, errors.New("recipe failed")).Times(1)
 
 	// No expectation is registered for the environment, so deleting it would fail the test.
 	resources := newTieredResources("Radius.Compute/containers", "Radius.Core/environments")
@@ -403,7 +403,7 @@ func TestDeleteResourcesInTiers_BoundsConcurrency(t *testing.T) {
 
 	client.EXPECT().
 		DeleteResource(gomock.Any(), gomock.Any(), gomock.Any(), false).
-		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (bool, error) {
+		DoAndReturn(func(ctx context.Context, resourceType string, resourceID string, force bool) (clients.DeleteResourceResult, error) {
 			current := inFlight.Add(1)
 			for {
 				observed := maxInFlight.Load()
@@ -419,7 +419,7 @@ func TestDeleteResourcesInTiers_BoundsConcurrency(t *testing.T) {
 			<-capReached
 			inFlight.Add(-1)
 
-			return true, nil
+			return clients.DeleteResourceResult{Deleted: true}, nil
 		}).Times(resourceCount)
 
 	resourceTypes := make([]string, resourceCount)
@@ -452,7 +452,7 @@ func TestDeleteResourcesInTiers_FailsOnUnaddressableResources(t *testing.T) {
 	// to abandon the rest of the tier.
 	client.EXPECT().
 		DeleteResource(gomock.Any(), "Radius.Compute/containers", gomock.Any(), false).
-		Return(true, nil).Times(1)
+		Return(clients.DeleteResourceResult{Deleted: true}, nil).Times(1)
 
 	resources := append(
 		newTieredResources("Radius.Compute/containers"),

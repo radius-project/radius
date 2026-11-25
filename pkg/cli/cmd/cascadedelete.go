@@ -19,6 +19,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -39,6 +41,21 @@ import (
 
 // MsgDeletingResource is logged for each resource before its deletion is started.
 const MsgDeletingResource = "  Deleting %s..."
+
+// MsgSkippedRecipeDeployments warns that a forced delete skipped recipe deployments whose resources Radius
+// could not confirm.
+const MsgSkippedRecipeDeployments = "  Warning: %s was deleted, but Radius could not confirm which resources its failed recipe deployments created, so the forced delete skipped them: %s. Check for leftover resources and remove them by hand."
+
+// MsgManagedSecretSkippedRecipeDeployments warns that a forced delete of a managed secret may have skipped recipe
+// deployments. rad sees the secret's pending deployments, not the exact list its forced delete skipped.
+const MsgManagedSecretSkippedRecipeDeployments = "  Warning: managed secret %s was deleted with force while Radius could not confirm which resources some of its failed recipe deployments created, so these may have been skipped: %s. Check for leftover resources and remove them by hand."
+
+// LogSkippedRecipeDeployments warns about the recipe deployments a forced delete of the resource skipped.
+func LogSkippedRecipeDeployments(out output.Interface, resourceID string, result clients.DeleteResourceResult) {
+	if len(result.SkippedRecipeDeployments) > 0 {
+		out.LogInfo(MsgSkippedRecipeDeployments, resourceID, strings.Join(result.SkippedRecipeDeployments, ", "))
+	}
+}
 
 // MsgSkippingResource is logged for each resource the cascade cannot delete, so the count shown in
 // the confirmation prompt cannot quietly disagree with what was actually deleted.
@@ -100,6 +117,7 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 	g, groupCtx := errgroup.WithContext(ctx)
 	g.SetLimit(maxParallelDeletes)
 	missing := make([]bool, len(selected))
+	results := make([]clients.DeleteResourceResult, len(selected))
 
 	for i, resource := range selected {
 		if resource.ID == nil || resource.Type == nil {
@@ -120,16 +138,24 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 			if err := groupCtx.Err(); err != nil {
 				return err
 			}
-			deleted, err := client.DeleteResource(groupCtx, resourceType, resourceID, force)
+			result, err := client.DeleteResource(groupCtx, resourceType, resourceID, force)
 			if err != nil && !clients.Is404Error(err) {
 				return err
 			}
-			missing[i] = !deleted || clients.Is404Error(err)
+			missing[i] = !result.Deleted || clients.Is404Error(err)
+			results[i] = result
 			return nil
 		})
 	}
 
-	if err := g.Wait(); err != nil {
+	err = g.Wait()
+	// Warn after the parallel deletes finish, because output isn't safe for concurrent use.
+	for i, result := range results {
+		if len(result.SkippedRecipeDeployments) > 0 {
+			LogSkippedRecipeDeployments(out, *selected[i].ID, result)
+		}
+	}
+	if err != nil {
 		return err
 	}
 	if len(managedSecrets) == 0 {
@@ -142,21 +168,54 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 		}
 	}
 
+	listed := map[string]generated.GenericResource{}
+	for _, resource := range selected {
+		if resource.ID != nil {
+			listed[deleteResourceKey(*resource.ID)] = resource
+		}
+	}
+
 	// Wait cancels the first group's context even on success. Start from the caller's context.
 	waitCtx, cancel := context.WithTimeout(ctx, managedSecretDeleteTimeout)
 	defer cancel()
 	g, groupCtx = errgroup.WithContext(waitCtx)
 	g.SetLimit(maxParallelDeletes)
-	for id, owner := range managedSecrets {
+	secretIDs := slices.Sorted(maps.Keys(managedSecrets))
+	skipped := make([][]string, len(secretIDs))
+	for i, id := range secretIDs {
+		owner := managedSecrets[id]
 		deleteOrphan := missingOwners[deleteResourceKey(owner)]
 		if deleteOrphan {
 			out.LogInfo("  Resource %s is already absent; cleaning up its remaining managed secret %s...", owner, id)
 		}
+		pending := pendingRecipeDeployments(listed[id].Properties)
 		g.Go(func() error {
-			return waitForManagedSecretDeletion(groupCtx, client, id, owner, deleteOrphan, force)
+			var err error
+			skipped[i], err = waitForManagedSecretDeletion(groupCtx, client, id, owner, pending, deleteOrphan, force)
+			return err
 		})
 	}
-	return g.Wait()
+	err = g.Wait()
+	// Warn after the waits finish, because output isn't safe for concurrent use.
+	for i, id := range secretIDs {
+		if len(skipped[i]) > 0 {
+			out.LogInfo(MsgManagedSecretSkippedRecipeDeployments, *listed[id].ID, strings.Join(skipped[i], ", "))
+		}
+	}
+	return err
+}
+
+// pendingRecipeDeployments reads status.pendingRecipeDeployments from a resource's properties.
+func pendingRecipeDeployments(properties map[string]any) []string {
+	status, _ := properties["status"].(map[string]any)
+	raw, _ := status["pendingRecipeDeployments"].([]any)
+	pending := []string{}
+	for _, item := range raw {
+		if id, ok := item.(string); ok {
+			pending = append(pending, id)
+		}
+	}
+	return pending
 }
 
 func deleteResourceKey(id string) string {
@@ -225,8 +284,13 @@ func selectedManagedSecrets(selected []generated.GenericResource) (map[string]st
 	return owners, nil
 }
 
-func waitForManagedSecretDeletion(ctx context.Context, client clients.ApplicationsManagementClient, id, owner string, deleteOrphan, force bool) error {
+// waitForManagedSecretDeletion waits until the managed secret is gone. For a forced delete it returns the recipe
+// deployments that may have been skipped: the exact list from a delete rad sent itself, or else the secret's last
+// seen pending deployments, starting from pending. When the wait fails, it returns only the exact list.
+func waitForManagedSecretDeletion(ctx context.Context, client clients.ApplicationsManagementClient, id, owner string, pending []string, deleteOrphan, force bool) ([]string, error) {
 	lastState := "unknown"
+	var confirmed []string
+	deletedByRad := false
 	err := wait.PollUntilContextCancel(ctx, managedSecretPollInterval, true, func(ctx context.Context) (bool, error) {
 		if err := ctx.Err(); err != nil {
 			return false, err
@@ -237,6 +301,9 @@ func waitForManagedSecretDeletion(ctx context.Context, client clients.Applicatio
 		}
 		if err != nil {
 			return false, err
+		}
+		if !deletedByRad {
+			pending = pendingRecipeDeployments(secret.Properties)
 		}
 		lastState = "unknown"
 		if raw, exists := secret.Properties["provisioningState"]; exists && raw != nil {
@@ -250,9 +317,15 @@ func waitForManagedSecretDeletion(ctx context.Context, client clients.Applicatio
 		// A missing producer may still have an earlier cascade in flight. Only submit a new
 		// DELETE once the secret is terminal, even when the caller requested force.
 		if deleteOrphan && (lastState == "" || strings.EqualFold(lastState, string(v1.ProvisioningStateSucceeded)) || failed) {
-			_, err := client.DeleteResource(ctx, managedSecretResourceType, id, force)
+			result, err := client.DeleteResource(ctx, managedSecretResourceType, id, force)
 			if err != nil && !clients.Is404Error(err) {
 				return false, err
+			}
+			if err == nil && result.Deleted {
+				// rad's own delete reports exactly what it skipped.
+				deletedByRad = true
+				confirmed = result.SkippedRecipeDeployments
+				pending = confirmed
 			}
 			deleteOrphan = false
 			return false, nil
@@ -263,9 +336,16 @@ func waitForManagedSecretDeletion(ctx context.Context, client clients.Applicatio
 		return false, nil
 	})
 	if err != nil {
-		return fmt.Errorf("managed secret %q for resource %q was not confirmed deleted (last state %q); application/environment deletion stopped, inspect the secret before retrying: %w", id, owner, lastState, err)
+		err = fmt.Errorf("managed secret %q for resource %q was not confirmed deleted (last state %q); application/environment deletion stopped, inspect the secret before retrying: %w", id, owner, lastState, err)
 	}
-	return nil
+	switch {
+	case !force:
+		return nil, err
+	case err != nil:
+		return confirmed, err
+	default:
+		return pending, nil
+	}
 }
 
 // describeResource returns the most identifying label available for a resource, for use in

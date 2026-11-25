@@ -96,6 +96,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 				expectedOptions := statusmanager.QueueOperationOptions{
 					OperationTimeout: asyncOperationTimeout,
 					RetryAfter:       asyncOperationRetryAfter,
+					Force:            tt.force,
 				}
 				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), expectedOptions).
 					Return(tt.qErr).

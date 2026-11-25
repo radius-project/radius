@@ -28,6 +28,9 @@ type Result struct {
 	// Error represents the error when status is Cancelled or Failed.
 	Error *v1.ErrorDetails
 
+	// Properties are returned in the properties field of the completed operation's status.
+	Properties map[string]any
+
 	// state represents the provisioning status.
 	state *v1.ProvisioningState
 }

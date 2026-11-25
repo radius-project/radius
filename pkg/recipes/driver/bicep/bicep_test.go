@@ -34,12 +34,15 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -70,6 +73,13 @@ type deploymentClientSpy struct {
 	getCalls            int
 	deploymentID        string
 	createErr           error
+	// earlier holds the GET results of earlier deployments, keyed by deployment ID.
+	earlier map[string]deploymentGet
+}
+
+type deploymentGet struct {
+	properties *armdeployments.DeploymentPropertiesExtended
+	err        error
 }
 
 type deploymentPollerStub struct {
@@ -113,6 +123,9 @@ func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, deployment clien
 }
 
 func (s *deploymentClientSpy) Get(_ context.Context, deploymentID, _ string) (clients.ClientCreateOrUpdateResponse, error) {
+	if earlier, ok := s.earlier[deploymentID]; ok {
+		return clients.ClientCreateOrUpdateResponse{Properties: earlier.properties}, earlier.err
+	}
 	s.getCalls++
 	if deploymentID != s.deploymentID {
 		return clients.ClientCreateOrUpdateResponse{}, fmt.Errorf("unexpected deployment ID %q", deploymentID)
@@ -2582,6 +2595,219 @@ func Test_Bicep_Execute_RegistryAuthenticationErrors(t *testing.T) {
 		runRegistryAuthCase(t, f, tc, func(opts driver.BaseOptions) (map[string]any, error) {
 			_, err := (&bicepDriver{}).Execute(t.Context(), driver.ExecuteOptions{BaseOptions: opts})
 			return nil, err
+		})
+	}
+}
+
+// Pending deployments used by the cleanup inventory tests.
+const (
+	goneDeployment        = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe-gone"
+	recoverableDeployment = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe-recoverable"
+	busyDeployment        = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe-busy"
+	recoveredResourceID   = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/recovered"
+)
+
+func responseError(status int, body string) error {
+	return &azcore.ResponseError{StatusCode: status, RawResponse: &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body))}}
+}
+
+func pendingDeploymentGets() map[string]deploymentGet {
+	return map[string]deploymentGet{
+		goneDeployment: {err: responseError(http.StatusNoContent, "")},
+		recoverableDeployment: {properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+			OutputResources:   []*armdeployments.ResourceReference{{ID: new(recoveredResourceID)}},
+		}},
+		busyDeployment: {err: responseError(http.StatusInternalServerError, `{"error":{"code":"InternalError","message":"boom"}}`)},
+	}
+}
+
+// Test_Bicep_DeploymentOutputResources_ClassifiesRecovery sends each response through the real deployments client,
+// so the errors are the ones production sees.
+func Test_Bicep_DeploymentOutputResources_ClassifiesRecovery(t *testing.T) {
+	const deploymentID = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe1"
+	const resourceID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet"
+	for _, tt := range []struct {
+		name          string
+		status        int
+		body          string
+		unrecoverable bool
+		ids           []string
+	}{
+		// The deployment engine answers 204 for a deployment it no longer has.
+		{name: "deployment engine lost the deployment", status: http.StatusNoContent, unrecoverable: true},
+		{name: "deployment not found", status: http.StatusNotFound, body: `{"error":{"code":"NotFound","message":"not found"}}`, unrecoverable: true},
+		{name: "finished without inventory", status: http.StatusOK, body: `{"properties":{"provisioningState":"Failed"}}`, unrecoverable: true},
+		{name: "finished with an invalid inventory entry", status: http.StatusOK, body: `{"properties":{"provisioningState":"Failed","outputResources":[{"id":"invalid"}]}}`, unrecoverable: true},
+		{name: "still running", status: http.StatusOK, body: `{"properties":{"provisioningState":"Running","outputResources":[]}}`},
+		{name: "no provisioning state", status: http.StatusOK, body: `{}`},
+		{name: "server error", status: http.StatusInternalServerError, body: `{"error":{"code":"InternalError","message":"boom"}}`},
+		{name: "recovered", status: http.StatusOK, body: fmt.Sprintf(`{"properties":{"provisioningState":"Failed","outputResources":[{"id":%q}]}}`, resourceID), ids: []string{resourceID}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				require.Equal(t, http.MethodGet, req.Method)
+				require.True(t, strings.EqualFold(deploymentID, req.URL.Path), req.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = io.WriteString(w, tt.body)
+			}))
+			t.Cleanup(ts.Close)
+			client, err := clients.NewResourceDeploymentsClient(&clients.Options{
+				BaseURI:          ts.URL,
+				Cred:             &aztoken.AnonymousCredential{},
+				ARMClientOptions: &arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: ts.Client(), Retry: policy.RetryOptions{MaxRetries: -1}}, DisableRPRegistration: true},
+			})
+			require.NoError(t, err)
+			d := &bicepDriver{DeploymentClient: client}
+
+			ids, err := d.deploymentOutputResources(t.Context(), deploymentID)
+			if tt.ids != nil {
+				require.NoError(t, err)
+				require.Equal(t, tt.ids, ids)
+				return
+			}
+			require.Error(t, err)
+			require.Equal(t, tt.unrecoverable, errors.Is(err, errInventoryUnrecoverable), err.Error())
+			want := recipes.RecipeDeletionFailed
+			if tt.unrecoverable {
+				want = recipes.RecipeCleanupInventoryUnavailable
+			}
+			var recipeErr *recipes.RecipeError
+			require.ErrorAs(t, pendingInventoryError("my-recipe", deploymentID, err), &recipeErr)
+			require.Equal(t, want, recipeErr.ErrorDetails.Code)
+		})
+	}
+}
+
+func Test_Bicep_Delete_PendingInventoryErrors(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		deployment string
+		code       string
+		message    string
+	}{
+		{name: "unrecoverable inventory blocks with a force hint", deployment: goneDeployment, code: recipes.RecipeCleanupInventoryUnavailable, message: "--force"},
+		{name: "transient error asks to retry", deployment: busyDeployment, code: recipes.RecipeDeletionFailed, message: "Try the delete again"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// The mock resource client fails the test if anything is deleted.
+			d, _, _, _ := setupDeleteInputs(t)
+			d.DeploymentClient = &deploymentClientSpy{earlier: pendingDeploymentGets()}
+			err := d.Delete(t.Context(), driver.DeleteOptions{
+				BaseOptions: driver.BaseOptions{Recipe: recipes.ResourceMetadata{Name: "my-recipe"}},
+				OutputResources: []rpv1.OutputResource{
+					{ID: resources.MustParse(recoveredResourceID), RadiusManaged: new(true)},
+				},
+				PendingDeployments: []string{tt.deployment},
+				PersistCleanup: func(context.Context, []rpv1.OutputResource, []string) error {
+					t.Fatal("nothing was recovered, so nothing should be saved")
+					return nil
+				},
+			})
+			var recipeErr *recipes.RecipeError
+			require.ErrorAs(t, err, &recipeErr)
+			require.Equal(t, tt.code, recipeErr.ErrorDetails.Code)
+			require.Contains(t, recipeErr.ErrorDetails.Message, tt.deployment)
+			require.Contains(t, recipeErr.ErrorDetails.Message, `"my-recipe"`)
+			require.Contains(t, recipeErr.ErrorDetails.Message, tt.message)
+		})
+	}
+}
+
+func Test_Bicep_Delete_ForceSkipsUnrecoverablePendingDeployments(t *testing.T) {
+	const knownResourceID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/known"
+	d, resourceClient, _, _ := setupDeleteInputs(t)
+	d.DeploymentClient = &deploymentClientSpy{earlier: pendingDeploymentGets()}
+
+	var saved [][]string
+	resourceClient.EXPECT().Delete(gomock.Any(), knownResourceID).Return(nil)
+	resourceClient.EXPECT().Delete(gomock.Any(), recoveredResourceID).DoAndReturn(func(context.Context, string) error {
+		require.NotEmpty(t, saved, "recovered inventory is saved before infrastructure is deleted")
+		return nil
+	})
+	err := d.Delete(t.Context(), driver.DeleteOptions{
+		OutputResources:    []rpv1.OutputResource{{ID: resources.MustParse(knownResourceID), RadiusManaged: new(true)}},
+		PendingDeployments: []string{goneDeployment, recoverableDeployment, busyDeployment},
+		Force:              true,
+		PersistCleanup: func(_ context.Context, outputs []rpv1.OutputResource, pending []string) error {
+			require.Len(t, outputs, 2)
+			saved = append(saved, pending)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+	// The skipped deployment stays pending, so a later delete without force still reports it.
+	require.Equal(t, [][]string{{goneDeployment, busyDeployment}}, saved)
+}
+
+func Test_Bicep_Execute_RecoversPendingDeployments(t *testing.T) {
+	const previousID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/previous"
+	const newID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/new"
+	for _, tt := range []struct {
+		name      string
+		succeeds  bool
+		rejected  bool
+		resolved  []string
+		resources []string
+	}{
+		// A successful deployment resolves every pending deployment except the transient one, and garbage
+		// collection deletes the recovered resource.
+		{name: "successful deployment", succeeds: true, resolved: []string{recoverableDeployment, goneDeployment}, resources: []string{newID}},
+		// A failed deployment keeps the recovered resource and only resolves the recovered deployment.
+		{name: "failed deployment", resolved: []string{recoverableDeployment}, resources: []string{newID, recoveredResourceID}},
+		// A rejected submission created nothing, but the recovered inventory is still kept.
+		{name: "rejected submission", rejected: true, resolved: []string{recoverableDeployment}, resources: []string{recoveredResourceID}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+			client := &deploymentClientSpy{
+				response: &clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+					ProvisioningState: new(armdeployments.ProvisioningStateSucceeded),
+					OutputResources:   []*armdeployments.ResourceReference{{ID: new(newID)}},
+				}},
+				getResponse: clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+					ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+					OutputResources:   []*armdeployments.ResourceReference{{ID: new(newID)}},
+				}},
+				earlier: pendingDeploymentGets(),
+			}
+			if !tt.succeeds {
+				client.pollErr = errors.New("deployment failed")
+			}
+			if tt.rejected {
+				client.createErr = responseError(http.StatusBadRequest, `{"error":{"code":"InvalidTemplate","message":"invalid template"}}`)
+			}
+			d, resourceClient, _, _ := setupDeleteInputs(t)
+			d.DeploymentClient = client
+			d.RegistryClient = ts.TestServer.Client()
+			if tt.succeeds {
+				resourceClient.EXPECT().Delete(gomock.Any(), previousID).Return(nil)
+				resourceClient.EXPECT().Delete(gomock.Any(), recoveredResourceID).Return(nil)
+			}
+
+			output, err := d.Execute(t.Context(), driver.ExecuteOptions{
+				BaseOptions: driver.BaseOptions{
+					Recipe: recipes.ResourceMetadata{
+						Name:          "test-resource",
+						ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+						EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+					},
+					Definition: recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: ts.TestImageURL},
+				},
+				PrevState:          []string{previousID},
+				PendingDeployments: []string{goneDeployment, recoverableDeployment, busyDeployment},
+			})
+			if tt.succeeds {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+			require.ElementsMatch(t, tt.resolved, output.ResolvedPendingDeployments)
+			require.ElementsMatch(t, tt.resources, output.Resources)
 		})
 	}
 }

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	componentstesthost "github.com/radius-project/radius/pkg/components/testhost"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/testhost"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -423,6 +424,94 @@ func Test_Dynamic_Resource_FailedRecipeCleanupSurvivesPutAndDeleteRetries(t *tes
 	})
 	ucp.MakeRequest(http.MethodDelete, testRecipeResourceURL, nil).WaitForOperationComplete(nil)
 	ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil).EqualsErrorCode(http.StatusNotFound, v1.CodeNotFound)
+}
+
+// startPendingRecipeDeploymentHost starts a test host and fails a recipe deployment so the resource keeps a pending
+// deployment whose cleanup inventory is unknown.
+func startPendingRecipeDeploymentHost(t *testing.T, pendingID string) (*driver.MockDriver, *ucptesthost.TestHost) {
+	mocks := gomock.NewController(t)
+	mockDriver := driver.NewMockDriver(mocks)
+	loader := configloader.NewMockConfigurationLoader(mocks)
+	_, ucp := testhost.Start(t, testhost.TestHostOptionFunc(func(options *dynamicrp.Options) {
+		options.Recipes.Drivers = map[string]func(*dynamicrp.Options) (driver.Driver, error){
+			recipes.TemplateKindBicep: func(*dynamicrp.Options) (driver.Driver, error) { return mockDriver, nil },
+		}
+		options.Recipes.ConfigurationLoader = loader
+	}))
+	createRadiusPlane(ucp)
+	createResourceProvider(ucp)
+	createRecipeResourceType(ucp)
+	createAPIVersion(ucp, recipeResourceTypeName, map[string]any{"type": "object", "properties": map[string]any{"foo": map[string]any{"type": "string"}}})
+	createLocation(ucp, recipeResourceTypeName)
+	createResourceGroup(ucp)
+
+	loader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil).AnyTimes()
+	loader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Return(&recipes.EnvironmentDefinition{Name: "default", Driver: recipes.TemplateKindBicep}, nil).AnyTimes()
+	mockDriver.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{PendingDeploymentID: pendingID},
+		recipes.NewRecipeError(recipes.RecipeDeploymentFailed, "partial failure", recipeutil.ExecutionError))
+	ucp.MakeTypedRequest(http.MethodPut, testRecipeResourceURL, map[string]any{"properties": map[string]any{"foo": "bar"}}).WaitForOperationComplete(nil)
+	response := ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil)
+	response.EqualsStatusCode(http.StatusOK)
+	require.Contains(t, response.Body.String(), pendingID)
+	return mockDriver, ucp
+}
+
+func readOperationStatus(ucp *ucptesthost.TestHost, response *componentstesthost.TestResponse) v1.AsyncOperationStatus {
+	response.WaitForOperationComplete(nil)
+	var operation v1.AsyncOperationStatus
+	ucp.MakeRequest(http.MethodGet, response.Raw.Header.Get("Azure-AsyncOperation"), nil).ReadAs(&operation)
+	return operation
+}
+
+func Test_Dynamic_Resource_ForcedDeleteSkipsUnrecoverablePendingDeployment(t *testing.T) {
+	const pendingID = "/planes/radius/testing/resourceGroups/test-group/providers/Microsoft.Resources/deployments/lost"
+	mockDriver, ucp := startPendingRecipeDeploymentHost(t, pendingID)
+
+	blocked := recipes.NewRecipeError(recipes.RecipeCleanupInventoryUnavailable, "cannot confirm which resources the deployment created", "", nil)
+	mockDriver.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts driver.DeleteOptions) error {
+		require.False(t, opts.Force)
+		return blocked
+	})
+	operation := readOperationStatus(ucp, ucp.MakeRequest(http.MethodDelete, testRecipeResourceURL, nil))
+	require.Equal(t, v1.ProvisioningStateFailed, operation.Status)
+	require.Equal(t, recipes.RecipeCleanupInventoryUnavailable, operation.Error.Code)
+	ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil).EqualsStatusCode(http.StatusOK)
+
+	mockDriver.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts driver.DeleteOptions) error {
+		require.True(t, opts.Force)
+		require.Equal(t, []string{pendingID}, opts.PendingDeployments)
+		return nil
+	})
+	operation = readOperationStatus(ucp, ucp.MakeRequest(http.MethodDelete, testRecipeResourceURL+"&force=true", nil))
+	require.Equal(t, v1.ProvisioningStateSucceeded, operation.Status)
+	require.Equal(t, map[string]any{"skippedRecipeDeployments": []any{pendingID}}, operation.Properties)
+	ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil).EqualsErrorCode(http.StatusNotFound, v1.CodeNotFound)
+}
+
+func Test_Dynamic_Resource_RedeployClearsResolvedPendingDeployment(t *testing.T) {
+	const pendingID = "/planes/radius/testing/resourceGroups/test-group/providers/Microsoft.Resources/deployments/lost"
+	const ownedID = "/planes/kubernetes/local/namespaces/app/providers/core/Secret/owned"
+	mockDriver, ucp := startPendingRecipeDeploymentHost(t, pendingID)
+
+	mockDriver.EXPECT().Execute(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
+		require.Equal(t, []string{pendingID}, opts.PendingDeployments)
+		return &recipes.RecipeOutput{Resources: []string{ownedID}, ResolvedPendingDeployments: []string{pendingID}}, nil
+	})
+	operation := readOperationStatus(ucp, ucp.MakeTypedRequest(http.MethodPut, testRecipeResourceURL, map[string]any{"properties": map[string]any{"foo": "fixed"}}))
+	require.Equal(t, v1.ProvisioningStateSucceeded, operation.Status)
+	response := ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil)
+	response.EqualsStatusCode(http.StatusOK)
+	require.Contains(t, response.Body.String(), ownedID)
+	require.NotContains(t, response.Body.String(), pendingID)
+
+	mockDriver.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts driver.DeleteOptions) error {
+		require.Empty(t, opts.PendingDeployments)
+		require.Len(t, opts.OutputResources, 1)
+		return nil
+	})
+	operation = readOperationStatus(ucp, ucp.MakeRequest(http.MethodDelete, testRecipeResourceURL, nil))
+	require.Equal(t, v1.ProvisioningStateSucceeded, operation.Status)
+	require.Nil(t, operation.Properties)
 }
 
 func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {

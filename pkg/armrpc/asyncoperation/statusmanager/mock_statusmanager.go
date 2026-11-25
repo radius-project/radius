@@ -160,17 +160,17 @@ func (c *MockStatusManagerQueueAsyncOperationCall) DoAndReturn(f func(context.Co
 }
 
 // Update mocks base method.
-func (m *MockStatusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error {
+func (m *MockStatusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails, properties map[string]any) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, id, operationID, state, endTime, opError)
+	ret := m.ctrl.Call(m, "Update", ctx, id, operationID, state, endTime, opError, properties)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockStatusManagerMockRecorder) Update(ctx, id, operationID, state, endTime, opError any) *MockStatusManagerUpdateCall {
+func (mr *MockStatusManagerMockRecorder) Update(ctx, id, operationID, state, endTime, opError, properties any) *MockStatusManagerUpdateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStatusManager)(nil).Update), ctx, id, operationID, state, endTime, opError)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockStatusManager)(nil).Update), ctx, id, operationID, state, endTime, opError, properties)
 	return &MockStatusManagerUpdateCall{Call: call}
 }
 
@@ -186,13 +186,13 @@ func (c *MockStatusManagerUpdateCall) Return(arg0 error) *MockStatusManagerUpdat
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockStatusManagerUpdateCall) Do(f func(context.Context, resources.ID, uuid.UUID, v1.ProvisioningState, *time.Time, *v1.ErrorDetails) error) *MockStatusManagerUpdateCall {
+func (c *MockStatusManagerUpdateCall) Do(f func(context.Context, resources.ID, uuid.UUID, v1.ProvisioningState, *time.Time, *v1.ErrorDetails, map[string]any) error) *MockStatusManagerUpdateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockStatusManagerUpdateCall) DoAndReturn(f func(context.Context, resources.ID, uuid.UUID, v1.ProvisioningState, *time.Time, *v1.ErrorDetails) error) *MockStatusManagerUpdateCall {
+func (c *MockStatusManagerUpdateCall) DoAndReturn(f func(context.Context, resources.ID, uuid.UUID, v1.ProvisioningState, *time.Time, *v1.ErrorDetails, map[string]any) error) *MockStatusManagerUpdateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

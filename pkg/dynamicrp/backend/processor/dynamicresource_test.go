@@ -481,6 +481,11 @@ func Test_Process(t *testing.T) {
 
 		require.NoError(t, p.Delete(t.Context(), resource, processors.Options{}))
 		require.Equal(t, []string{resourceID}, mat.deleted)
+		require.Equal(t, []bool{false}, mat.forced)
+
+		// A forced owner delete forces the managed secret's delete too.
+		require.NoError(t, p.Delete(t.Context(), resource, processors.Options{Force: true}))
+		require.Equal(t, []bool{false, true}, mat.forced)
 	})
 
 	t.Run("clears a stale managed secret even when the schema no longer declares a secrets block", func(t *testing.T) {
@@ -593,6 +598,7 @@ type fakeMaterializer struct {
 	result  secret.Result
 	err     error
 	deleted []string
+	forced  []bool
 }
 
 func (f *fakeMaterializer) Materialize(ctx context.Context, req secret.Request) (secret.Result, error) {
@@ -601,8 +607,9 @@ func (f *fakeMaterializer) Materialize(ctx context.Context, req secret.Request) 
 	return f.result, f.err
 }
 
-func (f *fakeMaterializer) Delete(ctx context.Context, ownerResourceID string) error {
+func (f *fakeMaterializer) Delete(ctx context.Context, ownerResourceID string, force bool) error {
 	f.deleted = append(f.deleted, ownerResourceID)
+	f.forced = append(f.forced, force)
 	return f.err
 }
 

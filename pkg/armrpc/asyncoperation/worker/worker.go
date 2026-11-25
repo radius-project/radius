@@ -223,7 +223,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.DatabaseClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
+			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.DatabaseClient(), op, v1.ProvisioningStateUpdating, nil, nil); err != nil {
 				return
 			}
 
@@ -371,7 +371,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 		return
 	}
 
-	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
+	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error, result.Properties)
 	if err != nil {
 		logger.Error(err, "failed to update resource and/or operation status")
 		return
@@ -387,7 +387,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	metrics.DefaultAsyncOperationMetrics.RecordAsyncOperation(ctx, req, &result)
 }
 
-func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc database.Client, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
+func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc database.Client, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails, properties map[string]any) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
@@ -406,7 +406,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 
 	// Otherwise we update the operationStatus to the result.
 	now := time.Now().UTC()
-	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr)
+	err = w.sm.Update(ctx, rID, req.OperationID, state, &now, opErr, properties)
 	if err != nil {
 		logger.Error(err, "failed to update operationstatus", "operationID", req.OperationID.String())
 		return err

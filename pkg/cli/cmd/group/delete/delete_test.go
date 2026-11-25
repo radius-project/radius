@@ -393,7 +393,7 @@ func Test_Run(t *testing.T) {
 				for _, resource := range tt.resources {
 					deletes = append(deletes, appManagementClient.EXPECT().
 						DeleteResource(gomock.Any(), *resource.Type, *resource.ID, false).
-						Return(tt.resourceDeleteError == nil, tt.resourceDeleteError).
+						Return(clients.DeleteResourceResult{Deleted: tt.resourceDeleteError == nil}, tt.resourceDeleteError).
 						Times(1).
 						After(firstList))
 				}

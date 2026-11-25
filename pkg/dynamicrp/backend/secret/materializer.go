@@ -33,6 +33,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -97,8 +98,8 @@ type Materializer interface {
 	Materialize(ctx context.Context, req Request) (Result, error)
 
 	// Delete removes the managed secret backing the given owner resource. Deleting a non-existent managed
-	// secret is not an error.
-	Delete(ctx context.Context, ownerResourceID string) error
+	// secret is not an error. force sends force=true on the DELETE, for a forced delete of the owner.
+	Delete(ctx context.Context, ownerResourceID string, force bool) error
 }
 
 // clientMaterializer implements Materializer using the generic (dynamic) resources client against UCP.
@@ -195,14 +196,19 @@ func (m *clientMaterializer) Materialize(ctx context.Context, req Request) (Resu
 
 // Delete removes the managed secret backing the given owner resource. A not-found managed secret is treated
 // as already deleted.
-func (m *clientMaterializer) Delete(ctx context.Context, ownerResourceID string) error {
+func (m *clientMaterializer) Delete(ctx context.Context, ownerResourceID string, force bool) error {
 	ownerID, err := resources.ParseResource(ownerResourceID)
 	if err != nil {
 		return err
 	}
 
 	secretName := ManagedSecretName(ownerID)
-	client, err := generated.NewGenericResourcesClient(SecuritySecretsResourceType, ownerID.RootScope(), &aztoken.AnonymousCredential{}, m.clientOptions())
+	options := m.clientOptions()
+	if force {
+		forced := clientv2.WithForceDelete(*options)
+		options = &forced
+	}
+	client, err := generated.NewGenericResourcesClient(SecuritySecretsResourceType, ownerID.RootScope(), &aztoken.AnonymousCredential{}, options)
 	if err != nil {
 		return err
 	}

@@ -268,11 +268,40 @@ func Test_Engine_Delete_RejectsSkippingPendingDeployments(t *testing.T) {
 			if !tt.simulated {
 				loader.EXPECT().LoadRecipe(gomock.Any(), &metadata).Return(&recipes.EnvironmentDefinition{Driver: tt.driver}, nil)
 			}
-			require.Error(t, e.Delete(t.Context(), DeleteOptions{
+			err := e.Delete(t.Context(), DeleteOptions{
 				Recipe: metadata, PendingDeployments: []string{"pending-deployment"},
-			}))
+			})
+			var recipeErr *recipes.RecipeError
+			require.ErrorAs(t, err, &recipeErr)
+			require.Equal(t, recipes.RecipeCleanupInventoryUnavailable, recipeErr.ErrorDetails.Code)
 		})
 	}
+}
+
+func Test_Engine_Delete_ForceSkipsPendingDeploymentsItCannotRead(t *testing.T) {
+	t.Run("simulated environment", func(t *testing.T) {
+		e, loader, _, _, _ := setup(t)
+		metadata := recipes.ResourceMetadata{Name: "test-recipe"}
+		loader.EXPECT().LoadConfiguration(gomock.Any(), metadata).Return(&recipes.Configuration{Simulated: true}, nil)
+		require.NoError(t, e.Delete(t.Context(), DeleteOptions{
+			Recipe: metadata, PendingDeployments: []string{"pending-deployment"}, Force: true,
+		}))
+	})
+	t.Run("driver changed", func(t *testing.T) {
+		e, loader, _, terraform, _ := setup(t)
+		metadata := recipes.ResourceMetadata{Name: "test-recipe"}
+		definition := &recipes.EnvironmentDefinition{Driver: recipes.TemplateKindTerraform}
+		loader.EXPECT().LoadConfiguration(gomock.Any(), metadata).Return(&recipes.Configuration{}, nil)
+		loader.EXPECT().LoadRecipe(gomock.Any(), &metadata).Return(definition, nil)
+		terraform.EXPECT().FindSecretIDs(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
+		terraform.EXPECT().Delete(gomock.Any(), recipedriver.DeleteOptions{
+			BaseOptions: recipedriver.BaseOptions{Recipe: metadata, Definition: *definition},
+			Force:       true,
+		}).Return(nil)
+		require.NoError(t, e.Delete(t.Context(), DeleteOptions{
+			Recipe: metadata, PendingDeployments: []string{"pending-deployment"}, Force: true,
+		}))
+	})
 }
 
 func Test_Engine_Delete_ForwardsPendingDeployments(t *testing.T) {
@@ -284,11 +313,30 @@ func Test_Engine_Delete_ForwardsPendingDeployments(t *testing.T) {
 	driver.EXPECT().Delete(gomock.Any(), recipedriver.DeleteOptions{
 		BaseOptions:        recipedriver.BaseOptions{Recipe: metadata, Definition: *definition},
 		PendingDeployments: []string{"pending-deployment"},
+		Force:              true,
 	}).Return(nil)
 
 	require.NoError(t, e.Delete(t.Context(), DeleteOptions{
-		Recipe: metadata, PendingDeployments: []string{"pending-deployment"},
+		Recipe: metadata, PendingDeployments: []string{"pending-deployment"}, Force: true,
 	}))
+}
+
+func Test_Engine_Execute_ForwardsPendingDeployments(t *testing.T) {
+	e, configLoader, driver, _, _ := setup(t)
+	metadata := recipes.ResourceMetadata{Name: "test-recipe"}
+	definition := &recipes.EnvironmentDefinition{Driver: recipes.TemplateKindBicep}
+	configLoader.EXPECT().LoadConfiguration(gomock.Any(), metadata).Return(&recipes.Configuration{}, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), &metadata).Return(definition, nil)
+	driver.EXPECT().Execute(gomock.Any(), recipedriver.ExecuteOptions{
+		BaseOptions:        recipedriver.BaseOptions{Recipe: metadata, Definition: *definition},
+		PrevState:          []string{"previous"},
+		PendingDeployments: []string{"pending-deployment"},
+	}).Return(&recipes.RecipeOutput{}, nil)
+
+	_, err := e.Execute(t.Context(), ExecuteOptions{
+		Recipe: metadata, PreviousState: []string{"previous"}, PendingDeployments: []string{"pending-deployment"},
+	})
+	require.NoError(t, err)
 }
 
 func Test_Engine_Execute_GarbageCollectionFailureReturnsOutput(t *testing.T) {

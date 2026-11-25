@@ -733,6 +733,7 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 	const (
 		deletedID   = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/deleted"
 		undeletedID = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/undeleted"
+		recoveredID = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/recovered"
 		newID       = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/new"
 		awsID       = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/bucket"
 		awsARN      = "arn:aws:s3:::bucket"
@@ -757,6 +758,13 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 			undeleted: []string{undeletedID},
 			recipeErr: cleanupErr,
 			wantIDs:   []string{newID, undeletedID},
+		},
+		{
+			name:      "cleanup failed for a resource recovered from a pending deployment",
+			outputIDs: []string{newID},
+			undeleted: []string{recoveredID},
+			recipeErr: cleanupErr,
+			wantIDs:   []string{newID, recoveredID},
 		},
 		{
 			name:      "cleanup failed but reported no undeleted output resources",
@@ -821,13 +829,14 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 							{"id": deletedID, "radiusManaged": true},
 							{"id": undeletedID, "radiusManaged": true},
 						},
+						"pendingRecipeDeployments": []string{"recovered-deployment"},
 					},
 					"recipe": map[string]any{"name": "test-recipe"},
 				},
 			}
 			msc.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil)
 			cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil)
-			output := &recipes.RecipeOutput{Resources: tt.outputIDs, UndeletedResources: tt.undeleted}
+			output := &recipes.RecipeOutput{Resources: tt.outputIDs, UndeletedResources: tt.undeleted, ResolvedPendingDeployments: []string{"recovered-deployment"}}
 			output.SetProviderResourceID(awsID, awsARN)
 			eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(output, tt.recipeErr)
 
@@ -860,6 +869,7 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 			}
 			require.Equal(t, tt.wantIDs, ids)
 			require.Equal(t, recipeutil.ExecutionError, saved.Properties.Recipe.DeploymentStatus)
+			require.Empty(t, saved.Properties.Status.PendingRecipeDeployments)
 		})
 	}
 }
@@ -1603,4 +1613,135 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, ctrl.Result{}, res)
+}
+
+func pendingTestResource(pending ...string) *TestResource {
+	return &TestResource{
+		BaseResource: v1.BaseResource{ID: TestResourceID, Type: TestResourceType},
+		Properties: TestResourceProperties{
+			BasicResourceProperties: rpv1.BasicResourceProperties{
+				Environment: TestEnvironmentID,
+				Application: TestApplicationID,
+				Status:      rpv1.ResourceStatus{PendingRecipeDeployments: pending},
+			},
+			Recipe: portableresources.ResourceRecipe{Name: "test-recipe"},
+		},
+	}
+}
+
+// TestCreateOrUpdateResource_Run_RedeployClearsResolvedPendingDeployments covers a failed deployment followed by a
+// successful redeploy and a delete: the delete must no longer depend on the failed deployment.
+func TestCreateOrUpdateResource_Run_RedeployClearsResolvedPendingDeployments(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	db := database.NewMockClient(mctrl)
+	eng := engine.NewMockEngine(mctrl)
+	cfg := configloader.NewMockConfigurationLoader(mctrl)
+	resource := pendingTestResource("lost-deployment", "unreachable-deployment")
+
+	db.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{Data: resource, ETag: "etag"}, nil)
+	cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil).Times(2)
+	eng.EXPECT().Execute(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts engine.ExecuteOptions) (*recipes.RecipeOutput, error) {
+		require.Equal(t, []string{"lost-deployment", "unreachable-deployment"}, opts.PendingDeployments)
+		return &recipes.RecipeOutput{Resources: []string{newOutputResourceResourceID}, ResolvedPendingDeployments: []string{"lost-deployment"}}, nil
+	})
+	var saved *TestResource
+	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, object *database.Object, _ ...database.SaveOptions) error {
+		saved = object.Data.(*TestResource)
+		return nil
+	})
+	create, err := NewCreateOrUpdateResource(ctrl.Options{DatabaseClient: db}, successProcessorReference, eng, cfg)
+	require.NoError(t, err)
+	_, err = create.Run(t.Context(), &ctrl.Request{ResourceID: TestResourceID})
+	require.NoError(t, err)
+	require.Equal(t, []string{"unreachable-deployment"}, saved.Properties.Status.PendingRecipeDeployments)
+
+	saved.Properties.Status.PendingRecipeDeployments = nil
+	db.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{Data: saved}, nil)
+	eng.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts engine.DeleteOptions) error {
+		require.Empty(t, opts.PendingDeployments)
+		return nil
+	})
+	db.EXPECT().Delete(gomock.Any(), TestResourceID).Return(nil)
+	remove, err := NewDeleteResource(ctrl.Options{DatabaseClient: db}, successProcessorReference, eng, cfg)
+	require.NoError(t, err)
+	result, err := remove.Run(t.Context(), &ctrl.Request{ResourceID: TestResourceID})
+	require.NoError(t, err)
+	require.Nil(t, result.Properties)
+}
+
+func TestRetainFailedRecipeOutput_ClearsResolvedPendingDeployments(t *testing.T) {
+	resource := pendingTestResource("recovered-deployment", "unreachable-deployment")
+	require.NoError(t, retainFailedRecipeOutput(resource, &recipes.RecipeOutput{
+		Resources:                  []string{newOutputResourceResourceID},
+		PendingDeploymentID:        "latest-deployment",
+		ResolvedPendingDeployments: []string{"recovered-deployment"},
+	}))
+	require.Equal(t, []string{"unreachable-deployment", "latest-deployment"}, resource.Properties.Status.PendingRecipeDeployments)
+	require.Len(t, resource.OutputResources(), 1)
+}
+
+func TestKeepUndeletedOutputResources_KeepsRecoveredResources(t *testing.T) {
+	resource := pendingTestResource()
+	previous := rpv1.OutputResource{ID: resources.MustParse(oldOutputResourceResourceID), RadiusManaged: new(true)}
+	keepUndeletedOutputResources(resource, []rpv1.OutputResource{previous}, []string{oldOutputResourceResourceID, newOutputResourceResourceID, "invalid"})
+	outputs := resource.OutputResources()
+	require.Len(t, outputs, 2)
+	require.Equal(t, previous, outputs[0])
+	require.Equal(t, newOutputResourceResourceID, outputs[1].ID.String())
+	require.True(t, outputs[1].IsRadiusManaged())
+}
+
+func TestDeleteResource_Run_ReportsSkippedRecipeDeployments(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		force   bool
+		persist []string
+		skipped []string
+	}{
+		{name: "forced delete reports what the driver skipped", force: true, persist: []string{"lost-deployment"}, skipped: []string{"lost-deployment"}},
+		{name: "forced delete that recovers nothing reports every pending deployment", force: true, skipped: []string{"lost-deployment", "recoverable-deployment"}},
+		{name: "delete that recovers everything reports nothing", persist: []string{}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			mctrl := gomock.NewController(t)
+			db := database.NewMockClient(mctrl)
+			eng := engine.NewMockEngine(mctrl)
+			cfg := configloader.NewMockConfigurationLoader(mctrl)
+			db.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{Data: pendingTestResource("lost-deployment", "recoverable-deployment"), ETag: "etag"}, nil)
+			db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+			cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil)
+			eng.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, opts engine.DeleteOptions) error {
+				require.Equal(t, tt.force, opts.Force)
+				if tt.persist != nil {
+					return opts.PersistCleanup(ctx, nil, tt.persist)
+				}
+				return nil
+			})
+			db.EXPECT().Delete(gomock.Any(), TestResourceID).Return(nil)
+			processor := &forceRecordingProcessor{}
+			remove, err := NewDeleteResource(ctrl.Options{DatabaseClient: db}, processors.ResourceProcessor[*TestResource, TestResource](processor), eng, cfg)
+			require.NoError(t, err)
+
+			result, err := remove.Run(t.Context(), &ctrl.Request{ResourceID: TestResourceID, Force: tt.force})
+			require.Equal(t, []bool{tt.force}, processor.forced)
+			require.NoError(t, err)
+			require.Equal(t, v1.ProvisioningStateSucceeded, result.ProvisioningState())
+			if tt.skipped == nil {
+				require.Nil(t, result.Properties)
+			} else {
+				require.Equal(t, map[string]any{SkippedRecipeDeploymentsProperty: tt.skipped}, result.Properties)
+			}
+		})
+	}
+}
+
+// forceRecordingProcessor records the Force option of each Delete call.
+type forceRecordingProcessor struct {
+	SuccessProcessor
+	forced []bool
+}
+
+func (p *forceRecordingProcessor) Delete(_ context.Context, _ *TestResource, options processors.Options) error {
+	p.forced = append(p.forced, options.Force)
+	return nil
 }
