@@ -24,6 +24,7 @@ import (
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -121,7 +122,8 @@ func TestUpdateResourceState(t *testing.T) {
 					})
 			}
 
-			err := updateResourceState(ctx, databaseClient, "fakeid", tt.updateState)
+			asyncCtrl := &testAsyncController{BaseController: ctrl.NewBaseAsyncController(ctrl.Options{DatabaseClient: databaseClient})}
+			err := updateResourceState(ctx, asyncCtrl, &ctrl.Request{}, "fakeid", tt.updateState)
 			require.ErrorIs(t, err, tt.outErr)
 		})
 	}

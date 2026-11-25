@@ -70,6 +70,16 @@ type Controller interface {
 	DatabaseClient() database.Client
 }
 
+// OwnershipChecker is implemented by a Controller whose resources record the operation that owns them, so a newer
+// operation can replace one that is still queued or running. Before the worker writes a provisioning state on a
+// resource, it calls OwnsResource with the resource it just read, and writes only when that returns true, with the
+// resource's ETag. Otherwise it updates only the operation's status. A Controller that does not implement it owns
+// every resource it runs on.
+type OwnershipChecker interface {
+	// OwnsResource reports whether the operation request still owns resource.
+	OwnsResource(resource *database.Object, request *Request) (bool, error)
+}
+
 // BaseController is the base struct of async operation controller.
 type BaseController struct {
 	options Options

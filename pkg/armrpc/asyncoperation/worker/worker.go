@@ -205,7 +205,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 					Code:    v1.CodeInternal,
 					Message: errMsg,
 				})
-				w.completeOperation(reqCtx, msgreq, failed, asyncCtrl.DatabaseClient())
+				w.completeOperation(reqCtx, msgreq, failed, asyncCtrl)
 				return
 			}
 
@@ -223,7 +223,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 
-			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl.DatabaseClient(), op, v1.ProvisioningStateUpdating, nil); err != nil {
+			if err = w.updateResourceAndOperationStatus(reqCtx, asyncCtrl, op, v1.ProvisioningStateUpdating, nil); err != nil {
 				return
 			}
 
@@ -278,7 +278,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 						Code:    v1.CodeInternal,
 						Message: fmt.Sprintf("unexpected error while processing async operation: %v", err),
 					})
-					w.completeOperation(ctx, message, failed, asyncCtrl.DatabaseClient())
+					w.completeOperation(ctx, message, failed, asyncCtrl)
 				}
 			}
 		}(opDone)
@@ -305,7 +305,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		// 2. When parent context is canceled or done, we need to requeue the operation to reprocess the request.
 		// Such cases should not call w.completeOperation.
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
-			w.completeOperation(ctx, message, result, asyncCtrl.DatabaseClient())
+			w.completeOperation(ctx, message, result, asyncCtrl)
 		}
 		trace.SetAsyncResultStatus(result, span)
 	}()
@@ -331,7 +331,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			errMessage := fmt.Sprintf("Operation (%s) has timed out because it was processing longer than %d s.", asyncReq.OperationType, int(asyncReq.Timeout().Seconds()))
 			result := ctrl.NewCanceledResult(errMessage)
 			result.Error.Target = asyncReq.ResourceID
-			w.completeOperation(ctx, message, result, asyncCtrl.DatabaseClient())
+			w.completeOperation(ctx, message, result, asyncCtrl)
 			return
 
 		case <-ctx.Done():
@@ -363,7 +363,7 @@ func extractError(err error) v1.ErrorDetails {
 	}
 }
 
-func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, sc database.Client) {
+func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, message *queue.Message, result ctrl.Result, asyncCtrl ctrl.Controller) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	req := &ctrl.Request{}
 	if err := json.Unmarshal(message.Data, req); err != nil {
@@ -371,7 +371,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 		return
 	}
 
-	err := w.updateResourceAndOperationStatus(ctx, sc, req, result.ProvisioningState(), result.Error)
+	err := w.updateResourceAndOperationStatus(ctx, asyncCtrl, req, result.ProvisioningState(), result.Error)
 	if err != nil {
 		logger.Error(err, "failed to update resource and/or operation status")
 		return
@@ -387,7 +387,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	metrics.DefaultAsyncOperationMetrics.RecordAsyncOperation(ctx, req, &result)
 }
 
-func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc database.Client, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
+func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, asyncCtrl ctrl.Controller, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	rID, err := resources.ParseResource(req.ResourceID)
@@ -396,7 +396,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 		return err
 	}
 
-	err = updateResourceState(ctx, sc, rID.String(), state)
+	err = updateResourceState(ctx, asyncCtrl, req, rID.String(), state)
 	if errors.Is(err, &database.ErrNotFound{}) {
 		logger.Info("failed to update the provisioningState in resource because it no longer exists.")
 	} else if err != nil {
@@ -467,10 +467,25 @@ func (w *AsyncRequestProcessWorker) getMessageExtendDuration(visibleAt time.Time
 	return d
 }
 
-func updateResourceState(ctx context.Context, sc database.Client, id string, state v1.ProvisioningState) error {
-	obj, err := sc.Get(ctx, id)
+// updateResourceState sets the provisioningState of the resource id to state. When asyncCtrl is a
+// ctrl.OwnershipChecker and the operation req no longer owns the resource, it leaves the resource alone. The ownership
+// check reads the same version of the resource that is saved, with its ETag, so a newer operation that takes the
+// resource in between makes the save fail, and the retry sees the new owner.
+func updateResourceState(ctx context.Context, asyncCtrl ctrl.Controller, req *ctrl.Request, id string, state v1.ProvisioningState) error {
+	obj, err := asyncCtrl.DatabaseClient().Get(ctx, id)
 	if err != nil {
 		return err
+	}
+
+	if checker, ok := asyncCtrl.(ctrl.OwnershipChecker); ok {
+		owns, err := checker.OwnsResource(obj, req)
+		if err != nil {
+			return err
+		}
+		if !owns {
+			ucplog.FromContextOrDiscard(ctx).Info("The operation no longer owns the resource, so the resource's provisioningState is left unchanged.", "provisioningState", string(state))
+			return nil
+		}
 	}
 
 	objmap := obj.Data.(map[string]any)
@@ -484,7 +499,7 @@ func updateResourceState(ctx context.Context, sc database.Client, id string, sta
 
 	objmap["provisioningState"] = string(state)
 
-	err = sc.Save(ctx, obj, database.WithETag(obj.ETag))
+	err = asyncCtrl.DatabaseClient().Save(ctx, obj, database.WithETag(obj.ETag))
 	if err != nil {
 		return err
 	}
