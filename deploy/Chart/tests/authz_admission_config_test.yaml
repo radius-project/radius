@@ -28,3 +28,14 @@ tests:
       - matchRegex:
           path: data["radius-self-host.yaml"]
           pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","custom-ca","custom-kubeconfig","ucp-spiffe","applications-rp-spiffe","dynamic-rp-spiffe"\]$'
+
+  - it: protects the external database password Secret
+    set:
+      global.rbac.enabled: true
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-db","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","root-ca-cert","target-kubeconfig","ucp-spiffe","applications-rp-spiffe","dynamic-rp-spiffe"\]$'

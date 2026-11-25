@@ -31,6 +31,9 @@ spec:
         {{- end }}
       annotations:
         checksum/authz-config: {{ $authzConfig | sha256sum }}
+        {{- if and .Values.database.enabled (include "radius.database.externalHost" .) }}
+        checksum/database-url: {{ include "radius.database.url" (dict "ctx" . "name" "applications_rp") | sha256sum }}
+        {{- end }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -171,7 +174,7 @@ spec:
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: database-secret
+              name: {{ include "radius.database.secretName" . | quote }}
               key: POSTGRES_PASSWORD
         {{- end }}
         - name: SKIP_ARM

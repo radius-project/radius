@@ -24,6 +24,9 @@ spec:
         {{- end }}
       annotations:
         checksum/authz-config: {{ include "radius.authz.checksumInput" . | sha256sum }}
+        {{- if and .Values.database.enabled (include "radius.database.externalHost" .) }}
+        checksum/database-url: {{ include "radius.database.url" (dict "ctx" . "name" "ucp") | sha256sum }}
+        {{- end }}
         checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
@@ -67,7 +70,7 @@ spec:
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: database-secret
+              name: {{ include "radius.database.secretName" . | quote }}
               key: POSTGRES_PASSWORD
         {{- end }}
         {{- if .Values.global.rootCA.cert }}

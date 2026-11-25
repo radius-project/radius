@@ -654,6 +654,40 @@ databaseProvider:
     url: "postgresql://ucp:radius_pass@localhost:5432/ucp?sslmode=disable"
 ```
 
+**PostgreSQL (Helm chart)** — `database.enabled=true` switches UCP, Applications RP, and Dynamic RP to the `postgresql` provider. By default the chart also installs an in-cluster PostgreSQL server and the `database-secret` password Secret. To use an existing server instead, set `database.external.host`. The chart then skips the in-cluster server and builds each service's URL from that host:
+
+```bash
+kubectl create namespace radius-system
+kubectl create secret generic radius-db -n radius-system \
+  --from-literal=POSTGRES_PASSWORD='<URL-safe password>'
+
+rad install kubernetes \
+  --set database.enabled=true \
+  --set database.external.host=<server>.postgres.database.azure.com \
+  --set database.external.existingSecret=radius-db
+```
+
+| Value                              | Default       | Purpose                                                                                         |
+|------------------------------------|---------------|-------------------------------------------------------------------------------------------------|
+| `database.external.host`           | `""`          | Server host name. Setting it disables the in-cluster server.                                    |
+| `database.external.port`           | `5432`        | Server port.                                                                                    |
+| `database.external.sslmode`        | `verify-full` | `sslmode` for every service URL. A server with a private CA needs `global.rootCA` or `require`. |
+| `database.external.existingSecret` | `""`          | Required. Secret with a `POSTGRES_PASSWORD` key for the service users.                          |
+
+Prepare the server first with `deploy/init-db/init-external-db.sh`. It creates the `ucp`, `applications_rp`, and `dynamic_rp` users and databases and the `resources` table. Re-running it with the same password is safe. It connects with the standard PostgreSQL client variables (`PGHOST`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`) and sets each service user's password from `RADIUS_DB_PASSWORD`, which must match the Secret. The chart adds the Secret to the protected control-plane Secrets. A change to the host, port, or `sslmode` restarts the three services on `helm upgrade`. `rad shutdown` and `rad startup` support only the in-cluster server.
+
+To change the password, run the script with the new `RADIUS_DB_PASSWORD`, update the Secret, and then restart the three services (`kubectl rollout restart deployment ucp applications-rp dynamic-rp -n radius-system`). Running pods keep the old password until they restart.
+
+Use an external server for a new installation. Setting `database.external.host` on an existing release doesn't migrate data: the services start against the external databases, and Helm deletes the in-cluster server's StatefulSet, Service, and `database-secret` (the volume is kept). Don't use `database-secret` as `database.external.existingSecret`. Switching back to the in-cluster server isn't a recovery path either, because the chart generates a new password that doesn't match the users in the kept volume.
+
+The external server holds the resource data, but not every Secret the control plane needs. Before you recreate the cluster against the same server, back up these Secrets in `radius-system` and restore them before you install Radius on the new cluster. The chart generates new keys when they're missing.
+
+- `radius-encryption-key`: sensitive resource fields are stored encrypted with its keys. New keys leave those fields unreadable.
+- `radius-aws-fingerprint-key`: UCP stores fingerprints of write-only AWS resource properties made with this key. With a new key, UCP can't tell which of those values changed, so later updates resend unchanged mutable values and miss changes to create-only values.
+- The Terraform state Secrets (`tfstate-*`), when recipes use the default Kubernetes state backend. Without them, Terraform can't update or delete the infrastructure it created.
+
+Credentials registered with `rad credential register` are also stored as Kubernetes Secrets, so register them again on the new cluster.
+
 No other code changes are needed. The `DatabaseProvider` will read the
 `provider` field and call the matching factory function to produce the client.
 

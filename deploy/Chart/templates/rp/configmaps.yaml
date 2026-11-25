@@ -17,7 +17,7 @@ data:
     {{- if .Values.database.enabled }}
       provider: "postgresql"
       postgresql:
-        url: "postgresql://applications_rp:${POSTGRES_PASSWORD}@database.{{ .Release.Namespace }}:5432/applications_rp?sslmode=disable"
+        url: "{{ include "radius.database.url" (dict "ctx" . "name" "applications_rp") }}"
     {{- else }}
       provider: "apiserver"
       apiserver:
