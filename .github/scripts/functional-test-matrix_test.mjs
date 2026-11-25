@@ -277,6 +277,31 @@ for (const { context, error } of [
   });
 }
 
+test("tests check out the commit the build job built", () => {
+  const workflow = readFileSync(
+    new URL("../workflows/functional-test-noncloud.yaml", import.meta.url),
+    "utf8"
+  );
+  const sourceRefs = ["build", "tests"].map((jobName) => {
+    const job = workflow.match(
+      new RegExp(
+        `^  ${jobName}:\\n[\\s\\S]*?(?=^  [a-z][\\w-]*:|$(?![\\s\\S]))`,
+        "m"
+      )
+    )?.[0];
+    assert.ok(job, `${jobName} job must exist`);
+    const checkout = job.match(
+      /      - name: Checkout\n[\s\S]*?(?=\n      - )/
+    )?.[0];
+    assert.ok(checkout, `${jobName} must check out the source`);
+    return checkout.match(/^ {10}ref: (.+)$/m)?.[1];
+  });
+  assert.equal(sourceRefs[0], sourceRefs[1]);
+  // The merge queue deletes its branch when it discards an entry, so a ref
+  // checkout can fail after the build finishes.
+  assert.match(sourceRefs[1], /\|\| github\.sha \}\}$/);
+});
+
 for (const { name, context, authzChanged, expected } of [
   ...[undefined, "pr"].map((profile) => ({
     name: `manual ${profile ?? "default"} profile`,
@@ -317,7 +342,7 @@ for (const { name, context, authzChanged, expected } of [
     assert.ok(sourceCheckout, "source checkout must exist");
     assert.ok(
       sourceCheckout.includes(
-        "ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.ref }}"
+        "ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.sha }}"
       ),
       "build artifacts must still come from the selected source branch"
     );

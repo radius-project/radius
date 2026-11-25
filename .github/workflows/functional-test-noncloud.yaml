@@ -159,11 +159,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Build artifacts from the same ref the tests job checks out so the
+          # Build artifacts from the same source the tests job checks out so the
           # compiled artifacts match the source under test. On workflow_dispatch
-          # that is the "branch" input; otherwise it is the triggering ref (which
-          # for schedule/repository_dispatch is the default branch).
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.ref }}
+          # that is the "branch" input; otherwise it is the triggering commit.
+          # Use the commit, not the ref: the merge queue deletes its temporary
+          # branch when it discards an entry, and main can move during a run.
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.sha }}
           persist-credentials: false
 
       - name: Setup Go
@@ -297,11 +298,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Check out the same ref the build job built its artifacts from so the
+          # Check out the same source the build job built its artifacts from so the
           # source under test matches those artifacts. On workflow_dispatch that is
-          # the "branch" input; otherwise it is the triggering ref (which for
-          # schedule/repository_dispatch is the default branch).
-          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.ref }}
+          # the "branch" input; otherwise it is the triggering commit (see the
+          # build job's checkout for why it is not the ref).
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.sha }}
           persist-credentials: false
 
       - name: Checkout samples repo
