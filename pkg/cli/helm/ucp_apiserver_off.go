@@ -28,6 +28,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -335,7 +336,8 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 // name exists, or, for ucp-apiserver-tls, the Radius release's Certificate ucp-cert writes another Secret by
 // spec.secretName, and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
 // only ca.crt, the allow-direct-injection annotation and the release annotations, which is what rad and the chart
-// README's plain-Helm steps write. A Secret that the live UCP pod template references is never a leftover.
+// README's plain-Helm steps write. A Secret that the live UCP pod template references, or radius-apiserver-ca while
+// Issuer radius-apiserver-issuer signs from it, is never a leftover.
 //
 // It checks the Secret's markers before it reads the Certificate, so a Secret rad does not own is foreign without any
 // cert-manager read. When keepUnreadable is set, an owned Secret whose Certificate rad is Forbidden to read is
@@ -361,6 +363,18 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 		found.state = ucpOffSecretForeign
 		return found, nil
 	}
+	if leftover.secret == ucpAPIServerCASecretName {
+		// An Issuer that survives its Certificate, such as radius-apiserver-issuer that Helm keeps by
+		// helm.sh/resource-policy, still signs from the CA Secret.
+		signs, err := issuerSignsFromSecret(ctx, dynamicClient, radiusNamespace, radiusAPIServerIssuerName, leftover.secret)
+		if keepUnreadable && apierrors.IsForbidden(err) {
+			found.state = ucpOffSecretUnchecked
+			return found, nil
+		}
+		if err != nil || signs {
+			return found, err
+		}
+	}
 	if leftover.certificate != "" {
 		// NotFound also covers a cluster without the cert-manager CRDs.
 		certificate, err := dynamicClient.Resource(certManagerCertificatesResource).Namespace(radiusNamespace).Get(ctx, leftover.certificate, metav1.GetOptions{})
@@ -385,6 +399,23 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 	}
 	found.state = ucpOffSecretLeftover
 	return found, nil
+}
+
+// issuerSignsFromSecret reports whether Issuer issuerName exists, is not being deleted, and names secretName in
+// spec.ca.secretName.
+func issuerSignsFromSecret(ctx context.Context, dynamicClient dynamic.Interface, namespace, issuerName, secretName string) (bool, error) {
+	issuer, err := dynamicClient.Resource(certManagerIssuersResource).Namespace(namespace).Get(ctx, issuerName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to read Issuer %s/%s: %w", namespace, issuerName, err)
+	}
+	if issuer.GetDeletionTimestamp() != nil {
+		return false, nil
+	}
+	caSecretName, _, _ := unstructured.NestedString(issuer.Object, "spec", "ca", "secretName")
+	return caSecretName == secretName, nil
 }
 
 // ownsUCPOffSecret reports whether rad's contract owns secret, the Secret of leftover. cert-manager must have issued a
