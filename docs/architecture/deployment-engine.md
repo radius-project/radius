@@ -287,6 +287,8 @@ If that inventory is missing, invalid, or not yet final, Radius saves the deploy
 
 PUT retries preserve stored cleanup state. During deletion, Radius saves each recovered inventory and clears its pending deployment ID before it deletes infrastructure. If a later delete step fails, the next attempt uses the saved resource IDs without reading that deployment again.
 
+When the controller (`DeploymentTemplateReconciler`) or recipe output cleanup (`pkg/portableresources/processors/resourceclient.go`) deletes a Radius-plane output resource (`/planes/radius/...`), it resolves a supported API version from UCP's provider summary (`GET /planes/radius/{plane}/providers/{provider}?api-version=2023-10-01-preview` via `clients.ResolveAPIVersion`) before issuing the `DELETE` request, preferring `defaultApiVersion` when advertised and otherwise selecting a deterministic supported version from `apiVersions`.
+
 ## Component Interaction Diagram
 
 ```mermaid

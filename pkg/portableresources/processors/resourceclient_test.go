@@ -564,6 +564,166 @@ func Test_Delete_UCP(t *testing.T) {
 	})
 }
 
+func Test_Delete_RadiusAPIVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		resourceID   string
+		providerPath string
+		typeName     string
+		versions     map[string]any
+		defaultVer   string
+		summaryCode  int
+		deleteCode   int
+		asyncDelete  bool
+		wantVersion  string
+		wantErr      string
+	}{
+		{
+			name:         "Radius.Core modern API version",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev",
+			providerPath: "/planes/radius/local/providers/Radius.Core",
+			typeName:     "environments",
+			versions:     map[string]any{"2025-08-01-preview": map[string]any{}},
+			summaryCode:  http.StatusOK,
+			deleteCode:   http.StatusOK,
+			wantVersion:  "2025-08-01-preview",
+		},
+		{
+			name:         "Applications.Core legacy API version",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/app",
+			providerPath: "/planes/radius/local/providers/Applications.Core",
+			typeName:     "containers",
+			versions:     map[string]any{"2023-10-01-preview": map[string]any{}},
+			summaryCode:  http.StatusOK,
+			deleteCode:   http.StatusOK,
+			wantVersion:  "2023-10-01-preview",
+		},
+		{
+			name:         "UDT non-date version",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/MyCompany.Custom/widgets/w1",
+			providerPath: "/planes/radius/local/providers/MyCompany.Custom",
+			typeName:     "widgets",
+			versions:     map[string]any{"v1alpha1": map[string]any{}},
+			summaryCode:  http.StatusOK,
+			deleteCode:   http.StatusOK,
+			wantVersion:  "v1alpha1",
+		},
+		{
+			name:         "Radius delete returns 404 after version lookup",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev",
+			providerPath: "/planes/radius/local/providers/Radius.Core",
+			typeName:     "environments",
+			versions:     map[string]any{"2025-08-01-preview": map[string]any{}},
+			summaryCode:  http.StatusOK,
+			deleteCode:   http.StatusNotFound,
+			wantVersion:  "2025-08-01-preview",
+		},
+		{
+			name:         "Radius async delete polls to completion",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev",
+			providerPath: "/planes/radius/local/providers/Radius.Core",
+			typeName:     "environments",
+			versions:     map[string]any{"2025-08-01-preview": map[string]any{}},
+			summaryCode:  http.StatusOK,
+			deleteCode:   http.StatusAccepted,
+			asyncDelete:  true,
+			wantVersion:  "2025-08-01-preview",
+		},
+		{
+			name:         "missing provider summary returns error without deleting",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev",
+			providerPath: "/planes/radius/local/providers/Radius.Core",
+			summaryCode:  http.StatusNotFound,
+			wantErr:      "404",
+		},
+		{
+			name:         "empty API versions returns error without deleting",
+			resourceID:   "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/dev",
+			providerPath: "/planes/radius/local/providers/Radius.Core",
+			typeName:     "environments",
+			versions:     map[string]any{},
+			summaryCode:  http.StatusOK,
+			wantErr:      `resource type "Radius.Core/environments" has no supported API versions`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotDeleteVersion string
+			deleteCalled := false
+			mux := http.NewServeMux()
+			var serverURL string
+			operationPath := "/planes/radius/local/providers/Radius.Core/locations/global/operationStatuses/op-1"
+			mux.HandleFunc(tt.providerPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.summaryCode)
+				if tt.summaryCode != http.StatusOK {
+					_ = json.NewEncoder(w).Encode(v1.ErrorResponse{
+						Error: &v1.ErrorDetails{Code: v1.CodeNotFound, Message: "provider not found"},
+					})
+					return
+				}
+
+				rt := map[string]any{"apiVersions": tt.versions}
+				if tt.defaultVer != "" {
+					rt["defaultApiVersion"] = tt.defaultVer
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"name": "test",
+					"resourceTypes": map[string]any{
+						tt.typeName: rt,
+					},
+				})
+			})
+			mux.HandleFunc(operationPath, func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]any{"status": "Succeeded"})
+			})
+			mux.HandleFunc(tt.resourceID, func(w http.ResponseWriter, r *http.Request) {
+				require.Equal(t, http.MethodDelete, r.Method)
+				deleteCalled = true
+				gotDeleteVersion = r.URL.Query().Get("api-version")
+				if tt.deleteCode == http.StatusNotFound {
+					handleNotFound(t)(w, r)
+					return
+				}
+				if tt.asyncDelete {
+					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Azure-AsyncOperation", serverURL+operationPath+"?api-version="+gotDeleteVersion)
+					w.WriteHeader(http.StatusAccepted)
+					_ = json.NewEncoder(w).Encode(map[string]any{})
+					return
+				}
+				handleDeleteSuccess()(w, r)
+			})
+
+			server := httptest.NewServer(mux)
+			serverURL = server.URL
+			defer server.Close()
+
+			connection, err := sdk.NewDirectConnection(server.URL)
+			require.NoError(t, err)
+
+			c := NewResourceClient(nil, connection, nil)
+			err = c.Delete(t.Context(), tt.resourceID)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.False(t, deleteCalled)
+				return
+			}
+
+			require.NoError(t, err)
+			require.True(t, deleteCalled)
+			require.Equal(t, tt.wantVersion, gotDeleteVersion)
+		})
+	}
+}
+
 func Test_Delete_UCP_AWSOwnerHeader(t *testing.T) {
 	const radiusResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container"
 	const owner = "recipe;app;env;resource"
@@ -601,6 +761,16 @@ func Test_Delete_UCP_AWSOwnerHeader(t *testing.T) {
 			deletes := 0
 			var got []string
 			mux := http.NewServeMux()
+			mux.HandleFunc("/planes/radius/local/providers/Applications.Core", handleJSONResponse(t, map[string]any{
+				"name": "Applications.Core",
+				"resourceTypes": map[string]any{
+					"containers": map[string]any{
+						"apiVersions": map[string]any{
+							"2023-10-01-preview": map[string]any{},
+						},
+					},
+				},
+			}, http.StatusOK))
 			mux.HandleFunc(tt.id, func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodDelete {
 					deletes++

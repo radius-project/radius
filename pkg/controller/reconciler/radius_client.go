@@ -34,6 +34,7 @@ type RadiusClient interface {
 	Environments(scope string) EnvironmentClient
 	Groups(scope string) ResourceGroupClient
 	Resources(scope string, resourceType string) ResourceClient
+	ResolveAPIVersion(ctx context.Context, id resources.ID) (string, error)
 }
 
 type ApplicationClient interface {
@@ -121,6 +122,10 @@ func (c *RadiusClientImpl) Resources(scope string, resourceType string) Resource
 	}
 
 	return &ResourceClientImpl{inner: gc}
+}
+
+func (c *RadiusClientImpl) ResolveAPIVersion(ctx context.Context, id resources.ID) (string, error) {
+	return sdkclients.ResolveAPIVersion(ctx, c.connection, id)
 }
 
 var _ ApplicationClient = (*ApplicationClientImpl)(nil)
