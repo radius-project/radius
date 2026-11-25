@@ -809,4 +809,41 @@ func TestGetSchemaForResourceType(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("error - unsupported resource IDs", func(t *testing.T) {
+		clientFactory, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		ctx := t.Context()
+
+		testCases := []struct {
+			name        string
+			resourceID  string
+			expectedErr string
+		}{
+			{
+				name:        "no UCP plane",
+				resourceID:  "/subscriptions/sub/resourceGroups/rg/providers/Applications.Test/testResources/r",
+				expectedErr: "does not have a UCP plane",
+			},
+			{
+				name:        "no resource type",
+				resourceID:  "/planes/radius/local/resourceGroups",
+				expectedErr: "does not have a resource type",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				var schema any
+				var err error
+				require.NotPanics(t, func() {
+					schema, err = GetSchemaForResourceType(ctx, clientFactory, tc.resourceID, "2023-10-01-preview")
+				})
+				require.ErrorContains(t, err, tc.expectedErr)
+				require.NotErrorIs(t, err, ErrNoSchemaFound)
+				require.Nil(t, schema)
+			})
+		}
+	})
 }

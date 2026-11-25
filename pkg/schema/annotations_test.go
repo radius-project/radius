@@ -542,6 +542,43 @@ func TestGetSchema(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expectedSchema, result)
 	})
+
+	t.Run("unsupported resource ID or type returns error", func(t *testing.T) {
+		clientFactory, err := testUCPClientFactory(nil)
+		require.NoError(t, err)
+
+		testCases := []struct {
+			name         string
+			resourceID   string
+			resourceType string
+			expectedErr  string
+		}{
+			{
+				name:         "no UCP plane",
+				resourceID:   "/subscriptions/sub/resourceGroups/rg/providers/Applications.Test/testResources/r",
+				resourceType: "Applications.Test/testResources",
+				expectedErr:  "does not have a UCP plane",
+			},
+			{
+				name:         "no resource type name",
+				resourceID:   "/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test",
+				resourceType: "Foo.Bar",
+				expectedErr:  "is not valid",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				var result map[string]any
+				var err error
+				require.NotPanics(t, func() {
+					result, err = GetSchema(ctx, clientFactory, tc.resourceID, tc.resourceType, "2024-01-01")
+				})
+				require.ErrorContains(t, err, tc.expectedErr)
+				require.Nil(t, result)
+			})
+		}
+	})
 }
 
 // testUCPClientFactory creates a mock UCP client factory that returns the given schema.

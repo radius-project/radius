@@ -18,6 +18,7 @@ package schema
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -66,9 +67,17 @@ func GetSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, r
 	}
 
 	plane := ID.PlaneNamespace()
-	planeName := strings.Split(plane, "/")[1]
+	planeSegments := strings.Split(plane, "/")
+	if len(planeSegments) < 2 {
+		return nil, fmt.Errorf("resource ID %q does not have a UCP plane", resourceID)
+	}
+	planeName := planeSegments[1]
 	resourceProvider, _, _ := strings.Cut(resourceType, "/")
-	resourceTypeName := strings.Split(resourceType, "/")[1]
+	typeSegments := strings.Split(resourceType, "/")
+	if len(typeSegments) < 2 {
+		return nil, fmt.Errorf("resource type %q is not valid", resourceType)
+	}
+	resourceTypeName := typeSegments[1]
 
 	// Fetch the API version resource which contains the schema
 	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceTypeName, apiVersion, nil)
