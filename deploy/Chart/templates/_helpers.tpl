@@ -137,6 +137,44 @@ Usage (pass the root context):
 {{- end -}}
 
 {{/*
+Returns "true" when the chart installs its own in-cluster PostgreSQL server. Setting
+database.external.host connects to an existing server instead.
+*/}}
+{{- define "radius.database.inCluster" -}}
+{{- if and .Values.database.external.host (not .Values.database.enabled) -}}
+{{- fail "database.external.host requires database.enabled=true" -}}
+{{- end -}}
+{{- if and .Values.database.enabled (not .Values.database.external.host) -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns the name of the Secret whose POSTGRES_PASSWORD key holds the resource provider password.
+*/}}
+{{- define "radius.database.secretName" -}}
+{{- if .Values.database.external.host -}}
+{{- required "database.external.existingSecret is required when database.external.host is set" .Values.database.external.existingSecret -}}
+{{- else -}}
+database-secret
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns the PostgreSQL connection URL for a resource provider. Pass a dict with "ctx" (the root
+context) and "name" (used as both the user and database name). POSTGRES_PASSWORD is expanded at
+runtime by the database provider.
+*/}}
+{{- define "radius.database.url" -}}
+{{- $db := .ctx.Values.database -}}
+{{- if $db.external.host -}}
+postgresql://{{ .name }}:${POSTGRES_PASSWORD}@{{ $db.external.host }}:{{ $db.external.port | default 5432 }}/{{ .name }}?sslmode={{ $db.external.sslmode | default "verify-full" }}
+{{- else -}}
+postgresql://{{ .name }}:${POSTGRES_PASSWORD}@database.{{ .ctx.Release.Namespace }}:5432/{{ .name }}?sslmode=disable
+{{- end -}}
+{{- end -}}
+
+{{/*
 Returns the authorization mode (off, dryRun, or enforce) derived from global.rbac.
 Fails rendering when dry run is combined with enforcement.
 */}}
@@ -170,7 +208,8 @@ An empty value defaults to baseline. Fails rendering for any other value.
 Control-plane service accounts and Secrets in the release namespace, as JSON lists that are
 also valid CEL list literals. Used by the admission policy and, for the Secrets, the
 applications-rp configuration (authorization.controlPlaneSecrets); keep in sync with the
-serviceaccount.yaml templates and the Secrets the chart creates.
+serviceaccount.yaml templates and the Secrets the chart creates or reads, including the
+external database password Secret.
 */}}
 {{- define "radius.authz.controlPlaneServiceAccounts" -}}
 {{- list "ucp" "applications-rp" "dynamic-rp" "bicep-de" "controller" "dashboard" "database" "radius-api-readiness" "pre-upgrade" | toJson -}}
@@ -181,7 +220,11 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
 {{- $spiffe = append $spiffe (printf "%s-spiffe" .) -}}
 {{- end -}}
-{{- concat (list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
+{{- $database := list "database-secret" -}}
+{{- if and .Values.database.external.host .Values.database.external.existingSecret -}}
+{{- $database = append $database .Values.database.external.existingSecret -}}
+{{- end -}}
+{{- concat $database (list "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
 {{- end -}}
 
 {{/*

@@ -3,6 +3,8 @@ templates:
   - database/configmaps.yaml
   - database/configmap-initdb.yaml
   - database/statefulset.yaml
+  - database/service.yaml
+  - database/serviceaccount.yaml
   - ucp/configmaps.yaml
   - ucp/deployment.yaml
   - rp/configmaps.yaml
@@ -202,3 +204,122 @@ tests:
                 name: database-secret
                 key: POSTGRES_PASSWORD
         template: dynamic-rp/deployment.yaml
+
+  # --- database.external.host set ---
+  - it: should not render in-cluster database resources when an external host is set
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: database/configmaps.yaml
+      - hasDocuments:
+          count: 0
+        template: database/configmap-initdb.yaml
+      - hasDocuments:
+          count: 0
+        template: database/statefulset.yaml
+      - hasDocuments:
+          count: 0
+        template: database/service.yaml
+      - hasDocuments:
+          count: 0
+        template: database/serviceaccount.yaml
+
+  - it: should connect each resource provider to the external host
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.port: 6432
+      database.external.existingSecret: radius-db
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'url: "postgresql://ucp:\$\{POSTGRES_PASSWORD\}@pg\.example\.com:6432/ucp\?sslmode=verify-full"'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'url: "postgresql://applications_rp:\$\{POSTGRES_PASSWORD\}@pg\.example\.com:6432/applications_rp\?sslmode=verify-full"'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'url: "postgresql://dynamic_rp:\$\{POSTGRES_PASSWORD\}@pg\.example\.com:6432/dynamic_rp\?sslmode=verify-full"'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: should read POSTGRES_PASSWORD from the existing secret when an external host is set
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: radius-db
+                key: POSTGRES_PASSWORD
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: radius-db
+                key: POSTGRES_PASSWORD
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: radius-db
+                key: POSTGRES_PASSWORD
+        template: dynamic-rp/deployment.yaml
+
+  - it: should require an existing secret when an external host is set
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.existingSecret is required when database.external.host is set
+
+  - it: should require database.enabled when an external host is set
+    template: database/statefulset.yaml
+    set:
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.host requires database.enabled=true
+
+  - it: should roll each resource provider when the external connection changes
+    templates:
+      - ucp/deployment.yaml
+      - rp/deployment.yaml
+      - dynamic-rp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+    asserts:
+      - exists:
+          path: spec.template.metadata.annotations["checksum/database-url"]
+
+  - it: should derive the ucp rollout checksum from its connection URL
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/database-url"]
+          value: 067b1fbfa11cc818c852b476517b82305a80ec0626a8d11b0f3871cefbf13497
