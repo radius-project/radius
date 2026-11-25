@@ -184,6 +184,12 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if current != nil && onlyKey(live, current) {
 		return nil
 	}
+	// cert-manager keeps a ucp-apiserver-tls whose leaf still matches Certificate ucp-cert, without checking which CA
+	// signed it, so UCP would serve it once Helm applies ucp-cert.
+	servingTLS, err := releaseUCPAPIServerTLS(ctx, kubeContext, kubeClient, radiusNamespace)
+	if err != nil {
+		return err
+	}
 
 	objects, err := ucpAPIServerCAStage(manifest)
 	if err != nil {
@@ -238,11 +244,60 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return err
 	}
 
+	if err := deleteStaleUCPAPIServerTLS(ctx, kubeContext, kubeClient, radiusNamespace, servingTLS, ca); err != nil {
+		return err
+	}
+
 	trusted = unionCertificates(trusted, []*x509.Certificate{ca})
 	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {
 		return err
 	}
 	return trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, apiService.GetUID(), ucpAPIServerTrustSource(radiusNamespace), trusted, "both the current CA of UCP and "+ucpAPIServerCASecretName)
+}
+
+// releaseUCPAPIServerTLS returns Secret ucp-apiserver-tls, or nil when it does not exist. It returns an error when the
+// Secret exists without the markers that Certificate ucp-cert of the Radius release sets, as ownsUCPOffSecret
+// describes, because rad must neither let UCP serve that key pair nor delete it.
+func releaseUCPAPIServerTLS(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string) (*corev1.Secret, error) {
+	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTLSSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
+	}
+	if ownsUCPOffSecret(secret, ucpOffLeftoverSecret{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}) {
+		return secret, nil
+	}
+	return nil, fmt.Errorf("Secret %s/%s is not marked for Certificate %s of Helm release %s/%s (it needs annotations %s: %q, %s: %q and %s: %q), "+
+		"so rad will not let UCP serve it. Helm has not changed Radius. "+
+		"If nothing else uses the Secret, delete it with %s, then run the command again",
+		radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCertificateName, radiusNamespace, radiusReleaseName,
+		certificateNameAnnotation, ucpAPIServerCertificateName, releaseNameAnnotation, radiusReleaseName, releaseNamespaceAnnotation, radiusNamespace,
+		kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTLSSecretName))
+}
+
+// deleteStaleUCPAPIServerTLS deletes secret, the release's ucp-apiserver-tls that releaseUCPAPIServerTLS returned,
+// when its leaf does not verify for UCP against ca, so cert-manager issues a new one from ca once Helm applies
+// Certificate ucp-cert. The delete is pinned to the uid and resourceVersion rad read; it keeps a Secret that verifies.
+func deleteStaleUCPAPIServerTLS(ctx context.Context, kubeContext string, client kubernetes.Interface, radiusNamespace string, secret *corev1.Secret, ca *x509.Certificate) error {
+	if secret == nil {
+		return nil
+	}
+	if chain, err := certificateChain(secret.Data[corev1.TLSCertKey]); err == nil && verifiesUCPCertificate(chain[0], chain[1:], ca, radiusNamespace) {
+		return nil
+	}
+	output.LogInfo("Deleting Secret %s/%s, which %s did not issue, so cert-manager issues it again...", radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName)
+	err := client.CoreV1().Secrets(radiusNamespace).Delete(ctx, ucpAPIServerTLSSecretName, metav1.DeleteOptions{Preconditions: secretPreconditions(secret)})
+	if err == nil || apierrors.IsNotFound(err) {
+		return nil
+	}
+	if apierrors.IsConflict(err) {
+		return fmt.Errorf("Secret %s/%s changed after rad read it, so rad did not delete it. Helm has not changed Radius. "+
+			"Check it with %s, then run the command again",
+			radiusNamespace, ucpAPIServerTLSSecretName, kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerTLSSecretName+" -o yaml"))
+	}
+	return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
 }
 
 // refuseForeignUCPAPIServerCA returns an error when Secret radius-apiserver-ca exists without the markers of the Radius

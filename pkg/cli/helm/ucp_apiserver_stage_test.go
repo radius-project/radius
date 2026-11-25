@@ -947,6 +947,65 @@ func Test_UpgradeRadius_StageUCPAPIServerCATimeoutNamesTheProblem(t *testing.T) 
 	require.Equal(t, 2, reads)
 }
 
+// cert-manager keeps a ucp-apiserver-tls whose leaf matches Certificate ucp-cert without checking its CA, so UCP would
+// serve a Secret that an uninstall kept, or another owner wrote, once Helm applies ucp-cert. rad refuses one without the
+// markers of the release before any write, and deletes one of the release whose leaf radius-apiserver-ca did not
+// issue, so cert-manager issues it again.
+func Test_UpgradeRadius_StageUCPAPIServerCAChecksUCPAPIServerTLS(t *testing.T) {
+	t.Run("unmarked", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, map[string]any{}, "upgrade")
+		c := newStageCluster(t, nil, true)
+		apiService := c.offAPIService(t)
+		require.NoError(t, c.dynamic.Tracker().Add(apiService))
+		stale := newTestCA(t, "deleted-ca")
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, stale), stale.pem), metav1.CreateOptions{})
+		require.NoError(t, err)
+		c.kube.ClearActions()
+
+		err = u.run(t, c.impl(u.mock(t, 0, func() {})), []string{"global.rbac.enabled=true"})
+		require.ErrorContains(t, err, "Secret radius-system/ucp-apiserver-tls is not marked for Certificate ucp-cert of Helm release radius-system/radius")
+		require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system delete secret ucp-apiserver-tls`)
+		require.Empty(t, c.clusterWrites(), "rad must refuse before any write")
+		live, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, apiService.Object, live.Object, "rad must not change the APIService")
+		require.NotNil(t, c.secret(t, ucpAPIServerTLSSecretName), "rad must not delete a Secret the release does not own")
+	})
+	t.Run("stale", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, map[string]any{}, "upgrade")
+		c := newStageCluster(t, nil, true)
+		require.NoError(t, c.dynamic.Tracker().Add(c.offAPIService(t)))
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), apiServerTLSSecret(t, newTestCA(t, "deleted-ca")), metav1.CreateOptions{})
+		require.NoError(t, err)
+
+		client := u.mock(t, 1, func() {
+			_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
+			require.True(t, apierrors.IsNotFound(err), "rad must delete the stale Secret before Helm applies ucp-cert")
+			c.helmReissuesUCPCertificate(t)
+		})
+		require.NoError(t, u.run(t, c.impl(client), []string{"global.rbac.enabled=true"}))
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+	})
+	t.Run("issued by radius-apiserver-ca", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, map[string]any{}, "upgrade")
+		c := newStageCluster(t, nil, true)
+		require.NoError(t, c.dynamic.Tracker().Add(c.offAPIService(t)))
+		kept, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), apiServerTLSSecret(t, c.apiServerCA), metav1.CreateOptions{})
+		require.NoError(t, err)
+
+		client := u.mock(t, 1, func() {
+			require.Equal(t, kept.Data, c.secret(t, ucpAPIServerTLSSecretName).Data, "rad must keep a Secret that radius-apiserver-ca issued")
+			_, err := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), ucpDeployment(true), metav1.CreateOptions{})
+			require.NoError(t, err)
+		})
+		require.NoError(t, u.run(t, c.impl(client), []string{"global.rbac.enabled=true"}))
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+	})
+}
+
 // deployedMode returns a function that returns mode, as stageUCPAPIServerCA reads the deployed mode.
 func deployedMode(mode authz.Mode) func() (authz.Mode, error) {
 	return func() (authz.Mode, error) { return mode, nil }
