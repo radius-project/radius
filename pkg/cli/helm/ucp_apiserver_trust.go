@@ -430,8 +430,8 @@ func (i *Impl) deleteUCPAPIServerTrust(ctx context.Context, kubeContext, radiusN
 }
 
 // deleteOwnedUCPAPIServerTrust deletes the trust Secret if rad owns it, as ownsUCPAPIServerTrust decides, pinned to
-// the uid and resourceVersion rad read. It keeps a Secret that rad does not own, or that changed or was recreated
-// after rad read it, and warns about it.
+// the uid and resourceVersion rad read. It keeps a Secret that rad does not own, that the live UCP pod template
+// references, or that changed or was recreated after rad read it, and warns about it.
 func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, radiusNamespace string) error {
 	secrets := kubeClient.CoreV1().Secrets(radiusNamespace)
 	read := func() (*corev1.Secret, error) {
@@ -450,6 +450,16 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 	}
 	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
+		return nil
+	}
+	// A replacement UCP pod could not start without a Secret its template still references.
+	referenced, err := ucpReferencesSecret(ctx, kubeClient, radiusNamespace, ucpAPIServerTrustSecretName)
+	if err != nil {
+		return err
+	}
+	if referenced {
+		i.logInfo("Warning: rad did not delete Secret %s/%s, which the pod template of Deployment %s/ucp still references. Run the command again to delete it once nothing references it",
+			radiusNamespace, ucpAPIServerTrustSecretName, radiusNamespace)
 		return nil
 	}
 	err = secrets.Delete(ctx, ucpAPIServerTrustSecretName, metav1.DeleteOptions{Preconditions: secretPreconditions(secret)})
