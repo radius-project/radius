@@ -39,7 +39,9 @@ Turning authorization on or off, and upgrading from an edge build that authentic
 
 A plain `helm upgrade --wait` waits only for the workloads; check the APIService with `kubectl get apiservice v1alpha3.api.ucp.dev` before resuming.
 
-With authorization on, a fresh plain Helm install needs no extra step. When upgrading from authorization off with plain Helm, keep the Helm-generated `ucp-ca` trusted while UCP rolls. Put only public CA certificates in the trust Secret, never the `ca.crt` of `ucp-apiserver-tls`. The chart and `rad` use the Secret only when its annotations name the release, `radius` in `radius-system` below:
+With authorization on, a fresh plain Helm install needs no extra step. The plain-Helm steps below apply only to a release that plain Helm installed and upgraded. For a release that `rad` installed or last upgraded, use `rad upgrade kubernetes`: `rad` runs Helm, and makes its own changes, with server-side apply field manager `rad`, so a plain `helm upgrade` of that release fails with conflicts against field manager `rad`.
+
+When upgrading from authorization off with plain Helm, keep the Helm-generated `ucp-ca` trusted while UCP rolls. Put only public CA certificates in the trust Secret, never the `ca.crt` of `ucp-apiserver-tls`. The chart and `rad` use the Secret only when its annotations name the release, `radius` in `radius-system` below:
 
 ```bash
 kubectl get apiservice v1alpha3.api.ucp.dev -o jsonpath='{.spec.caBundle}' | base64 -d > ca.crt
@@ -48,7 +50,13 @@ kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/
   radapp.io/release-name=radius radapp.io/release-namespace=radius-system
 ```
 
-Then run `helm upgrade`. UCP serves its new certificate only after cert-manager issues `radius-apiserver-ca`, and the `radius-api-readiness` post-upgrade hook fails the revision if the API server still cannot reach UCP, so append the `tls.crt` of `radius-apiserver-ca` to the Secret's `ca.crt` while Helm waits. In a second terminal, as soon as `helm upgrade` starts, run:
+Save the release's values to a file, edit it to the new settings, and pass it with `-f` to every `helm upgrade` below. Do not use `--reuse-values`: it takes the values of the last deployed revision, so after a failed upgrade a retry drops the settings that the failed upgrade added. If an earlier attempt failed, find the last `deployed` revision with `helm history radius -n radius-system` and add `--revision` with its number:
+
+```bash
+helm get values radius -n radius-system -o yaml > radius-values.yaml
+```
+
+Then run `helm upgrade radius deploy/Chart -n radius-system -f radius-values.yaml`. UCP serves its new certificate only after cert-manager issues `radius-apiserver-ca`, and the `radius-api-readiness` post-upgrade hook fails the revision if the API server still cannot reach UCP, so append the `tls.crt` of `radius-apiserver-ca` to the Secret's `ca.crt` while Helm waits. In a second terminal, as soon as `helm upgrade` starts, run:
 
 ```bash
 until kubectl get secret radius-apiserver-ca -n radius-system >/dev/null 2>&1; do sleep 2; done
@@ -58,20 +66,22 @@ kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/
   radapp.io/release-name=radius radapp.io/release-namespace=radius-system
 ```
 
-If the hook fails anyway, run the same `helm upgrade` again once the Secret holds both CAs. Then wait until the `ucp` Deployment has rolled out and the APIService reports `Available`. Delete the `radius-apiserver-trust` Secret and run `helm upgrade` again only if both commands succeed, so the APIService trusts only `radius-apiserver-ca` and follows its renewals:
+If the hook fails anyway, run the same `helm upgrade` command again once the Secret holds both CAs. Then wait until the `ucp` Deployment has rolled out and the APIService reports `Available`. Delete the `radius-apiserver-trust` Secret and run `helm upgrade` again only if both commands succeed, so the APIService trusts only `radius-apiserver-ca` and follows its renewals:
 
 ```bash
 kubectl rollout status deployment/ucp -n radius-system --timeout=5m &&
   kubectl wait --for=condition=Available apiservice/v1alpha3.api.ucp.dev --timeout=5m &&
   kubectl delete secret radius-apiserver-trust -n radius-system &&
-  helm upgrade radius deploy/Chart -n radius-system --reuse-values
+  helm upgrade radius deploy/Chart -n radius-system -f radius-values.yaml
 ```
 
 With Helm 4 server-side apply, cainjector co-owns the APIService's `spec.caBundle`. If that last `helm upgrade` fails with a field-manager conflict on `caBundle`, retry only the upgrade with `--force-conflicts`:
 
 ```bash
-helm upgrade radius deploy/Chart -n radius-system --reuse-values --force-conflicts
+helm upgrade radius deploy/Chart -n radius-system -f radius-values.yaml --force-conflicts
 ```
+
+A failed revision can leave objects that it created, such as the release's Certificates and Issuers, with the release's Helm labels. A later successful upgrade with the same chart adopts them. If you abandon the upgrade instead, list them with `kubectl get certificates,issuers -n radius-system -l app.kubernetes.io/managed-by=Helm`, and delete each one that the manifest of the last `deployed` revision, `helm get manifest radius -n radius-system --revision` with its number, does not list.
 
 cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.
 
