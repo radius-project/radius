@@ -19,6 +19,7 @@ limitations under the License.
 package awsapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,9 +29,12 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/smithy-go"
+	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
 
@@ -61,16 +65,106 @@ func NotFound(err error, codes ...string) error {
 // otherwise. The SDK leaves the fault of an error a service's model doesn't list unknown, such as RDS's
 // InvalidParameterValue, so without this UCP would answer 500 and count a call AWS rejected as possibly applied. A not
 // found error stays ErrNotFound, and a native.Failure stays as it is.
+//
+// A 4xx after an earlier attempt that may have reached AWS (see Retried), such as an AlreadyExists answer to a retry of a
+// create whose first response was lost, is a failure whose outcome is unknown instead, which UCP answers with 500 and
+// whose values it keeps as possibly applied. Throttling is AWS's limit, not the request's fault, so it is never a client
+// failure: UCP answers it with 429 and the code Throttled (native.Failure.Throttled), and it applied nothing unless such
+// an earlier attempt may have.
 func Rejected(err error) error {
-	var response *smithyhttp.ResponseError
 	var failure *native.Failure
-	if err == nil || errors.Is(err, native.ErrNotFound) || errors.As(err, &failure) || !errors.As(err, &response) {
+	if err == nil || errors.Is(err, native.ErrNotFound) || errors.As(err, &failure) || !isClientStatus(err) {
 		return err
 	}
-	if status := response.HTTPStatusCode(); status < http.StatusBadRequest || status >= http.StatusInternalServerError {
-		return err
+	switch {
+	case Retried(err) && throttled(err):
+		return &native.Failure{Message: "AWS limited the rate of calls, and an earlier attempt may have reached AWS, so UCP can't tell whether AWS applied it. Deploy again later; UCP reads AWS first and makes only the calls still needed: " + err.Error(), Throttled: true, Outcome: native.OutcomeUnknown}
+	case Retried(err):
+		return &native.Failure{Message: "AWS rejected a retry of the call, but an earlier attempt may have reached AWS, so UCP can't tell whether AWS applied it. Try again; UCP reads AWS first and makes only the calls still needed: " + err.Error(), Outcome: native.OutcomeUnknown}
+	case throttled(err):
+		return &native.Failure{Message: "AWS limited the rate of calls, so it changed nothing. Deploy again later: " + err.Error(), Throttled: true, Outcome: native.OutcomeRejected}
 	}
 	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
+}
+
+// Unapplied returns err, from a call AWS applied none of, such as one the SDK sent once, as a failure with message whose
+// outcome is rejected. It is a client error when AWS rejected the call as a client fault, and throttled, and not a
+// client error, when AWS throttled it, so UCP answers 429 as for any AWS throttle.
+func Unapplied(message string, err error) error {
+	if throttled(err) {
+		return &native.Failure{Message: "AWS limited the rate of calls, so it changed nothing. Deploy again later: " + message, Throttled: true, Outcome: native.OutcomeRejected}
+	}
+	return &native.Failure{Message: message, ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+}
+
+// Retried reports whether the SDK sent the call that failed with err more than once, and AWS didn't answer every
+// attempt before the last with a 4xx status. An earlier attempt may then have applied the call, such as one whose
+// response was lost, so AWS's answer to the last attempt doesn't show that AWS changed nothing. A handler that reports a
+// call as rejected because of AWS's error code, such as InvalidDBInstanceState, checks this first.
+//
+// It reads the attempts RecordAttempts keeps, which every handler's client has (see handlers.All). Without them, only
+// an error that used up the SDK's attempts shows a retry.
+func Retried(err error) bool {
+	var recorded *attemptsError
+	if errors.As(err, &recorded) && len(recorded.attempts) > 0 {
+		earlier := recorded.attempts[:len(recorded.attempts)-1]
+		return slices.ContainsFunc(earlier, func(attempt error) bool { return !isClientStatus(attempt) })
+	}
+	var exhausted *retry.MaxAttemptsError
+	return errors.As(err, &exhausted) && exhausted.Attempt > 1
+}
+
+// RecordAttempts is an AWS SDK client API option (aws.Config.APIOptions) that keeps the error of each attempt the SDK
+// made of a failed call on the call's error, for Retried. The SDK returns them only in the call's metadata, which a
+// client drops when the call fails.
+func RecordAttempts(stack *middleware.Stack) error {
+	if _, ok := stack.Finalize.Get(retryMiddleware); !ok {
+		return nil
+	}
+	return stack.Finalize.Insert(middleware.FinalizeMiddlewareFunc("RecordAttempts", func(ctx context.Context, in middleware.FinalizeInput, next middleware.FinalizeHandler) (middleware.FinalizeOutput, middleware.Metadata, error) {
+		out, metadata, err := next.HandleFinalize(ctx, in)
+		if results, ok := retry.GetAttemptResults(metadata); ok && err != nil {
+			attempts := make([]error, 0, len(results.Results))
+			for _, result := range results.Results {
+				attempts = append(attempts, result.Err)
+			}
+			err = &attemptsError{err: err, attempts: attempts}
+		}
+		return out, metadata, err
+	}), retryMiddleware, middleware.Before)
+}
+
+// retryMiddleware is the ID of the SDK's middleware that retries a call.
+const retryMiddleware = "Retry"
+
+// attemptsError is the error of a call with the error of each attempt the SDK made of it, in order.
+type attemptsError struct {
+	err      error
+	attempts []error
+}
+
+func (e *attemptsError) Error() string { return e.err.Error() }
+
+func (e *attemptsError) Unwrap() error { return e.err }
+
+// isClientStatus reports whether AWS answered the call that failed with err with a 4xx status.
+func isClientStatus(err error) bool {
+	status := statusOf(err)
+	return status >= http.StatusBadRequest && status < http.StatusInternalServerError
+}
+
+// statusOf returns the HTTP status AWS answered the call that failed with err with, or 0 when AWS didn't answer.
+func statusOf(err error) int {
+	var response *smithyhttp.ResponseError
+	if !errors.As(err, &response) || response.Response == nil || response.Response.Response == nil {
+		return 0
+	}
+	return response.HTTPStatusCode()
+}
+
+// throttled reports whether err is AWS limiting the rate of calls (see ucp_aws.IsThrottled).
+func throttled(err error) bool {
+	return ucp_aws.IsThrottled(err)
 }
 
 // Decode sets out, a pointer to an AWS SDK struct, from properties. Property names match the SDK's field names,
@@ -404,9 +498,10 @@ func containsFold(list []string, state string) bool {
 }
 
 // Calls makes calls in order, such as the AWS calls of an update, and stops at the first that fails. It returns the
-// error of the first call as it is, so UCP treats the operation as rejected when AWS rejected the call as a client
-// fault, and as unknown otherwise. It returns the error of a later call as a native.Failure whose outcome is partly
-// applied, because the calls before it changed AWS.
+// error of the first call as it is, for the handler to pass to Rejected. It returns the error of a later call as a
+// native.Failure whose outcome is partly applied, because the calls before it changed AWS, and that is a client error
+// only when the request caused it, not throttling or a retry an earlier attempt of which may have reached AWS. It is
+// throttled when AWS throttled the call.
 func Calls(calls ...func() error) error {
 	for i, call := range calls {
 		err := call()
@@ -420,14 +515,17 @@ func Calls(calls ...func() error) error {
 		if errors.As(err, &failure) {
 			return err
 		}
-		return &native.Failure{Message: err.Error(), ClientError: isClientFault(err), Outcome: native.OutcomePartial}
+		return &native.Failure{Message: err.Error(), ClientError: isClientFault(err), Throttled: throttled(err), Outcome: native.OutcomePartial}
 	}
 	return nil
 }
 
+// isClientFault reports whether the request caused err: AWS answered it as a client fault, other than throttling, and
+// no earlier attempt of the call may have reached AWS.
 func isClientFault(err error) bool {
 	var apiErr smithy.APIError
-	return errors.As(err, &apiErr) && (apiErr.ErrorFault() == smithy.FaultClient || apiErr.ErrorCode() == "ValidationException")
+	return errors.As(err, &apiErr) && (apiErr.ErrorFault() == smithy.FaultClient || apiErr.ErrorCode() == "ValidationException") &&
+		!throttled(err) && !Retried(err)
 }
 
 // FieldNames returns the names of the exported fields of v, a struct or a pointer to one, such as an AWS SDK input.

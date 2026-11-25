@@ -17,7 +17,10 @@ limitations under the License.
 package aws
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -25,6 +28,8 @@ import (
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
+
+	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
 func Test_ConflictingRequestToken(t *testing.T) {
@@ -68,6 +73,41 @@ func Test_ConflictingRequestToken(t *testing.T) {
 			got, ok := ConflictingRequestToken(tt.err, tt.clientToken)
 			require.Equal(t, tt.want, got)
 			require.Equal(t, tt.want != "", ok)
+		})
+	}
+}
+
+func Test_HandleAWSError_Throttled(t *testing.T) {
+	answer := func(status int, err error) error {
+		return &smithy.OperationError{ServiceID: "CloudControl", OperationName: "CreateResource", Err: &smithyhttp.ResponseError{
+			Response: &smithyhttp.Response{Response: &http.Response{StatusCode: status}}, Err: err,
+		}}
+	}
+	for _, tt := range []struct {
+		name   string
+		err    error
+		status int
+		code   string
+	}{
+		{"throttling modeled as a client fault", answer(http.StatusBadRequest, &types.ThrottlingException{Message: aws.String("Rate exceeded")}), http.StatusTooManyRequests, armrpc_v1.CodeThrottled},
+		{"throttling with a server fault", answer(http.StatusBadRequest, &smithy.GenericAPIError{Code: "Throttling", Message: "Rate exceeded", Fault: smithy.FaultServer}), http.StatusTooManyRequests, armrpc_v1.CodeThrottled},
+		{"429 with another code", answer(http.StatusTooManyRequests, &smithy.GenericAPIError{Code: "SlowDown", Message: "Rate exceeded"}), http.StatusTooManyRequests, armrpc_v1.CodeThrottled},
+		{"429 the SDK couldn't decode", answer(http.StatusTooManyRequests, &smithy.DeserializationError{Err: errors.New("Rate exceeded")}), http.StatusTooManyRequests, armrpc_v1.CodeThrottled},
+		{"a quota the user must raise", answer(http.StatusBadRequest, &smithy.GenericAPIError{Code: "LimitExceededException", Message: "Rate exceeded", Fault: smithy.FaultClient}), http.StatusBadRequest, "LimitExceededException"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := HandleAWSError(t.Context(), tt.err)
+			require.NoError(t, err)
+			w := httptest.NewRecorder()
+			require.NoError(t, resp.Apply(t.Context(), w, httptest.NewRequest(http.MethodPut, "/", nil)))
+			require.Equal(t, tt.status, w.Code)
+			body := armrpc_v1.ErrorResponse{}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+			require.Equal(t, tt.code, body.Error.Code)
+			require.Contains(t, body.Error.Message, "Rate exceeded")
+			if tt.code == armrpc_v1.CodeThrottled {
+				require.Contains(t, body.Error.Message, "AWS limited the rate of calls. Deploy again later")
+			}
 		})
 	}
 }

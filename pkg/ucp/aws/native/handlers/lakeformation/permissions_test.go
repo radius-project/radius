@@ -270,11 +270,13 @@ func Test_Permissions_Errors(t *testing.T) {
 	// A failed revoke is rejected, even when AWS's answer doesn't show whether it took effect.
 	desired := with(properties, map[string]any{"Permissions": list("DESCRIBE")})
 	for _, tt := range []struct {
-		err    error
-		client bool
+		err       error
+		client    bool
+		throttled bool
 	}{
-		{nativefake.ClientError("InvalidInputException", "invalid"), true},
-		{nativefake.ServerError("InternalServiceException", "failed"), false},
+		{nativefake.ClientError("InvalidInputException", "invalid"), true, false},
+		{nativefake.ServerError("InternalServiceException", "failed"), false, false},
+		{nativefake.ClientError("ThrottlingException", "Rate exceeded"), false, true},
 	} {
 		api.errs["RevokePermissions"] = tt.err
 		err = h.Update(ctx, native.UpdateRequest{Region: region, Identifier: id, Current: properties, Desired: desired, Patch: patchOf(t, properties, desired)})
@@ -282,6 +284,7 @@ func Test_Permissions_Errors(t *testing.T) {
 		require.ErrorAs(t, err, &f)
 		require.Equal(t, native.OutcomeRejected, f.Outcome)
 		require.Equal(t, tt.client, f.ClientError)
+		require.Equal(t, tt.throttled, f.Throttled)
 	}
 	delete(api.errs, "RevokePermissions")
 

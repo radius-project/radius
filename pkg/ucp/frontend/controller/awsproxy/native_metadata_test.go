@@ -19,6 +19,8 @@ package awsproxy
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -27,7 +29,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsretry "github.com/aws/aws-sdk-go-v2/aws/retry"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/smithy-go"
+	smithymiddleware "github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -37,6 +46,7 @@ import (
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -63,6 +73,10 @@ func Test_Native_StartCallOutcomes(t *testing.T) {
 		{"the handler reports a partial update", failure(native.OutcomePartial), http.StatusBadRequest, true},
 		{"the handler reports an unknown outcome", failure(native.OutcomeUnknown), http.StatusBadRequest, true},
 		{"the handler reports an applied update", failure(native.OutcomeApplied), http.StatusBadRequest, true},
+		{"AWS throttles every attempt", awsapi.Rejected(answer(http.StatusBadRequest, "Throttling")), http.StatusTooManyRequests, false},
+		{"AWS throttles a retry after a lost response", awsapi.Rejected(&awsretry.MaxAttemptsError{Attempt: 2, Err: answer(http.StatusBadRequest, "Throttling")}), http.StatusTooManyRequests, true},
+		{"AWS answers a retry with a modeled client fault", retriedCreateError(t), http.StatusInternalServerError, true},
+		{"AWS rejects a retry after a lost response", awsapi.Rejected(&awsretry.MaxAttemptsError{Attempt: 2, Err: answer(http.StatusConflict, "ConflictException")}), http.StatusInternalServerError, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -109,7 +123,34 @@ func Test_Native_StartCallOutcomes(t *testing.T) {
 	})
 }
 
+// answer returns AWS's answer to a call with status and code, as the SDK reports it.
+func answer(status int, code string) error {
+	return &smithy.OperationError{ServiceID: "Fake", OperationName: "Call", Err: &smithyhttp.ResponseError{
+		Response: &smithyhttp.Response{Response: &http.Response{StatusCode: status}},
+		Err:      &smithy.GenericAPIError{Code: code, Message: code},
+	}}
+}
+
 func Test_Native_CreateOutcomes(t *testing.T) {
+	t.Run("a first create whose retry AWS answers with a client fault keeps the record", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.Errors["Create"] = retriedCreateError(t)
+		resp := h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "an earlier attempt may have reached AWS")
+		h.requireCreateKept(nativePath)
+	})
+
+	t.Run("a throttled first create removes the record and isn't the request's fault", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.Errors["Create"] = awsapi.Rejected(answer(http.StatusBadRequest, "Throttling"))
+		resp := h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusTooManyRequests, resp.status, resp.raw)
+		require.Equal(t, v1.CodeThrottled, resp.code())
+		require.Contains(t, resp.message(), "AWS limited the rate of calls, so it changed nothing. Deploy again later")
+		require.Nil(t, h.record(nativePath))
+	})
+
 	t.Run("a rejected first create removes the record", func(t *testing.T) {
 		h := newNativeHarness(t)
 		h.fake.Errors["Create"] = &native.Failure{Message: "invalid engine", ClientError: true, Outcome: native.OutcomeRejected}
@@ -509,6 +550,7 @@ func Test_handleError(t *testing.T) {
 		err     error
 		status  int
 		message string
+		code    string
 	}{
 		{
 			name:    "another product",
@@ -519,7 +561,9 @@ func Test_handleError(t *testing.T) {
 		{name: "a client failure", err: &native.Failure{Message: "invalid engine", ClientError: true}, status: http.StatusBadRequest, message: "invalid engine"},
 		{name: "a server failure", err: &native.Failure{Message: "AWS failed"}, status: http.StatusInternalServerError, message: "AWS failed"},
 		{name: "a conflict", err: &native.Failure{Message: "the instance is busy", ClientError: true, Conflict: true}, status: http.StatusConflict, message: "the instance is busy"},
+		{name: "throttled", err: &native.Failure{Message: "AWS limited the rate of calls", Throttled: true}, status: http.StatusTooManyRequests, message: "AWS limited the rate of calls", code: v1.CodeThrottled},
 		{name: "an AWS error", err: nativefake.ClientError("ValidationException", "bad value"), status: http.StatusBadRequest, message: "bad value"},
+		{name: "AWS's throttling", err: nativefake.ClientError("ThrottlingException", "Rate exceeded"), status: http.StatusTooManyRequests, code: v1.CodeThrottled},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -530,7 +574,12 @@ func Test_handleError(t *testing.T) {
 			got := response{status: w.Code, body: map[string]any{}}
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got.body))
 			require.Equal(t, tt.status, got.status)
-			require.Equal(t, tt.message, got.message())
+			if tt.message != "" {
+				require.Equal(t, tt.message, got.message())
+			}
+			if tt.code != "" {
+				require.Equal(t, tt.code, got.code())
+			}
 		})
 	}
 
@@ -540,6 +589,23 @@ func Test_handleError(t *testing.T) {
 		require.Nil(t, resp)
 		require.ErrorIs(t, err, boom)
 	})
+}
+
+func Test_startError(t *testing.T) {
+	retried := retriedCreateError(t)
+	var failure *native.Failure
+	require.ErrorAs(t, startError(retried), &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "the first attempt of the create may have reached AWS")
+
+	read := &smithy.OperationError{ServiceID: "LakeFormation", OperationName: "GetDataLakeSettings", Err: &awsretry.MaxAttemptsError{Attempt: 3, Err: answer(http.StatusBadRequest, "AccessDeniedException")}}
+	require.Same(t, read, startError(read), "a read before any change applied nothing, however the SDK retried it")
+	batch := &smithy.OperationError{ServiceID: "CodeBuild", OperationName: "BatchGetProjects", Err: &awsretry.MaxAttemptsError{Attempt: 3, Err: answer(http.StatusBadRequest, "InvalidInputException")}}
+	require.Same(t, batch, startError(batch))
+	notFound := fmt.Errorf("%w: %w", native.ErrNotFound, retried)
+	require.Same(t, notFound, startError(notFound))
+	once := answer(http.StatusBadRequest, "ValidationException")
+	require.Same(t, once, startError(once), "without a retry, AWS's answer shows it changed nothing")
+	require.NoError(t, startError(nil))
 }
 
 func Test_outcomeOf(t *testing.T) {
@@ -1085,3 +1151,45 @@ func asList(v any) []any {
 	l, _ := v.([]any)
 	return l
 }
+
+// retriedCreateError returns the error a real RDS client, with the attempts awsapi.RecordAttempts keeps, returns for a
+// create that RDS answered with 503 and then, on the SDK's retry, with TenantDatabaseAlreadyExists, which the SDK models
+// as a client fault. The first attempt may have made the tenant database.
+func retriedCreateError(t *testing.T) error {
+	t.Helper()
+	answers := []struct {
+		status int
+		body   string
+	}{
+		{http.StatusServiceUnavailable, "<ErrorResponse><Error><Type>Receiver</Type><Code>ServiceUnavailable</Code><Message>Service unavailable.</Message></Error><RequestId>1</RequestId></ErrorResponse>"},
+		{http.StatusBadRequest, "<ErrorResponse><Error><Type>Sender</Type><Code>TenantDatabaseAlreadyExists</Code><Message>The tenant database pdb1 already exists.</Message></Error><RequestId>2</RequestId></ErrorResponse>"},
+	}
+	calls := 0
+	client := rds.NewFromConfig(aws.Config{
+		Region:           "us-west-2",
+		Credentials:      credentials.NewStaticCredentialsProvider("AKIATEST", "secret", ""),
+		RetryMaxAttempts: 3,
+		Retryer: func() aws.Retryer {
+			return awsretry.NewStandard(func(o *awsretry.StandardOptions) {
+				o.Backoff = awsretry.BackoffDelayerFunc(func(int, error) (time.Duration, error) { return 0, nil })
+			})
+		},
+		APIOptions: []func(*smithymiddleware.Stack) error{awsapi.RecordAttempts},
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			answer := answers[min(calls, len(answers)-1)]
+			calls++
+			return &http.Response{StatusCode: answer.status, Header: http.Header{"Content-Type": {"text/xml"}}, Body: io.NopCloser(strings.NewReader(answer.body)), Request: req}, nil
+		})},
+	})
+	_, err := client.CreateTenantDatabase(t.Context(), &rds.CreateTenantDatabaseInput{
+		DBInstanceIdentifier: aws.String("app-cdb"), TenantDBName: aws.String("pdb1"),
+		MasterUsername: aws.String("admin"), MasterUserPassword: aws.String("pass-word-1234"),
+	})
+	require.Equal(t, 2, calls, "the SDK retried the 503")
+	require.True(t, ucp_aws.IsClientFault(err), "the SDK models the last answer as a client fault")
+	return err
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }

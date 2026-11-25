@@ -103,6 +103,19 @@ func requireDBRejected(t *testing.T, err error, want string) {
 	require.Contains(t, failure.Message, want)
 }
 
+// requireUnappliedThrottle requires err to be a throttle of a call sent once, which applied nothing: rejected, not the
+// request's fault, and throttled, so UCP answers 429. Its message says which call AWS throttled.
+func requireUnappliedThrottle(t *testing.T, err error, call string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.False(t, failure.ClientError)
+	require.True(t, failure.Throttled)
+	require.Contains(t, failure.Message, "AWS limited the rate of calls, so it changed nothing. Deploy again later")
+	require.Contains(t, failure.Message, call)
+}
+
 func Test_DBInstanceState_Identifier(t *testing.T) {
 	h := NewDBInstanceState(nil)
 	id, err := h.Identifier(map[string]any{"DBInstanceIdentifier": "App-DB", "State": "running"})
@@ -303,6 +316,14 @@ func Test_DBInstanceState_CantStop(t *testing.T) {
 	requireDBRejected(t, err, `RDS can't stop the DB instance "app-db", which is backing-up: `)
 
 	h, api := newDBInstanceState("stopped", nil)
+	api.errs["StartDBInstance"] = throttling()
+	requireUnappliedThrottle(t, h.Update(t.Context(), dbUpdateRequest(t, "stopped", "running")), "start the DB instance")
+
+	h, api = newDBInstanceState("available", nil)
+	api.errs["StopDBInstance"] = fault("ThrottlingException")
+	requireUnappliedThrottle(t, h.Update(t.Context(), dbUpdateRequest(t, "available", "stopped")), "stop the DB instance")
+
+	h, api = newDBInstanceState("stopped", nil)
 	api.errs["StartDBInstance"] = nativefake.ServerError("InternalFailure", "RDS failed")
 	err = h.Update(t.Context(), dbUpdateRequest(t, "stopped", "running"))
 	var failure *native.Failure

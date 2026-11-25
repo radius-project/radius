@@ -233,6 +233,18 @@ func Test_Update(t *testing.T) {
 		require.ErrorAs(t, err, &failure)
 		require.Equal(t, native.OutcomeRejected, failure.Outcome)
 		require.True(t, failure.ClientError)
+		require.False(t, failure.Throttled)
+	})
+
+	t.Run("a throttled removal is rejected and not the request's fault", func(t *testing.T) {
+		h.api.errs["RemoveUserFromGroup"] = fault("Throttling")
+		defer delete(h.api.errs, "RemoveUserFromGroup")
+		err := update(group("admins", "bo", "cy", "di"), group("admins", "bo", "cy", "ed"))
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome)
+		require.False(t, failure.ClientError)
+		require.True(t, failure.Throttled)
 	})
 
 	t.Run("an identifier with no group", func(t *testing.T) {

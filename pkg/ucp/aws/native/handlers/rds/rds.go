@@ -18,11 +18,14 @@ package rds
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
 
@@ -41,6 +44,19 @@ type API interface {
 }
 
 var inRegion = awsapi.InRegion[rds.Options]
+
+// unconfirmed is the failure of a change, what, that RDS answered with changeErr after the SDK retried it, when the read
+// that would show whether an earlier attempt started the change failed with readErr. The change may have started, so
+// its outcome is unknown. It is throttled when RDS throttled the read.
+func unconfirmed(what string, changeErr error, readErr error) error {
+	var read *native.Failure
+	throttled := errors.As(awsapi.Rejected(readErr), &read) && read.Throttled
+	return &native.Failure{
+		Message: fmt.Sprintf("RDS answered a retry of the %s with %s, and reading the resource to see whether an earlier attempt "+
+			"started the %s failed: %s. Deploy again later.", what, changeErr.Error(), what, readErr.Error()),
+		Throttled: throttled,
+	}
+}
 
 // retryThrottlesOnly makes the SDK send a call again only when AWS throttled it, which AWS refuses before acting on. A
 // change that takes no idempotency token, such as CreateTenantDatabase, can't be sent again after any other error: when

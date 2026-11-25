@@ -36,6 +36,7 @@ import (
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/smithy-go"
 	"github.com/wI2L/jsondiff"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -45,6 +46,7 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -401,7 +403,7 @@ func (e *engine) startUpdate(ctx context.Context, r *request, rec *datamodel.AWS
 			Token: rec.Properties.UpdateToken, State: rec.Properties.UpdateState,
 		})
 		if err != nil {
-			return "", err
+			return "", startError(err)
 		}
 		return uuid.New().String(), nil
 	}
@@ -428,7 +430,7 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 		identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
 		if err != nil {
 			// A create that failed partway can return the identifier of the resource it left.
-			return identifier, "", err
+			return identifier, "", startError(err)
 		}
 		return identifier, uuid.New().String(), nil
 	}
@@ -494,7 +496,7 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 			err = r.handler.Delete(ctx, r.region, identifier)
 		}
 		if err != nil {
-			return "", err
+			return "", startError(err)
 		}
 		return uuid.New().String(), nil
 	}
@@ -849,10 +851,35 @@ func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AW
 		return "", err
 	}
 	identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
+	err = startError(err)
 	if err == nil && identifier == "" {
 		return "", fmt.Errorf("the native handler for %s sent the create of the AWS resource %q again, but returned no identifier", r.typeName, r.id.Name())
 	}
 	return identifier, err
+}
+
+// startError returns err, from a native handler's start call or resend, as awsapi.Rejected reports it when the SDK
+// retried a call that changes AWS and an earlier attempt may have reached AWS, so a 4xx on the last attempt, such as an
+// AlreadyExists for a create whose first response was lost, isn't taken as AWS rejecting the operation. An error of a
+// read the handler makes before any change, a not found error, a handler's own failure, and any other error stay as
+// they are.
+func startError(err error) error {
+	if err == nil || isNotFound(err) || !awsapi.Retried(err) || isRead(err) {
+		return err
+	}
+	return awsapi.Rejected(err)
+}
+
+// isRead reports whether err is the error of an AWS call that only reads, by the operation's name, such as
+// DescribeDBClusters or CodeBuild's BatchGetProjects. AWS names its read operations this way across services.
+func isRead(err error) bool {
+	var op *smithy.OperationError
+	if !errors.As(err, &op) {
+		return false
+	}
+	return slices.ContainsFunc([]string{"Get", "BatchGet", "Describe", "List", "Head"}, func(prefix string) bool {
+		return strings.HasPrefix(op.Operation(), prefix)
+	})
 }
 
 // identifierError returns the response for an error computing the identifier from a template's properties, including
@@ -868,11 +895,16 @@ func failureResponse(id resources.ID, failure interface {
 	error
 	IsClientError() bool
 }) armrpc_rest.Response {
-	var busy *native.Failure
-	if errors.As(failure, &busy) && busy.Conflict {
+	var handlerFailure *native.Failure
+	isFailure := errors.As(failure, &handlerFailure)
+	if isFailure && handlerFailure.Conflict {
 		return conflict("%s", failure.Error())
 	}
 	details := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: failure.Error(), Target: id.String()}}
+	if isFailure && handlerFailure.Throttled {
+		details.Error.Code = v1.CodeThrottled
+		return armrpc_rest.NewTooManyRequestsARMResponse(details)
+	}
 	if failure.IsClientError() {
 		details.Error.Code = v1.CodeInvalid
 		return armrpc_rest.NewBadRequestARMResponse(details)
@@ -948,7 +980,8 @@ func outcomeOf(err error) native.Outcome {
 }
 
 // handleError returns the response for an error from AWS or a native handler of the resource id: 409 for an
-// identifier of another product, the failure a native handler reports, and otherwise as ucp_aws.HandleAWSError does.
+// identifier of another product, the failure a native handler reports, 429 for AWS's throttling, and otherwise as
+// ucp_aws.HandleAWSError does.
 func handleError(ctx context.Context, id resources.ID, err error) (armrpc_rest.Response, error) {
 	var other *native.OtherProductError
 	if errors.As(err, &other) {

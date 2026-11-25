@@ -62,13 +62,14 @@ func NewTenantDatabase(api API) *TenantDatabase {
 // whenInstanceFree makes call, a create, update, or delete of a tenant database of instance, when the instance is
 // free. RDS changes one tenant database of an instance at a time, and backs the instance up after each change, so it
 // rejects such a call with InvalidDBInstanceState until then. A busy instance, or that error while the instance reads
-// as available, fails with a conflict, which UCP answers with 409, and sends nothing more: the caller deploys again
-// once the instance is free, and a template chains tenant databases of one instance with dependsOn. An instance that
-// won't be available without someone acting, such as a stopped one, gets call's error.
+// as available and the SDK didn't retry the call, fails with a conflict, which UCP answers with 409, and sends nothing
+// more: the caller deploys again once the instance is free, and a template chains tenant databases of one instance with
+// dependsOn. An instance that won't be available without someone acting, such as a stopped one, gets call's error. A
+// failed read of the instance sends nothing, so AWS applied none of the change.
 func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, instance string, call func() error) error {
 	out, err := h.api.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String(instance)}, inRegion(region))
 	if err != nil {
-		return awsapi.NotFound(err, "DBInstanceNotFound")
+		return unsent(awsapi.NotFound(err, "DBInstanceNotFound"))
 	}
 	status := ""
 	if len(out.DBInstances) > 0 {
@@ -78,10 +79,25 @@ func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, in
 		return instanceConflict(instance, "is "+status)
 	}
 	err = call()
-	if awsapi.HasCode(err, "InvalidDBInstanceState") && slices.Contains(availableInstanceStates, strings.ToLower(status)) {
+	// After a retry, the change that made the instance busy may be an earlier attempt of this call.
+	if awsapi.HasCode(err, "InvalidDBInstanceState") && slices.Contains(availableInstanceStates, strings.ToLower(status)) && !awsapi.Retried(err) {
 		return instanceConflict(instance, "or the tenant database is busy")
 	}
 	return err
+}
+
+// unsent returns err, from a read before any change, as a failure AWS applied none of, because no change was sent. It is a client or throttled failure when awsapi.Rejected makes it one, and ErrNotFound stays as it is.
+func unsent(err error) error {
+	if errors.Is(err, native.ErrNotFound) {
+		return err
+	}
+	failure := &native.Failure{}
+	errors.As(awsapi.Rejected(err), &failure)
+	out := &native.Failure{Message: err.Error(), ClientError: failure.ClientError, Throttled: failure.Throttled, Outcome: native.OutcomeRejected}
+	if failure.Outcome == native.OutcomeRejected && failure.Message != "" {
+		out.Message = failure.Message
+	}
+	return out
 }
 
 // instanceConflict returns the conflict of a change to a tenant database of instance, which state describes.
@@ -237,11 +253,12 @@ func only(properties map[string]any, names []string) map[string]any {
 
 // Update sets the master user password, or whether RDS manages it, with ModifyTenantDatabase, then removes and adds
 // tags. Removing ManageMasterUserPassword turns RDS's management off, AWS's default, which takes MasterUserPassword in
-// the same call. A removed password or key stays as AWS has it, because AWS can't clear either.
+// the same call. A removed password or key stays as AWS has it, because AWS can't clear either. A failed read before
+// the calls changed nothing.
 func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateRequest) error {
 	tenant, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
-		return err
+		return unsent(err)
 	}
 	opt := inRegion(request.Region)
 	changed := awsapi.Changed(request)
@@ -390,6 +407,8 @@ func (h *TenantDatabase) DeleteWithToken(ctx context.Context, region string, ide
 		// A delete may have started since the read, such as a retry of this one.
 		current, describeErr := h.describe(ctx, region, identifier)
 		switch {
+		case describeErr != nil && awsapi.Retried(err) && !errors.Is(describeErr, native.ErrNotFound):
+			return unconfirmed("delete", err, describeErr)
 		case describeErr != nil:
 			return describeErr
 		case deleting(current):

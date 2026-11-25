@@ -337,6 +337,10 @@ type Failure struct {
 	// answers a start call's Conflict failure with 409, so the caller deploys again later.
 	Conflict bool
 
+	// Throttled is true when AWS limited the rate of calls, which isn't the request's fault. UCP answers a start
+	// call's Throttled failure with 429 and the code Throttled, so the caller deploys again later. Outcome still says
+	// how much of the operation AWS applied.
+	Throttled bool
 	// Outcome is how much of the operation AWS applied. The zero value, OutcomeUnknown, keeps the pending values as
 	// possibly applied.
 	Outcome Outcome

@@ -29,7 +29,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -594,7 +593,7 @@ func (h *Permissions) Update(ctx context.Context, request native.UpdateRequest) 
 		calls = append(calls, func() error {
 			err := h.revoke(ctx, request.Region, t, revokePerms, revokeGrants)
 			if err != nil {
-				return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+				return awsapi.Unapplied(err.Error(), err)
 			}
 			return nil
 		})

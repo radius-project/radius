@@ -29,7 +29,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2/types"
 
-	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -229,7 +228,7 @@ func (h *ListenerCertificate) Update(ctx context.Context, request native.UpdateR
 		remove := h.remove(ctx, request.Region, listener, arn)
 		calls = append(calls, func() error {
 			if err := remove(); err != nil {
-				return &native.Failure{Message: fmt.Sprintf("failed to remove a certificate from the listener: %s", err), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+				return awsapi.Unapplied(fmt.Sprintf("failed to remove a certificate from the listener: %s", err), err)
 			}
 			return nil
 		})
