@@ -126,7 +126,7 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 		add("Secret", secretsResource, trust)
 	}
 	for _, leftover := range ucpUninstallLeftoverSecrets {
-		found, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover)
+		found, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover, false)
 		if err != nil {
 			return nil, err
 		}

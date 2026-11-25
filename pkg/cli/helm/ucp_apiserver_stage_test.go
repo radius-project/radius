@@ -1115,26 +1115,75 @@ func Test_UpgradeRadius_OffToOffRemovesLeftoverTrust(t *testing.T) {
 // An upgrade that keeps authorization off finishes, and goes on to Contour, when the caller may not read cert-manager
 // objects: with nothing staged that rad could delete, it has nothing to clean up.
 func Test_UpgradeRadius_OffToOffWithoutCertManagerAccess(t *testing.T) {
-	shortenUCPAPIServiceWait(t)
-	u := newStageUpgrade(t, map[string]any{}, "upgrade")
-	c := newOffAfterOnCluster(t)
-	require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
-	c.requireOffTrust(t)
-	c.dynamic.PrependReactor("*", "*", func(action clienttesting.Action) (bool, runtime.Object, error) {
-		if action.GetResource().Group == "cert-manager.io" {
-			return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("denied"))
-		}
-		return false, nil, nil
-	})
-	var out bytes.Buffer
-	previous := output.LogWriter()
-	output.SetLogWriter(&out)
-	t.Cleanup(func() { output.SetLogWriter(previous) })
+	unmarked := func(t *testing.T) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace}}
+	}
+	owned := func(t *testing.T) *corev1.Secret {
+		return apiServerTLSSecret(t, newTestCA(t, "retained radius-apiserver-ca"))
+	}
+	tests := []struct {
+		name        string
+		secret      func(t *testing.T) *corev1.Secret
+		wantWarning string
+	}{
+		{name: "no leftover Secret"},
+		// rad does not own an unmarked Secret, so it needs no Certificate read to keep it.
+		{name: "unmarked Secret", secret: unmarked,
+			wantWarning: "Warning: rad did not delete Secret radius-system/radius-apiserver-ca, which cert-manager did not issue for Certificate radius-apiserver-ca"},
+		// An owned Secret may still belong to a Certificate rad cannot read, so the upgrade keeps it and warns.
+		{name: "owned Secret", secret: owned,
+			wantWarning: `Warning: rad did not delete Secret radius-system/ucp-apiserver-tls because it cannot read Certificate radius-system/ucp-cert. If kubectl --context "test-context" -n radius-system get certificate ucp-cert finds no Certificate`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			u := newStageUpgrade(t, map[string]any{}, "upgrade")
+			c := newOffAfterOnCluster(t)
+			require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			c.requireOffTrust(t)
+			var secret *corev1.Secret
+			if tt.secret != nil {
+				var err error
+				secret, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), tt.secret(t), metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+			c.dynamic.PrependReactor("*", "*", func(action clienttesting.Action) (bool, runtime.Object, error) {
+				if action.GetResource().Group == "cert-manager.io" {
+					return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("denied"))
+				}
+				return false, nil, nil
+			})
+			var out bytes.Buffer
+			previous := output.LogWriter()
+			output.SetLogWriter(&out)
+			t.Cleanup(func() { output.SetLogWriter(previous) })
 
-	client := u.mock(t, 1, func() { c.helmAppliesOff(t, nil, nil) })
-	require.NoError(t, u.run(t, c.impl(client), []string{"global.rbac.enabled=false"}))
-	require.Contains(t, out.String(), "Contour is not installed or is disabled, skipping Contour upgrade")
-	c.requireOffTrust(t)
+			var logs []string
+			impl := c.impl(u.mock(t, 1, func() { c.helmAppliesOff(t, nil, nil) }))
+			impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
+			require.NoError(t, u.run(t, impl, []string{"global.rbac.enabled=false"}))
+			require.Contains(t, out.String(), "Contour is not installed or is disabled, skipping Contour upgrade")
+			if secret == nil {
+				c.requireOffTrust(t)
+				return
+			}
+			require.Equal(t, secret.ResourceVersion, c.secret(t, secret.Name).ResourceVersion, "rad must keep Secret %s", secret.Name)
+			require.Contains(t, strings.Join(logs, "\n"), tt.wantWarning)
+		})
+	}
+}
+
+// Uninstall removes cert-manager only once no leftover remains, so it fails rather than keep an owned Secret whose
+// Certificate rad may not read.
+func Test_deleteUCPOffLeftovers_UninstallFailsWhenCertificateForbidden(t *testing.T) {
+	c := newOffAfterOnCluster(t)
+	require.True(t, ownsUCPOffSecret(c.secret(t, ucpAPIServerTLSSecretName), ucpUninstallLeftoverSecrets[1]))
+	c.dynamic.PrependReactor("get", "certificates", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("denied"))
+	})
+	err := c.impl(nil).deleteUCPOffLeftovers(t.Context(), "test-context", c.kube, c.dynamic, RadiusSystemNamespace, ucpUninstallLeftoverSecrets, true)
+	require.ErrorContains(t, err, "failed to read Certificate radius-system/")
+	c.secret(t, ucpAPIServerTLSSecretName)
 }
 
 // A failed upgrade that turned authorization on can leave UCP serving the radius-apiserver-ca certificate while the

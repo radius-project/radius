@@ -77,6 +77,9 @@ const (
 	ucpOffSecretForeign
 	// ucpOffSecretLeftover: rad or cert-manager wrote the Secret for authorization on, and nothing uses it now.
 	ucpOffSecretLeftover
+	// ucpOffSecretUnchecked: cert-manager issued the Secret for the release, but rad may not read cert-manager
+	// Certificates, so it cannot tell whether authorization on still uses it and keeps it.
+	ucpOffSecretUnchecked
 )
 
 // ucpOffLeftoverFound is the state of a ucpOffLeftoverSecret, with the Secret rad read when it exists.
@@ -152,7 +155,7 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
 	}
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets)
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets, true)
 	if err != nil {
 		return err
 	}
@@ -180,8 +183,9 @@ func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 // deleteUCPOffLeftovers deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
 // uid and resourceVersion rad read, and warns about each that rad does not own. When a leftover changed before rad
 // deleted it, it warns, or, when incompleteErr is set, returns an error, so that uninstall keeps cert-manager for a retry.
+// Without incompleteErr, it keeps an owned Secret whose Certificate rad may not read, as ucpOffLeftover describes.
 func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret, incompleteErr bool) error {
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers, !incompleteErr)
 	if err != nil {
 		return err
 	}
@@ -200,7 +204,7 @@ func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, ku
 		}
 		// The Secret changed or was deleted since rad read it: decide again from what exists now, but never delete
 		// an object rad has not inspected.
-		again, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, f.ucpOffLeftoverSecret)
+		again, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, f.ucpOffLeftoverSecret, !incompleteErr)
 		if err != nil {
 			return err
 		}
@@ -243,9 +247,17 @@ func hasUCPOffLeftover(found []ucpOffLeftoverFound) bool {
 	return false
 }
 
-// warnForeignUCPOffSecrets warns about each Secret of found that rad does not delete because it does not own it.
+// warnForeignUCPOffSecrets warns about each Secret of found that rad does not delete because it does not own it, or
+// because it cannot read the Certificate that would show whether authorization on still uses it.
 func (i *Impl) warnForeignUCPOffSecrets(kubeContext, radiusNamespace string, found []ucpOffLeftoverFound) {
 	for _, f := range found {
+		if f.state == ucpOffSecretUnchecked {
+			i.logInfo("Warning: rad did not delete Secret %s/%s because it cannot read Certificate %s/%s. If %s finds no Certificate, authorization off does not use the Secret; delete it with %s",
+				radiusNamespace, f.secret, radiusNamespace, f.certificate,
+				kubectlCommand(kubeContext, radiusNamespace, "get certificate "+f.certificate),
+				kubectlCommand(kubeContext, radiusNamespace, "delete secret "+f.secret))
+			continue
+		}
 		if f.state != ucpOffSecretForeign {
 			continue
 		}
@@ -298,11 +310,11 @@ func exactCertificates(bundle []byte) ([]*x509.Certificate, bool) {
 	}
 }
 
-// ucpOffLeftovers returns the state of each Secret of leftovers.
-func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) ([]ucpOffLeftoverFound, error) {
+// ucpOffLeftovers returns the state of each Secret of leftovers, as ucpOffLeftover decides.
+func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret, keepUnreadable bool) ([]ucpOffLeftoverFound, error) {
 	found := []ucpOffLeftoverFound{}
 	for _, leftover := range leftovers {
-		f, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover)
+		f, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover, keepUnreadable)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +327,12 @@ func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynam
 // not exist and rad owns it: cert-manager issued it for that Certificate, or, for radius-apiserver-trust, it holds
 // only ca.crt, the allow-direct-injection annotation and the release annotations, which is what rad and the chart
 // README's plain-Helm steps write.
-func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret) (ucpOffLeftoverFound, error) {
+//
+// It checks the Secret's markers before it reads the Certificate, so a Secret rad does not own is foreign without any
+// cert-manager read. When keepUnreadable is set, an owned Secret whose Certificate rad is Forbidden to read is
+// unchecked and kept, so an upgrade by a user without cert-manager access still succeeds. Uninstall leaves
+// keepUnreadable unset and fails, so it never removes cert-manager while such a Secret may remain.
+func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftover ucpOffLeftoverSecret, keepUnreadable bool) (ucpOffLeftoverFound, error) {
 	found := ucpOffLeftoverFound{ucpOffLeftoverSecret: leftover}
 	secret, err := kubeClient.CoreV1().Secrets(radiusNamespace).Get(ctx, leftover.secret, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -325,20 +342,25 @@ func ucpOffLeftover(ctx context.Context, kubeClient kubernetes.Interface, dynami
 		return found, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, leftover.secret, err)
 	}
 	found.object = secret
+	if !ownsUCPOffSecret(secret, leftover) {
+		found.state = ucpOffSecretForeign
+		return found, nil
+	}
 	if leftover.certificate != "" {
 		// NotFound also covers a cluster without the cert-manager CRDs.
 		_, err := dynamicClient.Resource(certManagerCertificatesResource).Namespace(radiusNamespace).Get(ctx, leftover.certificate, metav1.GetOptions{})
 		if err == nil {
 			return found, nil
 		}
+		if keepUnreadable && apierrors.IsForbidden(err) {
+			found.state = ucpOffSecretUnchecked
+			return found, nil
+		}
 		if !apierrors.IsNotFound(err) {
 			return found, fmt.Errorf("failed to read Certificate %s/%s: %w", radiusNamespace, leftover.certificate, err)
 		}
 	}
-	found.state = ucpOffSecretForeign
-	if ownsUCPOffSecret(secret, leftover) {
-		found.state = ucpOffSecretLeftover
-	}
+	found.state = ucpOffSecretLeftover
 	return found, nil
 }
 
