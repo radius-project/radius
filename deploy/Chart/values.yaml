@@ -176,6 +176,8 @@ controller:
   image: controller
   # Default tag uses Chart AppVersion.
   # tag: latest
+  # Enable the unauthenticated profiling listener only for temporary diagnostics.
+  profilerEnabled: false
   resources:
     requests:
       memory: "60Mi"
@@ -194,6 +196,8 @@ de:
       memory: "300Mi"
 
 ucp:
+  # Enable the unauthenticated profiling listener only for temporary diagnostics.
+  profilerEnabled: false
   # Stable issuer for users/groups verified through this cluster's front proxy.
   # Choose a distinct trust domain when policies distinguish multiple clusters.
   kubernetesIssuer: kubernetes:local
@@ -215,6 +219,8 @@ dynamicrp:
   image: dynamic-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  # Enable the unauthenticated profiling listener only for temporary diagnostics.
+  profilerEnabled: false
   workerServer:
     # How long the async worker waits before polling again after finding its queue empty,
     # such as "2s". Empty keeps the 200ms default. See the chart README.
@@ -267,6 +273,8 @@ rp:
   image: applications-rp
   # Default tag uses Chart AppVersion.
   # tag: latest
+  # Enable the unauthenticated profiling listener only for temporary diagnostics.
+  profilerEnabled: false
   workerServer:
     # How long the async worker waits before polling again after finding its queue empty,
     # such as "2s". Empty keeps the 200ms default. See the chart README.

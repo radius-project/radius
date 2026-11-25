@@ -27,6 +27,10 @@ on:
         description: Branch to run the workflow on
         required: true
         default: main
+      control-plane-profiling:
+        description: Enable the profiling listener on all control plane services for this diagnostic run
+        type: boolean
+        default: false
       test-profile:
         description: Full coverage or path-gated PR selection (manual runs retain full coverage)
         type: choice
@@ -557,6 +561,10 @@ jobs:
 
           RAD_COMMAND="rad install kubernetes \
                  --chart ${RADIUS_CHART_LOCATION} \
+                 --set ucp.profilerEnabled=${PROFILING} \
+                 --set rp.profilerEnabled=${PROFILING} \
+                 --set dynamicrp.profilerEnabled=${PROFILING} \
+                 --set controller.profilerEnabled=${PROFILING} \
                  --set rp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/applications-rp,rp.tag=${REL_VERSION} \
                  --set dynamicrp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/dynamic-rp,dynamicrp.tag=${REL_VERSION} \
                  --set controller.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/controller,controller.tag=${REL_VERSION} \
@@ -649,6 +657,7 @@ jobs:
           rad workspace show
 
         env:
+          PROFILING: ${{ inputs.control-plane-profiling && 'true' || 'false' }}
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
 

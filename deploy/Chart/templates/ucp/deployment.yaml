@@ -23,6 +23,7 @@ spec:
         azure.workload.identity/use: "true"
         {{- end }}
       annotations:
+        radius.io/profiler-enabled: {{ .Values.ucp.profilerEnabled | default false | quote }}
         checksum/authz-config: {{ include "radius.authz.checksumInput" . | sha256sum }}
         checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}

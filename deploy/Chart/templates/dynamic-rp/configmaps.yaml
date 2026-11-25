@@ -37,7 +37,7 @@ data:
         path: "/metrics"
         port: 9092
     profilerProvider:
-      enabled: true
+      enabled: {{ .Values.dynamicrp.profilerEnabled | default false }}
       port: 6062
     secretProvider:
       provider: kubernetes

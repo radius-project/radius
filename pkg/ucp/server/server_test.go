@@ -17,12 +17,16 @@ limitations under the License.
 package server
 
 import (
+	"context"
+	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/authorization"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
@@ -43,6 +47,51 @@ func Test_NewServer(t *testing.T) {
 		t.Setenv("AWS_PROFILE", "radius-test-profile-that-does-not-exist")
 		_, err := NewServer(t.Context(), &ucp.Options{Config: &ucp.Config{}})
 		require.Error(t, err)
+	})
+}
+
+func Test_NewServer_Profiler(t *testing.T) {
+	profilers := func(t *testing.T, config profilerservice.Options) []*profilerservice.Service {
+		t.Helper()
+		ctrl := gomock.NewController(t)
+		host, err := NewServer(t.Context(), &ucp.Options{
+			Config: &ucp.Config{Profiler: config},
+			AWSClients: ucp_aws.Clients{
+				CloudControl:   ucp_aws.NewMockAWSCloudControlClient(ctrl),
+				CloudFormation: ucp_aws.NewMockAWSCloudFormationClient(ctrl),
+				Kafka:          ucp_aws.NewMockAWSKafkaClient(ctrl),
+			},
+		})
+		require.NoError(t, err)
+		var services []*profilerservice.Service
+		for _, service := range host.Services {
+			if profiler, ok := service.(*profilerservice.Service); ok {
+				services = append(services, profiler)
+			}
+		}
+		return services
+	}
+
+	t.Run("not registered by default", func(t *testing.T) {
+		require.Empty(t, profilers(t, profilerservice.Options{Port: 6060}))
+	})
+
+	t.Run("registered service binds the configured port", func(t *testing.T) {
+		// Keep the port occupied so startup has a deterministic bind error.
+		listener, err := net.Listen("tcp", ":0")
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, listener.Close()) })
+		port := listener.Addr().(*net.TCPAddr).Port
+		services := profilers(t, profilerservice.Options{Enabled: true, Port: port})
+		require.Len(t, services, 1)
+
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+		defer cancel()
+		err = services[0].Run(ctx)
+		var bindErr *net.OpError
+		require.ErrorAs(t, err, &bindErr)
+		require.Equal(t, "listen", bindErr.Op)
+		require.Equal(t, port, bindErr.Addr.(*net.TCPAddr).Port)
 	})
 }
 

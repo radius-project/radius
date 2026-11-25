@@ -25,7 +25,7 @@ data:
         namespace: "radius-system"
 
     profilerProvider:
-      enabled: true
+      enabled: {{ .Values.controller.profilerEnabled | default false }}
       port: 6060
 
     {{- include "radius.authz.ucpConnection" . | nindent 4 }}

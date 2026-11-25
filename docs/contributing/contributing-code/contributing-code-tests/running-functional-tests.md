@@ -130,6 +130,8 @@ make generate-bicep-types
 bash build/scripts/local-functional.sh setup
 ```
 
+To troubleshoot the control plane in an isolated test cluster, prefix the setup command with `LOCAL_FUNCTIONAL_PROFILING=true`. For a manual cloud or non-cloud functional workflow run, select `control-plane-profiling`. Either option enables the profiling listener on UCP, the applications RP, the dynamic RP, and the controller for the shared Radius install. Leave it off for routine tests. The listeners have no authentication and bind to all pod interfaces on ports 6060 (UCP, applications RP, controller) and 6062 (dynamic RP). Restrict access to trusted operators and remove the test cluster after diagnosis.
+
 Run one standard test group by passing its Make target:
 
 ```bash
