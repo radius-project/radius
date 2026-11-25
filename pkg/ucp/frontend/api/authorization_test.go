@@ -289,6 +289,21 @@ func TestServiceDryRunRequests(t *testing.T) {
 		require.Equal(t, http.StatusServiceUnavailable, code, body)
 	})
 
+	t.Run("named role assignment read redacts its target", func(t *testing.T) {
+		const name = "private-assignment-name"
+		logs.TakeAll()
+		call(http.MethodGet, group+"/providers/Radius.Core/roleAssignments/"+name+"?api-version=2025-08-01-preview", "bob", "")
+		events := logs.FilterMessage("User authorization request").All()
+		require.Len(t, events, 1)
+		fields := events[0].ContextMap()
+		require.Equal(t, "Radius.Core/roleAssignments/read", fields["permission"])
+		require.Equal(t, "[redacted]", fields["target"])
+		require.NotContains(t, fields, "resourceId")
+		encoded, err := json.Marshal(events[0])
+		require.NoError(t, err)
+		require.NotContains(t, string(encoded), name)
+	})
+
 	for _, path := range []string{group, "/planes/radius/local/resourcegroups/missing"} {
 		allowed, _, allowedBody := call(http.MethodGet, path+"?api-version=2023-10-01-preview", "alice", "")
 		denied, _, deniedBody := call(http.MethodGet, path+"?api-version=2023-10-01-preview", "bob", "")

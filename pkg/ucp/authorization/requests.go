@@ -53,7 +53,7 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 			identity, verified := IdentityFromContext(r.Context())
 			logger := ucplog.FromContextOrDiscard(r.Context())
 			if protectedMutation(r.Method, path) {
-				logger.Info("User authorization request", "result", "deny", "reason", "protectedMutationUnsupported")
+				logger.Info(ucplog.AuthorizationRequestMessage, "result", "deny", "reason", "protectedMutationUnsupported")
 				if !verified {
 					if err := rest.NewClientAuthenticationFailedARMResponse().Apply(r.Context(), w, r); err != nil {
 						logger.Error(err, "Failed to write authentication error response")
@@ -80,7 +80,7 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 				err = errors.New("AuthorizationIndeterminate: request path is outside the API mount")
 			}
 			if result.Mode == api.UserAuthorizationModeEnforce && result.Mapping.Kind != DiscoveryRequest {
-				logger.Info("User authorization request", "result", "deny", "reason", "enforceUnsupported")
+				logger.Info(ucplog.AuthorizationRequestMessage, "result", "deny", "reason", "enforceUnsupported")
 				writeAuthorizationUnavailable(w, r)
 				return
 			}
@@ -98,7 +98,7 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 			if err != nil {
 				// Do not label an unavailable/indeterminate check as an allow or
 				// wouldDeny. In particular LastKnownMode is not a current mode.
-				logger.Error(err, "User authorization request", append(fields, "result", "indeterminate")...)
+				logger.Error(err, ucplog.AuthorizationRequestMessage, append(fields, "result", "indeterminate")...)
 			} else if result.Mapping.Kind != DiscoveryRequest {
 				for _, decision := range result.Decisions {
 					outcome := "allow"
@@ -109,7 +109,7 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 					if protectedTarget(target) {
 						target = "[redacted]"
 					}
-					logger.Info("User authorization request", append(fields,
+					logger.Info(ucplog.AuthorizationRequestMessage, append(fields,
 						"result", outcome, "permission", decision.Permission, "target", target)...)
 				}
 			}

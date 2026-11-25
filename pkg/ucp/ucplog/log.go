@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -36,6 +37,11 @@ const (
 	DefaultLoggerName string = "radius"
 	LogLevel          string = "RADIUS_LOGGING_LEVEL" // Env variable that determines the log level
 	LogProfile        string = "RADIUS_LOGGING_JSON"  // Env variable that determines the logger config presets
+
+	// AuthorizationRequestMessage is the message of every user authorization
+	// request observation. These entries are exempt from sampling so a burst
+	// of allows cannot hide a wouldDeny that shares the message.
+	AuthorizationRequestMessage string = "User authorization request"
 )
 
 // Log levels
@@ -122,13 +128,61 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	cfg.EncoderConfig.LevelKey = "severity"
 	cfg.EncoderConfig.TimeKey = "timestamp"
 
-	// Build the logger config based on profile and custom presets
-	logger, err := cfg.Build()
+	return buildLogger(cfg)
+}
+
+// buildLogger builds cfg, applying its sampling to every message except
+// AuthorizationRequestMessage.
+func buildLogger(cfg zap.Config, options ...zap.Option) (*zap.Logger, error) {
+	sampling := cfg.Sampling
+	cfg.Sampling = nil
+	logger, err := cfg.Build(append(options, zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+		return sampleExcept(core, sampling, AuthorizationRequestMessage)
+	}))...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize zap logger: %v", err)
 	}
 
 	return logger, nil
+}
+
+// sampleExcept matches zap.Config's sampler but writes entries with the exempt
+// message unsampled. Zap samples by level and message, not fields.
+func sampleExcept(core zapcore.Core, sampling *zap.SamplingConfig, exempt string) zapcore.Core {
+	if sampling == nil {
+		return core
+	}
+	var options []zapcore.SamplerOption
+	if sampling.Hook != nil {
+		options = append(options, zapcore.SamplerHook(sampling.Hook))
+	}
+	return exemptCore{
+		Core:      zapcore.NewSamplerWithOptions(core, time.Second, sampling.Initial, sampling.Thereafter, options...),
+		unsampled: core,
+		exempt:    exempt,
+	}
+}
+
+// exemptCore routes entries with the exempt message around the sampler.
+type exemptCore struct {
+	zapcore.Core
+	unsampled zapcore.Core
+	exempt    string
+}
+
+func (c exemptCore) Level() zapcore.Level {
+	return zapcore.LevelOf(c.unsampled)
+}
+
+func (c exemptCore) With(fields []zapcore.Field) zapcore.Core {
+	return exemptCore{Core: c.Core.With(fields), unsampled: c.unsampled.With(fields), exempt: c.exempt}
+}
+
+func (c exemptCore) Check(entry zapcore.Entry, checked *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if entry.Message == c.exempt {
+		return c.unsampled.Check(entry, checked)
+	}
+	return c.Core.Check(entry, checked)
 }
 
 // NewLogger creates a new logger with zap logger implementation, with the given name and logging options,
