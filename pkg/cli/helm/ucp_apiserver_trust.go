@@ -429,6 +429,19 @@ func (i *Impl) deleteUCPAPIServerTrust(ctx context.Context, kubeContext, radiusN
 	return i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace)
 }
 
+// keepReferencedUCPSecret reports whether rad must keep Secret secretName because the pod template of the live ucp
+// Deployment references it, as ucpReferencesSecret decides, and then warns that rad kept it. A replacement UCP pod
+// could not start without that Secret, so every path that deletes a Secret rad owns checks it first.
+func (i *Impl) keepReferencedUCPSecret(ctx context.Context, kubeClient kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
+	referenced, err := ucpReferencesSecret(ctx, kubeClient, radiusNamespace, secretName)
+	if err != nil || !referenced {
+		return false, err
+	}
+	i.logInfo("Warning: rad did not delete Secret %s/%s, which the pod template of Deployment %s/ucp still references. Run the command again to delete it once nothing references it",
+		radiusNamespace, secretName, radiusNamespace)
+	return true, nil
+}
+
 // deleteOwnedUCPAPIServerTrust deletes the trust Secret if rad owns it, as ownsUCPAPIServerTrust decides, pinned to
 // the uid and resourceVersion rad read. It keeps a Secret that rad does not own, that the live UCP pod template
 // references, or that changed or was recreated after rad read it, and warns about it.
@@ -452,15 +465,9 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 		return nil
 	}
-	// A replacement UCP pod could not start without a Secret its template still references.
-	referenced, err := ucpReferencesSecret(ctx, kubeClient, radiusNamespace, ucpAPIServerTrustSecretName)
-	if err != nil {
+	keep, err := i.keepReferencedUCPSecret(ctx, kubeClient, radiusNamespace, ucpAPIServerTrustSecretName)
+	if err != nil || keep {
 		return err
-	}
-	if referenced {
-		i.logInfo("Warning: rad did not delete Secret %s/%s, which the pod template of Deployment %s/ucp still references. Run the command again to delete it once nothing references it",
-			radiusNamespace, ucpAPIServerTrustSecretName, radiusNamespace)
-		return nil
 	}
 	err = secrets.Delete(ctx, ucpAPIServerTrustSecretName, metav1.DeleteOptions{Preconditions: secretPreconditions(secret)})
 	if err == nil {

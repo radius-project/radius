@@ -62,8 +62,14 @@ func (i *Impl) deleteUCPAPIServerLeftovers(ctx context.Context, kubeContext, rad
 	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, nil, true); err != nil {
 		return err
 	}
-	if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, ucpOffCertificateStageObject, radiusNamespace, radiusReleaseName, true); err != nil {
+	keep, err := i.keepReferencedUCPSecret(ctx, kubeClient, radiusNamespace, ucpOffCertificateStageObject.name)
+	if err != nil {
 		return err
+	}
+	if !keep {
+		if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, ucpOffCertificateStageObject, radiusNamespace, radiusReleaseName, true); err != nil {
+			return err
+		}
 	}
 	if err := i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace); err != nil {
 		return err
@@ -87,7 +93,7 @@ func (l UninstallLeftover) String() string {
 // uninstalls Radius before rad deletes them, so when that cleanup failed, the release is gone but they remain; a later
 // uninstall finds no Radius, shows this list, and passes it to DeleteRadiusUninstallLeftovers. It includes the Secret
 // that cert-manager issued for each listed Certificate, because deleting the Certificate leaves that Secret unused. It
-// only reads the cluster.
+// leaves out, and warns about, each Secret that the live UCP pod template references. It only reads the cluster.
 func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]UninstallLeftover, error) {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -98,9 +104,16 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 	planned := func(kind, name string) bool {
 		return slices.ContainsFunc(leftovers, func(l UninstallLeftover) bool { return l.Kind == kind && l.Name == name })
 	}
-	add := func(kind string, resource schema.GroupVersionResource, object metav1.Object) {
+	add := func(kind string, resource schema.GroupVersionResource, object metav1.Object) error {
+		if kind == "Secret" {
+			keep, err := i.keepReferencedUCPSecret(ctx, kubeClient, radiusNamespace, object.GetName())
+			if err != nil || keep {
+				return err
+			}
+		}
 		leftovers = append(leftovers, UninstallLeftover{Kind: kind, Namespace: radiusNamespace, Name: object.GetName(), resource: resource,
 			uid: object.GetUID(), resourceVersion: object.GetResourceVersion()})
+		return nil
 	}
 	for index := len(ucpAPIServerCAStageObjects) - 1; index >= -1; index-- {
 		staged := ucpOffCertificateStageObject
@@ -115,7 +128,9 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 			return nil, fmt.Errorf("failed to read %s %s/%s: %w", staged.kind, radiusNamespace, staged.name, err)
 		}
 		if object.GetDeletionTimestamp() == nil && stagedForRelease(object, radiusNamespace, radiusReleaseName) {
-			add(staged.kind, staged.resource, object)
+			if err := add(staged.kind, staged.resource, object); err != nil {
+				return nil, err
+			}
 		}
 	}
 	_, trust, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
@@ -123,7 +138,9 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 		return nil, err
 	}
 	if trust != nil && ownsUCPAPIServerTrust(trust, radiusNamespace) {
-		add("Secret", secretsResource, trust)
+		if err := add("Secret", secretsResource, trust); err != nil {
+			return nil, err
+		}
 	}
 	for _, leftover := range ucpUninstallLeftoverSecrets {
 		found, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover, false)
@@ -133,7 +150,9 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 		// A Secret whose Certificate rad deletes with this list is a leftover once that delete succeeds.
 		if found.object != nil && found.object.DeletionTimestamp == nil && (found.state == ucpOffSecretLeftover ||
 			(found.state == ucpOffSecretKeep && planned("Certificate", leftover.certificate) && ownsUCPOffSecret(found.object, leftover))) {
-			add("Secret", secretsResource, found.object)
+			if err := add("Secret", secretsResource, found.object); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return leftovers, nil
@@ -142,8 +161,9 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 // DeleteRadiusUninstallLeftovers resumes the cleanup that UninstallRadius runs after Helm uninstalls Radius, for a
 // cluster where the Radius release is already gone. It deletes only leftovers, which RadiusUninstallLeftovers listed
 // and the user confirmed, each pinned to the uid and resourceVersion rad read for the list, so an object that changed
-// or was replaced since survives. It stops at the first object that changed and returns an error, because a listed Secret
-// can depend on a Certificate listed before it, and the cleanup is then incomplete, so the caller keeps cert-manager.
+// or was replaced since survives. It keeps, and warns about, a listed Secret that the live UCP pod template references
+// by then. It stops at the first object that changed and returns an error, because a listed Secret can depend on a
+// Certificate listed before it, and the cleanup is then incomplete, so the caller keeps cert-manager.
 func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext string, leftovers []UninstallLeftover) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -152,6 +172,13 @@ func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext s
 	for _, leftover := range leftovers {
 		options := metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &leftover.uid, ResourceVersion: &leftover.resourceVersion}}
 		if leftover.Kind == "Secret" {
+			keep, keepErr := i.keepReferencedUCPSecret(ctx, kubeClient, leftover.Namespace, leftover.Name)
+			if keepErr != nil {
+				return keepErr
+			}
+			if keep {
+				continue
+			}
 			err = kubeClient.CoreV1().Secrets(leftover.Namespace).Delete(ctx, leftover.Name, options)
 		} else {
 			err = dynamicClient.Resource(leftover.resource).Namespace(leftover.Namespace).Delete(ctx, leftover.Name, options)
