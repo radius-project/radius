@@ -680,7 +680,13 @@ To change the password, run the script with the new `RADIUS_DB_PASSWORD`, update
 
 Use an external server for a new installation. Setting `database.external.host` on an existing release doesn't migrate data: the services start against the external databases, and Helm deletes the in-cluster server's StatefulSet, Service, and `database-secret` (the volume is kept). Don't use `database-secret` as `database.external.existingSecret`. Switching back to the in-cluster server isn't a recovery path either, because the chart generates a new password that doesn't match the users in the kept volume.
 
-The external server holds the resource data, but not every Secret the control plane needs. Before you recreate the cluster against the same server, back up and restore the `radius-encryption-key` Secret in `radius-system`: sensitive resource fields are stored encrypted with its keys, and the chart generates new keys when the Secret is missing, which leaves those fields unreadable. Also back up and restore the Terraform state Secrets (`tfstate-*` in `radius-system`) when recipes use the default Kubernetes state backend; without them, Terraform can't update or delete the infrastructure it created. Credentials registered with `rad credential register` are also stored as Kubernetes Secrets, so register them again on the new cluster.
+The external server holds the resource data, but not every Secret the control plane needs. Before you recreate the cluster against the same server, back up these Secrets in `radius-system` and restore them before you install Radius on the new cluster. The chart generates new keys when they're missing.
+
+- `radius-encryption-key`: sensitive resource fields are stored encrypted with its keys. New keys leave those fields unreadable.
+- `radius-aws-fingerprint-key`: UCP stores fingerprints of write-only AWS resource properties made with this key. With a new key, UCP can't tell which of those values changed, so later updates resend unchanged mutable values and miss changes to create-only values.
+- The Terraform state Secrets (`tfstate-*`), when recipes use the default Kubernetes state backend. Without them, Terraform can't update or delete the infrastructure it created.
+
+Credentials registered with `rad credential register` are also stored as Kubernetes Secrets, so register them again on the new cluster.
 
 No other code changes are needed. The `DatabaseProvider` will read the
 `provider` field and call the matching factory function to produce the client.
