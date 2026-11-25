@@ -86,18 +86,12 @@ The deployment engine is configured via environment variables:
 | `SKIP_ARM`         | Skip Azure ARM integration | `true` / `false`                                              |
 | `kubernetes`       | Enable Kubernetes mode     | `true`                                                        |
 
-In production the `RADIUSBACKENDURL` points to the UCP service in the release
-namespace, a name in the certificate UCP serves:
-`https://ucp.<namespace>.svc:443/apis/api.ucp.dev/v1alpha3` when
-`global.rbac` turns authorization on, and
-`https://ucp.<namespace>:443/apis/api.ucp.dev/v1alpha3` when it is off. In
-development, debug scripts/manifests set it to host-reachable UCP endpoints
-such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker
-debug) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3`
-(Kubernetes debug manifest).
+With the engine gate off, `RADIUSBACKENDURL` uses a name in UCP's serving certificate: `https://ucp.<namespace>:443/apis/api.ucp.dev/v1alpha3` with authorization off and `https://ucp.<namespace>.svc:443/apis/api.ucp.dev/v1alpha3` in DryRun or Enforce. In development, debug manifests use host-reachable endpoints such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3` (Kubernetes).
 
 Debug manifests may also include provider toggles such as `AZURE_ENABLED`,
 `AWS_ENABLED`, and `KUBERNETES_ENABLED`.
+
+The Helm chart gates token-capable engine integration with `de.internalAuth.enabled=true` and a non-off global authorization mode. Both `global.rbac.tls.provider=radius` (default) and `external` project separate receiver tokens with bare audiences `ucp` and `bicep-de`; Kubernetes API credentials remain separate. Radius TLS uses the engine's own server-only certificate Secret at `/var/run/radius/spiffe` and public CA at `/var/run/radius/ca`, with exact URI-only SPIFFE verification and no client certificate. External uses HTTP without internal TLS mounts; operators must provide authenticated encryption before enabling it. Callbacks target `ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3`, and UCP targets the sole engine listener at `bicep-de.<namespace>.svc:6443`, using HTTPS for Radius or HTTP for external. The active gate removes anonymous metrics annotations. In Enforce mode, only the UCP ServiceAccount can access `/metrics`; there is no supported Prometheus scraper identity. A compatible engine image must be selected explicitly; the default image, gate-off callback endpoint, and aggregation compatibility path remain unchanged. The obsolete enabled `de.ucpMTLS` contract is rejected. See the [chart integration prerequisite](../../deploy/Chart/README.md#deployment-engine-token-authentication-integration-prerequisite) for exact environment variables, migration, and pending image/live and observer integration.
 
 ## How Deployments Work
 

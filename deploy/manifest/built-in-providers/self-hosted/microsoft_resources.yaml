@@ -1,7 +1,7 @@
 namespace: Microsoft.Resources
 location:
   global:
-    "http://bicep-de.radius-system:6443"
+    "http://bicep-de:6443"
 types:
   deployments:
     apiVersions:

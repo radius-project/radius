@@ -167,12 +167,17 @@ func startRecordingServer(t *testing.T, ca testCA, mode authz.Mode, setup server
 
 // startServerWithHandler is startServer with a custom handler; nil uses http.DefaultServeMux.
 func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler http.Handler) testServer {
+	return startServerWithProvider(t, ca, mode, handler, authz.TLSProviderRadius)
+}
+
+func startServerWithProvider(t *testing.T, ca testCA, mode authz.Mode, handler http.Handler, provider authz.TLSProvider) testServer {
 	t.Helper()
-	return startServerWithSetup(t, ca, mode, handler, serverSetup{})
+	return startServerWithSetup(t, ca, mode, handler, serverSetup{provider: provider})
 }
 
 // serverSetup overrides the defaults of a test server.
 type serverSetup struct {
+	provider authz.TLSProvider
 	// leaf is the serving certificate. Nil issues one from the CA that is valid for an hour.
 	leaf *testCert
 	// certNow is the serving certificate's clock.
@@ -183,12 +188,18 @@ func startServerWithSetup(t *testing.T, ca testCA, mode authz.Mode, handler http
 	t.Helper()
 
 	dir := t.TempDir()
-	leaf := setup.leaf
-	if leaf == nil {
-		issued := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")})
-		leaf = &issued
+	provider := setup.provider
+	if provider == "" {
+		provider = authz.TLSProviderRadius
 	}
-	writeFiles(t, dir, *leaf, ca.pem)
+	if provider == authz.TLSProviderRadius {
+		leaf := setup.leaf
+		if leaf == nil {
+			issued := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")})
+			leaf = &issued
+		}
+		writeFiles(t, dir, *leaf, ca.pem)
+	}
 
 	core, logs := observer.New(zapcore.InfoLevel)
 	ctx, cancel := context.WithCancel(logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core))))
@@ -200,7 +211,10 @@ func startServerWithSetup(t *testing.T, ca testCA, mode authz.Mode, handler http
 		Handler:     handler,
 		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
-	options := authz.Options{Mode: mode, CertificateDirectory: dir, Namespace: testNamespace}
+	options := authz.Options{Mode: mode, TLSProvider: provider, Namespace: testNamespace}
+	if provider == authz.TLSProviderRadius {
+		options.CertificateDirectory = dir
+	}
 	clock := &testClock{now: time.Now()}
 	keys := &staticKeys{}
 	config := serveConfig{pollInterval: testPollInterval, tokenNow: clock.Now, certNow: setup.certNow}
@@ -215,6 +229,58 @@ func startServerWithSetup(t *testing.T, ca testCA, mode authz.Mode, handler http
 	})
 
 	return testServer{url: ln.Addr().String(), dir: dir, logs: logs, clock: clock, keys: keys}
+}
+
+func TestServe_ExternalTokenAuthorization(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			seen := make(chan seenRequest, 16)
+			srv := startServerWithProvider(t, testCA{}, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				id, ok := authz.IdentityFromContext(r.Context())
+				seen <- seenRequest{authorization: r.Header.Get("Authorization"), identity: id, hasIdentity: ok}
+			}), authz.TLSProviderExternal)
+			address := "http://" + srv.url
+			c := &http.Client{Timeout: 5 * time.Second}
+			require.Equal(t, http.StatusOK, send(t, c, address, "Bearer "+mintToken(t, "ucp", "applications-rp")))
+			valid := <-seen
+			require.True(t, valid.hasIdentity)
+			require.Equal(t, "ucp.radius-system.svc", valid.identity.String())
+			require.Empty(t, valid.authorization)
+
+			for _, tc := range requestCases(t) {
+				t.Run(tc.name, func(t *testing.T) {
+					want := tc.status
+					if mode == authz.ModeDryRun {
+						want = http.StatusOK
+					}
+					require.Equal(t, want, send(t, c, address, tc.authorization))
+					if mode == authz.ModeDryRun {
+						got := <-seen
+						require.False(t, got.hasIdentity)
+						require.Empty(t, got.authorization)
+					}
+					requireLogged(t, srv.logs, mode, tc.code, tc.want)
+				})
+			}
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge)
+			for _, authorization := range []string{"", "Bearer malformed", "Bearer " + mintToken(t, "ucp", "applications-rp")} {
+				status := send(t, c, address, authorization)
+				requireLogged(t, srv.logs, mode, v1.CodeAuthorizationUnavailable, "signing keys")
+				if mode == authz.ModeEnforce {
+					require.Equal(t, http.StatusServiceUnavailable, status)
+					require.Empty(t, seen)
+					continue
+				}
+				require.Equal(t, http.StatusOK, status)
+				got := <-seen
+				require.False(t, got.hasIdentity)
+				require.Empty(t, got.authorization)
+			}
+		})
+	}
 }
 
 // client returns an HTTP client that verifies the applications-rp certificate from ca and
@@ -586,6 +652,7 @@ func TestServe_ConfigErrors(t *testing.T) {
 		receiver Receiver
 		want     string
 	}{
+		{name: "unknown TLS provider", options: authz.Options{Mode: authz.ModeEnforce, TLSProvider: "typo"}, receiver: receiver, want: "invalid TLS provider"},
 		{name: "missing directory", options: authz.Options{Mode: authz.ModeEnforce, Namespace: testNamespace}, receiver: receiver, want: "requires certificateDirectory"},
 		{name: "missing namespace", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir}, receiver: receiver, want: "requires certificateDirectory and namespace"},
 		{name: "missing receiver", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, want: "receiver name is required"},

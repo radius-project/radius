@@ -109,6 +109,35 @@ func Test_Options_EffectiveCADirectory(t *testing.T) {
 	require.Equal(t, "/var/run/radius/spiffe", opts.EffectiveCADirectory(), "falls back to certificateDirectory")
 }
 
+func Test_Options_TLSProvider(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		input   string
+		want    TLSProvider
+		invalid bool
+	}{
+		{input: "{}", want: TLSProviderRadius},
+		{input: "tlsProvider: radius", want: TLSProviderRadius},
+		{input: "tlsProvider: external", want: TLSProviderExternal},
+		{input: "tlsProvider: typo", invalid: true},
+		{input: "tlsProvider: ''", invalid: true},
+		{input: "tlsProvider: false", invalid: true},
+	} {
+		t.Run(tc.input, func(t *testing.T) {
+			var options Options
+			err := yaml.Unmarshal([]byte(tc.input), &options)
+			if tc.invalid {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.NoError(t, options.ValidateTLSProvider())
+			require.Equal(t, tc.want, options.EffectiveTLSProvider())
+		})
+	}
+	require.ErrorContains(t, (Options{TLSProvider: "typo"}).ValidateTLSProvider(), "invalid TLS provider")
+}
+
 func Test_LogMode(t *testing.T) {
 	t.Parallel()
 

@@ -232,9 +232,22 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	if target == nil {
 		return nil
 	}
-	mode, err := servedAuthzMode(target)
+	// A chart that renders the Helm-generated Secret ucp-cert ignores the authorization values, so the target serves
+	// with authorization off whatever they say. Classify it before validating values it may have stored.
+	kind, err := ucpServingCertificateKind(target.Manifest)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read the manifest of revision %d: %w", target.Version, err)
+	}
+	mode := authz.ModeOff
+	if kind != "Secret" {
+		// Rollback is an upgrade to the target chart with its stored overrides, never the current
+		// release's values. Reject unsupported provider/engine settings before touching trust.
+		options := ChartOptions{Namespace: radiusNamespace, ReleaseName: radiusReleaseName}
+		mode, err = radiusActionMode(target.Chart, target.Config, nil, options, true)
+		if err != nil {
+			return err
+		}
+		mode = servingAuthzMode(kind, mode)
 	}
 	if mode != authz.ModeOff {
 		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {

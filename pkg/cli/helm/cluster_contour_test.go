@@ -1042,8 +1042,8 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 	client := NewMockHelmClient(gomock.NewController(t))
 	if upgrade {
 		expectControllerStrategyMigration(client, true)
+		expectNoRadiusHistory(client)
 	}
-	expectNoRadiusHistory(client)
 	client.EXPECT().RunHelmPull(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
 			pull := helm.NewPull(pullopts...)

@@ -730,7 +730,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				require.NoError(t, err)
 				// The off checksum hashes only the mode; other modes also hash the rest of the authorization settings,
 				// so the dryRun value is the one deploy/Chart/tests/config_checksum_test.yaml expects.
-				wantChecksum := map[string]string{"dryRun": "a8235814f5d8f0ba57e9a9251d3ae650ea7f7fcb8cd2ba0a6717c49a05aa66e2"}
+				wantChecksum := map[string]string{"dryRun": "951884283020cbbe7fe1c2d38235b78ba38523a500907db48bcddf8eaeb22af5"}
 				if tt.want == "off" {
 					sum := sha256.Sum256([]byte(tt.want))
 					wantChecksum["off"] = hex.EncodeToString(sum[:])

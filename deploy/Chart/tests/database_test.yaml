@@ -9,6 +9,15 @@ templates:
   - rp/deployment.yaml
   - dynamic-rp/configmaps.yaml
   - dynamic-rp/deployment.yaml
+release:
+  namespace: radius-test
+kubernetesProvider:
+  scheme:
+    "v1/Secret":
+      gvr:
+        version: v1
+        resource: secrets
+      namespaced: true
 tests:
   # --- database.enabled=false (default) ---
   - it: should not render the database secret when database is disabled
@@ -55,6 +64,23 @@ tests:
         template: dynamic-rp/configmaps.yaml
 
   # --- database.enabled=true ---
+  - it: refuses to replace a missing password in an existing database secret
+    template: database/configmaps.yaml
+    set:
+      database.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: database-secret
+            namespace: radius-test
+          data:
+            POSTGRES_USER: cmFkaXVz
+    asserts:
+      - failedTemplate:
+          errorMessage: "existing database-secret has no POSTGRES_PASSWORD; restore the database credential"
+
   - it: should render the database secret with a literal radius database name
     set:
       database.enabled: true
