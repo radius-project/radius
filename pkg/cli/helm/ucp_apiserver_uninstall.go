@@ -174,7 +174,8 @@ func (i *Impl) DeleteRadiusUninstallLeftovers(ctx context.Context, kubeContext s
 // survives. rad leaves an object with other ownership, or with helm.sh/resource-policy: keep, and warns how to delete it.
 // It keeps each object that declared, the objects of the release Helm applied, holds; declared is empty after Helm
 // uninstalls the release. When an object changed before rad deleted it, it warns, or, when incompleteErr is set, stops
-// with an error, so that uninstall keeps cert-manager for a retry.
+// with an error, so that uninstall keeps cert-manager for a retry. Without incompleteErr, it also only warns about an
+// object it is forbidden to read.
 func (i *Impl) deleteUnadoptedUCPAPIServerStage(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace, releaseName string, declared manifestObjectSet, incompleteErr bool) error {
 	for index := len(ucpAPIServerCAStageObjects) - 1; index >= 0; index-- {
 		staged := ucpAPIServerCAStageObjects[index]
@@ -210,6 +211,14 @@ func (i *Impl) deleteUnadoptedStagedObject(ctx context.Context, kubeContext stri
 			staged.kind, path, kubectlCommand(kubeContext, namespace, "delete "+strings.ToLower(staged.kind)+" "+staged.name))
 	}
 	object, err := read()
+	// After an upgrade, a caller who cannot read cert-manager objects can neither have staged this one nor delete it, so
+	// rad warns rather than failing the upgrade before its remaining steps. Uninstall keeps the error, because it
+	// decides from this whether cert-manager may be removed.
+	if apierrors.IsForbidden(err) && !incompleteErr {
+		i.logInfo("Warning: rad could not check for %s %s, which an earlier upgrade may have staged: %v. If it exists and nothing else uses it, delete it with %s",
+			staged.kind, path, err, kubectlCommand(kubeContext, namespace, "delete "+strings.ToLower(staged.kind)+" "+staged.name))
+		return nil
+	}
 	if err != nil || object == nil {
 		return err
 	}

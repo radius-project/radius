@@ -229,7 +229,7 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 }
 
 // A fresh install with authorization off has no staged radius-apiserver-ca chain to remove, so a user who cannot read
-// cert-manager Issuers and Certificates can install it. After an upgrade, rad still reads them and reports a failure.
+// cert-manager Issuers and Certificates can install it. After an upgrade, rad still looks for them and warns.
 func Test_waitForInstalledUCPAPIService_FreshOffSkipsStageCleanup(t *testing.T) {
 	for _, version := range []int{1, 2} {
 		t.Run(fmt.Sprintf("revision=%d", version), func(t *testing.T) {
@@ -239,17 +239,21 @@ func Test_waitForInstalledUCPAPIService_FreshOffSkipsStageCleanup(t *testing.T) 
 					return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("not allowed"))
 				})
 			}
+			var logs []string
 			impl := &Impl{
 				newUCPAPIServerTrustClient:  uninstallTrustClient,
 				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return client, nil },
+				logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 			}
 			applied := &releasev1.Release{Version: version, Manifest: "apiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n"}
 
-			err := impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil)
+			require.NoError(t, impl.waitForInstalledUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, applied, nil, nil, nil))
 			if version == 1 {
-				require.NoError(t, err)
+				require.Empty(t, logs, "a fresh install must not look for staged objects")
 			} else {
-				require.ErrorContains(t, err, "is forbidden: not allowed")
+				// An upgrade looks for them, and warns about each it may not read rather than failing.
+				require.Len(t, logs, len(ucpAPIServerCAStageObjects))
+				require.Contains(t, logs[0], "Warning: rad could not check for")
 			}
 		})
 	}

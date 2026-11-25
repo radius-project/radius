@@ -238,6 +238,39 @@ func Test_deleteUnadoptedUCPAPIServerStage(t *testing.T) {
 		})
 	}
 
+	// After an upgrade, a caller who may not read one kind of staged object still deletes the staged objects it can
+	// read, and warns about the rest. Uninstall stops, because it removes cert-manager only once nothing is left.
+	t.Run("forbidden to read the Certificate", func(t *testing.T) {
+		for _, incompleteErr := range []bool{false, true} {
+			t.Run(fmt.Sprintf("incompleteErr %t", incompleteErr), func(t *testing.T) {
+				var objects []runtime.Object
+				for _, staged := range ucpAPIServerCAStageObjects {
+					objects = append(objects, stagedUCPAPIServerObject(staged.kind, staged.name, radiusReleaseName, nil))
+				}
+				dynamicClient := fakeCertManagerDynamicClient(nil, objects...)
+				dynamicClient.PrependReactor("get", certificate.resource.Resource, func(k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, apierrors.NewForbidden(certificate.resource.GroupResource(), certificate.name, errors.New("denied"))
+				})
+				var logs []string
+				impl := &Impl{logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }}
+
+				err := impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName, nil, incompleteErr)
+				if incompleteErr {
+					require.ErrorContains(t, err, "failed to read Certificate radius-system/radius-apiserver-ca")
+					return
+				}
+				require.NoError(t, err)
+				for _, staged := range ucpAPIServerCAStageObjects {
+					_, err := dynamicClient.Tracker().Get(staged.resource, RadiusSystemNamespace, staged.name)
+					require.Equal(t, staged == certificate, err == nil, "%s %s", staged.kind, staged.name)
+				}
+				require.Len(t, logs, 1)
+				require.Contains(t, logs[0], `Warning: rad could not check for Certificate radius-system/radius-apiserver-ca, which an earlier upgrade may have staged`)
+				require.Contains(t, logs[0], `delete it with kubectl --context "test-context" -n radius-system delete certificate radius-apiserver-ca`)
+			})
+		}
+	})
+
 	t.Run("cert-manager CRDs already removed", func(t *testing.T) {
 		dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 		require.NoError(t, (&Impl{}).deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName, nil, false))

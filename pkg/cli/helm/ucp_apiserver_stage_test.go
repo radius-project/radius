@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -65,6 +66,7 @@ import (
 	clienttesting "k8s.io/client-go/testing"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 var (
@@ -1044,6 +1046,31 @@ func Test_UpgradeRadius_OffToOffRemovesLeftoverTrust(t *testing.T) {
 			c.requireOffTrust(t)
 		})
 	}
+}
+
+// An upgrade that keeps authorization off finishes, and goes on to Contour, when the caller may not read cert-manager
+// objects: with nothing staged that rad could delete, it has nothing to clean up.
+func Test_UpgradeRadius_OffToOffWithoutCertManagerAccess(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	u := newStageUpgrade(t, map[string]any{}, "upgrade")
+	c := newOffAfterOnCluster(t)
+	require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+	c.requireOffTrust(t)
+	c.dynamic.PrependReactor("*", "*", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		if action.GetResource().Group == "cert-manager.io" {
+			return true, nil, apierrors.NewForbidden(action.GetResource().GroupResource(), "", errors.New("denied"))
+		}
+		return false, nil, nil
+	})
+	var out bytes.Buffer
+	previous := output.LogWriter()
+	output.SetLogWriter(&out)
+	t.Cleanup(func() { output.SetLogWriter(previous) })
+
+	client := u.mock(t, 1, func() { c.helmAppliesOff(t, nil, nil) })
+	require.NoError(t, u.run(t, c.impl(client), []string{"global.rbac.enabled=false"}))
+	require.Contains(t, out.String(), "Contour is not installed or is disabled, skipping Contour upgrade")
+	c.requireOffTrust(t)
 }
 
 // A failed upgrade that turned authorization on can leave UCP serving the radius-apiserver-ca certificate while the
