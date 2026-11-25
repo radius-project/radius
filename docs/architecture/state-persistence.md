@@ -654,6 +654,27 @@ databaseProvider:
     url: "postgresql://ucp:radius_pass@localhost:5432/ucp?sslmode=disable"
 ```
 
+**PostgreSQL (Helm chart)** — `database.enabled=true` switches UCP, Applications RP, and Dynamic RP to the `postgresql` provider. By default the chart also installs an in-cluster PostgreSQL server and the `database-secret` password Secret. To use an existing server instead, set `database.external.host`. The chart then skips the in-cluster server and builds each service's URL from that host:
+
+```bash
+kubectl create secret generic radius-db -n radius-system \
+  --from-literal=POSTGRES_PASSWORD='<URL-safe password>'
+
+rad install kubernetes \
+  --set database.enabled=true \
+  --set database.external.host=<server>.postgres.database.azure.com \
+  --set database.external.existingSecret=radius-db
+```
+
+| Value                              | Default       | Purpose                                                                                         |
+|------------------------------------|---------------|-------------------------------------------------------------------------------------------------|
+| `database.external.host`           | `""`          | Server host name. Setting it disables the in-cluster server.                                    |
+| `database.external.port`           | `5432`        | Server port.                                                                                    |
+| `database.external.sslmode`        | `verify-full` | `sslmode` for every service URL. A server with a private CA needs `global.rootCA` or `require`. |
+| `database.external.existingSecret` | `""`          | Required. Secret with a `POSTGRES_PASSWORD` key for the service users.                          |
+
+Prepare the server first with `deploy/init-db/init-external-db.sh`. It creates the `ucp`, `applications_rp`, and `dynamic_rp` users and databases and the `resources` table, and is safe to re-run. It connects with the standard PostgreSQL client variables (`PGHOST`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`) and sets each service user's password from `RADIUS_DB_PASSWORD`, which must match the Secret. The chart adds the Secret to the protected control-plane Secrets. A change to the host, port, or `sslmode` restarts the three services on `helm upgrade`. `rad shutdown` and `rad startup` support only the in-cluster server.
+
 No other code changes are needed. The `DatabaseProvider` will read the
 `provider` field and call the matching factory function to produce the client.
 
