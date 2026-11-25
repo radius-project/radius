@@ -81,7 +81,14 @@ With Helm 4 server-side apply, cainjector co-owns the APIService's `spec.caBundl
 helm upgrade radius deploy/Chart -n radius-system -f radius-values.yaml --force-conflicts
 ```
 
-A failed revision can leave objects that it created, such as the release's Certificates and Issuers, with the release's Helm labels. A later successful upgrade with the same chart adopts them. If you abandon the upgrade instead, list them with `kubectl get certificates,issuers -n radius-system -l app.kubernetes.io/managed-by=Helm`, and delete each one that the manifest of the last `deployed` revision, `helm get manifest radius -n radius-system --revision` with its number, does not list.
+A failed revision can leave objects that it created, such as the release's Certificates and Issuers. A later successful upgrade with the same chart adopts them. If you abandon the upgrade instead, find the failed revision and the last `deployed` revision with `helm history radius -n radius-system`, and compare their manifests:
+
+```bash
+helm get manifest radius -n radius-system --revision <failed> > failed.yaml
+helm get manifest radius -n radius-system --revision <deployed> > deployed.yaml
+```
+
+The candidates are the objects in `failed.yaml` that `deployed.yaml` does not list, by kind, namespace and name. Before you delete a candidate, check with `kubectl get <kind> <name> -n radius-system -o yaml` that its `meta.helm.sh/release-name` annotation is `radius`, its `meta.helm.sh/release-namespace` annotation is `radius-system`, and it has no `helm.sh/resource-policy: keep` annotation. Leave any object that fails these checks, because it belongs to another release or to you.
 
 cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.
 
