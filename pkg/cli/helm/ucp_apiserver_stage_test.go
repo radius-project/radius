@@ -1851,6 +1851,9 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 			spec.InitContainers = append(spec.InitContainers, corev1.Container{Name: "init", EnvFrom: []corev1.EnvFromSource{
 				{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}})
 		}},
+		{name: "UCP still pulls images with the Secret", moveUCP: true, wantDelete: false, editPod: func(spec *corev1.PodSpec) {
+			spec.ImagePullSecrets = append(spec.ImagePullSecrets, corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName})
+		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

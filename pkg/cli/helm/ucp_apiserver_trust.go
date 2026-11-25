@@ -223,9 +223,15 @@ func ucpReferencesSecret(ctx context.Context, client kubernetes.Interface, radiu
 }
 
 // podTemplateReferencesSecret reports whether deployment's pod template names secretName in a Secret volume, a
-// projected Secret source, or an env secretKeyRef or envFrom secretRef of a container or init container.
+// projected Secret source, an image pull Secret, or an env secretKeyRef or envFrom secretRef of a container or init
+// container.
 func podTemplateReferencesSecret(deployment *appsv1.Deployment, secretName string) bool {
 	spec := deployment.Spec.Template.Spec
+	for _, pullSecret := range spec.ImagePullSecrets {
+		if pullSecret.Name == secretName {
+			return true
+		}
+	}
 	for _, volume := range spec.Volumes {
 		if volume.Secret != nil && volume.Secret.SecretName == secretName {
 			return true

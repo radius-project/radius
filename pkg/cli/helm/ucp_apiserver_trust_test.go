@@ -564,6 +564,13 @@ func Test_deleteUCPAPIServerTrust_KeepsReferencedSecret(t *testing.T) {
 			},
 			kept: true,
 		},
+		{
+			name: "imagePullSecrets",
+			edit: func(spec *corev1.PodSpec) {
+				spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: ucpAPIServerTrustSecretName}}
+			},
+			kept: true,
+		},
 		{name: "no reference", edit: func(*corev1.PodSpec) {}},
 	}
 	for _, tt := range tests {
