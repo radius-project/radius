@@ -290,6 +290,31 @@ databaseProvider:
     url: "postgres://user:password@host:5432/radius"
 ```
 
+To sign in to Azure Database for PostgreSQL with a Microsoft Entra token
+instead of a password, set `authMode: azure`. No password, even an empty one,
+may be set in the connection string (URL or keyword/value form), and none may
+come from `PGPASSWORD`, a PostgreSQL service file, or a matching password file
+entry. The connection must verify
+the server certificate and hostname, so use `sslmode=verify-full`. Before each
+new connection, the pool requests a token for the configured identity, bounded
+by `connect_timeout` (30 seconds if unset):
+
+```yaml
+databaseProvider:
+  provider: postgresql
+  postgresql:
+    url: "postgresql://<role>@<server>.postgres.database.azure.com:5432/ucp?sslmode=verify-full"
+    authMode: azure
+    azure:
+      credential: workloadIdentity # or managedIdentity
+      clientId: "<identity client ID>" # optional
+```
+
+`workloadIdentity` reads `AZURE_TENANT_ID` and `AZURE_FEDERATED_TOKEN_FILE`
+from the environment, and reads `AZURE_CLIENT_ID` when `clientId` is not set.
+`managedIdentity` uses the host's system-assigned identity, or the
+user-assigned identity named by `clientId`.
+
 #### 3. In-Memory (`inmemory.Client`)
 
 **Package:** `pkg/components/database/inmemory`
