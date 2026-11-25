@@ -63,8 +63,17 @@ case "${KUBECTL_MODE}" in
         ;;
 esac
 EOF
+# In the hang case, readiness fails only after kubectl has started. Otherwise a
+# slow machine can reach the 1-second timeout before the loop starts kubectl,
+# and the test has no loop or kubectl to check.
 cat >"${TEST_DIR}/bin/curl" <<'EOF'
 #!/usr/bin/env bash
+if [[ "${KUBECTL_MODE}" == hang ]]; then
+    for ((i = 0; i < 100; i++)); do
+        [[ -f "${TEST_DIR}/loop.pid" ]] && break
+        sleep 0.1
+    done
+fi
 [[ -f "${TEST_DIR}/ready" ]] || exit 7
 EOF
 chmod +x "${TEST_DIR}/bin/kubectl" "${TEST_DIR}/bin/curl"
