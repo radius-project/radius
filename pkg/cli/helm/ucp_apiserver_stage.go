@@ -245,7 +245,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return problem, err
 	})
 	if err != nil {
-		if wait.Interrupted(err) {
+		if ucpWaitTimedOut(ctx, err) {
 			return fmt.Errorf("Secret %s/%s is not usable after %s: %s. Helm has not changed Radius and UCP still serves its current certificate. "+
 				"Check the CA certificate with %s, then run the command again",
 				radiusNamespace, ucpAPIServerCASecretName, ucpAPIServiceTimeout, problem,
@@ -537,7 +537,7 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return problem, err
 	})
 	if err != nil {
-		if wait.Interrupted(err) {
+		if ucpWaitTimedOut(ctx, err) {
 			return fmt.Errorf("UCP does not serve the certificate in Secret %s after %s: %s. Helm has not changed the Radius release and the API server trusts both CAs; "+
 				"run the command again once %s succeeds",
 				ucpOffCertificateSecretName, ucpAPIServiceTimeout, problem, kubectlCommand(kubeContext, radiusNamespace, "rollout status deployment/ucp"))
@@ -708,7 +708,7 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 		}
 		return false, nil
 	})
-	if wait.Interrupted(err) {
+	if ucpWaitTimedOut(ctx, err) {
 		return fmt.Errorf("the caBundle of APIService %s does not trust %s through Secret %s after %s. Helm has not changed the Radius release; check it with %s, then run the command again",
 			ucpAPIServiceName, trusts, source, ucpAPIServiceTimeout, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
 	}

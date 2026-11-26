@@ -105,7 +105,7 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 	if err == nil {
 		return nil
 	}
-	if !wait.Interrupted(err) {
+	if !ucpWaitTimedOut(ctx, err) {
 		return fmt.Errorf("failed to check APIService %s: %w", ucpAPIServiceName, err)
 	}
 
@@ -413,9 +413,16 @@ func condition(object *unstructured.Unstructured, conditionType string) (objectC
 // ucpAPIServerUnchecked is the problem pollUCPAPIServer reports when no check finished before the wait ended.
 const ucpAPIServerUnchecked = "rad could not finish a check before the wait ended"
 
+// ucpWaitTimedOut reports whether err, the error of a wait for UCP's API server under ctx, means that the wait ran out of
+// time. wait.Interrupted is also true for context.Canceled, so a command that was cancelled or whose own deadline passed
+// returns that error rather than one that blames UCP.
+func ucpWaitTimedOut(ctx context.Context, err error) bool {
+	return ctx.Err() == nil && wait.Interrupted(err)
+}
+
 // pollUCPAPIServer calls check every ucpAPIServicePollInterval until it reports no problem, an error, or
 // ucpAPIServiceTimeout passes. It returns the problem of the last check that finished, or ucpAPIServerUnchecked if
-// none did, with the error of the wait, which wait.Interrupted reports for the timeout. A check that fails because the
+// none did, with the error of the wait, which ucpWaitTimedOut reports for the timeout. A check that fails because the
 // wait ended reports nothing about Radius, so it does not replace the problem of the check before it.
 func pollUCPAPIServer(ctx context.Context, check func(context.Context) (string, error)) (string, error) {
 	problem := ucpAPIServerUnchecked

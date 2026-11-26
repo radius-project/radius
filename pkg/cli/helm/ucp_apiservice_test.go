@@ -366,3 +366,20 @@ func Test_pollUCPAPIServer_KeepsTheLastProblem(t *testing.T) {
 		require.EqualError(t, err, "forbidden")
 	})
 }
+
+// A cancelled command reports the cancellation, not a wait that ran out of time.
+func Test_UCPAPIServerWaits_ReportCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	impl := &Impl{newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
+		return ucpAPIServiceDynamicClient(), nil
+	}}
+	err := impl.waitForAvailableUCPAPIService(ctx, "test-context", RadiusSystemNamespace)
+	require.ErrorIs(t, err, context.Canceled)
+	require.NotContains(t, err.Error(), "is not usable after")
+
+	err = trustImpl(kubefake.NewSimpleClientset(), ucpAPIServiceDynamicClient()).reconcileUCPAPIServerTrust(ctx, "test-context", RadiusSystemNamespace, false)
+	require.ErrorIs(t, err, context.Canceled)
+	require.NotContains(t, err.Error(), "is not usable after")
+}

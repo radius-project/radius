@@ -390,7 +390,7 @@ func waitForUCPOffCertificate(ctx context.Context, kubeContext string, kubeClien
 		}
 		return problem, nil
 	})
-	if wait.Interrupted(err) {
+	if ucpWaitTimedOut(ctx, err) {
 		return fmt.Errorf("UCP does not serve the certificate in Secret %s after %s: %s. The API server still trusts %s; run the command again once %s succeeds",
 			ucpOffCertificateSecretName, ucpAPIServiceTimeout, problem, ucpAPIServerCASecretName,
 			kubectlCommand(kubeContext, radiusNamespace, "rollout status deployment/ucp"))
@@ -434,7 +434,7 @@ func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dy
 		}
 		return false, nil
 	})
-	if wait.Interrupted(err) {
+	if ucpWaitTimedOut(ctx, err) {
 		return fmt.Errorf("APIService %s still has a cert-manager inject annotation or trusts a CA other than the one in Secret %s after %s; check it with %s, then run the command again",
 			ucpAPIServiceName, ucpOffCertificateSecretName, ucpAPIServiceTimeout, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
 	}

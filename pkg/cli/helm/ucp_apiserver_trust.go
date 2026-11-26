@@ -109,7 +109,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		return problem, err
 	})
 	if err != nil {
-		if wait.Interrupted(err) {
+		if ucpWaitTimedOut(ctx, err) {
 			return fmt.Errorf("Secret %s/%s is not usable after %s: %s. Check the CA certificate with %s",
 				radiusNamespace, ucpAPIServerCASecretName, ucpAPIServiceTimeout, problem,
 				kubectlCommand(kubeContext, radiusNamespace, "describe certificate "+ucpAPIServerCASecretName))
@@ -147,7 +147,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 				return problem, err
 			})
 			if err != nil {
-				if wait.Interrupted(err) {
+				if ucpWaitTimedOut(ctx, err) {
 					return fmt.Errorf("UCP does not serve a certificate from %s after %s: %s. The API server still trusts the earlier CA too; run the command again once %s and %s succeed",
 						ucpAPIServerCASecretName, ucpAPIServiceTimeout, problem,
 						kubectlCommand(kubeContext, radiusNamespace, "rollout status deployment/ucp"),
@@ -295,7 +295,7 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 		}
 		return false, injectUCPAPIServerCA(ctx, kubeContext, dynamicClient, radiusNamespace, uid, caBundle)
 	})
-	if wait.Interrupted(err) {
+	if ucpWaitTimedOut(ctx, err) {
 		return fmt.Errorf("APIService %s does not trust only Secret %s/%s after %s: %s. Check its caBundle and annotations with %s, and the logs of cert-manager's cainjector",
 			ucpAPIServiceName, radiusNamespace, ucpAPIServerCASecretName, ucpAPIServiceTimeout, problem,
 			kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
