@@ -126,7 +126,7 @@ jobs:
     steps:
       - name: Generate App Token
         id: app-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
@@ -289,7 +289,7 @@ jobs:
     steps:
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         id: get_installation_token
         with:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
@@ -385,7 +385,7 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -509,7 +509,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -594,7 +594,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -690,7 +690,7 @@ jobs:
     steps:
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         id: get_installation_token
         with:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
@@ -770,7 +770,7 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -1099,7 +1099,7 @@ jobs:
 
       - name: Create private-module read token
         id: private-module-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_TERRAFORM_PRIVATE_MODULES_PRIVATE_KEY }}
@@ -1286,7 +1286,7 @@ jobs:
           persist-credentials: false
 
       - name: Get GitHub app token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         id: get_installation_token
         with:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}

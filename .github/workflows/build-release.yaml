@@ -263,7 +263,7 @@ jobs:
           echo "SOURCE_SHA=$(git rev-parse HEAD)" >>"${GITHUB_ENV}"
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -1027,7 +1027,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -1152,7 +1152,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -1356,7 +1356,7 @@ jobs:
 
       - name: Get sibling release token
         id: sibling-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -1367,7 +1367,7 @@ jobs:
 
       - name: Get Deployment Engine release token
         id: engine-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -1436,7 +1436,7 @@ jobs:
 
       - name: Get docs and samples dispatch token
         id: coordination-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -1449,7 +1449,7 @@ jobs:
       - name: Get final Bicep recipe dispatch token
         if: steps.plan.outputs.recipes == 'true'
         id: recipe-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}

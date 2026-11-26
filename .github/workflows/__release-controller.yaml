@@ -267,7 +267,7 @@ jobs:
       - name: Create Deployment Engine read token
         if: steps.plan.outputs.ready == 'true'
         id: de-read-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -428,7 +428,7 @@ jobs:
 
       - name: Create Deployment Engine read token
         id: de-read-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -444,7 +444,7 @@ jobs:
       - name: Create Deployment Engine tag token
         if: needs.validate.outputs.de-tag-state == 'absent'
         id: de-write-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -582,7 +582,7 @@ jobs:
       - name: Get App token for release state
         if: steps.de-lock.outputs.exists != 'true'
         id: release-state-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -624,7 +624,7 @@ jobs:
 
       - name: Get App token for sibling repositories
         id: release-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -737,7 +737,7 @@ jobs:
       - name: Create AWS evidence read token
         if: needs.validate.outputs.ghcr-bicep == 'true' && steps.aws-evidence.outputs.exists == 'false'
         id: aws-read
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -750,7 +750,7 @@ jobs:
       - name: Create Radius evidence persistence token
         if: needs.validate.outputs.ghcr-bicep == 'true' && steps.aws-evidence.outputs.exists == 'false'
         id: bicep-state-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
@@ -871,7 +871,7 @@ jobs:
 
       - name: Get App token for Radius tag creation
         id: release-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
         with:
           client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
