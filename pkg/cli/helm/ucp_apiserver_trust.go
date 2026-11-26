@@ -132,9 +132,10 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 	if err != nil {
 		return err
 	}
-	// rad neither changes nor deletes a Secret of that name that it does not own, and does not trust its CAs.
-	overlap := trust != nil && ownsUCPAPIServerTrust(trust, radiusNamespace)
-	if trust != nil && !overlap {
+	// rad neither changes nor deletes a Secret of that name that it does not own, and does not trust its CAs. A
+	// retired trust Secret, which rad kept for a UCP pod template after an earlier handoff, is no overlap.
+	overlap := trust != nil && activeUCPAPIServerTrust(trust, radiusNamespace)
+	if trust != nil && !ownsUCPAPIServerTrust(trust, radiusNamespace) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 	}
 	if overlap && !fresh {
@@ -168,7 +169,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 	if err := injectUCPAPIServerCA(ctx, kubeContext, dynamicClient, radiusNamespace, uid, caBundle); err != nil {
 		return err
 	}
-	if overlap {
+	if trust != nil && ownsUCPAPIServerTrust(trust, radiusNamespace) {
 		if err := i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace); err != nil {
 			return err
 		}
@@ -180,7 +181,95 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		output.LogInfo("Removed %d earlier CA certificate(s) from APIService %s, which now trusts only %s/%s",
 			len(trusted)-1, ucpAPIServiceName, radiusNamespace, ucpAPIServerCASecretName)
 	}
-	return nil
+	// A chart whose Certificate ucp-cert writes another Secret, such as ucp-mtls, leaves ucp-apiserver-tls and its
+	// private key unused, so rad deletes it as authorization off does. It keeps a Secret that rad does not own, and
+	// keeps it while UCP may still mount it, because a replacement pod could not start without it.
+	moved, err := ucpServesFromOtherSecret(ctx, kubeClient, radiusNamespace, ucpAPIServerTLSSecretName)
+	if err != nil || !moved {
+		return err
+	}
+	_, err = i.deleteLeftoverSecrets(ctx, kubeClient, dynamicClient, radiusNamespace,
+		[]ucpOffLeftoverSecret{{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}}, false)
+	return err
+}
+
+// ucpServesFromOtherSecret reports whether the Radius release's ucp Deployment has finished rolling out with its API
+// server certificate volume mounting a Secret other than secretName and nothing else in its pod template naming
+// secretName, so no UCP pod, current or replacement, needs it.
+func ucpServesFromOtherSecret(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
+	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
+	}
+	mounted := ucpCertificateSecret(deployment)
+	return helmOwned(deployment, radiusNamespace, radiusReleaseName) && ucpRolledOut(deployment) &&
+		mounted != "" && mounted != secretName && !podTemplateReferencesSecret(deployment, secretName), nil
+}
+
+// ucpReferencesSecret reports whether the pod template of the live ucp Deployment references secretName, so a UCP pod,
+// current or replacement, may still need it. A missing or terminating Deployment, as after Helm uninstalls the release,
+// references nothing.
+func ucpReferencesSecret(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
+	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
+	}
+	return deployment.DeletionTimestamp == nil && podTemplateReferencesSecret(deployment, secretName), nil
+}
+
+// podTemplateReferencesSecret reports whether deployment's pod template names secretName in a Secret volume, a
+// projected Secret source, an image pull Secret, or an env secretKeyRef or envFrom secretRef of a container or init
+// container.
+func podTemplateReferencesSecret(deployment *appsv1.Deployment, secretName string) bool {
+	spec := deployment.Spec.Template.Spec
+	for _, pullSecret := range spec.ImagePullSecrets {
+		if pullSecret.Name == secretName {
+			return true
+		}
+	}
+	for _, volume := range spec.Volumes {
+		if volume.Secret != nil && volume.Secret.SecretName == secretName {
+			return true
+		}
+		if volume.Projected == nil {
+			continue
+		}
+		for _, source := range volume.Projected.Sources {
+			if source.Secret != nil && source.Secret.Name == secretName {
+				return true
+			}
+		}
+	}
+	for _, container := range append(append([]corev1.Container{}, spec.InitContainers...), spec.Containers...) {
+		for _, env := range container.Env {
+			if env.ValueFrom != nil && env.ValueFrom.SecretKeyRef != nil && env.ValueFrom.SecretKeyRef.Name == secretName {
+				return true
+			}
+		}
+		for _, envFrom := range container.EnvFrom {
+			if envFrom.SecretRef != nil && envFrom.SecretRef.Name == secretName {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// ucpRolledOut reports whether every pod of deployment runs its current template.
+func ucpRolledOut(deployment *appsv1.Deployment) bool {
+	replicas := int32(1)
+	if deployment.Spec.Replicas != nil {
+		replicas = *deployment.Spec.Replicas
+	}
+	// Replicas counts old and new pods, so equal counts mean no pod with the earlier template is left.
+	return deployment.Status.ObservedGeneration >= deployment.Generation && deployment.Status.Replicas == replicas &&
+		deployment.Status.UpdatedReplicas == replicas && deployment.Status.AvailableReplicas == replicas
 }
 
 // ucpAPIServerCASource is the inject-ca-from-secret value that makes cainjector copy radius-apiserver-ca.
@@ -347,9 +436,28 @@ func (i *Impl) deleteUCPAPIServerTrust(ctx context.Context, kubeContext, radiusN
 	return i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace)
 }
 
+// keepReferencedUCPSecret reports whether rad must keep Secret secretName because the pod template of the live ucp
+// Deployment references it, as ucpReferencesSecret decides, and then warns that rad kept it. A replacement UCP pod
+// could not start without that Secret, so every path that deletes a Secret rad owns checks it first.
+func (i *Impl) keepReferencedUCPSecret(ctx context.Context, kubeClient kubernetes.Interface, radiusNamespace, secretName string) (bool, error) {
+	referenced, err := ucpReferencesSecret(ctx, kubeClient, radiusNamespace, secretName)
+	if err != nil || !referenced {
+		return false, err
+	}
+	i.warnReferencedUCPSecret(radiusNamespace, secretName)
+	return true, nil
+}
+
+// warnReferencedUCPSecret warns that rad kept Secret secretName because the live UCP pod template references it.
+func (i *Impl) warnReferencedUCPSecret(radiusNamespace, secretName string) {
+	i.logInfo("Warning: rad did not delete Secret %s/%s, which the pod template of Deployment %s/ucp still references. Run the command again to delete it once nothing references it",
+		radiusNamespace, secretName, radiusNamespace)
+}
+
 // deleteOwnedUCPAPIServerTrust deletes the trust Secret if rad owns it, as ownsUCPAPIServerTrust decides, pinned to
-// the uid and resourceVersion rad read. It keeps a Secret that rad does not own, or that changed or was recreated
-// after rad read it, and warns about it.
+// the uid and resourceVersion rad read. It keeps a Secret that rad does not own, that the live UCP pod template
+// references, or that changed or was recreated after rad read it, and warns about it. It retires a referenced Secret
+// it keeps, as retireUCPAPIServerTrust does.
 func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, radiusNamespace string) error {
 	secrets := kubeClient.CoreV1().Secrets(radiusNamespace)
 	read := func() (*corev1.Secret, error) {
@@ -369,6 +477,13 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 		return nil
+	}
+	keep, err := i.keepReferencedUCPSecret(ctx, kubeClient, radiusNamespace, ucpAPIServerTrustSecretName)
+	if err != nil {
+		return err
+	}
+	if keep {
+		return i.retireUCPAPIServerTrust(ctx, kubeClient, secret)
 	}
 	err = secrets.Delete(ctx, ucpAPIServerTrustSecretName, metav1.DeleteOptions{Preconditions: secretPreconditions(secret)})
 	if err == nil {
@@ -392,12 +507,41 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 }
 
 // ownsUCPAPIServerTrust reports whether secret, the trust Secret, has the shape rad writes and the chart README's
-// plain-Helm steps create: only a non-empty ca.crt, with annotation cert-manager.io/allow-direct-injection=true and the
-// release annotations that name the Radius release in radiusNamespace. rad writes, trusts and deletes only such a
-// Secret; the chart renders the APIService from it only then too.
+// plain-Helm steps create: only a non-empty ca.crt, with the release annotations that name the Radius release in
+// radiusNamespace, and annotation cert-manager.io/allow-direct-injection=true while the Secret is active or without it
+// once rad retired it. rad writes and deletes only such a Secret.
 func ownsUCPAPIServerTrust(secret *corev1.Secret, radiusNamespace string) bool {
-	return len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true" &&
+	injection, ok := secret.Annotations[allowDirectInjectionAnnotation]
+	return len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && (!ok || injection == "true") &&
 		secret.Annotations[releaseNameAnnotation] == radiusReleaseName && secret.Annotations[releaseNamespaceAnnotation] == radiusNamespace
+}
+
+// activeUCPAPIServerTrust reports whether secret is a trust Secret that rad owns and has not retired, so it holds the
+// CAs of a handoff in progress. rad trusts its CAs, and the chart renders the APIService from it, only then.
+func activeUCPAPIServerTrust(secret *corev1.Secret, radiusNamespace string) bool {
+	return ownsUCPAPIServerTrust(secret, radiusNamespace) && secret.Annotations[allowDirectInjectionAnnotation] == "true"
+}
+
+// retireUCPAPIServerTrust removes annotation cert-manager.io/allow-direct-injection from secret, a trust Secret that rad
+// owns but keeps because the live UCP pod template references it, pinned to the resourceVersion rad read. The Secret
+// still holds the earlier CAs, so neither a later upgrade nor the chart may treat it as an active handoff and trust
+// them again; rad still deletes it once nothing references it.
+func (i *Impl) retireUCPAPIServerTrust(ctx context.Context, kubeClient kubernetes.Interface, secret *corev1.Secret) error {
+	if _, ok := secret.Annotations[allowDirectInjectionAnnotation]; !ok {
+		return nil
+	}
+	retired := secret.DeepCopy()
+	delete(retired.Annotations, allowDirectInjectionAnnotation)
+	_, err := kubeClient.CoreV1().Secrets(secret.Namespace).Update(ctx, retired, metav1.UpdateOptions{})
+	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
+		i.logInfo("Warning: rad did not retire Secret %s/%s, which changed after rad read it. Run the command again so the API server cannot trust its earlier CAs again",
+			secret.Namespace, secret.Name)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to update Secret %s/%s: %w", secret.Namespace, secret.Name, err)
+	}
+	return nil
 }
 
 // foreignUCPAPIServerTrustProblem describes a trust Secret that rad does not own.
@@ -510,13 +654,7 @@ func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, rad
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
 	}
-	replicas := int32(1)
-	if deployment.Spec.Replicas != nil {
-		replicas = *deployment.Spec.Replicas
-	}
-	// Replicas counts old and new pods, so equal counts mean no pod with the earlier certificate is left.
-	if deployment.Status.ObservedGeneration < deployment.Generation || deployment.Status.Replicas != replicas ||
-		deployment.Status.UpdatedReplicas != replicas || deployment.Status.AvailableReplicas != replicas {
+	if !ucpRolledOut(deployment) {
 		return nil, "Deployment ucp has not finished rolling out", nil
 	}
 	if mounted := ucpCertificateSecret(deployment); mounted != "" && mounted != secretName {
@@ -622,7 +760,7 @@ func verifiesUCPCertificate(leaf *x509.Certificate, intermediates []*x509.Certif
 	return err == nil
 }
 
-// readUCPAPIServerTrust returns the trust Secret, or nil if it does not exist, and, if rad owns it, the CA
+// readUCPAPIServerTrust returns the trust Secret, or nil if it does not exist, and, if it is active, the CA
 // certificates in it.
 func readUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, radiusNamespace string) ([]*x509.Certificate, *corev1.Secret, error) {
 	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
@@ -632,7 +770,7 @@ func readUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, rad
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
 	}
-	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
+	if !activeUCPAPIServerTrust(secret, radiusNamespace) {
 		return nil, secret, nil
 	}
 	return caCertificates(secret.Data[caCertificateKey]), secret, nil
@@ -687,9 +825,11 @@ func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretI
 	if !ownsUCPAPIServerTrust(secret, radiusNamespace) {
 		return true, nil
 	}
-	if bytes.Equal(secret.Data[caCertificateKey], bundle) {
+	if bytes.Equal(secret.Data[caCertificateKey], bundle) && activeUCPAPIServerTrust(secret, radiusNamespace) {
 		return false, nil
 	}
+	// A retired Secret becomes active again for the new handoff.
+	secret.Annotations[allowDirectInjectionAnnotation] = "true"
 	secret.Data = map[string][]byte{caCertificateKey: bundle}
 	_, err = secrets.Update(ctx, secret, metav1.UpdateOptions{})
 	return false, err

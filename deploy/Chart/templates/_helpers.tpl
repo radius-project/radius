@@ -267,24 +267,43 @@ mounted there: the SPIFFE server certificate, the Radius CA bundle, and one proj
 {{- end -}}
 
 {{/*
-Fails rendering when an active global.rootCA.mountPath or global.targetCluster.mountPath is a
-reserved authorization mount path, which Kubernetes rejects as a duplicate container mount.
+Authorization mount paths in the containers that mount the target-cluster kubeconfig, as a JSON
+object in the same form as radius.authz.reservedMountPaths. applications-rp and dynamic-rp mount the
+SPIFFE server certificate, the Radius CA bundle, and the ucp token; the Deployment Engine mounts no
+authorization paths. Keep in sync with the rp, dynamic-rp, and de deployment templates.
+*/}}
+{{- define "radius.authz.targetClusterReservedMountPaths" -}}
+{{- $paths := dict (include "radius.authz.spiffe.mountPath" .) "the SPIFFE server certificate" (include "radius.authz.caBundle.mountPath" .) "the Radius CA bundle" -}}
+{{- $_ := set $paths (printf "%s/ucp" (include "radius.authz.tokens.mountPath" .)) "a projected ServiceAccount token" -}}
+{{- $paths | toJson -}}
+{{- end -}}
+
+{{/*
+Fails rendering when an active global.rootCA.mountPath is a reserved authorization mount path, or
+when an active global.targetCluster.mountPath or kubeconfig file (mountPath/secretKey) is an
+authorization mount path in a container that mounts the target kubeconfig. Kubernetes rejects a
+duplicate container mount, and a kubeconfig path that is a mounted directory cannot be loaded.
 Renders nothing. Called by the authorization volume helpers, which render only when the
 authorization mode is not off.
 */}}
 {{- define "radius.authz.validateMountPaths" -}}
-{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJson -}}
-{{- $mounts := list -}}
 {{- if .Values.global.rootCA.cert -}}
-{{- $mounts = append $mounts (list "global.rootCA.mountPath" .Values.global.rootCA.mountPath) -}}
+{{- $reserved := include "radius.authz.reservedMountPaths" . | fromJson -}}
+{{- $path := clean (toString .Values.global.rootCA.mountPath) -}}
+{{- if hasKey $reserved $path -}}
+{{- fail (printf "global.rootCA.mountPath must not be %q: Radius authorization mounts %s there" .Values.global.rootCA.mountPath (get $reserved $path)) -}}
+{{- end -}}
 {{- end -}}
 {{- if .Values.global.targetCluster.enabled -}}
-{{- $mounts = append $mounts (list "global.targetCluster.mountPath" .Values.global.targetCluster.mountPath) -}}
-{{- end -}}
-{{- range $mounts -}}
-{{- $path := clean (toString (index . 1)) -}}
+{{- $reserved := include "radius.authz.targetClusterReservedMountPaths" . | fromJson -}}
+{{- $mountPath := toString .Values.global.targetCluster.mountPath -}}
+{{- $path := clean $mountPath -}}
 {{- if hasKey $reserved $path -}}
-{{- fail (printf "%s must not be %q: Radius authorization mounts %s there" (index . 0) (index . 1) (get $reserved $path)) -}}
+{{- fail (printf "global.targetCluster.mountPath must not be %q: Radius authorization mounts %s there" $mountPath (get $reserved $path)) -}}
+{{- end -}}
+{{- $file := clean (printf "%s/%s" $mountPath (toString .Values.global.targetCluster.secretKey)) -}}
+{{- if hasKey $reserved $file -}}
+{{- fail (printf "global.targetCluster.mountPath and secretKey must not resolve to %q: Radius authorization mounts %s there" $file (get $reserved $file)) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -293,7 +312,10 @@ authorization mode is not off.
 Fails rendering when an active shared Secret (global.rootCA.secretName or
 global.targetCluster.secretName) is a Secret that cert-manager writes a private key to: a receiver's
 <receiver>-spiffe Secret, a CA Secret, or the UCP API server certificate Secret. The shared Secrets are
-mounted whole into several pods, so reusing one of these names exposes the key.
+mounted whole into several pods, so reusing one of these names exposes the key. Also fails when a
+global.imagePullSecrets name is any of those Secrets: cert-manager writes the certificate and key into
+an existing registry Secret of that name, so one Secret would hold both the registry credential and
+the key.
 Renders nothing. Called by certificates.yaml, which renders only when the authorization mode is not off.
 */}}
 {{- define "radius.authz.validateSecretNames" -}}
@@ -317,6 +339,15 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- range $shared -}}
 {{- if eq (index . 1) (printf "%s-spiffe" $receiver) -}}
 {{- fail (printf "%s must not be %q: cert-manager writes %s's SPIFFE server certificate and key to that Secret" (index . 0) (index . 1) $receiver) -}}
+{{- end -}}
+{{- end -}}
+{{- $_ := set $reserved (printf "%s-spiffe" $receiver) (printf "cert-manager writes %s's SPIFFE server certificate and key to that Secret" $receiver) -}}
+{{- end -}}
+{{- range $i, $pullSecret := .Values.global.imagePullSecrets -}}
+{{- if kindIs "map" $pullSecret -}}
+{{- $name := toString $pullSecret.name -}}
+{{- if hasKey $reserved $name -}}
+{{- fail (printf "global.imagePullSecrets[%d].name must not be %q: %s, so the key would be written into the registry Secret that pods pull images with" $i $name (get $reserved $name)) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

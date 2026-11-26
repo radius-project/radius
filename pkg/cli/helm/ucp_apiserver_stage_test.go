@@ -1816,6 +1816,116 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 	})
 }
 
+// A rollback to a chart with authorization on whose Radius Certificate ucp-cert writes Secret ucp-mtls leaves Secret
+// ucp-apiserver-tls, which holds a private key, unused, so rad deletes it after Helm rolls back.
+func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testing.T) {
+	manifest := renderStageTestManifest(t, authzOnValues)
+	require.Contains(t, manifest, "secretName: "+ucpAPIServerTLSSecretName)
+	parentManifest := strings.ReplaceAll(manifest, "secretName: "+ucpAPIServerTLSSecretName, "secretName: ucp-mtls")
+	tests := []struct {
+		name string
+		// moveUCP makes the mock rollback also roll the ucp Deployment out with Secret ucp-mtls mounted.
+		moveUCP bool
+		// otherVolume, when set, is another ucp pod volume that still uses ucp-apiserver-tls after the rollout.
+		otherVolume *corev1.Volume
+		// editPod, when set, changes the rolled-out ucp pod template, such as to add a container env reference.
+		editPod func(*corev1.PodSpec)
+		// editStatus, when set, changes the ucp Deployment status after the rollout, such as to leave it unfinished.
+		editStatus func(*appsv1.Deployment)
+		// unmarked removes the Radius release annotations from ucp-apiserver-tls, as on a Secret another release or an
+		// operator wrote. rad refuses the rollback before Helm runs, so the Secret stays.
+		unmarked   bool
+		wantDelete bool
+	}{
+		{name: "UCP still mounts the Secret", moveUCP: false, wantDelete: false},
+		{name: "UCP rolled out with another Secret", moveUCP: true, wantDelete: true},
+		{name: "the Secret lacks the Radius release annotations", moveUCP: true, unmarked: true, wantDelete: false},
+		{name: "another UCP Secret volume still uses the Secret", moveUCP: true, wantDelete: false, otherVolume: &corev1.Volume{
+			Name: "sidecar-tls", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpAPIServerTLSSecretName}}}},
+		{name: "a projected UCP volume still uses the Secret", moveUCP: true, wantDelete: false, otherVolume: &corev1.Volume{
+			Name: "sidecar-tls", VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{
+				{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}}}}},
+		{name: "a UCP container env still uses the Secret", moveUCP: true, wantDelete: false, editPod: func(spec *corev1.PodSpec) {
+			spec.Containers = append(spec.Containers, corev1.Container{Name: "sidecar", Env: []corev1.EnvVar{{Name: "TLS_KEY", ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}, Key: "tls.key"}}}}})
+		}},
+		{name: "a UCP init container envFrom still uses the Secret", moveUCP: true, wantDelete: false, editPod: func(spec *corev1.PodSpec) {
+			spec.InitContainers = append(spec.InitContainers, corev1.Container{Name: "init", EnvFrom: []corev1.EnvFromSource{
+				{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}})
+		}},
+		{name: "UCP still pulls images with the Secret", moveUCP: true, wantDelete: false, editPod: func(spec *corev1.PodSpec) {
+			spec.ImagePullSecrets = append(spec.ImagePullSecrets, corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName})
+		}},
+		{name: "the controller has not observed the new template", moveUCP: true, wantDelete: false, editStatus: func(deployment *appsv1.Deployment) {
+			deployment.Generation++
+		}},
+		{name: "an old UCP replica still runs", moveUCP: true, wantDelete: false, editStatus: func(deployment *appsv1.Deployment) {
+			deployment.Status.Replicas++
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			c := newStageCluster(t, nil, true)
+			c.onUCP(t)
+			if tt.unmarked {
+				secret, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
+				require.NoError(t, err)
+				delete(secret.Annotations, releaseNameAnnotation)
+				delete(secret.Annotations, releaseNamespaceAnnotation)
+				_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Update(t.Context(), secret, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+			m := NewMockHelmClient(gomock.NewController(t))
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
+				{Version: 1, Config: authzOnValues, Manifest: parentManifest, Chart: manifestTestChart(t, parentManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+				{Version: 2, Config: authzOnValues, Manifest: manifest, Chart: manifestTestChart(t, manifest), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			}, nil)
+			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
+			rollback := m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true)
+			if tt.unmarked {
+				rollback.Times(0)
+			}
+			rollback.DoAndReturn(func(*helm.Configuration, string, int, bool) error {
+				certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCertificateName, radiusReleaseName, nil)
+				require.NoError(t, unstructured.SetNestedField(certificate.Object, "ucp-mtls", "spec", "secretName"))
+				if tt.moveUCP {
+					deployment, err := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+					require.NoError(t, err)
+					deployment.Spec.Template.Spec.Volumes[0].Secret.SecretName = "ucp-mtls"
+					if tt.otherVolume != nil {
+						deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, *tt.otherVolume)
+					}
+					if tt.editPod != nil {
+						tt.editPod(&deployment.Spec.Template.Spec)
+					}
+					if tt.editStatus != nil {
+						tt.editStatus(deployment)
+					}
+					_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), deployment, metav1.UpdateOptions{})
+					require.NoError(t, err)
+				}
+				return c.dynamic.Tracker().Add(certificate)
+			})
+
+			err := c.impl(m).RollbackRadiusToRevision(t.Context(), "test-context", 1)
+			if tt.unmarked {
+				require.ErrorContains(t, err, "is not marked for Certificate "+ucpAPIServerCertificateName)
+			} else {
+				require.NoError(t, err)
+			}
+			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
+			if tt.wantDelete {
+				require.True(t, apierrors.IsNotFound(err), "rollback must delete Secret %s, which neither a Certificate nor UCP uses, got %v", ucpAPIServerTLSSecretName, err)
+			} else {
+				require.NoError(t, err, "rollback must keep Secret %s while the ucp pod template uses it or the Radius release did not issue it", ucpAPIServerTLSSecretName)
+			}
+			_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
+			require.NoError(t, err)
+		})
+	}
+}
+
 // A chart before radius-apiserver-ca, such as v0.62.0, accepts the values of authorization on but serves UCP from the
 // Secret ucp-cert of authorization off. Moving to it from a release with authorization on stages that Secret before
 // Helm, as turning authorization off does; from a release with authorization off, UCP already serves it.
@@ -1848,17 +1958,32 @@ func Test_RollbackRadius_ChecksCertManager(t *testing.T) {
 		{Version: 1, Config: authzOnValues, Manifest: manifest, Chart: manifestTestChart(t, manifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 		{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-	c := newStageCluster(t, nil, true)
-	c.addOffAPIService(t, offAPIServiceVariants[0])
-	m := NewMockHelmClient(gomock.NewController(t))
-	m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
-	impl := c.impl(m)
-	impl.newCertManagerClients = func(string) (kubernetes.Interface, apiextclient.Interface, error) {
-		kubeClient, apiextClient := fakeCertManagerCluster{}.clients()
-		return kubeClient, apiextClient, nil
+	tests := []struct {
+		name    string
+		cluster fakeCertManagerCluster
+		wantErr string
+	}{
+		{name: "not installed", wantErr: "cert-manager is not installed"},
+		{name: "older than the minimum version", cluster: fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "v1.19.0", "")},
+			wantErr: `cert-manager v1.19.0 in namespace "cert-manager" is older than the minimum supported version v` + CertManagerMinimumVersion},
 	}
-	require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), "cert-manager is not installed")
-	c.requireNotStaged(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newStageCluster(t, nil, true)
+			c.addOffAPIService(t, offAPIServiceVariants[0])
+			writes := len(c.clusterWrites())
+			m := NewMockHelmClient(gomock.NewController(t))
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
+			impl := c.impl(m)
+			impl.newCertManagerClients = func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+				kubeClient, apiextClient := tt.cluster.clients()
+				return kubeClient, apiextClient, nil
+			}
+			require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), tt.wantErr)
+			require.Empty(t, c.clusterWrites()[writes:], "rad must not write to the cluster before it checks cert-manager")
+			c.requireNotStaged(t)
+		})
+	}
 }
 
 // trustUCPAPIServerCAs stops without patching when the APIService it checked was replaced.

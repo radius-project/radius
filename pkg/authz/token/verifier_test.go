@@ -31,6 +31,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -559,6 +560,58 @@ func TestRun_SkipsImmediateFetchAfterRefresh(t *testing.T) {
 	require.Eventually(t, func() bool { return source.count() >= 2 }, 5*time.Second, 5*time.Millisecond)
 }
 
+func TestRun_WaitsRetryIntervalAfterFailedRefresh(t *testing.T) {
+	clock := &fakeClock{now: start}
+	source := newFakeSource(defaultKeys())
+	source.set(nil, errors.New("API server unavailable"))
+	v, err := New(Config{
+		Namespace:          testNamespace,
+		Audience:           testAudience,
+		Keys:               source,
+		Now:                clock.Now,
+		RefreshInterval:    time.Hour,
+		UnknownKeyInterval: 200 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.Error(t, v.Refresh(t.Context()))
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	go v.Run(ctx)
+
+	require.Never(t, func() bool { return source.count() > 1 }, 100*time.Millisecond, 5*time.Millisecond)
+	require.Eventually(t, func() bool { return source.count() >= 2 }, 5*time.Second, 5*time.Millisecond)
+}
+
+// A startup fetch that returns no usable keys succeeds, but Run must still retry within
+// the retry interval rather than the refresh interval.
+func TestRun_WaitsRetryIntervalAfterEmptyKeySet(t *testing.T) {
+	clock := &fakeClock{now: start}
+	source := newFakeSource(map[string]crypto.PublicKey{})
+	v, err := New(Config{
+		Namespace:          testNamespace,
+		Audience:           testAudience,
+		Keys:               source,
+		Now:                clock.Now,
+		RefreshInterval:    time.Hour,
+		UnknownKeyInterval: 200 * time.Millisecond,
+	})
+	require.NoError(t, err)
+	require.Error(t, v.Refresh(t.Context()))
+	source.set(defaultKeys(), nil)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	go v.Run(ctx)
+
+	require.Never(t, func() bool { return source.count() > 1 }, 100*time.Millisecond, 5*time.Millisecond)
+	token := sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start))
+	require.Eventually(t, func() bool {
+		_, err := v.Verify(t.Context(), token)
+		return err == nil
+	}, 5*time.Second, 5*time.Millisecond)
+}
+
 func TestRun_RetriesAfterFailure(t *testing.T) {
 	clock := &fakeClock{now: start}
 	source := newFakeSource(defaultKeys())
@@ -585,6 +638,72 @@ func TestRun_RetriesAfterFailure(t *testing.T) {
 		_, err := v.Verify(t.Context(), token)
 		return err == nil
 	}, 5*time.Second, 5*time.Millisecond)
+}
+
+func TestRun_RetriesAfterUnknownKeyRefreshLeavesNoKeys(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		clock := &fakeClock{now: start}
+		source := newFakeSource(defaultKeys())
+		v, err := New(Config{
+			Namespace:          testNamespace,
+			Audience:           testAudience,
+			Keys:               source,
+			Now:                clock.Now,
+			RefreshInterval:    time.Hour,
+			UnknownKeyInterval: 10 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		require.NoError(t, v.Refresh(t.Context()))
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go v.Run(ctx)
+		// Run has loaded usable keys, so it now waits the full RefreshInterval.
+		synctest.Wait()
+
+		// A token with an unknown key ID triggers a refetch while the cluster publishes no keys.
+		source.set(map[string]crypto.PublicKey{}, nil)
+		_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "missing", rsaKey, claimsFor("ucp", start)))
+		requireCode(t, err, v1.CodeAuthorizationUnavailable)
+
+		// The cluster restores its keys. The fake clock rate limits unknown-key refetches, so
+		// only Run can reload them, and it must retry after UnknownKeyInterval, not RefreshInterval.
+		source.set(defaultKeys(), nil)
+		time.Sleep(20 * time.Millisecond)
+		synctest.Wait()
+		_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start)))
+		require.NoError(t, err)
+	})
+}
+
+func TestRun_IgnoresNoKeysSignalAfterKeysReload(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		clock := &fakeClock{now: start}
+		source := newFakeSource(map[string]crypto.PublicKey{})
+		v, err := New(Config{
+			Namespace:          testNamespace,
+			Audience:           testAudience,
+			Keys:               source,
+			Now:                clock.Now,
+			RefreshInterval:    time.Hour,
+			UnknownKeyInterval: 10 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		// An empty fetch signals Run, and a later fetch loads keys before Run reads the signal.
+		require.Error(t, v.Refresh(t.Context()))
+		source.set(defaultKeys(), nil)
+		require.NoError(t, v.Refresh(t.Context()))
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		go v.Run(ctx)
+		synctest.Wait()
+
+		// The cache holds usable keys, so Run waits the full RefreshInterval and does not fetch again.
+		time.Sleep(20 * time.Millisecond)
+		synctest.Wait()
+		require.Equal(t, 2, source.count())
+	})
 }
 
 func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {

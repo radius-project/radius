@@ -24,6 +24,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -534,6 +535,120 @@ func Test_deleteUCPAPIServerTrust(t *testing.T) {
 	require.Error(t, err)
 	// A missing Secret is not an error.
 	require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+}
+
+// A replacement UCP pod could not start without a trust Secret its template still references, so rad keeps it until
+// nothing does.
+func Test_deleteUCPAPIServerTrust_KeepsReferencedSecret(t *testing.T) {
+	tests := []struct {
+		name string
+		edit func(*corev1.PodSpec)
+		kept bool
+	}{
+		{
+			name: "projected volume",
+			edit: func(spec *corev1.PodSpec) {
+				spec.Volumes = append(spec.Volumes, corev1.Volume{Name: "trust", VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{{Secret: &corev1.SecretProjection{
+						LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTrustSecretName},
+					}}}},
+				}})
+			},
+			kept: true,
+		},
+		{
+			name: "env secretKeyRef",
+			edit: func(spec *corev1.PodSpec) {
+				spec.Containers = append(spec.Containers, corev1.Container{Name: "sidecar", Env: []corev1.EnvVar{{Name: "TRUST", ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTrustSecretName}, Key: caCertificateKey},
+				}}}})
+			},
+			kept: true,
+		},
+		{
+			name: "imagePullSecrets",
+			edit: func(spec *corev1.PodSpec) {
+				spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: ucpAPIServerTrustSecretName}}
+			},
+			kept: true,
+		},
+		{name: "no reference", edit: func(*corev1.PodSpec) {}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			deployment := ucpDeployment(true)
+			tt.edit(&deployment.Spec.Template.Spec)
+			kubeClient := kubefake.NewSimpleClientset(deployment, &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, Annotations: trustSecretAnnotations()},
+				Data:       map[string][]byte{caCertificateKey: newTestCA(t, "ucp-ca").pem},
+			})
+
+			require.NoError(t, trustImpl(kubeClient, ucpAPIServiceDynamicClient()).deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+			if tt.kept {
+				require.NoError(t, err, "rad must keep a trust Secret the ucp pod template references")
+			} else {
+				require.True(t, apierrors.IsNotFound(err), "got %v", err)
+			}
+		})
+	}
+}
+
+// At the end of the upgrade overlap rad still points the APIService at radius-apiserver-ca when UCP references the
+// trust Secret, and deletes the Secret on a later run once nothing does.
+func Test_reconcileUCPAPIServerTrust_KeepsReferencedTrustSecret(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
+	deployment := ucpDeployment(true)
+	deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, corev1.Volume{Name: "trust",
+		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpAPIServerTrustSecretName}}})
+	kubeClient := kubefake.NewSimpleClientset(
+		apiServerCASecret(apiServerCA),
+		tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, apiServerCA), apiServerCA.pem),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, Annotations: trustSecretAnnotations()},
+			Data:       map[string][]byte{caCertificateKey: append(append([]byte{}, ucpCA.pem...), apiServerCA.pem...)},
+		},
+		deployment,
+	)
+	dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService(base64.StdEncoding.EncodeToString(append(append([]byte{}, ucpCA.pem...), apiServerCA.pem...)), "True", "Passed"))
+	impl := trustImpl(kubeClient, dynamicClient)
+
+	require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	require.NoError(t, err, "rad must keep a trust Secret the ucp pod template references")
+
+	// The kept Secret still holds the retired CA, so a later run must not take it for a handoff and trust it again.
+	patchedBundles := []string{}
+	dynamicClient.(*dynamicfake.FakeDynamicClient).PrependReactor("patch", "apiservices", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		var patch struct {
+			Spec struct {
+				CABundle string `json:"caBundle"`
+			} `json:"spec"`
+		}
+		_ = json.Unmarshal(action.(clienttesting.PatchAction).GetPatch(), &patch)
+		if patch.Spec.CABundle != "" {
+			bundle, err := base64.StdEncoding.DecodeString(patch.Spec.CABundle)
+			require.NoError(t, err)
+			patchedBundles = append(patchedBundles, pemSubjects(t, bundle)...)
+		}
+		return false, nil, nil
+	})
+	require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
+	require.NotContains(t, patchedBundles, "ucp-ca", "rad must not trust the retired CA of a kept trust Secret again")
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	require.NoError(t, err, "rad must keep a trust Secret the ucp pod template references")
+
+	_, err = kubeClient.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), ucpDeployment(true), metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	requireNoTrustSecret(t, kubeClient)
 }
 
 // trustSecretAnnotations are the annotations rad sets on the trust Secret of the Radius release in radius-system.

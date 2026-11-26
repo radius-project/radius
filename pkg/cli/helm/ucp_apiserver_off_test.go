@@ -185,11 +185,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			switch name {
 			case ucpAPIServerCASecretName:
 				// A concurrent rad upgrade to authorization on issues a new radius-apiserver-ca from a new Certificate.
-				require.NoError(t, c.dynamic.Tracker().Add(&unstructured.Unstructured{Object: map[string]any{
-					"apiVersion": "cert-manager.io/v1",
-					"kind":       "Certificate",
-					"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
-				}}))
+				require.NoError(t, c.dynamic.Tracker().Add(ucpOffTestCertificate(ucpAPIServerCASecretName, ucpAPIServerCASecretName)))
 				secret.UID = types.UID(name + "-2")
 			case ucpAPIServerTLSSecretName:
 				secret.ResourceVersion = "2"
@@ -433,12 +429,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 
 	t.Run("keeps Secrets whose Certificate exists", func(t *testing.T) {
 		c := newOffAfterOnCluster(t)
-		certificate := &unstructured.Unstructured{Object: map[string]any{
-			"apiVersion": "cert-manager.io/v1",
-			"kind":       "Certificate",
-			"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
-		}}
-		require.NoError(t, c.dynamic.Tracker().Add(certificate))
+		require.NoError(t, c.dynamic.Tracker().Add(ucpOffTestCertificate(ucpAPIServerCASecretName, ucpAPIServerCASecretName)))
 
 		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
@@ -450,6 +441,110 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
 		require.True(t, apierrors.IsNotFound(err), "Secret %s has no Certificate, got %v", ucpAPIServerTLSSecretName, err)
 	})
+
+	// UCP may still use ucp-apiserver-tls through another part of its pod template, such as a projected volume, after
+	// it serves ucp-cert; cleanup keeps the Secret until no part of the template references it.
+	for _, projected := range []bool{true, false} {
+		t.Run(fmt.Sprintf("ucp projects ucp-apiserver-tls=%t", projected), func(t *testing.T) {
+			c := newOffAfterOnCluster(t)
+			if projected {
+				deployments := c.kube.AppsV1().Deployments(RadiusSystemNamespace)
+				deployment, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+				require.NoError(t, err)
+				deployment.Spec.Template.Spec.Volumes = append(deployment.Spec.Template.Spec.Volumes, corev1.Volume{Name: "sidecar-tls",
+					VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: []corev1.VolumeProjection{
+						{Secret: &corev1.SecretProjection{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}}}})
+				_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+
+			impl := c.impl(nil)
+			warnings := []string{}
+			impl.logger = func(format string, args ...any) {
+				if message := fmt.Sprintf(format, args...); strings.HasPrefix(message, "Warning:") {
+					warnings = append(warnings, message)
+				}
+			}
+			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			c.requireOffAPIService(t)
+			if projected {
+				require.NotNil(t, c.secret(t, ucpAPIServerTLSSecretName), "UCP still projects Secret %s", ucpAPIServerTLSSecretName)
+				require.Len(t, warnings, 1, "rad must warn once that it kept the Secret UCP references")
+				require.Contains(t, warnings[0], "Secret radius-system/"+ucpAPIServerTLSSecretName+", which the pod template")
+			} else {
+				require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName), "nothing uses Secret %s", ucpAPIServerTLSSecretName)
+			}
+		})
+	}
+
+	// A trust Secret that cleanup keeps for the ucp pod template still holds the CAs of authorization on, so rad
+	// retires it: a later upgrade must not take it for a handoff and trust them again.
+	t.Run("retires a trust Secret ucp references", func(t *testing.T) {
+		c := newOffAfterOnCluster(t)
+		c.putTrustSecret(t, true)
+		deployments := c.kube.AppsV1().Deployments(RadiusSystemNamespace)
+		deployment, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+		require.NoError(t, err)
+		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, corev1.Container{Name: "sidecar",
+			Env: []corev1.EnvVar{{Name: "TRUST", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTrustSecretName}, Key: caCertificateKey}}}}})
+		_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+		require.NoError(t, err)
+		impl := c.impl(nil)
+		warnings := []string{}
+		impl.logger = func(format string, args ...any) {
+			if message := fmt.Sprintf(format, args...); strings.HasPrefix(message, "Warning:") {
+				warnings = append(warnings, message)
+			}
+		}
+
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+		c.requireOffAPIService(t)
+		trust := c.secret(t, ucpAPIServerTrustSecretName)
+		require.NotNil(t, trust, "UCP still references Secret %s", ucpAPIServerTrustSecretName)
+		require.NotContains(t, trust.Annotations, allowDirectInjectionAnnotation)
+		trusted, _, err := readUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace)
+		require.NoError(t, err)
+		require.Empty(t, trusted, "a later upgrade must not trust the CAs of a retired trust Secret")
+		require.Len(t, warnings, 1)
+		require.Contains(t, warnings[0], "Secret radius-system/"+ucpAPIServerTrustSecretName+", which the pod template")
+	})
+
+	// A rollback to a chart before radius-apiserver-ca with authorization on renders the Radius release's Certificate
+	// ucp-cert, which writes ucp-mtls; only a ucp-cert Certificate that still writes ucp-apiserver-tls keeps it.
+	for _, tt := range []struct {
+		secretName string
+		keep       bool
+	}{
+		{secretName: "ucp-mtls", keep: false},
+		{secretName: ucpAPIServerTLSSecretName, keep: true},
+	} {
+		t.Run("Certificate ucp-cert writes "+tt.secretName, func(t *testing.T) {
+			c := newOffAfterOnCluster(t)
+			certificate := ucpOffTestCertificate(ucpAPIServerCertificateName, tt.secretName)
+			certificate.SetLabels(map[string]string{helmManagedByLabel: helmManagedByValue})
+			certificate.SetAnnotations(map[string]string{helmReleaseNameAnnotation: radiusReleaseName, helmReleaseNamespaceAnnotation: RadiusSystemNamespace})
+			require.NoError(t, c.dynamic.Tracker().Add(certificate))
+
+			require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			c.requireOffAPIService(t)
+			if tt.keep {
+				require.NotNil(t, c.secret(t, ucpAPIServerTLSSecretName), "Certificate ucp-cert still writes Secret %s", ucpAPIServerTLSSecretName)
+			} else {
+				require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName), "no Certificate writes Secret %s", ucpAPIServerTLSSecretName)
+			}
+		})
+	}
+}
+
+// ucpOffTestCertificate returns a cert-manager Certificate named name that writes Secret secretName.
+func ucpOffTestCertificate(name, secretName string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "cert-manager.io/v1",
+		"kind":       "Certificate",
+		"metadata":   map[string]any{"name": name, "namespace": RadiusSystemNamespace},
+		"spec":       map[string]any{"secretName": secretName},
+	}}
 }
 
 func Test_ucpOffTrustClean(t *testing.T) {

@@ -150,11 +150,8 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	controller := deployments.Items[0]
 	raw := controller.Labels[certManagerVersionLabel]
 	if raw == "" {
-		for _, c := range controller.Spec.Template.Spec.Containers {
-			if tag := imageTag(c.Image); tag != "" {
-				raw = tag
-				break
-			}
+		if container := certManagerControllerContainer(&controller); container != nil {
+			raw = imageTag(container.Image)
 		}
 	}
 
@@ -216,8 +213,8 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 	return nil
 }
 
-// checkInstalledCertManagerReady fails unless cert-manager is installed and ready to issue and inject the CA
-// certificate in Secret radius-apiserver-ca, as checkCertManagerReady decides. rad calls it before a command that does
+// checkInstalledCertManagerReady fails unless cert-manager is installed, at least CertManagerMinimumVersion, and ready
+// to issue and inject the CA certificate in Secret radius-apiserver-ca, as checkCertManagerReady decides. rad calls it before a command that does
 // not install cert-manager itself, such as a rollback, applies a release that serves UCP from that CA.
 func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, radiusNamespace string) error {
 	newClients := i.newCertManagerClients
@@ -235,6 +232,10 @@ func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, 
 	if !existing.Installed {
 		return fmt.Errorf("cert-manager is not installed, and the Radius release serves UCP's API server from a certificate that cert-manager issues. Install cert-manager, for example with rad upgrade kubernetes, and retry")
 	}
+	minimum := semver.MustParse(CertManagerMinimumVersion)
+	if semver.MustParse(existing.Version).LessThan(minimum) {
+		return fmt.Errorf("cert-manager v%s in namespace %q is older than the minimum supported version v%s. Upgrade cert-manager to v%s or later and retry", existing.Version, existing.Namespace, minimum, minimum)
+	}
 	return checkCertManagerReady(ctx, kubeClient, existing.Namespace, radiusNamespace, i.logInfo)
 }
 
@@ -249,6 +250,10 @@ func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespa
 		var argv []string
 		var resolved []bool
 		raw := container.Args
+		// A command that runs cainjector passes the flags after the executable before the args.
+		if len(container.Command) > 0 && isCAInjectorName(path.Base(container.Command[0])) {
+			raw = slices.Concat(container.Command[1:], container.Args)
+		}
 		for _, arg := range raw {
 			value, ok := expandContainerReferences(arg, env)
 			argv = append(argv, value)
@@ -257,7 +262,7 @@ func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespa
 		var namespace, apiServices *string
 		namespaceResolved := true
 		for idx, arg := range argv {
-			if !strings.HasPrefix(raw[idx], "-") {
+			if !strings.HasPrefix(arg, "-") {
 				continue
 			}
 			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
@@ -396,6 +401,29 @@ func caInjectorContainers(deployment *appsv1.Deployment) []corev1.Container {
 		return containers
 	}
 	return injectors
+}
+
+// certManagerControllerContainer returns the container of deployment that runs the cert-manager controller: the one
+// named, running an image named, or running an executable named cert-manager-controller. When it identifies none, it returns the only container,
+// or nil when there are several, so rad never reads the version from a sidecar's image, such as an injected
+// service-mesh proxy.
+func certManagerControllerContainer(deployment *appsv1.Deployment) *corev1.Container {
+	containers := deployment.Spec.Template.Spec.Containers
+	for idx := range containers {
+		image, _, _ := strings.Cut(containers[idx].Image, "@")
+		image, _, _ = strings.Cut(path.Base(image), ":")
+		command := ""
+		if len(containers[idx].Command) > 0 {
+			command = path.Base(containers[idx].Command[0])
+		}
+		if slices.Contains([]string{containers[idx].Name, image, command}, "cert-manager-controller") {
+			return &containers[idx]
+		}
+	}
+	if len(containers) == 1 {
+		return &containers[0]
+	}
+	return nil
 }
 
 func isCAInjectorName(name string) bool {
