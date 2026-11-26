@@ -248,6 +248,28 @@ func (s *Service) createPlane(ctx context.Context, plane ucp.Plane) error {
 	return nil
 }
 
+// listenAndServe serves the API that the Kubernetes API server aggregates. When the authorization mode is not off,
+// cert-manager issues and rotates its certificate, so it is reloaded from the directory without a restart.
+func (s *Service) listenAndServe(ctx context.Context, service *http.Server) error {
+	dir := s.options.Config.Server.TLSCertificateDirectory
+	switch {
+	case dir == "":
+		return service.ListenAndServe()
+	case s.options.Config.Authorization.EffectiveMode() == authz.ModeOff:
+		return service.ListenAndServeTLS(dir+"/"+mtls.CertFile, dir+"/"+mtls.KeyFile)
+	}
+
+	// Only the serving key pair rotates here. The authenticator owns client trust.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	config, err := mtls.NewServingConfig(ctx, dir, service.TLSConfig)
+	if err != nil {
+		return fmt.Errorf("failed to load the API server certificate: %w", err)
+	}
+	service.TLSConfig = config
+	return service.ListenAndServeTLS("", "")
+}
+
 // Run sets up a server to listen on a given address, and shuts it down when the context is done. It returns an
 // error if the server fails to start or stops unexpectedly.
 func (s *Service) Run(ctx context.Context) error {
@@ -285,11 +307,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
-	if s.options.Config.Server.TLSCertificateDirectory == "" {
-		err = service.ListenAndServe()
-	} else {
-		err = service.ListenAndServeTLS(s.options.Config.Server.TLSCertificateDirectory+"/tls.crt", s.options.Config.Server.TLSCertificateDirectory+"/tls.key")
-	}
+	err = s.listenAndServe(ctx, service)
 
 	select {
 	case ierr := <-internalErr:
@@ -313,9 +331,12 @@ func (s *Service) Run(ctx context.Context) error {
 // routes as the aggregation endpoint on InternalPort, so the Kubernetes API aggregation
 // endpoint and its certificate are unchanged.
 func (s *Service) internalServer(aggregation *http.Server) *http.Server {
+	// Even a certificate trusted by both CAs cannot assert user identity here.
+	// Component token authentication remains the responsibility of mtls.Serve.
+	componentBoundary := &authorization.RequestHeaderAuthenticator{}
 	return &http.Server{
 		Addr:        fmt.Sprintf("%s:%d", s.options.Config.Server.Host, s.options.Config.Server.InternalPort),
-		Handler:     aggregation.Handler,
+		Handler:     componentBoundary.Middleware(aggregation.Handler),
 		BaseContext: aggregation.BaseContext,
 	}
 }

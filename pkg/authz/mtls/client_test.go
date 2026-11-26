@@ -230,6 +230,27 @@ func TestUpgradeTransport_ReplacesCaseVariantAuthorization(t *testing.T) {
 	require.Equal(t, before, req.Header)
 }
 
+// TestUpgradeTransport_NilHeader calls RoundTrip directly with a request that has no
+// Header, which http.Client would otherwise allocate, and checks that the token is sent.
+func TestUpgradeTransport_NilHeader(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	rt, err := NewUpgradeTransport(callerOptions(t, ca.pem, authz.ModeEnforce, "ucp"), http.DefaultTransport, []string{"applications-rp"})
+	require.NoError(t, err)
+	dialTo(t, rt, "applications-rp.radius-system.svc", srv.url)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://applications-rp.radius-system.svc:5443/", nil)
+	require.NoError(t, err)
+	req.Header = nil
+
+	resp, err := rt.RoundTrip(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+	require.Nil(t, req.Header)
+}
+
 // TestUpgradeTransport_RejectsWrongServer sends a request for dynamic-rp to applications-rp.
 // The client must reject the server's SPIFFE ID during the handshake and send no token.
 func TestUpgradeTransport_RejectsWrongServer(t *testing.T) {

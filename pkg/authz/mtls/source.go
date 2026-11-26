@@ -48,7 +48,7 @@ const (
 )
 
 // material is one consistent set of certificate, key, and CA bundle. cert is nil for a
-// trust-only Source.
+// trust-only Source, and pool is nil for a certificate-only Source.
 type material struct {
 	cert *tls.Certificate
 	pool *x509.CertPool
@@ -62,6 +62,7 @@ type Source struct {
 	dir       string
 	caDir     string
 	trustOnly bool
+	certOnly  bool
 	now       func() time.Time
 	readFile  func(string) ([]byte, error)
 
@@ -83,6 +84,28 @@ func NewSourceWithCA(dir, caDir string) (*Source, error) {
 	return newSource(dir, caDir, false)
 }
 
+// NewCertificateSource loads only the certificate and key (tls.crt and tls.key) from dir. A
+// server that verifies no peer against a Radius CA, such as UCP's aggregated API server, uses
+// it, so its directory needs no ca.crt.
+func NewCertificateSource(dir string) (*Source, error) {
+	s := &Source{dir: dir, certOnly: true, now: time.Now, readFile: os.ReadFile}
+	if _, err := s.Reload(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// NewServingConfig loads only tls.crt and tls.key and reloads them until ctx is
+// canceled. Peer trust (including request-header client CAs) belongs to base.
+func NewServingConfig(ctx context.Context, dir string, base *tls.Config) (*tls.Config, error) {
+	s, err := NewCertificateSource(dir)
+	if err != nil {
+		return nil, err
+	}
+	go s.Start(ctx, DefaultPollInterval)
+	return s.ServerConfigFrom(base), nil
+}
+
 // NewTrustSource loads only the CA bundle (ca.crt) from dir. Clients use it to verify
 // servers; they do not present a certificate.
 func NewTrustSource(dir string) (*Source, error) {
@@ -102,6 +125,9 @@ func (s *Source) files() []string {
 	ca := filepath.Join(s.caDir, CAFile)
 	if s.trustOnly {
 		return []string{ca}
+	}
+	if s.certOnly {
+		return []string{filepath.Join(s.dir, CertFile), filepath.Join(s.dir, KeyFile)}
 	}
 	return []string{filepath.Join(s.dir, CertFile), filepath.Join(s.dir, KeyFile), ca}
 }
@@ -157,6 +183,17 @@ func (s *Source) readStable() ([][]byte, [sha256.Size]byte, error) {
 
 // parse builds material from the file contents read in the order of files.
 func (s *Source) parse(raw [][]byte) (*material, error) {
+	if s.certOnly {
+		cert, err := tls.X509KeyPair(raw[0], raw[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to load certificate and key: %w", err)
+		}
+		if err := s.checkExpiry(&cert); err != nil {
+			return nil, err
+		}
+		return &material{cert: &cert}, nil
+	}
+
 	caPEM := raw[len(raw)-1]
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(caPEM) {

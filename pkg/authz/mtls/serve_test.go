@@ -203,8 +203,8 @@ func startServerWithSetup(t *testing.T, ca testCA, mode authz.Mode, handler http
 	options := authz.Options{Mode: mode, CertificateDirectory: dir, Namespace: testNamespace}
 	clock := &testClock{now: time.Now()}
 	keys := &staticKeys{}
-	config := serveConfig{pollInterval: testPollInterval, keys: keys, tokenNow: clock.Now, certNow: setup.certNow}
-	receiver := Receiver{Name: "applications-rp", AllowedCallers: []string{"ucp"}}
+	config := serveConfig{pollInterval: testPollInterval, tokenNow: clock.Now, certNow: setup.certNow}
+	receiver := Receiver{Name: "applications-rp", AllowedCallers: []string{"ucp"}, KeySource: keys}
 
 	done := make(chan error, 1)
 	go func() { done <- serve(ctx, srv, ln, options, receiver, config) }()
@@ -615,7 +615,9 @@ func TestServe_ConfigErrors(t *testing.T) {
 	t.Run("CA bundle from CA directory", func(t *testing.T) {
 		t.Parallel()
 		options := authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: serverDir, CADirectory: certDir, Namespace: testNamespace}
-		verifier, source, err := newServerAuth(options, receiver, serveConfig{keys: &staticKeys{}})
+		receiver := receiver
+		receiver.KeySource = &staticKeys{}
+		verifier, source, err := newServerAuth(options, receiver, serveConfig{})
 		require.NoError(t, err)
 		require.NotNil(t, verifier)
 		m, err := source.load()

@@ -25,11 +25,34 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func Test_Run_PinsContextBeforeInstallationLookup(t *testing.T) {
+	for _, explicit := range []string{"", "original"} {
+		t.Run("context="+explicit, func(t *testing.T) {
+			configPath := k8sutil.IsolateKubeconfig(t)
+			servers := map[string]string{"original": "https://original.example.test", "decoy": "https://decoy.example.test"}
+			current := "original"
+			if explicit != "" {
+				current = "decoy"
+			}
+			k8sutil.WriteKubeconfig(t, configPath, current, servers)
+			client := helm.NewMockInterface(gomock.NewController(t))
+			client.EXPECT().CheckRadiusInstall("original").DoAndReturn(func(string) (helm.InstallState, error) {
+				k8sutil.WriteKubeconfig(t, configPath, "decoy", servers)
+				return helm.InstallState{}, nil
+			})
+			client.EXPECT().InstallRadius(gomock.Any(), gomock.Any(), "original").Return(nil)
+			runner := &Runner{Helm: client, Output: &output.MockOutput{}, KubeContext: explicit}
+			require.NoError(t, runner.Run(t.Context()))
+		})
+	}
+}
 
 func Test_CommandValidation(t *testing.T) {
 	t.Parallel()
@@ -220,12 +243,13 @@ func Test_Run_ContourFlags(t *testing.T) {
 
 			helmMock := helm.NewMockInterface(gomock.NewController(t))
 			runner.Helm = helmMock
+			runner.KubeContext = "test-context"
 
 			expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{})
 			tt.want(&expectedOptions)
 
-			helmMock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{}, nil).Times(1)
-			helmMock.EXPECT().InstallRadius(gomock.Any(), expectedOptions, "").Return(nil).Times(1)
+			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil).Times(1)
+			helmMock.EXPECT().InstallRadius(gomock.Any(), expectedOptions, "test-context").Return(nil).Times(1)
 
 			require.NoError(t, runner.Run(t.Context()))
 		})
@@ -236,7 +260,7 @@ func Test_Run_ContourFlags(t *testing.T) {
 // Contour when an earlier install stopped after Radius or left a failed Contour release, because it does not change an
 // existing installation.
 func Test_Run_RadiusInstalledWithoutContour(t *testing.T) {
-	t.Parallel()
+	k8sutil.IsolateKubeconfig(t)
 
 	tests := []struct {
 		name   string
@@ -307,8 +331,6 @@ func Test_Run_RadiusInstalledWithoutContour(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			helmMock := helm.NewMockInterface(gomock.NewController(t))
 			outputMock := &output.MockOutput{}
 			runner := tt.runner

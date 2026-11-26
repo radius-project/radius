@@ -13,31 +13,31 @@ invent their own hosting, routing, validation, and async patterns.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Host lifecycle | `pkg/components/hosting/hosting.go` |
-| Shared HTTP server | `pkg/armrpc/frontend/server/server.go` |
-| Namespace/API registration | `pkg/armrpc/builder/builder.go` |
-| Async status | `pkg/armrpc/asyncoperation/statusmanager/statusmanager.go` |
-| Async worker | `pkg/armrpc/asyncoperation/worker/...` |
+| Topic                      | Start Here                                                 |
+|----------------------------|------------------------------------------------------------|
+| Host lifecycle             | `pkg/components/hosting/hosting.go`                        |
+| Shared HTTP server         | `pkg/armrpc/frontend/server/server.go`                     |
+| Namespace/API registration | `pkg/armrpc/builder/builder.go`                            |
+| Async status               | `pkg/armrpc/asyncoperation/statusmanager/statusmanager.go` |
+| Async worker               | `pkg/armrpc/asyncoperation/worker/...`                     |
 
-| Test Focus | Packages |
-|-----------|----------|
-| Shared runtime and builder logic | `./pkg/armrpc/...` |
-| Shared API/async host usage | `./pkg/server/...` |
-| Broad downstream impact check | `./pkg/ucp/...`, `./pkg/corerp/...`, `./pkg/dynamicrp/...` |
+| Test Focus                       | Packages                                                   |
+|----------------------------------|------------------------------------------------------------|
+| Shared runtime and builder logic | `./pkg/armrpc/...`                                         |
+| Shared API/async host usage      | `./pkg/server/...`                                         |
+| Broad downstream impact check    | `./pkg/ucp/...`, `./pkg/corerp/...`, `./pkg/dynamicrp/...` |
 
 ## Main Building Blocks
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/armrpc/hostoptions` | turns config files and environment into runtime options |
-| `pkg/components/hosting` | starts and supervises one or more long-running services |
-| `pkg/armrpc/frontend/server` | shared HTTP server creation, middleware, version and health routes |
-| `pkg/armrpc/builder` | namespace-based API and async controller registration |
-| `pkg/armrpc/frontend/controller` | controller contracts for HTTP operations |
-| `pkg/armrpc/asyncoperation/statusmanager` | creates and updates operation status resources and queue messages |
-| `pkg/armrpc/asyncoperation/worker` | dequeues and executes async controllers |
+| Package                                   | Responsibility                                                     |
+|-------------------------------------------|--------------------------------------------------------------------|
+| `pkg/armrpc/hostoptions`                  | turns config files and environment into runtime options            |
+| `pkg/components/hosting`                  | starts and supervises one or more long-running services            |
+| `pkg/armrpc/frontend/server`              | shared HTTP server creation, middleware, version and health routes |
+| `pkg/armrpc/builder`                      | namespace-based API and async controller registration              |
+| `pkg/armrpc/frontend/controller`          | controller contracts for HTTP operations                           |
+| `pkg/armrpc/asyncoperation/statusmanager` | creates and updates operation status resources and queue messages  |
+| `pkg/armrpc/asyncoperation/worker`        | dequeues and executes async controllers                            |
 
 ## End-To-End Shape
 
@@ -166,7 +166,12 @@ UCP, Applications RP, Dynamic RP, and the controller project only `ca.crt`
 from the `radius-ca` Secret (never
 `tls.key`) to `/var/run/radius/ca`; the server certificate volume projects no
 `ca.crt`. Servers chain their certificate to it and clients verify servers
-against it.
+against it. The `radius-ca` CA signs only these SPIFFE server certificates; in
+the `selfSigned` certificate mode (the only one supported today), UCP's
+aggregated API certificate comes from the separate `radius-apiserver-ca`, which
+Radius components do not trust. Only the Kubernetes API server trusts that CA:
+cert-manager's cainjector copies `ca.crt` of the `radius-apiserver-ca` Secret
+into the APIService `caBundle` and follows its renewals.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client

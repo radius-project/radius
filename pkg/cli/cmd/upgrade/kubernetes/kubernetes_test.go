@@ -29,12 +29,36 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/upgrade/preflight"
 	"github.com/radius-project/radius/pkg/version"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func Test_Run_PinsContextBeforePreflight(t *testing.T) {
+	configPath := k8sutil.IsolateKubeconfig(t)
+	servers := map[string]string{"original": "https://original.example.test", "decoy": "https://decoy.example.test"}
+	k8sutil.WriteKubeconfig(t, configPath, "original", servers)
+	client := helm.NewMockInterface(gomock.NewController(t))
+	client.EXPECT().CheckRadiusInstall("original").DoAndReturn(func(string) (helm.InstallState, error) {
+		k8sutil.WriteKubeconfig(t, configPath, "decoy", servers)
+		return helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.50.0"}, nil
+	})
+	runner := &Runner{Helm: client, Output: &output.MockOutput{}, Version: "0.51.0"}
+	preflightRan := false
+	runner.runChecks = func(context.Context, []preflight.PreflightCheck) error {
+		preflightRan = true
+		require.Equal(t, "original", runner.KubeContext)
+		return nil
+	}
+	client.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "original").DoAndReturn(func(context.Context, helm.ClusterOptions, string) error {
+		require.True(t, preflightRan)
+		return nil
+	})
+	require.NoError(t, runner.Run(t.Context()))
+}
 
 func Test_CommandValidation(t *testing.T) {
 	t.Parallel()
@@ -180,8 +204,8 @@ func TestRunner_Run(t *testing.T) {
 					RadiusInstalled: true,
 					RadiusVersion:   "v0.46.0",
 				}
-				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
-				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").Return(nil)
+				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "test-context").Return(nil)
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any()).AnyTimes()
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			},
@@ -195,7 +219,7 @@ func TestRunner_Run(t *testing.T) {
 				installState := helm.InstallState{
 					RadiusInstalled: false,
 				}
-				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
+				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 			},
 			expectError:  true,
 			errorMessage: "the Radius control plane is not currently installed",
@@ -207,8 +231,8 @@ func TestRunner_Run(t *testing.T) {
 					RadiusInstalled: true,
 					RadiusVersion:   "v0.46.0",
 				}
-				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
-				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").Return(fmt.Errorf("upgrade failed"))
+				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "test-context").Return(fmt.Errorf("upgrade failed"))
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any()).AnyTimes()
 				mockOutput.EXPECT().LogInfo(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			},
@@ -225,9 +249,9 @@ func TestRunner_Run(t *testing.T) {
 					RadiusVersion:   "v0.46.0",
 					RadiusValues:    map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}},
 				}
-				mockHelm.EXPECT().CheckRadiusInstall("").Return(installState, nil)
+				mockHelm.EXPECT().CheckRadiusInstall("test-context").Return(installState, nil)
 				// Verify the correct options are passed
-				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "test-context").
 					DoAndReturn(func(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) error {
 						// Verify SetArgs and SetFileArgs
 						expectedSetArgs := []string{"global.imageRegistry=myregistry.io", "key=value"}
@@ -262,6 +286,7 @@ func TestRunner_Run(t *testing.T) {
 			runner := &Runner{
 				Helm:          mockHelm,
 				Output:        mockOutput,
+				KubeContext:   "test-context",
 				Version:       tt.version,
 				SkipPreflight: tt.skipPreflight,
 				PreflightOnly: tt.preflightOnly,
@@ -334,16 +359,17 @@ func Test_Run_ContourFlags(t *testing.T) {
 
 			helmMock := helm.NewMockInterface(gomock.NewController(t))
 			runner.Helm = helmMock
+			runner.KubeContext = "test-context"
 
 			expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
 				Radius: helm.ChartOptions{ChartVersion: "0.47.0"},
 			})
 			tt.want(&expectedOptions)
 
-			helmMock.EXPECT().CheckRadiusInstall("").
+			helmMock.EXPECT().CheckRadiusInstall("test-context").
 				Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil).
 				Times(1)
-			helmMock.EXPECT().UpgradeRadius(gomock.Any(), expectedOptions, "").Return(nil).Times(1)
+			helmMock.EXPECT().UpgradeRadius(gomock.Any(), expectedOptions, "test-context").Return(nil).Times(1)
 
 			require.NoError(t, runner.Run(t.Context()))
 		})
@@ -459,20 +485,21 @@ func Test_Run_FriendlyErrors(t *testing.T) {
 			t.Parallel()
 
 			mockHelm := helm.NewMockInterface(gomock.NewController(t))
-			mockHelm.EXPECT().CheckRadiusInstall("").
+			mockHelm.EXPECT().CheckRadiusInstall("test-context").
 				Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil).
 				Times(1)
 			if tt.checkErr != nil {
-				mockHelm.EXPECT().CheckContourUpgrade(gomock.Any(), gomock.Any(), "").Return(false, tt.checkErr).Times(1)
+				mockHelm.EXPECT().CheckContourUpgrade(gomock.Any(), gomock.Any(), "test-context").Return(false, tt.checkErr).Times(1)
 				// The upgrade must not run.
 			}
 			if tt.upgradeErr != nil {
-				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").Return(tt.upgradeErr).Times(1)
+				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "test-context").Return(tt.upgradeErr).Times(1)
 			}
 
 			runner := &Runner{
 				Helm:          mockHelm,
 				Output:        &output.MockOutput{},
+				KubeContext:   "test-context",
 				Version:       "0.47.0",
 				SkipPreflight: tt.skipPreflight,
 				runChecks:     runContourCheckOnly(t),
