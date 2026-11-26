@@ -1830,6 +1830,8 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 		otherVolume *corev1.Volume
 		// editPod, when set, changes the rolled-out ucp pod template, such as to add a container env reference.
 		editPod func(*corev1.PodSpec)
+		// editStatus, when set, changes the ucp Deployment status after the rollout, such as to leave it unfinished.
+		editStatus func(*appsv1.Deployment)
 		// unmarked removes the Radius release annotations from ucp-apiserver-tls, as on a Secret another release or an
 		// operator wrote. rad refuses the rollback before Helm runs, so the Secret stays.
 		unmarked   bool
@@ -1853,6 +1855,12 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 		}},
 		{name: "UCP still pulls images with the Secret", moveUCP: true, wantDelete: false, editPod: func(spec *corev1.PodSpec) {
 			spec.ImagePullSecrets = append(spec.ImagePullSecrets, corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName})
+		}},
+		{name: "the controller has not observed the new template", moveUCP: true, wantDelete: false, editStatus: func(deployment *appsv1.Deployment) {
+			deployment.Generation++
+		}},
+		{name: "an old UCP replica still runs", moveUCP: true, wantDelete: false, editStatus: func(deployment *appsv1.Deployment) {
+			deployment.Status.Replicas++
 		}},
 	}
 	for _, tt := range tests {
@@ -1890,6 +1898,9 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 					}
 					if tt.editPod != nil {
 						tt.editPod(&deployment.Spec.Template.Spec)
+					}
+					if tt.editStatus != nil {
+						tt.editStatus(deployment)
 					}
 					_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), deployment, metav1.UpdateOptions{})
 					require.NoError(t, err)
