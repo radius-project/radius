@@ -26,7 +26,7 @@ data:
     {{- if .Values.database.enabled }}
       provider: "postgresql"
       postgresql:
-        url: "{{ include "radius.database.url" (dict "ctx" . "name" "ucp") }}"
+        {{- include "radius.database.postgresql" (dict "ctx" . "name" "ucp") | nindent 8 }}
     {{- else }}
       provider: "apiserver"
       apiserver:

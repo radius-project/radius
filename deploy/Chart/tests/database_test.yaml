@@ -311,7 +311,7 @@ tests:
       database.external.existingSecret: radius-db
     asserts:
       - exists:
-          path: spec.template.metadata.annotations["checksum/database-url"]
+          path: spec.template.metadata.annotations["checksum/database-config"]
 
   - it: should not add a rollout checksum for the in-cluster database
     templates:
@@ -322,9 +322,9 @@ tests:
       database.enabled: true
     asserts:
       - notExists:
-          path: spec.template.metadata.annotations["checksum/database-url"]
+          path: spec.template.metadata.annotations["checksum/database-config"]
 
-  - it: should derive the ucp rollout checksum from its connection URL
+  - it: should derive the ucp rollout checksum from its database settings
     template: ucp/deployment.yaml
     set:
       database.enabled: true
@@ -332,8 +332,8 @@ tests:
       database.external.existingSecret: radius-db
     asserts:
       - equal:
-          path: spec.template.metadata.annotations["checksum/database-url"]
-          value: 067b1fbfa11cc818c852b476517b82305a80ec0626a8d11b0f3871cefbf13497
+          path: spec.template.metadata.annotations["checksum/database-config"]
+          value: 78a985f86b5306a323005412f41035b77f08c8c7d5d71d6437ef233d762d7729
 
   # Releases upgraded with --reuse-values from a chart without database.external have no such map.
   - it: should render when database.external is absent
@@ -380,3 +380,250 @@ tests:
                 name: "123"
                 key: POSTGRES_PASSWORD
         template: dynamic-rp/deployment.yaml
+
+  # --- database.external.authMode=azure ---
+  - it: should sign each resource provider in as the shared Entra user with workload identity
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-wi
+      database.external.azure.clientId: 00000000-0000-0000-0000-000000000001
+      global.azureWorkloadIdentity.enabled: true
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'url: "postgresql://radius-wi@pg\.example\.com:5432/ucp\?sslmode=verify-full"\n\s+authMode: azure\n\s+azure:\n\s+credential: "workloadIdentity"\n\s+clientId: "00000000-0000-0000-0000-000000000001"\n'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'url: "postgresql://radius-wi@pg\.example\.com:5432/applications_rp\?sslmode=verify-full"\n\s+authMode: azure\n\s+azure:\n\s+credential: "workloadIdentity"\n\s+clientId: "00000000-0000-0000-0000-000000000001"\n'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'url: "postgresql://radius-wi@pg\.example\.com:5432/dynamic_rp\?sslmode=verify-full"\n\s+authMode: azure\n\s+azure:\n\s+credential: "workloadIdentity"\n\s+clientId: "00000000-0000-0000-0000-000000000001"\n'
+        template: dynamic-rp/configmaps.yaml
+
+  - it: should not inject POSTGRES_PASSWORD with authMode azure
+    templates:
+      - ucp/deployment.yaml
+      - rp/deployment.yaml
+      - dynamic-rp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-wi
+      database.external.azure.credential: managedIdentity
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POSTGRES_PASSWORD
+          any: true
+      - exists:
+          path: spec.template.metadata.annotations["checksum/database-config"]
+
+  - it: should use the system-assigned managed identity when clientId is empty
+    template: ucp/configmaps.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-mi
+      database.external.azure.credential: managedIdentity
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'credential: "managedIdentity"'
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: clientId
+
+  # Pins the checksums for one identity; the next test changes only clientId and expects new ones.
+  - it: should derive the Entra rollout checksums from the sign-in settings
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-mi
+      database.external.azure.credential: managedIdentity
+      database.external.azure.clientId: 00000000-0000-0000-0000-000000000001
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/database-config"]
+          value: c1cfa4210f61b07bc93c538544b738cc41614230b472ff71ee214d764b87da93
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/database-config"]
+          value: 8ccb9afe687967ececb24c29fe785b7255bf5bd6df7776eb2f9280458dfe757a
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/database-config"]
+          value: 6dd88879d904a97829618f7ae20af658827102c1d21dfeff9d44e188469f1448
+        template: dynamic-rp/deployment.yaml
+
+  - it: should roll each resource provider when the Entra client ID changes
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-mi
+      database.external.azure.credential: managedIdentity
+      database.external.azure.clientId: 00000000-0000-0000-0000-000000000002
+    asserts:
+      - notEqual:
+          path: spec.template.metadata.annotations["checksum/database-config"]
+          value: c1cfa4210f61b07bc93c538544b738cc41614230b472ff71ee214d764b87da93
+        template: ucp/deployment.yaml
+      - notEqual:
+          path: spec.template.metadata.annotations["checksum/database-config"]
+          value: 8ccb9afe687967ececb24c29fe785b7255bf5bd6df7776eb2f9280458dfe757a
+        template: rp/deployment.yaml
+      - notEqual:
+          path: spec.template.metadata.annotations["checksum/database-config"]
+          value: 6dd88879d904a97829618f7ae20af658827102c1d21dfeff9d44e188469f1448
+        template: dynamic-rp/deployment.yaml
+
+  - it: should reject authMode azure without the Entra user
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.credential: managedIdentity
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.azure.user is required when database.external.authMode=azure
+
+  - it: should reject an Entra user that needs escaping in the URL
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius@example.com
+      database.external.azure.credential: managedIdentity
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.azure.user may contain only letters, digits, '.', '_', and '-'
+
+  - it: should reject authMode azure with a password secret
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+      database.external.authMode: azure
+      database.external.azure.user: radius-mi
+      database.external.azure.credential: managedIdentity
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.existingSecret is not used with database.external.authMode=azure; unset it
+
+  - it: should reject authMode azure without verify-full
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.sslmode: require
+      database.external.authMode: azure
+      database.external.azure.user: radius-mi
+      database.external.azure.credential: managedIdentity
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.authMode=azure requires database.external.sslmode=verify-full
+
+  - it: should require a client ID for workload identity
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-wi
+      global.azureWorkloadIdentity.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.azure.clientId is required when database.external.azure.credential=workloadIdentity
+
+  - it: should require global.azureWorkloadIdentity.enabled for workload identity
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-wi
+      database.external.azure.clientId: 00000000-0000-0000-0000-000000000001
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.azure.credential=workloadIdentity requires global.azureWorkloadIdentity.enabled=true
+
+  - it: should reject an unknown credential
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-wi
+      database.external.azure.credential: clientSecret
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.azure.credential must be workloadIdentity or managedIdentity, got "clientSecret"
+
+  - it: should reject an unknown authMode
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+      database.external.authMode: token
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.authMode must be password or azure, got "token"
+
+  - it: should reject authMode azure without an external host
+    template: database/statefulset.yaml
+    set:
+      database.enabled: true
+      database.external.authMode: azure
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.authMode and database.external.azure apply only to an external server; set database.external.host
+
+  - it: should treat an empty authMode as password
+    set:
+      database.external.authMode: ""
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: should reject a client ID that is not a GUID
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.authMode: azure
+      database.external.azure.user: radius-mi
+      database.external.azure.credential: managedIdentity
+      database.external.azure.clientId: 0
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.azure.clientId must be a GUID, got "0"
+
+  - it: should reject Entra settings with authMode password
+    template: ucp/deployment.yaml
+    set:
+      database.enabled: true
+      database.external.host: pg.example.com
+      database.external.existingSecret: radius-db
+      database.external.azure.user: radius-mi
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.azure.user and database.external.azure.clientId are used only with database.external.authMode=azure
+
+  - it: should reject Entra settings without an external host
+    template: database/statefulset.yaml
+    set:
+      database.external.azure.clientId: 00000000-0000-0000-0000-000000000001
+    asserts:
+      - failedTemplate:
+          errorMessage: database.external.authMode and database.external.azure apply only to an external server; set database.external.host

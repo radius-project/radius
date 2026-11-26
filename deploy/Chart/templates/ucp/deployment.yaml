@@ -25,7 +25,7 @@ spec:
       annotations:
         checksum/authz-config: {{ include "radius.authz.checksumInput" . | sha256sum }}
         {{- if and .Values.database.enabled (include "radius.database.externalHost" .) }}
-        checksum/database-url: {{ include "radius.database.url" (dict "ctx" . "name" "ucp") | sha256sum }}
+        checksum/database-config: {{ include "radius.database.postgresql" (dict "ctx" . "name" "ucp") | sha256sum }}
         {{- end }}
         checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
@@ -66,7 +66,7 @@ spec:
           value: '/var/tls/cert'
         - name: PORT
           value: '9443'
-        {{- if .Values.database.enabled }}
+        {{- if and .Values.database.enabled (include "radius.database.secretName" .) }}
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:

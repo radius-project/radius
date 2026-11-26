@@ -32,7 +32,7 @@ spec:
       annotations:
         checksum/authz-config: {{ $authzConfig | sha256sum }}
         {{- if and .Values.database.enabled (include "radius.database.externalHost" .) }}
-        checksum/database-url: {{ include "radius.database.url" (dict "ctx" . "name" "applications_rp") | sha256sum }}
+        checksum/database-config: {{ include "radius.database.postgresql" (dict "ctx" . "name" "applications_rp") | sha256sum }}
         {{- end }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
@@ -170,7 +170,7 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
-        {{- if .Values.database.enabled }}
+        {{- if and .Values.database.enabled (include "radius.database.secretName" .) }}
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:

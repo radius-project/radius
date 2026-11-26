@@ -145,6 +145,12 @@ database.external.host connects to an existing server instead.
 {{- if and $host (not .Values.database.enabled) -}}
 {{- fail "database.external.host requires database.enabled=true" -}}
 {{- end -}}
+{{- if not $host -}}
+{{- $external := dig "external" dict (.Values.database | default dict) -}}
+{{- if or (ne (dig "authMode" "" $external | default "password" | toString) "password") (dig "azure" "user" "" $external) (dig "azure" "clientId" "" $external | toString) -}}
+{{- fail "database.external.authMode and database.external.azure apply only to an external server; set database.external.host" -}}
+{{- end -}}
+{{- end -}}
 {{- if and .Values.database.enabled (not $host) -}}
 true
 {{- end -}}
@@ -159,28 +165,101 @@ upgraded with --reuse-values from a chart without database.external have no such
 {{- end -}}
 
 {{/*
-Returns the name of the Secret whose POSTGRES_PASSWORD key holds the resource provider password.
+Returns how the resource providers sign in to the database: "password", or "azure" for a
+Microsoft Entra token for an Azure identity. Fails rendering when the azure settings are incomplete.
+The in-cluster server always uses a password.
+*/}}
+{{- define "radius.database.authMode" -}}
+{{- if not (include "radius.database.externalHost" .) -}}
+password
+{{- else -}}
+{{- $external := .Values.database.external -}}
+{{- $mode := $external.authMode | default "password" | toString -}}
+{{- if eq $mode "azure" -}}
+{{- $azure := $external.azure | default dict -}}
+{{- if $external.existingSecret -}}
+{{- fail "database.external.existingSecret is not used with database.external.authMode=azure; unset it" -}}
+{{- end -}}
+{{- if ne ($external.sslmode | default "verify-full" | toString) "verify-full" -}}
+{{- fail "database.external.authMode=azure requires database.external.sslmode=verify-full" -}}
+{{- end -}}
+{{- $user := required "database.external.azure.user is required when database.external.authMode=azure" $azure.user | toString -}}
+{{- if not (regexMatch "^[A-Za-z0-9._-]+$" $user) -}}
+{{- fail "database.external.azure.user may contain only letters, digits, '.', '_', and '-'" -}}
+{{- end -}}
+{{- $clientId := dig "clientId" "" $azure | toString -}}
+{{- if and $clientId (not (regexMatch "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$" $clientId)) -}}
+{{- fail (printf "database.external.azure.clientId must be a GUID, got %q" $clientId) -}}
+{{- end -}}
+{{- $credential := $azure.credential | default "workloadIdentity" | toString -}}
+{{- if eq $credential "workloadIdentity" -}}
+{{- if not $clientId -}}
+{{- fail "database.external.azure.clientId is required when database.external.azure.credential=workloadIdentity" -}}
+{{- end -}}
+{{- if not .Values.global.azureWorkloadIdentity.enabled -}}
+{{- fail "database.external.azure.credential=workloadIdentity requires global.azureWorkloadIdentity.enabled=true" -}}
+{{- end -}}
+{{- else if ne $credential "managedIdentity" -}}
+{{- fail (printf "database.external.azure.credential must be workloadIdentity or managedIdentity, got %q" $credential) -}}
+{{- end -}}
+azure
+{{- else if eq $mode "password" -}}
+{{- if or (dig "azure" "user" "" $external) (dig "azure" "clientId" "" $external | toString) -}}
+{{- fail "database.external.azure.user and database.external.azure.clientId are used only with database.external.authMode=azure" -}}
+{{- end -}}
+password
+{{- else -}}
+{{- fail (printf "database.external.authMode must be password or azure, got %q" $mode) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns the name of the Secret whose POSTGRES_PASSWORD key holds the resource provider password,
+or "" when the resource providers sign in with a Microsoft Entra token.
 */}}
 {{- define "radius.database.secretName" -}}
-{{- if include "radius.database.externalHost" . -}}
-{{- required "database.external.existingSecret is required when database.external.host is set" .Values.database.external.existingSecret | toString -}}
-{{- else -}}
+{{- if not (include "radius.database.externalHost" .) -}}
 database-secret
+{{- else if eq (include "radius.database.authMode" .) "password" -}}
+{{- required "database.external.existingSecret is required when database.external.host is set" .Values.database.external.existingSecret | toString -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
 Returns the PostgreSQL connection URL for a resource provider. Pass a dict with "ctx" (the root
-context) and "name" (used as both the user and database name). POSTGRES_PASSWORD is expanded at
-runtime by the database provider.
+context) and "name" (the database name, and the user name with a password). POSTGRES_PASSWORD is
+expanded at runtime by the database provider. With authMode azure, all resource providers sign in
+as database.external.azure.user and the URL has no password.
 */}}
 {{- define "radius.database.url" -}}
 {{- $external := .ctx.Values.database.external | default dict -}}
 {{- if include "radius.database.externalHost" .ctx -}}
+{{- if eq (include "radius.database.authMode" .ctx) "azure" -}}
+postgresql://{{ $external.azure.user }}@{{ $external.host }}:{{ $external.port | default 5432 }}/{{ .name }}?sslmode=verify-full
+{{- else -}}
 postgresql://{{ .name }}:${POSTGRES_PASSWORD}@{{ $external.host }}:{{ $external.port | default 5432 }}/{{ .name }}?sslmode={{ $external.sslmode | default "verify-full" }}
+{{- end -}}
 {{- else -}}
 postgresql://{{ .name }}:${POSTGRES_PASSWORD}@database.{{ .ctx.Release.Namespace }}:5432/{{ .name }}?sslmode=disable
 {{- end -}}
+{{- end -}}
+
+{{/*
+Returns the databaseProvider.postgresql settings for a resource provider. Pass the same dict as
+radius.database.url.
+*/}}
+{{- define "radius.database.postgresql" -}}
+url: "{{ include "radius.database.url" . }}"
+{{- if eq (include "radius.database.authMode" .ctx) "azure" }}
+{{- $azure := .ctx.Values.database.external.azure }}
+authMode: azure
+azure:
+  credential: {{ $azure.credential | default "workloadIdentity" | toString | quote }}
+  {{- with dig "clientId" "" $azure | toString }}
+  clientId: {{ . | quote }}
+  {{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*
@@ -230,8 +309,9 @@ external database password Secret.
 {{- $spiffe = append $spiffe (printf "%s-spiffe" .) -}}
 {{- end -}}
 {{- $database := list "database-secret" -}}
-{{- if include "radius.database.externalHost" . -}}
-{{- $database = append $database (include "radius.database.secretName" .) -}}
+{{- $secretName := include "radius.database.secretName" . -}}
+{{- if and (include "radius.database.externalHost" .) $secretName -}}
+{{- $database = append $database $secretName -}}
 {{- end -}}
 {{- concat $database (list "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
 {{- end -}}
