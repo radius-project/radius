@@ -254,7 +254,8 @@ EOF
     cp "${REPO}/out/base.json" "${REPO}/siblings.json"
     mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
     cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" \
-        "${SCRIPT_DIR}/stage-release-bicep.mjs" "${REPO}/.github/scripts/"
+        "${SCRIPT_DIR}/stage-release-bicep.mjs" \
+        "${SCRIPT_DIR}/verify-release-publication.sh" "${REPO}/.github/scripts/"
     cp "${root}/.github/workflows/build-release.yaml" \
         "${REPO}/.github/workflows/"
     git -C "${REPO}" add .github siblings.json

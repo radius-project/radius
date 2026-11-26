@@ -663,6 +663,7 @@ test_verifies_proposed_radius_pin() {
     mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
     cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" "${REPO}/.github/scripts/"
     cp "${SCRIPT_DIR}/stage-release-bicep.mjs" "${REPO}/.github/scripts/"
+    cp "${SCRIPT_DIR}/verify-release-publication.sh" "${REPO}/.github/scripts/"
     cp "${SCRIPT_DIR}/../workflows/build-release.yaml" \
         "${REPO}/.github/workflows/"
     git -C "${REPO}" add .github
