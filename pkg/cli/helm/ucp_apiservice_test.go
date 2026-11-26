@@ -159,7 +159,7 @@ func Test_waitForUCPAPIService(t *testing.T) {
 				return ucpAPIServiceDynamicClient(tt.objects...), nil
 			}}
 
-			err := impl.waitForAvailableUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace)
+			err := impl.waitForAvailableUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, nil)
 			if len(tt.wantErr) == 0 {
 				require.NoError(t, err)
 				return
@@ -366,4 +366,64 @@ func Test_pollUCPAPIServer_KeepsTheLastProblem(t *testing.T) {
 		_, err := pollUCPAPIServer(t.Context(), func(context.Context) (string, error) { return "", errors.New("forbidden") })
 		require.EqualError(t, err, "forbidden")
 	})
+}
+
+func TestAppliedBYOTrust(t *testing.T) {
+	ca := newTestCA(t, "selected")
+	encoded := base64.StdEncoding.EncodeToString(ca.pem)
+	rel := &releasev1.Release{Version: 2, Chart: &chart.Chart{}, Manifest: `
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ucp-cert
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-apiserver-trust
+  namespace: radius-system
+data:
+  ca.crt: ` + encoded}
+	for _, tt := range []struct {
+		name   string
+		change func(*unstructured.Unstructured)
+		want   string
+	}{
+		{"selected", nil, ""},
+		{"extra", func(api *unstructured.Unstructured) {
+			api.Object["spec"].(map[string]any)["caBundle"] = base64.StdEncoding.EncodeToString(append(newTestCA(t, "other").pem, ca.pem...))
+		}, "selected CA"},
+		{"malformed suffix", func(api *unstructured.Unstructured) {
+			api.Object["spec"].(map[string]any)["caBundle"] = base64.StdEncoding.EncodeToString([]byte(string(ca.pem) + "invalid"))
+		}, "selected CA"},
+		{"source", func(api *unstructured.Unstructured) { setAnnotation(api, injectCAFromSecretAnnotation, "elsewhere") }, "injection source"},
+		{"route", func(api *unstructured.Unstructured) {
+			require.NoError(t, unstructured.SetNestedField(api.Object, "other", "spec", "service", "name"))
+		}, "Service"},
+		{"ownership", func(api *unstructured.Unstructured) { api.SetLabels(nil) }, "Helm release"},
+		{"other port", func(api *unstructured.Unstructured) {
+			require.NoError(t, unstructured.SetNestedField(api.Object, int64(9444), "spec", "service", "port"))
+		}, "Service"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			api := ucpAPIService(encoded, "True", "Passed")
+			setAnnotation(api, injectCAFromSecretAnnotation, ucpAPIServerTrustSource(RadiusSystemNamespace))
+			if tt.change != nil {
+				tt.change(api)
+			}
+			client := ucpAPIServiceDynamicClient(api).(*dynamicfake.FakeDynamicClient)
+			impl := trustImpl(kubefake.NewSimpleClientset(), client)
+			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+			defer cancel()
+			err := impl.waitForAppliedUCPAPIService(ctx, "test", RadiusSystemNamespace, rel)
+			if tt.want == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.want)
+			}
+			for _, a := range client.Actions() {
+				require.Equal(t, "get", a.GetVerb())
+			}
+		})
+	}
 }

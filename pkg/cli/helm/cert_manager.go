@@ -101,9 +101,7 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 // or non-map replacements clear stored flags and chart defaults like Helm does. Without chartDefaults, a chart that
 // turns authorization on by default would render it while the user values say nothing.
 func resolveAuthzMode(chartDefaults, stored, current map[string]any) (authz.Mode, error) {
-	// CoalesceTables mutates both arguments, so merge copies.
-	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
-	merged = valuesutil.CoalesceTables(merged, copyValues(chartDefaults))
+	merged := resolveEffectiveChartValues(chartDefaults, stored, current)
 	enabled, dryRun := rbacFlag(merged, "enabled"), rbacFlag(merged, "dryRun")
 
 	switch {
@@ -116,6 +114,11 @@ func resolveAuthzMode(chartDefaults, stored, current map[string]any) (authz.Mode
 	default:
 		return authz.ModeOff, nil
 	}
+}
+
+// resolveEffectiveChartValues returns a fresh tree; Helm records only the user overrides.
+func resolveEffectiveChartValues(chartDefaults, stored, current map[string]any) map[string]any {
+	return valuesutil.CoalesceTables(valuesutil.CoalesceTables(copyValues(current), copyValues(stored)), copyValues(chartDefaults))
 }
 
 func rbacFlag(values map[string]any, key string) bool {

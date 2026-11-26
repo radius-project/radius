@@ -126,7 +126,7 @@ tests:
           value: 8h
         documentIndex: 0
 
-  - it: injects the CA bundle from radius-apiserver-ca, never from ucp-cert, on a fresh install
+  - it: follows selfSigned CA renewal directly without another Helm render
     template: ucp/apiservice.yaml
     set:
       global.rbac.enabled: true
@@ -159,6 +159,11 @@ tests:
             annotations:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
             tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
@@ -174,7 +179,7 @@ tests:
         documentIndex: 1
 
   - it: refuses a radius-apiserver-ca Secret marked for another release
-    template: ucp/apiservice.yaml
+    template: ucp/deployment.yaml
     set:
       global.rbac.enabled: true
     kubernetesProvider:
@@ -197,7 +202,7 @@ tests:
           errorPattern: "Secret radius-system/radius-apiserver-ca is not marked for Helm release radius-system/radius"
 
   - it: refuses an unmarked radius-apiserver-ca Secret
-    template: ucp/apiservice.yaml
+    template: ucp/deployment.yaml
     set:
       global.rbac.enabled: true
     kubernetesProvider:
@@ -216,7 +221,7 @@ tests:
           errorPattern: "kubectl delete secret radius-apiserver-ca -n radius-system"
 
   - it: refuses a radius-apiserver-ca whose ca.crt holds a non-certificate block
-    template: ucp/apiservice.yaml
+    template: ucp/deployment.yaml
     set:
       global.rbac.enabled: true
     kubernetesProvider:
@@ -236,7 +241,7 @@ tests:
           errorPattern: "ca.crt of Secret radius-system/radius-apiserver-ca holds something other than PEM certificates"
 
   - it: refuses a radius-apiserver-ca whose ca.crt holds trailing text
-    template: ucp/apiservice.yaml
+    template: ucp/deployment.yaml
     set:
       global.rbac.enabled: true
     kubernetesProvider:
@@ -255,7 +260,7 @@ tests:
       - failedTemplate:
           errorPattern: "ca.crt of Secret radius-system/radius-apiserver-ca holds something other than PEM certificates"
 
-  - it: injects and renders the caBundle from the trust Secret during the upgrade overlap
+  - it: keeps both CAs trusted during the transient switch-on overlap
     template: ucp/apiservice.yaml
     set:
       global.rbac.enabled: true
@@ -284,8 +289,15 @@ tests:
             annotations:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.key: a2V5
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -321,8 +333,15 @@ tests:
             annotations:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.key: a2V5
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -332,6 +351,45 @@ tests:
           path: spec.caBundle
           value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
         documentIndex: 1
+
+  - it: refuses an unreadable retained selfSigned pin
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
+              radius.io/certificate-mode: selfSigned
+              helm.sh/resource-policy: keep
+          type: Opaque
+          data:
+            ca.crt: dHJ1c3QtY2E=
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              radapp.io/release-name: radius
+              radapp.io/release-namespace: radius-system
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
+          data:
+            ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.crt: YXBpLWNh
+            tls.key: a2V5
+    asserts:
+      - failedTemplate:
+          errorMessage: "selfSigned aggregation continuity: expected only public certificate PEM blocks in the retained pin and signer."
 
   - it: ignores a radius-apiserver-trust Secret that rad does not own
     template: ucp/apiservice.yaml
@@ -355,8 +413,15 @@ tests:
             annotations:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.key: a2V5
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -392,8 +457,15 @@ tests:
             annotations:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.key: a2V5
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -429,8 +501,15 @@ tests:
             annotations:
               radapp.io/release-name: radius
               radapp.io/release-namespace: radius-system
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.crt: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCllYQnBMV05oCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+            tls.key: a2V5
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]

@@ -20,13 +20,10 @@ package helm
 
 import (
 	"bytes"
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"io"
-	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,6 +81,9 @@ func TestUCPAPIServerTrustFollowsCARenewal_APIServer(t *testing.T) {
 	// CA certificate itself, with the Certificate's secretTemplate annotations.
 	secretAnnotations, _, err := unstructured.NestedStringMap(caCertificate.Object, "spec", "secretTemplate", "annotations")
 	require.NoError(t, err)
+	for key, value := range apiServerCASecret(testCA{}).Annotations {
+		secretAnnotations[key] = value
+	}
 	// The first CA certificate expires soon, so the test can check trust after it expires.
 	issued := reissueTestCA(t, newTestCA(t, "radius-apiserver-ca"), time.Now().Add(40*time.Second))
 	_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Create(ctx, &corev1.Secret{
@@ -158,12 +158,12 @@ func TestUCPOffTrustPatch_APIServer(t *testing.T) {
 	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType,
 		[]byte(`{"metadata":{"labels":{"example.com/written":"after-rad-read"}}}`), metav1.PatchOptions{})
 	require.NoError(t, err)
-	patch, err := ucpOffTrustPatch(stale, caCertificates(ucpCA.pem))
+	patch, err := ucpOffTrustPatch(stale, testCACertificates(t, ucpCA.pem))
 	require.NoError(t, err)
 	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
 	require.True(t, apierrors.IsInvalid(err), "a stale resourceVersion test must fail as Invalid, which settleUCPOffTrust retries; got %v", err)
 
-	require.NoError(t, settleUCPOffTrust(ctx, "test-context", dynamicClient, RadiusSystemNamespace, "", caCertificates(ucpCA.pem)))
+	require.NoError(t, settleUCPOffTrust(ctx, "test-context", dynamicClient, RadiusSystemNamespace, "", testCACertificates(t, ucpCA.pem)))
 	settled, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	require.NoError(t, err)
 	require.NotContains(t, settled.GetAnnotations(), injectCAFromSecretAnnotation)
@@ -247,8 +247,10 @@ func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want test
 		if !assert.NoError(c, err) {
 			return
 		}
-		certs := parseCertificates(bundle)
-		assert.Equal(c, len(certs), countCertificates(bundle))
+		certs, err := parseCertificateBundlePEM(bundle)
+		if !assert.NoError(c, err) {
+			return
+		}
 		found := false
 		for _, cert := range certs {
 			assert.True(c, cert.IsCA, "the caBundle holds a certificate that is not a CA")
@@ -258,25 +260,4 @@ func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want test
 		assert.True(c, found, "the caBundle does not hold the current radius-apiserver-ca certificate")
 	}, 30*time.Second, 200*time.Millisecond)
 	return bundle
-}
-
-// reissueTestCA reissues ca with the same key and subject, a new serial and notAfter, as cert-manager renews a CA
-// with rotationPolicy: Never.
-func reissueTestCA(t *testing.T, ca testCA, notAfter time.Time) testCA {
-	t.Helper()
-	template := *ca.cert
-	template.SerialNumber = big.NewInt(time.Now().UnixNano())
-	template.NotBefore, template.NotAfter = time.Now().Add(-time.Minute), notAfter
-	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &ca.key.PublicKey, ca.key)
-	require.NoError(t, err)
-	cert, err := x509.ParseCertificate(der)
-	require.NoError(t, err)
-	return testCA{cert: cert, key: ca.key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
-}
-
-func mustParseCertificate(t *testing.T, pemBytes []byte) *x509.Certificate {
-	t.Helper()
-	cert, err := firstCertificate(pemBytes)
-	require.NoError(t, err)
-	return cert
 }

@@ -49,7 +49,7 @@ func radiusActionMode(selected *chart.Chart, current, stored map[string]any, opt
 	if selected == nil {
 		return "", fmt.Errorf("missing target Radius chart")
 	}
-	values := helmValues(helmValues(current, stored), selected.Values)
+	values := resolveEffectiveChartValues(selected.Values, stored, current)
 	if nestedValue(selected.Values, "global", "rbac", "tls", "provider") == nil {
 		for _, key := range []string{"tls", "tlsProvider", "mtls"} {
 			if nestedValue(values, "global", "rbac", key) != nil {

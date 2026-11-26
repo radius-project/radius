@@ -1,10 +1,8 @@
 {{- $authz := ne (include "radius.authz.mode" .) "off" }}
 {{- $caBundle := "" }}
-{{- $caSource := "radius-apiserver-ca" }}
+{{- $caSource := "radius-apiserver-trust" }}
 {{- if $authz }}
-# cert-manager issues UCP's aggregated API certificate from radius-apiserver-issuer. UCP reloads the
-# certificate when it rotates. The APIService trusts ca.crt of Secret radius-apiserver-ca, the
-# self-signed CA, never the ca.crt of this certificate's Secret.
+# The APIService trusts the selected CA source, never this leaf Secret's ca.crt.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -33,43 +31,20 @@ spec:
   dnsNames:
     - ucp.{{ .Release.Namespace }}.svc
   issuerRef:
-    group: cert-manager.io
-    kind: Issuer
-    name: radius-apiserver-issuer
-{{- /*
-cert-manager's cainjector copies ca.crt of the Secret named by inject-ca-from-secret into the caBundle,
-so the API server follows each renewal of radius-apiserver-ca. While UCP moves from an earlier CA such
-as ucp-ca, rad issues radius-apiserver-ca before this release reissues ucp-cert and keeps Secret
-radius-apiserver-trust with both CAs, and the APIService trusts it instead; rad deletes it once UCP serves a certificate from radius-apiserver-ca. Rendering the current ca.crt keeps
-the caBundle Helm applies equal to the one cainjector injects. A Secret of that name is used only in the
-shape rad and the plain-Helm steps in the README write: only a non-empty ca.crt, annotated allow-direct-injection=true
-and marked for this release with radapp.io/release-name and radapp.io/release-namespace. rad stages it only for a live
-APIService, so without one, as on a fresh install after an uninstall left the Secret, the release ignores it.
-*/}}
+    {{- include "radius.authz.certificates.issuer" (dict "root" . "plane" "aggregation") | fromJson | toYaml | nindent 4 }}
+{{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson }}
+{{- $caSource = $source.name }}
+{{- $caBundle = $source.bundle | b64enc }}
+{{- if eq (include "radius.authz.certificates.mode" .) "selfSigned" }}
 {{- $trust := lookup "v1" "Secret" .Release.Namespace "radius-apiserver-trust" }}
 {{- $trustData := dig "data" dict $trust }}
 {{- $trustAnnotations := dig "metadata" "annotations" dict $trust }}
 {{- $trustOwned := and (lookup "apiregistration.k8s.io/v1" "APIService" "" "v1alpha3.api.ucp.dev") (eq (get $trustAnnotations "cert-manager.io/allow-direct-injection") "true") (eq (get $trustAnnotations "radapp.io/release-name") .Release.Name) (eq (get $trustAnnotations "radapp.io/release-namespace") .Release.Namespace) (eq (len $trustData) 1) (dig "ca.crt" "" $trustData) }}
-{{- if $trustOwned }}
+{{- /* A transient overlap keeps the old serving CA trusted until UCP rolls out.
+Mode-annotated public sources are lifecycle pins, never transient overlap. */}}
+{{- if and $trustOwned (not (hasKey $trustAnnotations "radius.io/certificate-mode")) }}
 {{- $caSource = "radius-apiserver-trust" }}
-{{- $caBundle = dig "data" "ca.crt" "" $trust }}
-{{- else }}
-{{- /*
-The release trusts radius-apiserver-ca only as its Certificate issues it, marked through secretTemplate for this
-release. The inject annotation would make cainjector copy any other Secret of that name, so render nothing.
-*/}}
-{{- $apiServerCA := lookup "v1" "Secret" .Release.Namespace "radius-apiserver-ca" }}
-{{- if $apiServerCA }}
-{{- $annotations := dig "metadata" "annotations" dict $apiServerCA }}
-{{- if not (and (eq (get $annotations "radapp.io/release-name") .Release.Name) (eq (get $annotations "radapp.io/release-namespace") .Release.Namespace)) }}
-{{- fail (printf "Secret %s/radius-apiserver-ca is not marked for Helm release %s/%s with annotations radapp.io/release-name and radapp.io/release-namespace, so the release will not trust its CA. Delete it with 'kubectl delete secret radius-apiserver-ca -n %s' if nothing else uses it, then run the command again" .Release.Namespace .Release.Namespace .Release.Name .Release.Namespace) }}
-{{- end }}
-{{- $caBundle = dig "data" "ca.crt" "" $apiServerCA }}
-{{- /* cainjector copies ca.crt as it is, so it must hold only PEM certificates. */}}
-{{- $caPEM := $caBundle | b64dec }}
-{{- if and $caPEM (or (not (contains "-----BEGIN CERTIFICATE-----" $caPEM)) (trim (regexReplaceAll "(?s)-----BEGIN CERTIFICATE-----\\r?\\n[A-Za-z0-9+/=\\r\\n]*-----END CERTIFICATE-----" $caPEM ""))) }}
-{{- fail (printf "ca.crt of Secret %s/radius-apiserver-ca holds something other than PEM certificates, so the release will not trust it. Delete it with 'kubectl delete secret radius-apiserver-ca -n %s' so cert-manager issues it again, then run the command again" .Release.Namespace .Release.Namespace) }}
-{{- end }}
+{{- $caBundle = index $trustData "ca.crt" }}
 {{- end }}
 {{- end }}
 {{- else }}
