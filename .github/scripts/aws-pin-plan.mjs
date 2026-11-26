@@ -10,37 +10,37 @@ import { radiusSubmodulePin } from "./verify-aws-final-inputs.mjs";
 const repo = "radius-project/bicep-types-aws";
 const oid = /^[0-9a-f]{40}$/;
 const verifier = fileURLToPath(
-  new URL("./verify-bicep-types-aws-radius-pin.sh", import.meta.url),
+  new URL("./verify-bicep-types-aws-radius-pin.sh", import.meta.url)
 );
 
 export async function requireCheck(github, targetRepo, branch, name) {
   const rules = await github.paginate(
     "GET /repos/{owner}/{repo}/rules/branches/{branch}",
-    { owner: "radius-project", repo: targetRepo, branch, per_page: 100 },
+    { owner: "radius-project", repo: targetRepo, branch, per_page: 100 }
   );
   if (
     !rules.some(
       (rule) =>
         rule.type === "required_status_checks" &&
         rule.parameters.required_status_checks.some(
-          (check) => check.context === name && check.integration_id === 15368,
-        ),
+          (check) => check.context === name && check.integration_id === 15368
+        )
     )
   )
     throw new Error(
-      `Require the GitHub Actions check "${name}" on radius-project/${targetRepo}:${branch} before release preparation`,
+      `Require the GitHub Actions check "${name}" on radius-project/${targetRepo}:${branch} before release preparation`
     );
 }
 
 export function git(directory, ...args) {
   return execFileSync("git", ["-C", directory, ...args], {
-    encoding: "utf8",
+    encoding: "utf8"
   }).trim();
 }
 
 export function awsSource(plan) {
   const entries = plan.siblingRepositories.filter(
-    (s) => s.name === "bicep-types-aws",
+    (s) => s.name === "bicep-types-aws"
   );
   if (
     entries.length !== 1 ||
@@ -63,12 +63,12 @@ export function intent(directory, base, product) {
     git(directory, "cat-file", "-t", base) !== "commit"
   )
     throw new Error(
-      "Expected an AWS base commit and a full Radius product SHA",
+      "Expected an AWS base commit and a full Radius product SHA"
     );
   const pinned = radiusSubmodulePin(directory, base);
   if (!pinned) {
     execFileSync("bash", [verifier, directory, base, product], {
-      stdio: "inherit",
+      stdio: "inherit"
     });
     return null; // Only a source that never had the submodule can get here.
   }
@@ -76,7 +76,7 @@ export function intent(directory, base, product) {
   try {
     const options = {
       encoding: "utf8",
-      env: { ...process.env, GIT_INDEX_FILE: join(scratch, "index") },
+      env: { ...process.env, GIT_INDEX_FILE: join(scratch, "index") }
     };
     const index = (...args) =>
       execFileSync("git", ["-C", directory, ...args], options).trim();
@@ -99,7 +99,7 @@ export function verifyIntent(directory, source, product) {
     expected.expectedTree !== approved.expectedTree
   )
     throw new Error(
-      "The approved AWS pin intent does not match the frozen base and Radius product",
+      "The approved AWS pin intent does not match the frozen base and Radius product"
     );
 }
 
@@ -114,14 +114,14 @@ export function capture(plan, remote = `https://github.com/${repo}.git`) {
       "--quiet",
       "--no-tags",
       remote,
-      `refs/heads/${source.sourceRef}`,
+      `refs/heads/${source.sourceRef}`
     );
     git(
       directory,
       "merge-base",
       "--is-ancestor",
       source.sourceCommit,
-      "FETCH_HEAD",
+      "FETCH_HEAD"
     );
     if (Object.hasOwn(source, "radiusPin"))
       verifyIntent(directory, source, plan.source.productCommit);
@@ -129,7 +129,7 @@ export function capture(plan, remote = `https://github.com/${repo}.git`) {
       const pin = intent(
         directory,
         source.sourceCommit,
-        plan.source.productCommit,
+        plan.source.productCommit
       );
       if (pin) source.radiusPin = pin;
     }
@@ -149,14 +149,14 @@ if (
     const updated = capture({
       channel: value,
       source: { productCommit: product },
-      siblingRepositories: siblings,
+      siblingRepositories: siblings
     });
     writeFileSync(file, `${JSON.stringify(updated, null, 2)}\n`);
   } else if (mode === "verify") {
     verifyIntent(file, JSON.parse(value), product);
   } else {
     throw new Error(
-      "Expected capture <siblings.json> <product> <channel> or verify <checkout> <product> <AWS entry>",
+      "Expected capture <siblings.json> <product> <channel> or verify <checkout> <product> <AWS entry>"
     );
   }
 }

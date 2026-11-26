@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import resolveReleaseController, {
-  verifyReleaseBuildSource,
+  verifyReleaseBuildSource
 } from "./resolve-release-controller.mjs";
 import { mandatoryChecks } from "./publish-draft-release.mjs";
 import stage from "./stage-release-bicep.mjs";
@@ -25,7 +25,7 @@ test("absent and draft releases reject selector-free approved plans against actu
     ".goreleaser.yaml",
     ".github/workflows/build-release.yaml",
     ".github/workflows/__publish-release-bicep.yaml",
-    ".github/release-parity/targets.json",
+    ".github/release-parity/targets.json"
   ]) {
     await mkdir(join(directory, path, ".."), { recursive: true });
     await cp(join(root, path), join(directory, path));
@@ -40,7 +40,7 @@ test("absent and draft releases reject selector-free approved plans against actu
   git("commit", "-qm", "GHCR-only source");
   const sha = git("rev-parse", "HEAD");
   const expectedOutputs = JSON.parse(
-    await readFile(join(directory, ".github/release-parity/targets.json")),
+    await readFile(join(directory, ".github/release-parity/targets.json"))
   );
   delete expectedOutputs.bicepExtensionsContract;
   for (const artifact of expectedOutputs.ociArtifacts)
@@ -48,7 +48,7 @@ test("absent and draft releases reject selector-free approved plans against actu
   const planFile = join(directory, "approved-plan.json");
   await writeFile(
     planFile,
-    JSON.stringify({ version: "v0.62.1", expectedOutputs }),
+    JSON.stringify({ version: "v0.62.1", expectedOutputs })
   );
   for (const state of ["absent", "draft"]) {
     const inputs = { VERSION: "v0.62.1", SOURCE_SHA: sha, PLAN_FILE: planFile };
@@ -57,26 +57,26 @@ test("absent and draft releases reject selector-free approved plans against actu
         github: {
           rest: { repos: { listReleases: "list" } },
           paginate: async () =>
-            state === "absent"
-              ? []
-              : [{ tag_name: inputs.VERSION, draft: true }],
+            state === "absent" ?
+              []
+            : [{ tag_name: inputs.VERSION, draft: true }]
         },
         core: {
           getInput: (name) => inputs[name],
-          setOutput: () => assert.fail("No admission output"),
+          setOutput: () => assert.fail("No admission output")
         },
         run: (args) => {
           if (args[0] === "bash") {
             assert.ok(args.includes("--require-current-bicep"));
             assert.ok(args.includes("--expected-targets"));
             return tool(["bash", join(root, args[1]), ...args.slice(2)], {
-              cwd: directory,
+              cwd: directory
             });
           }
           return tool(args, { cwd: directory });
-        },
+        }
       }),
-      /source targets differ from the intended release contract/,
+      /source targets differ from the intended release contract/
     );
   }
 });
@@ -95,7 +95,7 @@ test("published historical sources retain validation and recovery; unpublished s
     "missing manifest",
     "wrong engine image",
     "wrong manifest",
-    "unsupported workflow",
+    "unsupported workflow"
   ]) {
     const calls = [],
       outputs = {};
@@ -106,20 +106,20 @@ test("published historical sources retain validation and recovery; unpublished s
       releaseType: "patch",
       changelogPolicy: "stable-only",
       expectedOutputs: {
-        ociArtifacts: [{ repository: "biceptypes.azurecr.io/radius" }],
+        ociArtifacts: [{ repository: "biceptypes.azurecr.io/radius" }]
       },
       siblingRepositories: [
         {
           name: "bicep-types-aws",
           repository: "radius-project/bicep-types-aws",
-          sourceCommit: backportCommit,
-        },
-      ],
+          sourceCommit: backportCommit
+        }
+      ]
     };
     if (state === "pinned")
       plan.siblingRepositories[0].radiusPin = {
         productCommit: sourceCommit,
-        expectedTree: "d".repeat(40),
+        expectedTree: "d".repeat(40)
       };
     if (state === "pinned") plan.siblingRepositories[0].sourceRef = "main";
     const manifest = {
@@ -139,20 +139,20 @@ test("published historical sources retain validation and recovery; unpublished s
         ]
       },
       checks: Object.fromEntries(
-        mandatoryChecks.map((name) => [name, "verified"]),
-      ),
+        mandatoryChecks.map((name) => [name, "verified"])
+      )
     };
     const github = {
       paginate: async (method) => {
         calls.push(method);
         if (state === "API failure") throw new Error("403 denied");
         if (method === "releases")
-          return state === "absent"
-            ? []
+          return state === "absent" ?
+              []
             : [{ id: 1, tag_name: version, draft: state === "draft" }];
         assert.equal(method, "assets");
-        return state === "missing manifest"
-          ? []
+        return state === "missing manifest" ?
+            []
           : [{ id: 2, name: "release-manifest.json", state: "uploaded" }];
       },
       request: async (method) => {
@@ -169,50 +169,48 @@ test("published historical sources retain validation and recovery; unpublished s
             return {
               data: {
                 sha:
-                  repo === "radius"
-                    ? state === "wrong tag"
-                      ? backportCommit
-                      : sourceCommit
-                    : state === "pinned"
-                      ? "c".repeat(40)
-                      : state === "wrong AWS tag"
-                        ? sourceCommit
-                        : backportCommit,
-              },
+                  repo === "radius" ?
+                    state === "wrong tag" ?
+                      backportCommit
+                    : sourceCommit
+                  : state === "pinned" ? "c".repeat(40)
+                  : state === "wrong AWS tag" ? sourceCommit
+                  : backportCommit
+              }
             };
-          },
-        },
-      },
+          }
+        }
+      }
     };
     const inputs = {
       VERSION: version,
       SOURCE_SHA: sourceCommit,
-      PLAN_FILE: join(directory, "approved-plan.yaml"),
+      PLAN_FILE: join(directory, "approved-plan.yaml")
     };
     const core = {
       getInput: (name) => inputs[name],
       setOutput: (name, value) => {
         outputs[name] = value;
-      },
+      }
     };
     const resolveTagPlan = async ({ context }) => {
       assert.equal(state, "pinned");
       assert.deepEqual(context, {
         repo: { owner: "radius-project", repo: "radius" },
         ref: `refs/tags/${version}`,
-        sha: sourceCommit,
+        sha: sourceCommit
       });
       return {
         ...structuredClone(plan),
         siblingRepositories: plan.siblingRepositories.map((entry) =>
-          entry.name === "bicep-types-aws"
-            ? {
-                ...entry,
-                sourceRef: `release/${plan.channel}`,
-                sourceCommit: "c".repeat(40),
-              }
-            : entry,
-        ),
+          entry.name === "bicep-types-aws" ?
+            {
+              ...entry,
+              sourceRef: `release/${plan.channel}`,
+              sourceCommit: "c".repeat(40)
+            }
+          : entry
+        )
       };
     };
     const run = async (args) => {
@@ -220,19 +218,19 @@ test("published historical sources retain validation and recovery; unpublished s
       assert.deepEqual(args.slice(0, 3), [
         "bash",
         "./.github/scripts/verify-release-build-contract.sh",
-        sourceCommit,
+        sourceCommit
       ]);
       assert.ok(args.includes("--require-sibling-releases"));
       assert.equal(
         args.includes("--require-aws-pin-receipt"),
-        state === "pinned",
+        state === "pinned"
       );
       assert.ok(args.includes("--expected-targets"));
       assert.deepEqual(
         JSON.parse(
-          await readFile(args[args.indexOf("--expected-targets") + 1], "utf8"),
+          await readFile(args[args.indexOf("--expected-targets") + 1], "utf8")
         ),
-        plan.expectedOutputs,
+        plan.expectedOutputs
       );
       calls.push("build-contract");
       if (["draft", "absent"].includes(state)) {
@@ -250,7 +248,7 @@ test("published historical sources retain validation and recovery; unpublished s
       github,
       core,
       run,
-      resolveTagPlan,
+      resolveTagPlan
     });
     if (["published", "pinned"].includes(state)) {
       await promise;
@@ -262,7 +260,7 @@ test("published historical sources retain validation and recovery; unpublished s
         "radius",
         "assets",
         "bicep-types-aws",
-        "build-contract",
+        "build-contract"
       ]);
     } else {
       await assert.rejects(promise);
@@ -282,15 +280,15 @@ test("legacy published preflight is read-only while absent/draft legacy mutation
         {
           name: "aws-bicep-types",
           repository: "biceptypes.azurecr.io/aws",
-          artifactType: "application/vnd.ms.bicep.provider.artifact",
+          artifactType: "application/vnd.ms.bicep.provider.artifact"
         },
         {
           name: "radius-bicep-types",
           repository: "biceptypes.azurecr.io/radius",
-          artifactType: "application/vnd.ms.bicep.provider.artifact",
-        },
-      ],
-    },
+          artifactType: "application/vnd.ms.bicep.provider.artifact"
+        }
+      ]
+    }
   };
   for (const state of ["published", "draft", "absent", ""]) {
     const inputs = { directory, operation: "preflight", release_state: state };
@@ -302,10 +300,10 @@ test("legacy published preflight is read-only while absent/draft legacy mutation
         assert.equal(
           args[0],
           "yq",
-          "No tag, dispatch, marker or registry mutations",
+          "No tag, dispatch, marker or registry mutations"
         );
         return JSON.stringify(plan);
-      },
+      }
     });
     if (state === "published") await promise;
     else await assert.rejects(promise, /retired Bicep ACR writer/);
@@ -315,13 +313,13 @@ test("legacy published preflight is read-only while absent/draft legacy mutation
 test("published workflow gates skip Bicep producers/finalizers without disabling downstream recovery", () => {
   const read = (file) =>
     JSON.parse(
-      execFileSync("yq", ["-o=json", ".", file], { encoding: "utf8" }),
+      execFileSync("yq", ["-o=json", ".", file], { encoding: "utf8" })
     );
   const jobs = read(".github/workflows/build-release.yaml").jobs;
   for (const name of [
     "publish-radius-bicep-extension",
     "build-and-push-bicep-types",
-    "finalize-release",
+    "finalize-release"
   ]) {
     for (const state of ["draft", "published"]) {
       const condition = jobs[name].if
@@ -338,27 +336,27 @@ test("published workflow gates skip Bicep producers/finalizers without disabling
       assert.equal(
         Function(`return (${condition})`)(),
         state === "draft",
-        `${name}: ${state}`,
+        `${name}: ${state}`
       );
     }
   }
   for (const name of [
     "verify-release",
     "coordinate-release",
-    "publish-sibling-releases",
+    "publish-sibling-releases"
   ])
     assert.match(jobs[name].if, /release-state == 'published'/);
   const controller = read(".github/workflows/__release-controller.yaml").jobs;
   assert.equal(controller.approve.if, "needs.validate.outputs.ready == 'true'");
   const aws = controller["reconcile-siblings"].steps.find(
-    (step) => step.name === "Reconcile radius-project/bicep-types-aws",
+    (step) => step.name === "Reconcile radius-project/bicep-types-aws"
   );
   assert.equal(aws.if, "needs.validate.outputs.published != 'true'");
   assert.equal(
     controller["create-radius-tag"].steps.find((step) =>
-      step.with?.script?.includes("resumeReleasePublication"),
+      step.with?.script?.includes("resumeReleasePublication")
     ).env.INPUT_PUBLISHED,
-    "${{ needs.validate.outputs.published }}",
+    "${{ needs.validate.outputs.published }}"
   );
 });
 
@@ -367,8 +365,8 @@ test("locked pair does not hide a failed or cancelled selected producer", () => 
     execFileSync(
       "yq",
       ["-o=json", ".", ".github/workflows/build-release.yaml"],
-      { encoding: "utf8" },
-    ),
+      { encoding: "utf8" }
+    )
   );
   const expression = workflow.jobs["build-and-push-bicep-types"].if;
   for (const locked of ["true", "false"]) {
@@ -378,17 +376,17 @@ test("locked pair does not hide a failed or cancelled selected producer", () => 
         "needs.release-preflight.outputs.release-state": "draft",
         "needs.release-preflight.outputs.ghcr-bicep": "true",
         "needs.release-preflight.outputs.bicep-locked": locked,
-        "needs.publish-radius-bicep-extension.result": result,
+        "needs.publish-radius-bicep-extension.result": result
       };
       const condition = expression
         .replace("!cancelled()", "true")
         .replace(/needs\.[\w-]+(?:\.outputs)?\.[\w-]+/g, (key) =>
-          JSON.stringify(inputs[key]),
+          JSON.stringify(inputs[key])
         );
       assert.equal(
         Function(`return (${condition})`)(),
         result === "success" || (result === "skipped" && locked === "true"),
-        `${result}, locked=${locked}`,
+        `${result}, locked=${locked}`
       );
     }
   }
@@ -401,12 +399,12 @@ function releasePull(overrides = {}) {
     base: { ref: "main" },
     head: {
       ref: "automation/prepare-release-0.61.0-rc.1",
-      repo: { full_name: repository },
+      repo: { full_name: repository }
     },
     merged: true,
     merged_at: "2026-08-28T12:00:00Z",
     merge_commit_sha: sourceCommit,
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -414,12 +412,12 @@ function fixture({ mode = "event", pull, pulls = [] } = {}) {
   const inputs = {
     MODE: mode,
     VERSION: "v0.61.0-rc.1",
-    SOURCE_SHA: sourceCommit,
+    SOURCE_SHA: sourceCommit
   };
   const outputs = {};
   const context = {
     repo: { owner: "radius-project", repo: "radius" },
-    payload: { pull_request: pull },
+    payload: { pull_request: pull }
   };
   const github = {
     paginate: async (method, request) => method(request),
@@ -427,16 +425,16 @@ function fixture({ mode = "event", pull, pulls = [] } = {}) {
       pulls: {
         list: async () => pulls,
         get: async ({ pull_number }) => ({
-          data: pulls.find((candidate) => candidate.number === pull_number),
-        }),
-      },
-    },
+          data: pulls.find((candidate) => candidate.number === pull_number)
+        })
+      }
+    }
   };
   const core = {
     getInput: (name) => inputs[name] ?? "",
     setOutput: (name, value) => {
       outputs[name] = value;
-    },
+    }
   };
   return { context, core, github, inputs, outputs };
 }
@@ -450,7 +448,7 @@ test("selects a merged generated release pull request", async () => {
     "source-pr-commit": sourceCommit,
     version: "v0.61.0-rc.1",
     "release-commit": sourceCommit,
-    trigger: "release-pr",
+    trigger: "release-pr"
   });
 });
 
@@ -462,12 +460,12 @@ test("selects the generated release metadata backport", async () => {
       base: { ref: "release/0.61" },
       head: {
         ref: "automation/backport-42-to-0.61",
-        repo: { full_name: repository },
+        repo: { full_name: repository }
       },
       merged: true,
-      merge_commit_sha: backportCommit,
+      merge_commit_sha: backportCommit
     },
-    pulls: [source],
+    pulls: [source]
   });
   await resolveReleaseController(state);
   assert.equal(state.outputs.selected, "true");
@@ -480,19 +478,19 @@ test("selects the generated release metadata backport", async () => {
 test("ignores a backport whose source is not a release pull", async () => {
   const ordinary = releasePull({
     number: 41,
-    head: { ref: "fix/ordinary", repo: { full_name: repository } },
+    head: { ref: "fix/ordinary", repo: { full_name: repository } }
   });
   const state = fixture({
     pull: {
       base: { ref: "release/0.61" },
       head: {
         ref: "automation/backport-41-to-0.61",
-        repo: { full_name: repository },
+        repo: { full_name: repository }
       },
       merged: true,
-      merge_commit_sha: backportCommit,
+      merge_commit_sha: backportCommit
     },
-    pulls: [ordinary],
+    pulls: [ordinary]
   });
   await resolveReleaseController(state);
   assert.deepEqual(state.outputs, { selected: "false" });
@@ -513,8 +511,8 @@ test("resolves explicit version and source inputs to one plan", async () => {
       base: "main",
       head: "radius-project:automation/prepare-release-0.61.0-rc.1",
       state: "closed",
-      per_page: 100,
-    },
+      per_page: 100
+    }
   ]);
   assert.equal(state.outputs.selected, "true");
   assert.equal(state.outputs.trigger, "dispatch");
@@ -531,17 +529,17 @@ test("still validates repository, merge state and branch after a filtered lookup
         number: 45,
         head: {
           ref: "automation/prepare-release-0.61.0-rc.1",
-          repo: { full_name: "other/radius" },
-        },
+          repo: { full_name: "other/radius" }
+        }
       }),
       releasePull({
         number: 46,
         head: {
           ref: "automation/prepare-release-0.61.0-rc.2",
-          repo: { full_name: repository },
-        },
-      }),
-    ],
+          repo: { full_name: repository }
+        }
+      })
+    ]
   });
   await resolveReleaseController(state);
   assert.equal(state.outputs["source-pr-number"], "42");
@@ -550,11 +548,11 @@ test("still validates repository, merge state and branch after a filtered lookup
 test("rejects ambiguous generated release pull requests", async () => {
   const state = fixture({
     mode: "dispatch",
-    pulls: [releasePull(), releasePull({ number: 44 })],
+    pulls: [releasePull(), releasePull({ number: 44 })]
   });
   await assert.rejects(
     () => resolveReleaseController(state),
-    /Expected one merged generated release pull request/,
+    /Expected one merged generated release pull request/
   );
 });
 
@@ -563,6 +561,6 @@ test("rejects a malformed explicit source commit", async () => {
   state.inputs.SOURCE_SHA = "main";
   await assert.rejects(
     () => resolveReleaseController(state),
-    /SOURCE_SHA must be a full commit SHA/,
+    /SOURCE_SHA must be a full commit SHA/
   );
 });

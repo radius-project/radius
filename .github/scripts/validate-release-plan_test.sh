@@ -126,6 +126,16 @@ plan_aws_change() {
 pin_aws_radius() {
     git -C "${SIBLING_ROOT}/bicep-types-aws-seed" update-index --add \
         --cacheinfo "160000,$1,radius"
+    local seed="${SIBLING_ROOT}/bicep-types-aws-seed"
+
+    if [[ ! -f "${seed}/.gitmodules" ]]; then
+        cat > "${seed}/.gitmodules" <<'EOF'
+[submodule "radius"]
+    path = radius
+    url = https://github.com/radius-project/radius.git
+EOF
+        git -C "${seed}" add .gitmodules
+    fi
     plan_aws_change
 }
 
@@ -652,6 +662,7 @@ test_verifies_proposed_radius_pin() {
     local seed="${SIBLING_ROOT}/bicep-types-aws-seed" tree before output
     mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
     cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" "${REPO}/.github/scripts/"
+    cp "${SCRIPT_DIR}/stage-release-bicep.mjs" "${REPO}/.github/scripts/"
     cp "${SCRIPT_DIR}/../workflows/build-release.yaml" \
         "${REPO}/.github/workflows/"
     git -C "${REPO}" add .github

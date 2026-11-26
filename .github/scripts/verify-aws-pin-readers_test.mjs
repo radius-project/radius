@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const script = fileURLToPath(
-  new URL("./verify-aws-pin-readers.sh", import.meta.url),
+  new URL("./verify-aws-pin-readers.sh", import.meta.url)
 );
 const planFile = "${{ steps.aws-pin.outputs.plan-file }}";
 
@@ -37,18 +37,18 @@ test("pinned-source guard requires receipt-aware staging and plan handoffs", (t)
             ...reader,
             env: {
               INPUT_PLAN_FILE: planFile,
-              RELEASE_VERIFY_PLAN_FILE: planFile,
-            },
-          },
-        ],
+              RELEASE_VERIFY_PLAN_FILE: planFile
+            }
+          }
+        ]
       },
       "finalize-release": {
-        steps: [{ ...reader, env: { INPUT_PLAN_FILE: planFile } }],
+        steps: [{ ...reader, env: { INPUT_PLAN_FILE: planFile } }]
       },
       "publish-sibling-releases": {
-        steps: [{ ...reader, env: { INPUT_PLAN_FILE: planFile } }],
-      },
-    },
+        steps: [{ ...reader, env: { INPUT_PLAN_FILE: planFile } }]
+      }
+    }
   };
   const workflowPath = join(files, "workflows", "build-release.yaml");
   writeFileSync(workflowPath, JSON.stringify(workflow));
@@ -64,7 +64,7 @@ test("pinned-source guard requires receipt-aware staging and plan handoffs", (t)
       execFileSync("bash", [script, sha], {
         cwd: directory,
         encoding: "utf8",
-        stdio: "pipe",
+        stdio: "pipe"
       });
     } catch (caught) {
       error = caught;
@@ -72,7 +72,7 @@ test("pinned-source guard requires receipt-aware staging and plan handoffs", (t)
     assert.ok(error, `expected guard failure: ${message}`);
     assert.match(
       `${error.stdout ?? ""}${error.stderr ?? ""}`,
-      new RegExp(message),
+      new RegExp(message)
     );
   };
 
@@ -80,7 +80,7 @@ test("pinned-source guard requires receipt-aware staging and plan handoffs", (t)
   execFileSync("bash", [script, valid], {
     cwd: directory,
     encoding: "utf8",
-    stdio: "pipe",
+    stdio: "pipe"
   });
 
   writeFileSync(staging, "plan = JSON.parse(planText);\n");
@@ -92,6 +92,6 @@ test("pinned-source guard requires receipt-aware staging and plan handoffs", (t)
   writeFileSync(workflowPath, JSON.stringify(workflow));
   expectRejected(
     commit("missing effective plan handoff"),
-    "receipt-resolved plan",
+    "receipt-resolved plan"
   );
 });
