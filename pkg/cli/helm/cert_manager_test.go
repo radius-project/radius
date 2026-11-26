@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -78,6 +79,8 @@ func certManagerController(namespace, versionLabel, image string) *appsv1.Deploy
 type fakeCertManagerCluster struct {
 	crd        bool
 	controller *appsv1.Deployment
+	// injectorArgs are the arguments of the cainjector container.
+	injectorArgs []string
 }
 
 func (c fakeCertManagerCluster) clients() (kubernetes.Interface, apiextclient.Interface) {
@@ -88,7 +91,13 @@ func (c fakeCertManagerCluster) clients() (kubernetes.Interface, apiextclient.In
 		webhook.Name = "cert-manager-webhook"
 		webhook.Labels["app.kubernetes.io/name"] = "webhook"
 		webhook.Labels["app.kubernetes.io/component"] = "webhook"
-		kubeObjects = append(kubeObjects, webhook)
+		cainjector := certManagerController(c.controller.Namespace, "", "")
+		cainjector.Name = "cert-manager-cainjector"
+		cainjector.Labels["app.kubernetes.io/name"] = "cainjector"
+		cainjector.Labels["app.kubernetes.io/component"] = "cainjector"
+		// The cert-manager chart's container name and image.
+		cainjector.Spec.Template.Spec.Containers = []corev1.Container{{Name: "cert-manager-cainjector", Image: "quay.io/jetstack/cert-manager-cainjector:v1.21.2", Args: c.injectorArgs}}
+		kubeObjects = append(kubeObjects, webhook, cainjector)
 	}
 	apiextObjects := []runtime.Object{}
 	if c.crd {
@@ -191,13 +200,18 @@ func Test_resolveAuthzMode(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		stored  map[string]any
-		current map[string]any
-		want    authz.Mode
-		wantErr string
+		name     string
+		defaults map[string]any
+		stored   map[string]any
+		current  map[string]any
+		want     authz.Mode
+		wantErr  string
 	}{
 		{name: "defaults", want: authz.ModeOff},
+		{name: "chart that enables authorization by default", defaults: rbac(map[string]any{"enabled": true, "dryRun": false}), want: authz.ModeEnforce},
+		{name: "stored values override chart defaults", defaults: rbac(map[string]any{"enabled": true}), stored: rbac(map[string]any{"enabled": false}), want: authz.ModeOff},
+		{name: "null --set clears chart default", defaults: rbac(map[string]any{"enabled": true}), current: rbac(map[string]any{"enabled": nil}), want: authz.ModeOff},
+		{name: "dry run with chart that enforces by default", defaults: rbac(map[string]any{"enabled": true}), current: rbac(map[string]any{"dryRun": true}), wantErr: "cannot be combined"},
 		{name: "unrelated values", current: map[string]any{"global": map[string]any{"zipkin": "x"}}, want: authz.ModeOff},
 		{name: "dry run from --set", current: rbac(map[string]any{"dryRun": true}), want: authz.ModeDryRun},
 		{name: "enforce from --set", current: rbac(map[string]any{"enabled": true}), want: authz.ModeEnforce},
@@ -222,8 +236,9 @@ func Test_resolveAuthzMode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			stored, current := copyValues(tt.stored), copyValues(tt.current)
-			got, err := resolveAuthzMode(tt.stored, tt.current)
+			defaults, stored, current := copyValues(tt.defaults), copyValues(tt.stored), copyValues(tt.current)
+			got, err := resolveAuthzMode(tt.defaults, tt.stored, tt.current)
+			require.Equal(t, defaults, copyValues(tt.defaults), "chart defaults must not be mutated")
 			require.Equal(t, stored, copyValues(tt.stored), "stored values must not be mutated")
 			require.Equal(t, current, copyValues(tt.current), "current values must not be mutated")
 			if tt.wantErr != "" {
@@ -264,7 +279,7 @@ func Test_resolveAuthzMode_FromCLIArgs(t *testing.T) {
 
 			current, err := parseUserValuesFromCLI(&tt.options)
 			require.NoError(t, err)
-			got, err := resolveAuthzMode(tt.stored, current)
+			got, err := resolveAuthzMode(nil, tt.stored, current)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
 		})
@@ -366,13 +381,19 @@ func Test_ensureCertManager(t *testing.T) {
 	wantValues := map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}
 
 	tests := []struct {
-		name         string
-		setArgs      []string
-		stored       map[string]any
-		upgrade      bool
-		cluster      fakeCertManagerCluster
-		expect       func(*testing.T, *MockHelmClient)
-		wantDetect   bool
+		name    string
+		setArgs []string
+		// defaults is the values.yaml of the Radius chart.
+		defaults map[string]any
+		stored   map[string]any
+		upgrade  bool
+		cluster  fakeCertManagerCluster
+		// upgraded, when set, is the cluster after rad upgrades its cert-manager release.
+		upgraded   *fakeCertManagerCluster
+		expect     func(*testing.T, *MockHelmClient)
+		wantDetect bool
+		// wantDetects, when set, is how many times rad detects cert-manager, instead of the once of wantDetect.
+		wantDetects  int
 		wantErr      string
 		wantErrParts []string
 	}{
@@ -383,6 +404,18 @@ func Test_ensureCertManager(t *testing.T) {
 		{
 			name:    "no cert-manager installs pinned version",
 			setArgs: dryRun,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(nil)(m)
+				expectPull(t, m)
+				m.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
+					Return(&releasev1.Release{}, nil)
+			},
+			wantDetect: true,
+		},
+		{
+			// A chart that enables authorization by default needs cert-manager while the user values say nothing.
+			name:     "chart that enables authorization by default installs pinned version",
+			defaults: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}},
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(nil)(m)
 				expectPull(t, m)
@@ -431,15 +464,32 @@ func Test_ensureCertManager(t *testing.T) {
 			wantErr:    "no cert-manager controller",
 		},
 		{
-			name:    "rad-owned release is upgraded",
-			stored:  storedDryRun,
-			upgrade: true,
+			name:     "rad-owned release is upgraded",
+			stored:   storedDryRun,
+			upgrade:  true,
+			upgraded: &healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwned)(m)
 				expectPull(t, m)
 				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
 					Return(&releasev1.Release{}, nil)
 			},
+			wantDetect: true,
+		},
+		{
+			// The upgrade reuses the release's values, which can stop cainjector from injecting Radius's CA.
+			name:     "rad-owned release upgraded with a restricted cainjector fails",
+			stored:   storedDryRun,
+			upgrade:  true,
+			upgraded: &fakeCertManagerCluster{crd: true, controller: healthy.controller, injectorArgs: []string{"--namespace=security"}},
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(radOwned)(m)
+				expectPull(t, m)
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
+			},
+			wantDetect: true,
+			wantErr:    `is limited to namespace "security" by --namespace`,
 		},
 		{
 			name:    "rad-owned release is reused on install",
@@ -451,27 +501,30 @@ func Test_ensureCertManager(t *testing.T) {
 			wantDetect: true,
 		},
 		{
-			name:    "rad-owned release missing its controller is repaired on install",
-			setArgs: dryRun,
-			cluster: fakeCertManagerCluster{crd: true},
+			name:     "rad-owned release missing its controller is repaired on install",
+			setArgs:  dryRun,
+			cluster:  fakeCertManagerCluster{crd: true},
+			upgraded: &healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwned)(m)
 				expectPull(t, m)
 				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
 					Return(&releasev1.Release{}, nil)
 			},
-			wantDetect: true,
+			wantDetects: 2,
 		},
 		{
-			name:    "failed rad-owned release is repaired on install",
-			setArgs: dryRun,
-			cluster: healthy,
+			name:     "failed rad-owned release is repaired on install",
+			setArgs:  dryRun,
+			cluster:  healthy,
+			upgraded: &healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwnedFailed)(m)
 				expectPull(t, m)
 				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
 					Return(&releasev1.Release{}, nil)
 			},
+			wantDetect: true,
 		},
 	}
 
@@ -483,19 +536,25 @@ func Test_ensureCertManager(t *testing.T) {
 			mockHelmClient := NewMockHelmClient(ctrl)
 			tt.expect(t, mockHelmClient)
 
+			// Record whether rad upgraded the cert-manager release, to serve the cluster after the upgrade.
+			upgraded := false
 			detectCalls := 0
 			impl := &Impl{
-				Helm: mockHelmClient,
+				Helm: helmUpgradeObserver{HelmClient: mockHelmClient, upgraded: &upgraded},
 				newCertManagerClients: func(kubeContext string) (kubernetes.Interface, apiextclient.Interface, error) {
 					detectCalls++
-					kubeClient, apiextClient := tt.cluster.clients()
+					cluster := tt.cluster
+					if upgraded && tt.upgraded != nil {
+						cluster = *tt.upgraded
+					}
+					kubeClient, apiextClient := cluster.clients()
 					return kubeClient, apiextClient, nil
 				},
 			}
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.defaults, tt.stored, cliUserValues(t, options), tt.upgrade)
 			switch {
 			case tt.wantErr != "":
 				require.ErrorContains(t, err, tt.wantErr)
@@ -508,13 +567,27 @@ func Test_ensureCertManager(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			if tt.wantDetect {
+			switch {
+			case tt.wantDetects > 0:
+				require.Equal(t, tt.wantDetects, detectCalls)
+			case tt.wantDetect:
 				require.Equal(t, 1, detectCalls)
-			} else {
+			default:
 				require.Zero(t, detectCalls)
 			}
 		})
 	}
+}
+
+// helmUpgradeObserver records in upgraded that rad ran a Helm upgrade.
+type helmUpgradeObserver struct {
+	HelmClient
+	upgraded *bool
+}
+
+func (o helmUpgradeObserver) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool, timeout time.Duration) (*releasev1.Release, error) {
+	*o.upgraded = true
+	return o.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, releaseName, namespace, wait, reuseValues, timeout)
 }
 
 func Test_ensureCertManager_RBACWarning(t *testing.T) {
@@ -564,7 +637,7 @@ func Test_ensureCertManager_RBACWarning(t *testing.T) {
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
 			options.Radius.SetFileArgs = tt.setFileArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, tt.stored, cliUserValues(t, options), tt.upgrade)
 			if !tt.wantWarning {
 				require.NoError(t, err)
 				require.Empty(t, logs)
@@ -624,7 +697,7 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				}}
 				options := NewDefaultClusterOptions()
 				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
+				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), upgrade)
 				if healthy {
 					require.NoError(t, err)
 				} else {
@@ -658,7 +731,7 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, false)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), false)
 			require.ErrorIs(t, err, failure)
 		})
 	}
@@ -666,14 +739,14 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 
 func Test_checkCertManagerReady(t *testing.T) {
 	t.Parallel()
-	for _, component := range []string{"controller", "webhook"} {
+	for _, component := range []string{"controller", "webhook", "cainjector"} {
 		for _, failure := range []string{"missing", "scaled down", "unavailable", "stale rollout", "old replicas", "forbidden"} {
 			t.Run(component+"/"+failure, func(t *testing.T) {
 				t.Parallel()
 				k, _ := (fakeCertManagerCluster{controller: certManagerController("security", "v1.21.2", "")}).clients()
 				name := "cert-manager"
-				if component == "webhook" {
-					name += "-webhook"
+				if component != "controller" {
+					name += "-" + component
 				}
 				deployments := k.AppsV1().Deployments("security")
 				deployment, err := deployments.Get(t.Context(), name, metav1.GetOptions{})
@@ -699,9 +772,130 @@ func Test_checkCertManagerReady(t *testing.T) {
 					_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
 					require.NoError(t, err)
 				}
-				require.Error(t, checkCertManagerReady(t.Context(), k, "security"))
+				require.Error(t, checkCertManagerReady(t.Context(), k, "security", RadiusSystemNamespace, t.Logf))
 			})
 		}
+	}
+}
+
+func Test_checkCertManagerReady_CAInjector(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		args    []string
+		sidecar []string
+		// mirrored renames the cainjector container and mirrors its image, so only its command identifies it.
+		mirrored bool
+		// unidentified renames the cainjector container and mirrors its image without a command that identifies it.
+		unidentified bool
+		// env is the environment of the cainjector container, which Kubernetes expands in $(NAME) references of its
+		// args.
+		env         []corev1.EnvVar
+		wantErr     string
+		wantWarning bool
+		// wantNamespaceWarning is set when rad cannot resolve the namespace flag and warns instead of checking it.
+		wantNamespaceWarning bool
+		// wantFlagWarning is the warning for another flag whose value rad cannot resolve.
+		wantFlagWarning string
+	}{
+		{name: "chart defaults", args: []string{"--v=2", "--leader-election-namespace=kube-system"}},
+		{name: "injection explicitly enabled", args: []string{"--enable-apiservices-injectable=true", "--enable-certificates-data-source"}},
+		{name: "limited to the Radius namespace", args: []string{"--namespace", RadiusSystemNamespace}},
+		{name: "APIService injection disabled", args: []string{"--enable-apiservices-injectable=false"}, wantErr: "sets --enable-apiservices-injectable=false"},
+		// Radius injects from a Secret, not a Certificate.
+		{name: "Certificate data source disabled", args: []string{"--enable-certificates-data-source=false"}},
+		{name: "ignores other namespaces", args: []string{"--ignore-namespaces=kube-system,security"}},
+		{name: "ignores the Radius namespace", args: []string{"--ignore-namespaces", "kube-system," + RadiusSystemNamespace}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
+		{name: "limited to another namespace", args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "limited to another namespace with a separate value", args: []string{"--namespace", "security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		// Only the cainjector container's flags configure injection; a sidecar's flags of the same name do not.
+		{name: "sidecar limited to another namespace", sidecar: []string{"--namespace=security", "--enable-apiservices-injectable=false"}},
+		{name: "restricted injector beside a sidecar", args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "renamed mirrored injector beside a restricted sidecar", mirrored: true, sidecar: []string{"--namespace=security"}},
+		// With nothing to identify cainjector among several containers, rad reads no container's flags and warns.
+		{name: "unidentified injector beside a restricted sidecar", unidentified: true, sidecar: []string{"--namespace=security"}, wantWarning: true},
+		{name: "unidentified restricted injector beside a sidecar", unidentified: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantWarning: true},
+		// A Deployment with one container runs cainjector in it.
+		{name: "unidentified lone restricted injector", unidentified: true, args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "renamed mirrored restricted injector beside a sidecar", mirrored: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantErr: `is limited to namespace "security" by --namespace`},
+		// Kubernetes expands $(NAME) references to the container's environment in its args.
+		{name: "namespace from the environment is the Radius namespace", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: RadiusSystemNamespace}}},
+		{name: "namespace from the environment is another namespace", args: []string{"--namespace", "$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: "security"}}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "namespace from the pod namespace", args: []string{"--namespace=$(POD_NAMESPACE)"},
+			env:     []corev1.EnvVar{{Name: "POD_NAMESPACE", ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"}}}},
+			wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "namespace from an environment variable that refers to another", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "BASE", Value: "secur"}, {Name: "WATCH_NAMESPACE", Value: "$(BASE)ity"}}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "escaped reference is literal", args: []string{"--namespace=$$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: RadiusSystemNamespace}}, wantErr: `is limited to namespace "$(WATCH_NAMESPACE)" by --namespace`},
+		{name: "ignored namespaces from the environment", args: []string{"--ignore-namespaces=$(IGNORED)"},
+			env: []corev1.EnvVar{{Name: "IGNORED", Value: "kube-system," + RadiusSystemNamespace}}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
+		// A value that only the kubelet can resolve leaves the namespace unknown, so rad warns rather than refusing.
+		{name: "namespace from a Secret", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env:                  []corev1.EnvVar{{Name: "WATCH_NAMESPACE", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{Key: "namespace"}}}},
+			wantNamespaceWarning: true},
+		{name: "namespace from an undefined variable", args: []string{"--namespace=$(WATCH_NAMESPACE)"}, wantNamespaceWarning: true},
+		{name: "ignored namespaces from a ConfigMap", args: []string{"--ignore-namespaces=$(IGNORED)"},
+			env: []corev1.EnvVar{{Name: "IGNORED", ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{Key: "ignored"}}}},
+			wantFlagWarning: `Warning: rad could not resolve the --ignore-namespaces value "$(IGNORED)" of cert-manager cainjector container "cert-manager-cainjector", ` +
+				`so it did not check that cainjector watches namespace "radius-system"`},
+		{name: "APIService injection from a Secret", args: []string{"--enable-apiservices-injectable=$(APISERVICES)"},
+			env: []corev1.EnvVar{{Name: "APISERVICES", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{Key: "enabled"}}}},
+			wantFlagWarning: `Warning: rad could not resolve the --enable-apiservices-injectable value "$(APISERVICES)" of cert-manager cainjector container "cert-manager-cainjector", ` +
+				`so it did not check that cainjector injects CA certificates into APIServices`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			k, _ := (fakeCertManagerCluster{controller: certManagerController("security", "v1.21.2", "")}).clients()
+			deployments := k.AppsV1().Deployments("security")
+			deployment, err := deployments.Get(t.Context(), "cert-manager-cainjector", metav1.GetOptions{})
+			require.NoError(t, err)
+			deployment.Spec.Template.Spec.Containers[0].Args = tt.args
+			deployment.Spec.Template.Spec.Containers[0].Env = tt.env
+			if tt.mirrored {
+				injector := &deployment.Spec.Template.Spec.Containers[0]
+				injector.Name = "injector"
+				injector.Image = "registry.example.com/platform/injector:v1"
+				injector.Command = []string{"/usr/local/bin/cainjector"}
+			}
+			if tt.unidentified {
+				injector := &deployment.Spec.Template.Spec.Containers[0]
+				injector.Name = "injector"
+				injector.Image = "registry.example.com/platform/injector:v1"
+				injector.Command = []string{"/usr/local/bin/injector"}
+			}
+			if tt.sidecar != nil {
+				// A sidecar listed first, like the injected proxies of some service meshes.
+				deployment.Spec.Template.Spec.Containers = append([]corev1.Container{{Name: "proxy", Image: "example.com/mesh/proxy:v1", Args: tt.sidecar}}, deployment.Spec.Template.Spec.Containers...)
+			}
+			_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+			require.NoError(t, err)
+
+			var warnings []string
+			err = checkCertManagerReady(t.Context(), k, "security", RadiusSystemNamespace, func(format string, v ...any) {
+				warnings = append(warnings, fmt.Sprintf(format, v...))
+			})
+			if tt.wantWarning {
+				require.Equal(t, []string{`Warning: rad could not tell which container of cert-manager cainjector Deployment security/cert-manager-cainjector ("proxy", "injector") runs cainjector, ` +
+					`so it did not check that cainjector can inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService`}, warnings)
+			} else if tt.wantFlagWarning != "" {
+				require.Equal(t, []string{tt.wantFlagWarning}, warnings)
+			} else if tt.wantNamespaceWarning {
+				require.Equal(t, []string{`Warning: rad could not resolve the --namespace value "$(WATCH_NAMESPACE)" of cert-manager cainjector container "cert-manager-cainjector", ` +
+					`so it did not check that cainjector watches namespace "radius-system"`}, warnings)
+			} else {
+				require.Empty(t, warnings)
+			}
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, "cert-manager cainjector Deployment security/cert-manager-cainjector "+tt.wantErr)
+			require.ErrorContains(t, err, "inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService")
+		})
 	}
 }
 
@@ -732,7 +926,7 @@ func Test_ensureCertManager_UnreadyWebhookIsNotReused(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, version == "v1.22.1")
+			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), version == "v1.22.1")
 			require.ErrorContains(t, err, "cert-manager webhook Deployment")
 			require.ErrorContains(t, err, "is not ready")
 		})
@@ -867,6 +1061,8 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 	impl := &Impl{
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newCertManagerDynamicClient: uninstallStageClient,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
@@ -883,4 +1079,12 @@ func Test_foreignCertManagerResources_MissingTypeDoesNotHideOtherTypes(t *testin
 	foreign, err := foreignCertManagerResources(t.Context(), client, RadiusSystemNamespace)
 	require.NoError(t, err)
 	require.Equal(t, []string{"app/Issuer/issuer"}, foreign)
+}
+
+// cliUserValues returns the values that prepareRadiusChart reads from the command line options.
+func cliUserValues(t *testing.T, options ClusterOptions) map[string]any {
+	t.Helper()
+	values, err := parseUserValuesFromCLI(&options.Radius)
+	require.NoError(t, err)
+	return values
 }

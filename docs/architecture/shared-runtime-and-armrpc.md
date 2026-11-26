@@ -166,7 +166,12 @@ UCP, Applications RP, Dynamic RP, and the controller project only `ca.crt`
 from the `radius-ca` Secret (never
 `tls.key`) to `/var/run/radius/ca`; the server certificate volume projects no
 `ca.crt`. Servers chain their certificate to it and clients verify servers
-against it.
+against it. The `radius-ca` CA signs only these SPIFFE server certificates; in
+the `selfSigned` certificate mode (the only one supported today), UCP's
+aggregated API certificate comes from the separate `radius-apiserver-ca`, which
+Radius components do not trust. Only the Kubernetes API server trusts that CA:
+cert-manager's cainjector copies `ca.crt` of the `radius-apiserver-ca` Secret
+into the APIService `caBundle` and follows its renewals.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client
