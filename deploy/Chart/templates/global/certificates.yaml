@@ -1,3 +1,4 @@
+{{- include "radius.authz.validateSecretNames" . }}
 {{- if ne (include "radius.authz.mode" .) "off" }}
 {{- $certificates := ((.Values.global.rbac).certificates) | default dict }}
 {{- $mode := "selfSigned" }}
@@ -20,6 +21,7 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   selfSigned: {}
+{{- if eq (include "radius.authz.tls.provider" .) "radius" }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -57,7 +59,6 @@ spec:
   ca:
     secretName: radius-ca
 {{- $trustDomain := include "radius.authz.spiffe.trustDomain" . }}
-{{- include "radius.authz.validateSecretNames" . }}
 {{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray }}
 ---
 # Server certificate for internal calls to {{ $receiver }}. Its only SAN is the SPIFFE ID of the
@@ -91,6 +92,7 @@ spec:
     group: cert-manager.io
     kind: Issuer
     name: radius-ca-issuer
+{{- end }}
 {{- end }}
 ---
 # UCP's aggregated API certificate has its own CA, independent of global.rbac.certificates.mode.

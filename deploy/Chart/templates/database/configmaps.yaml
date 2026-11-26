@@ -1,4 +1,11 @@
 {{- if .Values.database.enabled }}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace "database-secret" }}
+{{- $password := "" }}
+{{- if $secret }}
+  {{- $password = required "existing database-secret has no POSTGRES_PASSWORD; restore the database credential" (index ($secret.data | default dict) "POSTGRES_PASSWORD") | b64dec }}
+{{- else }}
+  {{- $password = randAlphaNum 16 }}
+{{- end }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -10,6 +17,6 @@ metadata:
     app.kubernetes.io/part-of: radius
 stringData:
   POSTGRES_USER: "{{ .Values.database.postgres_user }}"
-  POSTGRES_PASSWORD: "{{ randAlphaNum 16 }}"
+  POSTGRES_PASSWORD: {{ $password | quote }}
   POSTGRES_DB: "radius"
 {{- end }}

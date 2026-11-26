@@ -144,6 +144,11 @@ global:
     # TLS and plain HTTP, and need the mounted server certificate files.
     # Also warn/audit Pod Security violations on environment and application namespaces.
     dryRun: false
+    # Authentication always uses per-receiver ServiceAccount tokens. radius encrypts
+    # internal calls with SPIFFE server TLS; external uses HTTP under operator encryption.
+    # UCP's aggregated API still uses its separate TLS certificate with either provider.
+    tls:
+      provider: radius
     # Pod Security Standards level for the labels: "baseline" or "restricted".
     podSecurityLevel: baseline
     admission:
@@ -187,7 +192,9 @@ global:
     # receiver's name as the audience. Receivers verify each caller's token offline; callers verify
     # the receiver's SPIFFE ID before sending a token. ucp, applications-rp, dynamic-rp, and
     # controller also project only key ca.crt of Secret "radius-ca" to /var/run/radius/ca (never
-    # tls.key) as their Radius CA bundle; bicep-de mounts neither credential.
+    # tls.key) as their Radius CA bundle. With de.internalAuth.enabled, bicep-de mounts its
+    # ucp-audience token and, for the radius TLS provider, its serving key pair and the CA bundle.
+    # With the engine gate off, bicep-de mounts none of these credentials.
     spiffe:
       # SPIFFE trust domain of the Radius server certificates: lowercase letters, digits, '.', '-'
       # and '_', at most 255 characters. Rendering fails for any other value when the mode is not off.
@@ -207,6 +214,12 @@ de:
   image: deployment-engine
   # Default tag uses Chart AppVersion.
   # tag: latest
+  # Requires an explicitly selected engine image supporting RADIUS_INTERNAL_AUTH_*.
+  # No compatible published default image is claimed. Requires a non-off global mode.
+  # Uses receiver tokens in both providers; radius also mounts server-only TLS
+  # and public trust. The legacy de.ucpMTLS.enabled=true setting fails migration.
+  internalAuth:
+    enabled: false
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.

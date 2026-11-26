@@ -370,6 +370,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
+	if _, err := radiusActionMode(radiusHelmChart, radiusValues, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.ChartOptions, clusterOptions.Radius.Reinstall); err != nil {
+		return err
+	}
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, radiusValues, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
@@ -590,6 +593,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
+	if _, err := radiusActionMode(radiusHelmChart, radiusValues, storedValues, clusterOptions.Radius.ChartOptions, true); err != nil {
+		return err
+	}
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, storedValues, radiusValues, true); err != nil {
 		return err
 	}
