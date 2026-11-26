@@ -24,6 +24,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -617,6 +618,29 @@ func Test_reconcileUCPAPIServerTrust_KeepsReferencedTrustSecret(t *testing.T) {
 	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 	_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	require.NoError(t, err, "rad must keep a trust Secret the ucp pod template references")
+
+	// The kept Secret still holds the retired CA, so a later run must not take it for a handoff and trust it again.
+	patchedBundles := []string{}
+	dynamicClient.(*dynamicfake.FakeDynamicClient).PrependReactor("patch", "apiservices", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		var patch struct {
+			Spec struct {
+				CABundle string `json:"caBundle"`
+			} `json:"spec"`
+		}
+		_ = json.Unmarshal(action.(clienttesting.PatchAction).GetPatch(), &patch)
+		if patch.Spec.CABundle != "" {
+			bundle, err := base64.StdEncoding.DecodeString(patch.Spec.CABundle)
+			require.NoError(t, err)
+			patchedBundles = append(patchedBundles, pemSubjects(t, bundle)...)
+		}
+		return false, nil, nil
+	})
+	require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
+	require.NotContains(t, patchedBundles, "ucp-ca", "rad must not trust the retired CA of a kept trust Secret again")
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.NoError(t, err, "rad must keep a trust Secret the ucp pod template references")
 
 	_, err = kubeClient.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), ucpDeployment(true), metav1.UpdateOptions{})
