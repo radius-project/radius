@@ -629,6 +629,8 @@ func Test_ControllerMigrationFailurePreventsUCPTrustStaging(t *testing.T) {
 			options.Radius.ChartPath = "chart"
 			options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
 			options.ResetValues = command == "upgrade --reset-values"
+			options.RadiusInstalled = true
+			expectRadiusBaseline(t, client, options)
 			var err error
 			if command == "install --reinstall" {
 				options.Radius.Reinstall = true
@@ -1537,7 +1539,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 				c := newStageCluster(t, nil, true)
 				c.addOffAPIService(t, variant)
 				m := NewMockHelmClient(gomock.NewController(t))
-				m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history(manifest), nil)
+				m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history(manifest), nil).Times(2)
 				rollbacks := 0
 				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
 					rollbacks++
@@ -1583,7 +1585,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 				m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
 					{Version: 1, Config: map[string]any{}, Manifest: storedOffManifest, Chart: offChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 					{Version: 2, Config: values, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
-				}, nil)
+				}, nil).Times(2)
 				m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 				rollbacks := 0
 				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
@@ -1621,7 +1623,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		}
 		mock := func(rollbacks int, beforeHelm func()) *MockHelmClient {
 			m := NewMockHelmClient(gomock.NewController(t))
-			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil)
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil).Times(1 + rollbacks)
 			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 			m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Times(rollbacks).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
 				beforeHelm()
@@ -1663,7 +1665,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		}
 		mock := func(beforeHelm func()) *MockHelmClient {
 			m := NewMockHelmClient(gomock.NewController(t))
-			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil)
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil).Times(2)
 			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 			m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
 				beforeHelm()
@@ -1700,7 +1702,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
 			{Version: 1, Config: authzOnValues, Manifest: offManifest, Chart: offChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 			{Version: 2, Config: map[string]any{}, Manifest: offManifest, Chart: offChart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
-		}, nil)
+		}, nil).Times(2)
 		m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 		m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil)
 
@@ -1787,7 +1789,7 @@ func Test_RollbackRadiusToRevision_DeletesRetiredUCPAPIServerTLSSecret(t *testin
 			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
 				{Version: 1, Config: authzOnValues, Manifest: parentManifest, Chart: manifestTestChart(t, parentManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 				{Version: 2, Config: authzOnValues, Manifest: manifest, Chart: manifestTestChart(t, manifest), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
-			}, nil)
+			}, nil).Times(2)
 			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
 			m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
 				certificate := stagedUCPAPIServerObject("Certificate", ucpAPIServerCertificateName, radiusReleaseName, nil)

@@ -351,6 +351,15 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 
 // queryReleaseValues is QueryRelease that also returns the user-supplied values Helm upgrade will reuse.
 func (helmAction *HelmActionImpl) queryReleaseValues(kubeContext, releaseName, namespace string) (bool, string, map[string]any, error) {
+	installed, version, baseline, err := helmAction.queryReleaseBaseline(kubeContext, releaseName, namespace)
+	if baseline == nil {
+		return installed, version, nil, err
+	}
+	return installed, version, baseline.Config, err
+}
+
+// queryReleaseBaseline returns the chart and Config from the same revision Helm reuses.
+func (helmAction *HelmActionImpl) queryReleaseBaseline(kubeContext, releaseName, namespace string) (bool, string, *releasev1.Release, error) {
 	release, err := helmAction.getRelease(kubeContext, releaseName, namespace)
 	if err != nil || release == nil {
 		return false, "", nil, err
@@ -364,7 +373,7 @@ func (helmAction *HelmActionImpl) queryReleaseValues(kubeContext, releaseName, n
 	// deployed revision, falling back to the latest revision when none is deployed. A nil Info is treated as
 	// deployed so the history lookup only happens after a failed or pending revision.
 	if release.Info == nil || release.Info.Status == releasecommon.StatusDeployed {
-		return true, version, release.Config, nil
+		return true, version, release, nil
 	}
 	helmConf, err := initHelmConfig(&genericclioptions.ConfigFlags{Namespace: &namespace, Context: &kubeContext})
 	if err != nil {
@@ -374,17 +383,17 @@ func (helmAction *HelmActionImpl) queryReleaseValues(kubeContext, releaseName, n
 	if err != nil {
 		return false, "", nil, fmt.Errorf("failed to get helm history for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
 	}
-	return true, version, reusedReleaseValues(release, history), nil
+	return true, version, reusedRelease(release, history), nil
 }
 
-// reusedReleaseValues applies Helm upgrade's release selection to history, which is in ascending revision order.
-func reusedReleaseValues(latest *releasev1.Release, history []*releasev1.Release) map[string]any {
+// reusedRelease applies Helm upgrade's release selection to history, which is in ascending revision order.
+func reusedRelease(latest *releasev1.Release, history []*releasev1.Release) *releasev1.Release {
 	for _, rel := range slices.Backward(history) {
 		if rel.Info != nil && rel.Info.Status == releasecommon.StatusDeployed {
-			return rel.Config
+			return rel
 		}
 	}
-	return latest.Config
+	return latest
 }
 
 func releaseAppVersion(release *releasev1.Release) (string, error) {

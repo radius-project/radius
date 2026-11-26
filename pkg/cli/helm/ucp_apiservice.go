@@ -180,6 +180,11 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 	if err != nil {
 		return err
 	}
+	values := resolveEffectiveChartValues(chartDefaults, storedValues, userValues)
+	return i.stageCertificateTarget(ctx, options, kubeContext, helmConf, values, mode, upgrade, render)
+}
+
+func (i *Impl) stageCertificateTarget(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, values map[string]any, mode authz.Mode, upgrade bool, render renderRadiusManifest) error {
 	deployed := func() (authz.Mode, error) {
 		if !upgrade {
 			return authz.ModeOff, nil
@@ -193,7 +198,6 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 		}
 		return deployedAuthzMode(history)
 	}
-	values := resolveEffectiveChartValues(chartDefaults, storedValues, userValues)
 	if mode != authz.ModeOff && byoCertificateMode(values) != "" {
 		var latest *releasev1.Release
 		if upgrade {
@@ -251,7 +255,7 @@ func checkSteadyBYOCertificates(latest *releasev1.Release, target map[string]any
 		if err != nil {
 			return err
 		}
-		if mode != authz.ModeOff && objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && reflect.DeepEqual(nestedValue(previous, "global", "rbac", "certificates"), nestedValue(target, "global", "rbac", "certificates")) {
+		if mode != authz.ModeOff && byoCertificateMode(previous) != "" && objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && unchangedCertificateSelection(previous, target) == nil {
 			return nil
 		}
 	}
@@ -307,7 +311,7 @@ func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, 
 // stageRolledBackUCPAPIServerCA stages UCP's API server certificate for revision of history before rad rolls Radius
 // back to it, from what that rollback renders. When that revision serves UCP with authorization on, it first checks
 // that cert-manager can issue and inject radius-apiserver-ca, as an install or upgrade does.
-func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
+func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, conf *helm.Configuration, history []*releasev1.Release, revision int) error {
 	target := releaseRevision(history, revision)
 	if target == nil {
 		return nil
@@ -329,23 +333,80 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 		}
 		mode = servingAuthzMode(kind, mode)
 	}
-	if mode != authz.ModeOff {
-		values := resolveEffectiveChartValues(target.Chart.Values, nil, target.Config)
-		byo := byoCertificateMode(values) != ""
-		if byo {
-			if err := checkSteadyBYOCertificates(latestRevision(history), values); err != nil {
+	values := resolveEffectiveChartValues(target.Chart.Values, nil, target.Config)
+	latest := latestRevision(history)
+	deployed := lastDeployedRevision(history)
+	for _, observed := range []*releasev1.Release{latest, deployed} {
+		if observed == nil || observed.Chart == nil {
+			continue
+		}
+		previous := resolveEffectiveChartValues(observed.Chart.Values, nil, observed.Config)
+		if byoCertificateMode(previous) != "" {
+			if err := unchangedCertificateSelection(previous, values); err != nil {
 				return err
 			}
+			if mode == authz.ModeOff {
+				return fmt.Errorf("turning off established BYO certificates requires the certificate lifecycle")
+			}
 		}
+	}
+	byo := mode != authz.ModeOff && byoCertificateMode(values) != ""
+	if byo {
+		if err := checkSteadyBYOCertificates(latest, values); err != nil {
+			return err
+		}
+	}
+	if mode != authz.ModeOff {
 		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
 			return err
 		}
-		if byo {
-			return checkRenderedBYO(ctx, i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision))
+	}
+	render := i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision)
+	var plan *certificatePlan
+	if byo {
+		opts := NewDefaultClusterOptions()
+		opts.Radius.Namespace, opts.RadiusInstalled = radiusNamespace, true
+		var selected *certificateTarget
+		selected, plan, err = i.prepareCertificateTarget(ctx, opts, target.Chart, copyValues(target.Config), kubeContext)
+		if err != nil {
+			return err
+		}
+		render = renderOnce(render)
+		if err := selected.checkActionRender(ctx, render); err != nil {
+			return err
+		}
+	} else {
+		render = renderOnce(render)
+		selected := &certificateTarget{Provider: stringValue(nestedValue(values, "global", "rbac", "tls", "provider")), mode: mode}
+		if err := selected.resolveReservedReceivers(target.Chart, values); err != nil {
+			return err
+		}
+		if err := selected.checkProviderRender(ctx, render); err != nil {
+			return err
+		}
+		from := func() (authz.Mode, error) { return deployedAuthzMode(history) }
+		if err := i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, from, mode, render); err != nil {
+			return err
 		}
 	}
-	deployed := func() (authz.Mode, error) { return deployedAuthzMode(history) }
-	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, deployed, mode, i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision))
+	current, err := i.Helm.RunHelmHistory(conf, radiusReleaseName)
+	if err != nil {
+		return fmt.Errorf("recheck Radius rollback history: %w", err)
+	}
+	if !reflect.DeepEqual(latest, latestRevision(current)) || !reflect.DeepEqual(deployed, lastDeployedRevision(current)) || !reflect.DeepEqual(target, releaseRevision(current, revision)) {
+		return fmt.Errorf("Radius history changed since rollback preflight; retry the operation")
+	}
+	return plan.recheckSigningSecret(ctx)
+}
+
+func lastDeployedRevision(history []*releasev1.Release) *releasev1.Release {
+	var deployed *releasev1.Release
+	for _, r := range history {
+		if r != nil && revisionStatus(r) == releasecommon.StatusDeployed && (deployed == nil || r.Version > deployed.Version) {
+			deployed = r
+		}
+	}
+	return deployed
 }
 
 // deployedAuthzMode returns the mode in which the newest revision of history serves UCP's API server, which is the
@@ -422,6 +483,15 @@ func manifestObjects(manifest string) (manifestObjectSet, error) {
 		}
 		object := &unstructured.Unstructured{Object: document}
 		objects[manifestObjectKey(object.GroupVersionKind().Group, object.GetKind(), object.GetName())] = true
+		if object.GroupVersionKind().Group == "cert-manager.io" && object.GetKind() == "Certificate" {
+			name, _, err := unstructured.NestedString(document, "spec", "secretName")
+			if err != nil {
+				return nil, err
+			}
+			if name != "" {
+				objects[manifestObjectKey("", "IssuedSecret", name)] = true
+			}
+		}
 	}
 }
 
