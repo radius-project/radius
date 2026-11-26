@@ -1971,3 +1971,17 @@ func Test_trustUCPAPIServerCAs_PatchCarriesResourceVersion(t *testing.T) {
 	_, found, _ := unstructured.NestedString(live.Object, "spec", "caBundle")
 	require.False(t, found, "rad must not overwrite the changed APIService")
 }
+
+// A stale ucp-apiserver-tls that changes before rad deletes it is kept, and the hint must not print its private key.
+func Test_deleteStaleUCPAPIServerTLS_ConflictHintHidesKey(t *testing.T) {
+	secret := apiServerTLSSecret(t, newTestCA(t, "deleted radius-apiserver-ca"))
+	kubeClient := kubefake.NewSimpleClientset(secret)
+	kubeClient.PrependReactor("delete", "secrets", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewConflict(action.GetResource().GroupResource(), ucpAPIServerTLSSecretName, errors.New("precondition failed"))
+	})
+
+	err := deleteStaleUCPAPIServerTLS(t.Context(), "test-context", kubeClient, RadiusSystemNamespace, secret, newTestCA(t, "radius-apiserver-ca").cert)
+	require.ErrorContains(t, err, `Check it with kubectl --context "test-context" -n radius-system describe certificate ucp-cert and kubectl --context "test-context" -n radius-system describe secret ucp-apiserver-tls, then`)
+	require.NotContains(t, err.Error(), "-o yaml")
+	require.NotContains(t, err.Error(), "get secret")
+}

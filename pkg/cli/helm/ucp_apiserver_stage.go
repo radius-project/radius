@@ -347,9 +347,12 @@ func deleteStaleUCPAPIServerTLS(ctx context.Context, kubeContext string, client 
 		return nil
 	}
 	if apierrors.IsConflict(err) {
+		// describe prints the size of each key, never tls.key itself.
 		return fmt.Errorf("Secret %s/%s changed after rad read it, so rad did not delete it. Helm has not changed Radius. "+
-			"Check it with %s, then run the command again",
-			radiusNamespace, ucpAPIServerTLSSecretName, kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerTLSSecretName+" -o yaml"))
+			"Check it with %s and %s, then run the command again",
+			radiusNamespace, ucpAPIServerTLSSecretName,
+			kubectlCommand(kubeContext, radiusNamespace, "describe certificate "+ucpAPIServerCertificateName),
+			kubectlCommand(kubeContext, radiusNamespace, "describe secret "+ucpAPIServerTLSSecretName))
 	}
 	return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
 }
