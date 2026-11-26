@@ -9,7 +9,7 @@ The Radius helm chart deploys the Radius services on a Kubernetes cluster using 
 
 ## Installing the Chart
 
-To install the chart with the release name `radius`:
+To install the chart with the release name `radius` from a source checkout:
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system
@@ -56,7 +56,9 @@ Save the release's values to a file, edit it to the new settings, and pass it wi
 helm get values radius -n radius-system -o yaml > radius-values.yaml
 ```
 
-Then run `helm upgrade radius deploy/Chart -n radius-system -f radius-values.yaml`. UCP serves its new certificate only after cert-manager issues `radius-apiserver-ca`, and the `radius-api-readiness` post-upgrade hook fails the revision if the API server still cannot reach UCP, so append the `tls.crt` of `radius-apiserver-ca` to the Secret's `ca.crt` while Helm waits. In a second terminal, as soon as `helm upgrade` starts, run:
+The commands below use the published chart, `oci://ghcr.io/radius-project/helm-chart/radius`; replace `<version>` with the chart version you upgrade to. Use `deploy/Chart` instead only from a source checkout of that version: it is the source chart, whose `appVersion` is `edge`, and `helm get values` returns only the values you set, so upgrading a published-chart release with it moves Radius to `edge` images.
+
+Then run `helm upgrade radius oci://ghcr.io/radius-project/helm-chart/radius --version <version> -n radius-system -f radius-values.yaml`. UCP serves its new certificate only after cert-manager issues `radius-apiserver-ca`, and the `radius-api-readiness` post-upgrade hook fails the revision if the API server still cannot reach UCP, so append the `tls.crt` of `radius-apiserver-ca` to the Secret's `ca.crt` while Helm waits. In a second terminal, as soon as `helm upgrade` starts, run:
 
 ```bash
 until kubectl get secret radius-apiserver-ca -n radius-system >/dev/null 2>&1; do sleep 2; done
@@ -72,23 +74,31 @@ If the hook fails anyway, run the same `helm upgrade` command again once the Sec
 kubectl rollout status deployment/ucp -n radius-system --timeout=5m &&
   kubectl wait --for=condition=Available apiservice/v1alpha3.api.ucp.dev --timeout=5m &&
   kubectl delete secret radius-apiserver-trust -n radius-system &&
-  helm upgrade radius deploy/Chart -n radius-system -f radius-values.yaml
+  helm upgrade radius oci://ghcr.io/radius-project/helm-chart/radius --version <version> -n radius-system -f radius-values.yaml
 ```
 
 With Helm 4 server-side apply, cainjector co-owns the APIService's `spec.caBundle`. If that last `helm upgrade` fails with a field-manager conflict on `caBundle`, retry only the upgrade with `--force-conflicts`:
 
 ```bash
-helm upgrade radius deploy/Chart -n radius-system -f radius-values.yaml --force-conflicts
+helm upgrade radius oci://ghcr.io/radius-project/helm-chart/radius --version <version> -n radius-system -f radius-values.yaml --force-conflicts
 ```
 
-A failed revision can leave objects that it created, such as the release's Certificates and Issuers. A later successful upgrade with the same chart adopts them. If you abandon the upgrade instead, find the failed revision and the last `deployed` revision with `helm history radius -n radius-system`, and compare their manifests:
+A failed revision can leave objects that it created, such as the release's Certificates and Issuers. A later successful upgrade with the same chart adopts them. If you abandon the upgrade instead, find the failed revision and the last `deployed` revision with `helm history radius -n radius-system`, and save their manifests:
 
 ```bash
 helm get manifest radius -n radius-system --revision <failed> > failed.yaml
 helm get manifest radius -n radius-system --revision <deployed> > deployed.yaml
 ```
 
-The candidates are the objects in `failed.yaml` that `deployed.yaml` does not list, by kind, namespace and name. Before you delete a candidate, check with `kubectl get <kind> <name> -n radius-system -o yaml` that its `meta.helm.sh/release-name` annotation is `radius`, its `meta.helm.sh/release-namespace` annotation is `radius-system`, and it has no `helm.sh/resource-policy: keep` annotation. Leave any object that fails these checks, because it belongs to another release or to you.
+The failed revision may already have moved UCP to its new certificate and the APIService to `radius-apiserver-ca`, so restore the last `deployed` revision's workloads and APIService trust before you delete anything. Roll back to it, unless it is the first of these upgrades, which the next paragraph explains not to roll back to; in that case run the final `helm upgrade` above again instead. Then confirm that UCP rolled out and the APIService is `Available`:
+
+```bash
+helm rollback radius <deployed> -n radius-system --wait
+kubectl rollout status deployment/ucp -n radius-system --timeout=5m &&
+  kubectl wait --for=condition=Available apiservice/v1alpha3.api.ucp.dev --timeout=5m
+```
+
+Delete nothing until both checks succeed. The rollback removes objects of the failed revision that the `deployed` revision does not declare, unless they have `helm.sh/resource-policy: keep`. Any that remain are candidates: the objects in `failed.yaml` that `deployed.yaml` does not list, by kind, namespace and name. Before you delete a candidate, check with `kubectl get <kind> <name> -n radius-system -o yaml` that its `meta.helm.sh/release-name` annotation is `radius`, its `meta.helm.sh/release-namespace` annotation is `radius-system`, and it has no `helm.sh/resource-policy: keep` annotation. Leave any object that fails these checks, because it belongs to another release or to you.
 
 cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.
 
