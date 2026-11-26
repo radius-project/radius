@@ -988,6 +988,7 @@ periodSeconds
 persistentVolume
 persistentVolumes
 pfx
+pgaadauth
 pgvector
 pgvector's
 pg_trgm

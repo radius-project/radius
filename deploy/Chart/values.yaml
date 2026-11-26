@@ -303,7 +303,34 @@ dashboard:
       memory: "300Mi"
 
 database:
-  enabled: false # Enable the Postgres database install
+  enabled: false # Enable PostgreSQL storage. Installs an in-cluster server unless database.external.host is set.
+  # Connect to an existing PostgreSQL server instead of installing one in-cluster. The server must already
+  # have the ucp, applications_rp, and dynamic_rp databases with the resources table, and the users that
+  # authMode needs; see deploy/init-db/init-external-db.sh.
+  external:
+    host: ""
+    port: 5432
+    # verify-full checks the server certificate against the image's public CAs (and global.rootCA).
+    # For a server with a private CA, configure global.rootCA or use require.
+    sslmode: "verify-full"
+    # How the resource providers sign in: "password" uses existingSecret; "azure" uses a Microsoft Entra
+    # token for an Azure identity (Azure Database for PostgreSQL in the Azure public cloud only) and
+    # requires sslmode verify-full.
+    authMode: "password"
+    # Name of an existing Secret in the release namespace with a POSTGRES_PASSWORD key holding the
+    # resource provider users' password. The password is placed in a connection URL, so it must be URL-safe.
+    # Required for authMode password; must be empty for authMode azure.
+    existingSecret: ""
+    # Used only with authMode azure. ucp, applications-rp, and dynamic-rp share one identity.
+    azure:
+      # PostgreSQL role mapped to the identity's object ID; see deploy/init-db/init-external-db.sh.
+      user: ""
+      # workloadIdentity (requires global.azureWorkloadIdentity.enabled and the federated credentials for
+      # the ucp, applications-rp, and dynamic-rp service accounts) or managedIdentity (the node's identity).
+      credential: "workloadIdentity"
+      # Client ID of the identity. Required for workloadIdentity. For managedIdentity, leave empty to use
+      # the system-assigned identity.
+      clientId: ""
   postgres_user: "radius"
   # Pulled directly from Docker Hub: the registry mirror does not publish a pinned
   # postgres tag, only ':latest'. Using the upstream image keeps the version deterministic.

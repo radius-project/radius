@@ -654,6 +654,73 @@ databaseProvider:
     url: "postgresql://ucp:radius_pass@localhost:5432/ucp?sslmode=disable"
 ```
 
+**PostgreSQL (Helm chart)** — `database.enabled=true` switches UCP, Applications RP, and Dynamic RP to the `postgresql` provider. By default the chart also installs an in-cluster PostgreSQL server and the `database-secret` password Secret. To use an existing server instead, set `database.external.host`. The chart then skips the in-cluster server and builds each service's URL from that host:
+
+```bash
+kubectl create namespace radius-system
+kubectl create secret generic radius-db -n radius-system \
+  --from-literal=POSTGRES_PASSWORD='<URL-safe password>'
+
+rad install kubernetes \
+  --set database.enabled=true \
+  --set database.external.host=<server>.postgres.database.azure.com \
+  --set database.external.existingSecret=radius-db
+```
+
+| Value                                | Default            | Purpose                                                                                                       |
+|--------------------------------------|--------------------|---------------------------------------------------------------------------------------------------------------|
+| `database.external.host`             | `""`               | Server host name. Setting it disables the in-cluster server.                                                  |
+| `database.external.port`             | `5432`             | Server port.                                                                                                  |
+| `database.external.sslmode`          | `verify-full`      | `sslmode` for every service URL. A server with a private CA needs `global.rootCA` or `require`.               |
+| `database.external.authMode`         | `password`         | `password` signs in with `existingSecret`; `azure` signs in with a Microsoft Entra token (see below).         |
+| `database.external.existingSecret`   | `""`               | Required for `password`; must be empty for `azure`. Secret with a `POSTGRES_PASSWORD` key for the users.      |
+| `database.external.azure.user`       | `""`               | Required for `azure`. PostgreSQL role mapped to the identity; all three services sign in as it.               |
+| `database.external.azure.credential` | `workloadIdentity` | `workloadIdentity` or `managedIdentity`.                                                                      |
+| `database.external.azure.clientId`   | `""`               | Client ID of the identity. Required for `workloadIdentity`; empty selects a system-assigned managed identity. |
+
+Prepare the server first with `deploy/init-db/init-external-db.sh`. In the default `password` mode, it creates the `ucp`, `applications_rp`, and `dynamic_rp` users and databases and the `resources` table. Re-running it with the same password is safe. It connects with the standard PostgreSQL client variables (`PGHOST`, `PGUSER`, `PGPASSWORD`, `PGSSLMODE`) and sets each service user's password from `RADIUS_DB_PASSWORD`, which must match the Secret. The chart adds the Secret to the protected control-plane Secrets. A change to the host, port, `sslmode`, or sign-in settings restarts the three services on `helm upgrade`. `rad shutdown` and `rad startup` support only the in-cluster server.
+
+To change the password, run the script with the new `RADIUS_DB_PASSWORD`, update the Secret, and then restart the three services (`kubectl rollout restart deployment ucp applications-rp dynamic-rp -n radius-system`). Running pods keep the old password until they restart.
+
+To sign in to Azure Database for PostgreSQL without a password, set `database.external.authMode=azure`. ucp, applications-rp, and dynamic-rp share one Azure identity, mapped to one PostgreSQL role, and each service requests a Microsoft Entra token for it before opening a connection. No password Secret is used, and `sslmode` must be `verify-full`. Services request tokens for the Azure public cloud, so sovereign clouds aren't supported. Enable Microsoft Entra authentication on the server, then prepare it as a Microsoft Entra administrator of the server:
+
+```bash
+PGHOST=<server>.postgres.database.azure.com PGSSLMODE=verify-full \
+PGSSLROOTCERT='<CA bundle path, or system with psql 16 or later>' \
+PGUSER='<administrator name>' \
+PGPASSWORD="$(az account get-access-token --resource-type oss-rdbms --query accessToken --output tsv)" \
+RADIUS_DB_AUTH_MODE=azure \
+RADIUS_DB_AZURE_USER=radius \
+RADIUS_DB_AZURE_OBJECT_ID=<identity object (principal) ID> \
+  deploy/init-db/init-external-db.sh
+```
+
+In this mode the script maps the role to the identity with `pgaadauth_create_principal_with_oid`, creates the three databases and `resources` tables, and grants the role `SELECT`, `INSERT`, `UPDATE`, and `DELETE` on each table. It also revokes `CREATE` on the `public` schema from `PUBLIC`, so the role can't create objects. Re-running it is safe, and it fails if the role already exists for a different identity. Use databases that weren't prepared in `password` mode: their tables are owned by the service users, and the script fails unless the administrator has those users' privileges.
+
+On AKS, use workload identity. Add a federated credential to the identity for each of the `ucp`, `applications-rp`, and `dynamic-rp` service accounts in `radius-system`, then install:
+
+```bash
+rad install kubernetes \
+  --set database.enabled=true \
+  --set database.external.host=<server>.postgres.database.azure.com \
+  --set database.external.authMode=azure \
+  --set database.external.azure.user=radius \
+  --set database.external.azure.clientId=<identity client ID> \
+  --set global.azureWorkloadIdentity.enabled=true
+```
+
+`global.azureWorkloadIdentity.enabled` labels the pods so the AKS workload identity webhook injects the tenant ID and token file. It applies to every Azure SDK client in those pods that reads the `AZURE_*` environment variables, not only the database connection. On a virtual machine, such as a CI agent running a local cluster, set `database.external.azure.credential=managedIdentity` instead to use the machine's managed identity: leave `clientId` empty for a system-assigned identity, or set it to a user-assigned identity's client ID. Pods must be able to reach the instance metadata endpoint (`169.254.169.254`).
+
+Use an external server for a new installation. Setting `database.external.host` on an existing release doesn't migrate data: the services start against the external databases, and Helm deletes the in-cluster server's StatefulSet, Service, and `database-secret` (the volume is kept). Don't use `database-secret` as `database.external.existingSecret`. Switching back to the in-cluster server isn't a recovery path either, because the chart generates a new password that doesn't match the users in the kept volume.
+
+The external server holds the resource data, but not every Secret the control plane needs. Before you recreate the cluster against the same server, back up these Secrets in `radius-system` and restore them before you install Radius on the new cluster. The chart generates new keys when they're missing.
+
+- `radius-encryption-key`: sensitive resource fields are stored encrypted with its keys. New keys leave those fields unreadable.
+- `radius-aws-fingerprint-key`: UCP stores fingerprints of write-only AWS resource properties made with this key. With a new key, UCP can't tell which of those values changed, so later updates resend unchanged mutable values and miss changes to create-only values.
+- The Terraform state Secrets (`tfstate-*`), when recipes use the default Kubernetes state backend. Without them, Terraform can't update or delete the infrastructure it created.
+
+Credentials registered with `rad credential register` are also stored as Kubernetes Secrets, so register them again on the new cluster.
+
 No other code changes are needed. The `DatabaseProvider` will read the
 `provider` field and call the matching factory function to produce the client.
 
