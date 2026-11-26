@@ -173,8 +173,8 @@ importers:
         specifier: 0.24.1
         version: 0.24.1
       prettier:
-        specifier: 3.10.0
-        version: 3.10.0
+        specifier: 3.10.1
+        version: 3.10.1
 
 packages:
 
@@ -448,8 +448,8 @@ packages:
     resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}
     engines: {node: '>=8.6'}
 
-  prettier@3.10.0:
-    resolution: {integrity: sha512-mBi4765LgjO1PFjlEs7pUeK0nb1bw71c+N4/ItfeUWNdY5cV2pRKaFpbbFRYmDJMO+5ZwzGxHRqHxFZna7iv5w==}
+  prettier@3.10.1:
+    resolution: {integrity: sha512-70vp3ZUYoPlFbF9uiTdXHUUCGEIp7d4+6p+8DYbkm2jP7x/3i/paXVF6dopSI3zd/CEitrZN1rc4i85xWmmXlg==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -872,7 +872,7 @@ snapshots:
 
   picomatch@2.3.2: {}
 
-  prettier@3.10.0: {}
+  prettier@3.10.1: {}
 
   punycode.js@2.3.1: {}
 
