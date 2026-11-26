@@ -67,8 +67,10 @@ const (
 	// ucpCertificateVolumeName is the volume of the ucp Deployment that mounts UCP's aggregated API certificate.
 	ucpCertificateVolumeName = "cert"
 
-	// ucpCertificateHashAnnotation on the pod template of the ucp Deployment holds the hash of the ucp-cert certificate
-	// that rad applied before authorization turns off, so the Deployment rolls out again when that certificate changes.
+	// ucpCertificateHashAnnotation on the pod template of the ucp Deployment holds the hash of the certificate that UCP
+	// must serve before the API server stops trusting an earlier CA: the ucp-cert certificate that rad applied before
+	// authorization turns off, or the ucp-apiserver-tls certificate when authorization is on. The Deployment rolls out
+	// again when that certificate changes.
 	ucpCertificateHashAnnotation = "radapp.io/ucp-cert-sha256"
 
 	// allowDirectInjectionAnnotation lets cert-manager's cainjector copy ca.crt of a Secret into an APIService.
@@ -153,6 +155,9 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 						kubectlCommand(kubeContext, radiusNamespace, "rollout status deployment/ucp"),
 						kubectlCommand(kubeContext, radiusNamespace, "describe certificate "+ucpAPIServerCertificateName))
 				}
+				return err
+			}
+			if err := rollUCPOnServingCertificate(ctx, kubeContext, kubeClient, radiusNamespace, ca); err != nil {
 				return err
 			}
 		}
@@ -534,6 +539,58 @@ func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, rad
 		return nil, "the certificate in Secret " + secretName + " is not issued by " + caName, nil
 	}
 	return leaf, "", nil
+}
+
+// rollUCPOnServingCertificate makes every ucp pod start after Secret ucp-apiserver-tls holds a certificate from ca,
+// which the wait before it found. UCP reloads its certificate when the kubelet updates the mounted Secret, which takes
+// up to about a minute after cert-manager reissues it, so the rollout counters of a Deployment that already mounted
+// ucp-apiserver-tls do not tell whether its pods serve the reissued certificate yet. rad sets
+// ucpCertificateHashAnnotation to the hash of that certificate, which rolls the Deployment out again, and waits for
+// the rollout. A Deployment whose template already holds the hash rolled out after the Secret held this certificate.
+func rollUCPOnServingCertificate(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, radiusNamespace string, ca *x509.Certificate) error {
+	secret, err := kubeClient.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTLSSecretName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
+	}
+	certificateHash := ucpCertificateHash(secret)
+	deployments := kubeClient.AppsV1().Deployments(radiusNamespace)
+	deployment, err := deployments.Get(ctx, "ucp", metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
+	}
+	if deployment.Spec.Template.Annotations[ucpCertificateHashAnnotation] == certificateHash {
+		return nil
+	}
+	if !helmOwned(deployment, radiusNamespace, radiusReleaseName) {
+		return fmt.Errorf("Deployment %s/ucp does not belong to Helm release %q, so rad did not restart it. The API server still trusts the earlier CA too; "+
+			"check the Deployment, then run the command again", radiusNamespace, radiusReleaseName)
+	}
+	// The patch carries the uid and resourceVersion that rad checked, so it fails if the Deployment changed since.
+	patch, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{"uid": deployment.UID, "resourceVersion": deployment.ResourceVersion},
+		"spec": map[string]any{"template": map[string]any{
+			"metadata": map[string]any{"annotations": map[string]any{ucpCertificateHashAnnotation: certificateHash}},
+		}},
+	})
+	if err != nil {
+		return err
+	}
+	output.LogInfo("Restarting UCP so that every pod serves the certificate in Secret %s...", ucpAPIServerTLSSecretName)
+	if _, err := deployments.Patch(ctx, "ucp", types.StrategicMergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
+		return fmt.Errorf("failed to restart Deployment %s/ucp: %w", radiusNamespace, err)
+	}
+	problem, err := pollUCPAPIServer(ctx, func(ctx context.Context) (string, error) {
+		_, problem, err := ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName, ca)
+		return problem, err
+	})
+	if err != nil {
+		if ucpWaitTimedOut(ctx, err) {
+			return fmt.Errorf("UCP does not serve a certificate from %s after %s: %s. The API server still trusts the earlier CA too; run the command again once %s succeeds",
+				ucpAPIServerCASecretName, ucpAPIServiceTimeout, problem, kubectlCommand(kubeContext, radiusNamespace, "rollout status deployment/ucp"))
+		}
+		return err
+	}
+	return nil
 }
 
 // ucpCertificateSecret returns the Secret that deployment mounts as UCP's API server certificate, or "" if it mounts

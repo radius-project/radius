@@ -887,3 +887,49 @@ func Test_UCPAPIServerTrust_PostHelmReplacedAPIService(t *testing.T) {
 		})
 	}
 }
+
+// The Deployment already mounts ucp-apiserver-tls and has rolled out, but cert-manager reissued the Secret after the
+// pods started, so they may still serve the earlier leaf until the kubelet updates the volume. rad restarts UCP on the
+// hash of the new leaf and keeps the earlier CA until that rollout finishes.
+func Test_reconcileUCPAPIServerTrust_RestartsUCPOnReissuedCertificate(t *testing.T) {
+	expireUCPAPIServiceWait(t)
+	earlier, apiServerCA := newTestCA(t, "earlier-ca"), newTestCA(t, "radius-apiserver-ca")
+	servingTLS := apiServerTLSSecret(t, apiServerCA)
+	kubeClient := kubefake.NewSimpleClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, Annotations: trustSecretAnnotations()},
+			Data:       map[string][]byte{caCertificateKey: earlier.pem},
+		},
+		apiServerCASecret(apiServerCA),
+		servingTLS,
+		ucpDeployment(true),
+	)
+	// The fake API server does not run the Deployment controller; the patch starts a rollout that does not finish.
+	var bundleAtRestart []string
+	dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService(base64.StdEncoding.EncodeToString(earlier.pem), "True", "Passed"))
+	kubeClient.PrependReactor("patch", "deployments", func(action clienttesting.Action) (bool, runtime.Object, error) {
+		bundleAtRestart = apiServiceCABundle(t, dynamicClient)
+		deployment, err := kubeClient.Tracker().Get(appsv1.SchemeGroupVersion.WithResource("deployments"), RadiusSystemNamespace, "ucp")
+		require.NoError(t, err)
+		restarted := deployment.(*appsv1.Deployment).DeepCopy()
+		restarted.Generation++
+		restarted.Spec.Template.Annotations = map[string]string{ucpCertificateHashAnnotation: ucpCertificateHash(servingTLS)}
+		return true, restarted, kubeClient.Tracker().Update(appsv1.SchemeGroupVersion.WithResource("deployments"), restarted, RadiusSystemNamespace)
+	})
+
+	err := trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false)
+	require.ErrorContains(t, err, "Deployment ucp has not finished rolling out")
+	require.ErrorContains(t, err, "The API server still trusts the earlier CA too")
+	require.Equal(t, []string{"earlier-ca", "radius-apiserver-ca"}, bundleAtRestart)
+	require.Equal(t, []string{"earlier-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	require.Equal(t, []string{"earlier-ca", "radius-apiserver-ca"}, trustedSubjects(t, kubeClient))
+
+	// Once the restart rolls out, the next run finds the hash in place and retires the earlier CA.
+	deployment, err := kubeClient.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	deployment.Status.ObservedGeneration = deployment.Generation
+	_, err = kubeClient.AppsV1().Deployments(RadiusSystemNamespace).UpdateStatus(t.Context(), deployment, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, false))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+}
