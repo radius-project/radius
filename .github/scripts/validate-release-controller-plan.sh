@@ -134,6 +134,13 @@ validate_committed_plan() {
     local committed="${TEMP_DIR}/committed-plan.yaml"
 
     git show "${commit}:${plan_path}" > "${committed}"
+    # Tag-owned readers bind the receipt to the Git blob, not normalized YAML.
+    if yq -e '.siblingRepositories[] | select(.name == "bicep-types-aws") |
+        has("radiusPin")' "${PLAN_FILE}" > /dev/null; then
+        cmp -s "${committed}" "${PLAN_FILE}" ||
+            fail "AWS pin receipt requires the approved plan blob at ${commit}:${plan_path}"
+        return
+    fi
     if ! diff -u \
         <(yq -o=json -I=0 '.' "${TEMP_DIR}/release-plan.yaml" | jq -S .) \
         <(yq -o=json -I=0 '.' "${committed}" | jq -S .); then

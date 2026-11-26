@@ -41,8 +41,29 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
-  validate:
+  result:
     name: Validate release plan
+    needs: [validate, validate-merge-group]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Require the validator for this event
+        env:
+          QUEUE_RESULT: ${{ needs.validate-merge-group.result }}
+          PR_RESULT: ${{ needs.validate.result }}
+          IS_RELEASE_PR: ${{ startsWith(github.event.pull_request.head.ref, 'automation/prepare-release-') }}
+        run: |
+          case "${GITHUB_EVENT_NAME}:${IS_RELEASE_PR}" in
+            merge_group:*) [[ "${QUEUE_RESULT}" == success ]] ;;
+            pull_request_target:true) [[ "${PR_RESULT}" == success ]] ;;
+            pull_request_target:false) [[ "${PR_RESULT}" == skipped ]] ;;
+            *) exit 1 ;;
+          esac
+
+  validate:
+    name: Check generated release PR
     if: >-
       github.event_name == 'pull_request_target' &&
       startsWith(github.event.pull_request.head.ref, 'automation/prepare-release-')
@@ -150,7 +171,7 @@ jobs:
             --backports-file "${RUNNER_TEMP}/release-backports.json"
 
   validate-merge-group:
-    name: Validate release plan
+    name: Check queued release plan
     if: github.event_name == 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 5

@@ -895,6 +895,10 @@ main() {
             gh api -H 'Accept: application/vnd.github.raw+json' \
                 "/repos/${repository}/contents/.github/release-plans/${tag}.yaml?ref=${source_commit}" |
                 yq -o=json '.' >"${PLAN_FILE}"
+            # A pinned AWS source ships from its receipt, not the committed base.
+            jq -e 'all(.siblingRepositories[] | select(.name == "bicep-types-aws");
+                has("radiusPin") | not)' "${PLAN_FILE}" >/dev/null ||
+                fail "a pinned AWS release requires the receipt-resolved --plan-file"
         fi
     fi
 

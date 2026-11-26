@@ -11,7 +11,7 @@ Use this checklist to run a Radius RC, final, or patch release. The [full releas
 - If resource types or recipe packs changed, [release them and merge the generated Radius update](./README.md#release-resource-type-namespaces-and-recipe-packs) first. Unchanged, already-pinned releases need no action.
 - For an existing channel, select only PRs merged into `main`, label them `backport release/X.Y`, and **rebase-merge** their generated backports before preparation. Automation processes one PR at a time in main's merge order, regardless of input order. Keep each source marker and cherry-pick trailer; require `Validate release branch commits` in the branch rules. Every `supported` version in [`versions.yaml`](../../../versions.yaml) must already have its Radius tag; finish any pending release first.
 - Use the same label and shared backport workflow in `bicep-types-aws`, `dashboard`, and `recipes` after their [caller and credential rollout](https://github.com/radius-project/.github/blob/main/eng/SYNC.md#release-backports). Merge those backports before preparation freezes sibling commits; a change only on a sibling's `main` does not enter an existing release channel.
-- Once `bicep-types-aws` has a `radius` submodule, its `release/X.Y` must pin the Radius commit the release ships. For a later RC, a final, or a patch, [set the pin](./README.md#pin-radius-in-bicep-types-aws) before preparation. For a first RC, set it after the first Prepare Release run, then rerun.
+- Confirm the [AWS channel prerequisites](./README.md#verify-the-approved-aws-source): backported receipt readers, required **Build and test** on AWS `release/X.Y`, the protected receipt refs, and the release App's AWS permissions. Do not merge AWS backports for this channel between preparation and tagging.
 
 ## Steps
 
@@ -33,11 +33,11 @@ gh workflow run prepare-release.yaml --repo radius-project/radius --ref main -f 
 
 For a final or patch, change `release-type=rc` to `release-type=final` or `release-type=patch`. Preparation computes the full version; do not choose an RC number yourself. For an existing channel, optionally select merged main PRs with `-f backport-pr-numbers="12345,12346"`, using their actual numbers.
 
-For a first RC, preparation freezes the checked-out `main` commit. To select an earlier reachable cutoff, add `-f product-commit="<full-40-character-SHA>"`; preparation verifies that its release metadata and build tooling are compatible. Later `main` or merge-queue changes do not enter that release. This override is not available for subsequent RCs, finals, or patches.
+For a first RC, preparation uses the checked-out `main` commit at the workflow run's start. The workflow does not accept a product-commit override. A rerun captures the main and sibling commits again, so later commits can enter the regenerated plan.
 
 Open the run and follow **Summary > Release pull request**. If the CLI did not return a run URL, find your invocation in that workflow's Actions page.
 
-While the first-RC PR remains open, rerunning with the same type/channel retains its cutoff, sibling commits, release date, and curated Highlights/Upgrading. Normally omit `product-commit` on reruns; a different cutoff for the same open preparation is rejected.
+While a preparation PR remains open, a rerun regenerates its source selections and release date; review the new product/sibling SHAs, backports, expected outputs, and notes before merging. The allowed curated Highlights/Upgrading are preserved, but the prior cutoff and sibling commit selection are not. Do not treat rerunning as a retry of the same frozen inputs.
 
 ### 2. Review and merge the release PR
 
@@ -127,8 +127,6 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 
 **Preparation blocked:** merge missing backports or finish the preceding release, then rerun Prepare Release with the same inputs. Never edit the generated plan to bypass validation.
 
-**Release plan check fails on the bicep-types-aws Radius pin:** the planned `bicep-types-aws` commit doesn't pin the plan's product commit. [Set the pin](./README.md#pin-radius-in-bicep-types-aws) on `bicep-types-aws` `release/X.Y` to the product commit named in the error, then rerun Prepare Release with the same inputs.
-
-**Release controller fails on the bicep-types-aws Radius pin:** the release PR merged without a passing release plan check. Nothing was tagged, but the merged plan and its `bicep-types-aws` commit can't change, so resuming fails the same way. Follow [break-glass recovery](./README.md#break-glass-recovery).
+**AWS pin validation fails:** do not merge a mismatched plan or change a frozen tag. If it reports AWS changes outside the approved plan, revert them through a reviewed AWS PR and resume the same version, as described in [Verify the approved AWS source](./README.md#verify-the-approved-aws-source).
 
 Never move approved tags, delete locks, overwrite published artifacts, or disable verification. Follow [break-glass recovery](./README.md#break-glass-recovery) for conflicts or fixes needed in already-tagged build code.

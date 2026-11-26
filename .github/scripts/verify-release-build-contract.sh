@@ -27,6 +27,7 @@ readonly -a REQUIRED_JOBS=(
     verify-release approve-publication coordinate-release
 )
 COMMIT=""
+REQUIRE_AWS_PIN_RECEIPT=false
 REQUIRE_SIBLING_RELEASES=false
 BICEP_DUAL_PIPELINE=false
 GHCR_ONLY=false
@@ -368,7 +369,8 @@ verify_bicep_contract() {
 }
 
 verify_ghcr_only_bicep() {
-    git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' | jq -e '
+    git show "${COMMIT}:${BUILD_WORKFLOW}" | yq -o=json '.' | jq -e \
+        --argjson require_pin "${REQUIRE_AWS_PIN_RECEIPT}" '
         def normalized: gsub("\\s"; "");
         def exact_if($condition):
             (.if | normalized) == ($condition | normalized) and
@@ -408,7 +410,9 @@ verify_ghcr_only_bicep() {
                 (.with.script | contains("promote-release-bicep.mjs")) and
                 .env.INPUT_LOCK_FILE == "dist/verification/assets/bicep-extension-lock.json" and
                 .env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json" and
-                .env.INPUT_PLAN_FILE == "dist/verification/plan.json" and
+                ((.env.INPUT_PLAN_FILE == "${{ steps.aws-pin.outputs.plan-file }}") or
+                 (($require_pin | not) and
+                  .env.INPUT_PLAN_FILE == "dist/verification/plan.json")) and
                 .env.INPUT_JOB_DEADLINE == "${{ env.BICEP_JOB_DEADLINE }}" and
                 .env.INPUT_PROMOTE_CHANNEL == "${{ steps.alias-policy.outputs.promote_channel }}" and
                 .env.INPUT_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")) and
@@ -487,6 +491,7 @@ main() {
     EXPECTED_TARGETS=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --require-aws-pin-receipt) REQUIRE_AWS_PIN_RECEIPT=true; shift ;;
             --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true; shift ;;
             --require-current-bicep) REQUIRE_CURRENT_BICEP=true; shift ;;
             --require-current-engine) REQUIRE_CURRENT_ENGINE=true; shift ;;

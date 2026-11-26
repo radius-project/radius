@@ -253,6 +253,9 @@ chmod +x "${FAKE_BIN}/gh"
 cat >"${FAKE_BIN}/go" <<EOF
 #!/bin/bash
 set -euo pipefail
+if [[ "\$1" == "env" ]]; then
+    exec "$(command -v go)" "\$@"
+fi
 cat <<'JSON'
 {
   "GoVersion": "go1.26.5",
@@ -378,7 +381,7 @@ cat >"${FAKE_BIN}/yq" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
-if [[ "$1" == "-o=json" ]]; then
+if [[ "$1" == "-o=json" || "$1" == "-p=yaml" ]]; then
     cat
 elif [[ "$1" == "eval" ]]; then
     cat <<'JSON'
@@ -672,6 +675,155 @@ cp "${OUTPUT}" "${FIRST_OUTPUT}"
 TARGET_OVERRIDE="" run_collector
 cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
     fail "standalone GHCR inspection did not load the committed source plan"
+cp "${FIXTURES}/plan.json" "${FIXTURES}/unpinned-plan.json"
+jq '.siblingRepositories[0].radiusPin = {}' "${FIXTURES}/unpinned-plan.json" \
+    >"${FIXTURES}/plan.json"
+if TARGET_OVERRIDE="" run_collector 2>"${FIXTURES}/pinned-error.log" ||
+    ! grep -q 'requires the receipt-resolved --plan-file' "${FIXTURES}/pinned-error.log"; then
+    fail "standalone inspection used a pinned plan's unreleased AWS base"
+fi
+mv "${FIXTURES}/unpinned-plan.json" "${FIXTURES}/plan.json"
+
+yq -o=json '.' "${SCRIPT_DIR}/../workflows/release-parity-manifest.yaml" \
+    >"${FIXTURES}/parity-workflow.json"
+PATH="${FAKE_BIN}:${PATH}" RUNNER_TEMP="${TEST_ROOT}" \
+    RELEASE_PARITY_OUTPUT="${OUTPUT}" RELEASE_PARITY_RUNTIME_ASSET="rad_linux_amd64" \
+    node --input-type=module - "${SCRIPT_DIR}" "${FIXTURES}" "${SOURCE_COMMIT}" <<'JS'
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+const [scripts, fixtures, source] = process.argv.slice(2);
+const root = resolve(scripts, "../..");
+const workflow = JSON.parse(await readFile(`${fixtures}/parity-workflow.json`));
+const steps = workflow.jobs.collect.steps;
+const resolver = steps.find(step => step.id === "aws-pin");
+assert.ok(resolver, "parity workflow must resolve the approved AWS pin");
+const collector = steps.find(step => step.name === "Collect manifest");
+assert.ok(steps.indexOf(resolver) < steps.indexOf(collector));
+assert.equal(collector.env.RELEASE_PARITY_PLAN_FILE, "${{ steps.aws-pin.outputs.plan-file }}");
+const original = await readFile(`${fixtures}/plan.json`, "utf8");
+const plan = JSON.parse(original);
+const landed = plan.siblingRepositories[0].sourceCommit;
+const base = "c".repeat(40), product = "a".repeat(40), tree = "d".repeat(40);
+const receiptSha = "e".repeat(40), annotation = "f".repeat(40);
+Object.assign(plan, { channel: "0.60", source: { productCommit: product } });
+Object.assign(plan.siblingRepositories[0], {
+  sourceCommit: base, sourceRef: "main",
+  radiusPin: { productCommit: product, expectedTree: tree }
+});
+const file = (path, raw) => ({
+  type: "file", path, encoding: "base64",
+  content: Buffer.from(raw).toString("base64"),
+  sha: createHash("sha1").update(`blob ${Buffer.byteLength(raw)}\0`).update(raw).digest("hex")
+});
+const planPath = `.github/release-plans/${plan.version}.yaml`;
+const receiptPath = ".github/release-state/aws-pin.json";
+const raw = JSON.stringify(plan);
+const receipt = file(receiptPath, JSON.stringify({
+  schemaVersion: 1, version: plan.version, planBlob: file(planPath, raw).sha,
+  baseCommit: base, productCommit: product, expectedTree: tree, landedCommit: landed
+}));
+let planText = raw, planError = 0, missingReceipt = false, verified = true, receiptReads = 0;
+const error = status => Object.assign(new Error(`HTTP ${status}`), { status });
+const github = { rest: {
+  git: {
+    getRef: async ({ ref }) => {
+      if (ref === `tags/${plan.version}`)
+        return { data: { object: { type: "tag", sha: annotation } } };
+      assert.equal(ref, "heads/automation/release-state-aws-0.60.0");
+      receiptReads++;
+      if (missingReceipt) throw error(404);
+      return { data: { ref: `refs/${ref}`, object: { type: "commit", sha: receiptSha } } };
+    },
+    getTag: async ({ tag_sha }) => {
+      assert.equal(tag_sha, annotation);
+      return { data: { object: { type: "commit", sha: source } } };
+    },
+    getTree: async ({ repo, tree_sha }) => {
+      assert.equal(repo, "bicep-types-aws");
+      assert.equal(tree_sha, tree);
+      return { data: { sha: tree, truncated: false,
+        tree: [{ path: "radius", mode: "160000", type: "commit", sha: product }] } };
+    }
+  },
+  repos: {
+    getContent: async ({ repo, ref, path }) => {
+      assert.equal(repo, "radius");
+      if (ref === source && path === planPath) {
+        if (planError) throw error(planError);
+        return { data: file(path, planText) };
+      }
+      assert.equal(ref, receiptSha);
+      assert.equal(path, receiptPath);
+      return { data: receipt };
+    },
+    getCommit: async ({ repo, ref }) => {
+      if (repo === "bicep-types-aws") {
+        assert.equal(ref, landed);
+        return { data: { sha: landed, commit: { tree: { sha: tree } } } };
+      }
+      assert.equal(repo, "radius");
+      assert.ok([source, receiptSha].includes(ref));
+      return { data: {
+        sha: ref, commit: { tree: { sha: tree }, verification: { verified } },
+        parents: [{ sha: product }],
+        author: { login: "radius-release[bot]", type: "Bot" },
+        committer: { login: "web-flow" },
+        files: [{ filename: receiptPath, status: "added", sha: receipt.sha }]
+      } };
+    },
+    compareCommitsWithBasehead: async ({ repo, basehead }) => {
+      assert.equal(repo, "bicep-types-aws");
+      assert.equal(basehead, `${base}...${landed}`);
+      return { data: { status: "ahead" } };
+    }
+  }
+} };
+process.env.GITHUB_WORKSPACE = root;
+process.env.RELEASE_PARITY_VERSION = "0.60.0";
+const context = Object.assign(Object.create({
+  get repo() { return { owner: "radius-project", repo: "radius" }; }
+}), { ref: "refs/heads/main", sha: "0".repeat(40) });
+const run = async () => {
+  const outputs = {};
+  const core = { setOutput: (name, value) => { outputs[name] = value; }, info: () => {} };
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  await new AsyncFunction("github", "context", "core", resolver.with.script)(github, context, core);
+  return outputs;
+};
+for (planText of [original, '{"schemaVersion":1}']) assert.deepEqual(await run(), {});
+planError = 404;
+assert.deepEqual(await run(), {});
+planError = 403;
+await assert.rejects(run, /HTTP 403/);
+planError = 0;
+assert.equal(receiptReads, 0);
+planText = raw;
+missingReceipt = true;
+await assert.rejects(run, /Missing AWS pin receipt/);
+missingReceipt = false;
+verified = false;
+await assert.rejects(run, /not a GitHub-verified release App commit/);
+verified = true;
+const outputs = await run();
+assert.equal(outputs.sha, landed);
+await writeFile(`${fixtures}/plan.json`, raw);
+execFileSync("bash", ["-eu", "-c", collector.run], {
+  cwd: root, stdio: "pipe",
+  env: { ...process.env, RELEASE_PARITY_TARGETS: "", RELEASE_PARITY_PLAN_FILE: outputs["plan-file"] }
+});
+const manifest = JSON.parse(await readFile(process.env.RELEASE_PARITY_OUTPUT));
+const aws = manifest.downstream.bicepExtensionLock.artifacts.find(a => a.name === "aws-bicep-types");
+assert.equal(aws.source.commit, landed);
+assert.notEqual(aws.source.commit, base);
+assert.equal(manifest.release.sourceCommit, source);
+assert.equal(context.ref, "refs/heads/main");
+await writeFile(`${fixtures}/plan.json`, original);
+console.log("parity workflow: pinned release uses the receipt-locked AWS source; legacy and fail-closed cases passed");
+JS
+
 jq -e '
     (.downstream.ociArtifacts | length) == 2
     and all(.downstream.ociArtifacts[]; .reference | endswith(":0.60.0"))

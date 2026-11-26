@@ -23,7 +23,7 @@
 
 set -euo pipefail
 
-readonly PIN_DOC='https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-releases/README.md#pin-radius-in-bicep-types-aws'
+readonly PIN_DOC='https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-releases/README.md#verify-the-approved-aws-source'
 
 fail() {
     echo "Error: $*" >&2

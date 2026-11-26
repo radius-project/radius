@@ -86,6 +86,7 @@ test("published historical sources retain validation and recovery; unpublished s
   t.after(() => rm(directory, { recursive: true, force: true }));
   for (const state of [
     "published",
+    "pinned",
     "draft",
     "absent",
     "API failure",
@@ -115,6 +116,12 @@ test("published historical sources retain validation and recovery; unpublished s
         }
       ]
     };
+    if (state === "pinned")
+      plan.siblingRepositories[0].radiusPin = {
+        productCommit: sourceCommit,
+        expectedTree: "d".repeat(40)
+      };
+    if (state === "pinned") plan.siblingRepositories[0].sourceRef = "main";
     const manifest = {
       schemaVersion: 1,
       tag: version,
@@ -166,6 +173,7 @@ test("published historical sources retain validation and recovery; unpublished s
                     state === "wrong tag" ?
                       backportCommit
                     : sourceCommit
+                  : state === "pinned" ? "c".repeat(40)
                   : state === "wrong AWS tag" ? sourceCommit
                   : backportCommit
               }
@@ -185,6 +193,26 @@ test("published historical sources retain validation and recovery; unpublished s
         outputs[name] = value;
       }
     };
+    const resolveTagPlan = async ({ context }) => {
+      assert.equal(state, "pinned");
+      assert.deepEqual(context, {
+        repo: { owner: "radius-project", repo: "radius" },
+        ref: `refs/tags/${version}`,
+        sha: sourceCommit
+      });
+      return {
+        ...structuredClone(plan),
+        siblingRepositories: plan.siblingRepositories.map((entry) =>
+          entry.name === "bicep-types-aws" ?
+            {
+              ...entry,
+              sourceRef: `release/${plan.channel}`,
+              sourceCommit: "c".repeat(40)
+            }
+          : entry
+        )
+      };
+    };
     const run = async (args) => {
       if (args[0] === "yq") return JSON.stringify(plan);
       assert.deepEqual(args.slice(0, 3), [
@@ -193,6 +221,10 @@ test("published historical sources retain validation and recovery; unpublished s
         sourceCommit
       ]);
       assert.ok(args.includes("--require-sibling-releases"));
+      assert.equal(
+        args.includes("--require-aws-pin-receipt"),
+        state === "pinned"
+      );
       assert.ok(args.includes("--expected-targets"));
       assert.deepEqual(
         JSON.parse(
@@ -212,8 +244,13 @@ test("published historical sources retain validation and recovery; unpublished s
         throw new Error("does not enforce the publication gate");
       return "";
     };
-    const promise = verifyReleaseBuildSource({ github, core, run });
-    if (state === "published") {
+    const promise = verifyReleaseBuildSource({
+      github,
+      core,
+      run,
+      resolveTagPlan
+    });
+    if (["published", "pinned"].includes(state)) {
       await promise;
       assert.equal(outputs.published, "true");
       assert.equal(outputs["de-source-commit"], backportCommit);

@@ -54,28 +54,13 @@ Stop if the update is missing or incomplete. Publishing namespaces and recipe pa
 
 ### Pin Radius in bicep-types-aws
 
-`bicep-types-aws` builds the AWS Bicep extension from the Radius schemas at the commit its `radius` submodule pins. Release plan validation fails unless the `radius` submodule at the planned `bicep-types-aws` commit pins the plan's `source.productCommit`. The release controller runs the same check before approval, so nothing is tagged on a mismatch even if the release PR merged without a passing plan check. In that case the merged plan can't change: follow [break-glass recovery](#break-glass-recovery). A `bicep-types-aws` commit from before the submodule was added passes both checks with a notice. Nothing sets the pin automatically yet, so set it by hand:
-
-1. Find the product commit. For a later RC, a final, or a patch, it's the head of Radius `release/X.Y` after its backports merge, so you can set the pin before preparation. For a first RC, it's the `main` commit that preparation freezes: run Prepare Release, then read `source.productCommit` from the release PR's plan.
-2. In `radius-project/bicep-types-aws`, create `release/X.Y` from `main` if it doesn't exist (`git push origin origin/main:refs/heads/release/X.Y` after the clone below). Then set the `radius` submodule on `release/X.Y` to the product commit through a pull request, and merge it:
-
-   ```bash
-   git clone https://github.com/radius-project/bicep-types-aws.git
-   cd bicep-types-aws
-   git switch -c pin-radius-X.Y origin/release/X.Y
-   git update-index --cacheinfo "160000,<product-commit>,radius"
-   git commit -s -m "chore: pin Radius to <product-commit>"
-   git push origin pin-radius-X.Y
-   gh pr create --repo radius-project/bicep-types-aws --base release/X.Y --fill
-   ```
-
-3. Rerun Prepare Release with the same inputs. Preparation captures `bicep-types-aws` from `release/X.Y`. For a first RC, if Radius `main` moved since the last run, the new plan freezes a newer commit and the check fails again. Repeat these steps with the new product commit.
+The AWS types must use the Radius product commit, not the later release metadata commit. A legacy plan without a pin intent must already reference a matching AWS commit. Each preparation run captures its selected product and sibling commits anew; reruns can change the plan's source SHAs and release date. Review the regenerated plan and notes, including selected backports and curated Highlights/Upgrading, before merging. Never assume a rerun retains prior source selections or repair a merged plan by editing it or moving a tag.
 
 ### Approve the plan
 
 1. Run [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) from `main` with `release-type`, `channel`, and optional comma-separated `backport-pr-numbers`.
 2. Review the generated draft PR's version, product commit, frozen sibling commits, selected backports, expected outputs, and schema-v2 plan under `.github/release-plans/`. Curate only Highlights and Upgrading in RC or final notes; patch notes are generated completely. Retain the warning that chart-default images are pinned to the full version: pod restarts no longer pick up later patches, and explicit image overrides remain respected.
-3. If the base advances, rerun Prepare Release with the same inputs. A frozen sibling head that advances does not invalidate the plan; rerun only when the later sibling change belongs in the release. It regenerates the plan and generated prose while preserving the allowed curated sections. If preparation reports a pending backport, merge it and rerun; do not omit the fix to bypass validation.
+3. If the base advances or a required sibling change lands, rerun Prepare Release to regenerate the plan from the selected product and sibling commits. Review every source SHA and generated note again; the rerun may select newer commits and a new release date, while allowed curated sections are preserved. If preparation reports a pending backport, merge it and rerun; do not omit the fix to bypass validation.
 4. Mark the release PR ready, obtain review, and **squash-merge** it to `main`. For the first RC, the controller creates `release/X.Y`. For an existing channel, review and **rebase-merge** the generated metadata backport to `release/X.Y`; the initial controller run waits without mutation until that merge.
 
 New schema-v2 plans record `changelogPolicy: stable-only`. RC preparation changes only the plan, `versions.yaml`, and its release-note file; root `CHANGELOG.md` changes only for finals and patches. Entries within each category follow merge history, newest first. RC.1 and final notes contain the full new-version changes since the stable baseline. Later RC notes contain only changes applied since the previous RC and link its notes; patch notes contain only changes since the previous stable tag in that channel. Both incremental ranges end at the frozen product SHA, never current `main`.
@@ -266,6 +251,24 @@ Use [Approve Release](https://github.com/radius-project/radius/actions/workflows
 
 ## Verification
 
+### Verify the approved AWS source
+
+Prepare Release does **not** write to the AWS repository. The plan records the frozen AWS base (`sourceCommit`), the raw Radius `source.productCommit` that the `radius` submodule must point to, and the expected AWS Git tree after that single change. The release PR and controller independently recompute the tree. A metadata backport must preserve the plan file byte for byte: even reformatting the YAML changes the Git blob the receipt identifies. Review the tree in the controller summary before approving the `release` environment. A final must preserve the product code and AWS generator inputs tested by its last RC; a change beyond generated release metadata or an equivalent schema pin requires another RC.
+
+AWS `release/X.Y` may hold only approved content: commits whose tree is the reviewed base, optionally followed by the planned pin. Validation checks this before approval, so an unplanned AWS backport fails before Deployment Engine publication. Only after approval does the release App create a missing `release/X.Y` from the reviewed base, then open or reuse a signed pin-only PR on the branch tip when needed. It verifies the actual AWS build at the proposal SHA, waits for the protected rebase merge, and checks the landed tree and parent. An already matching base needs no pin commit, and a pin that already landed is adopted; later AWS backports do not affect either. Before tagging, the controller creates a signed record in Radius at `automation/release-state-aws-<version-without-v>`, bound to the committed plan blob. The tag, AWS types publisher, manifest and sibling release all use the recorded SHA on `release/X.Y`, not the plan's base or a later branch tip.
+
+Before rollout, backport the receipt-aware tagged workflows to existing Radius release branches and the AWS build workflow to applicable AWS branches. Require **Validate release plan** on Radius `main` and **Build and test** on the applicable AWS `release/X.Y`, both from GitHub Actions. Allow initial channel creation without a status check. Protect `automation/release-state-aws-*` in Radius against updates and deletions, allowing the release App to create records. Give the App Contents and Pull requests write and Checks read on `bicep-types-aws`, not administration or branch-protection bypass.
+
+Resume the same version and source after an interruption, including a merge whose response was lost. If validation or the pin step reports AWS changes outside the approved plan, keep the plan, version, and source; do not prepare another version:
+
+- **A backport landed before the pin**, for example between preparation and approval: revert it on AWS `release/X.Y` through a reviewed PR, then resume. The pin is proposed on the revert; close any superseded pin PR. Re-apply the backport after the release tag exists.
+- **The pin landed on top of a backport**: revert the backport through a reviewed PR, then resume. The revert restores the expected tree, and the controller records it as the release commit.
+
+A removed or malformed submodule fails; a historical source that never had it passes with a notice.
+
+### Verify release outputs
+
+- To inspect a published release, run [Release parity manifest](https://github.com/radius-project/radius/actions/workflows/release-parity-manifest.yaml) with its version without the `v` prefix. The workflow resolves the requested tag and verifies the approved AWS pin receipt before collecting outputs; historical releases without a pin retain their existing inspection path. Direct Make invocations for pinned releases require `RELEASE_PARITY_PLAN_FILE` pointing to the receipt-verified effective JSON plan, not the committed plan's AWS base.
 - The summary identifies the approved version/source, every mandatory stage, elapsed duration, expected and observed outputs, downstream run URLs, and the exact resume command. Keep the summary and release-thread links as the release record.
 - The manifest binds the approved plan to binaries, checksums, Go/linker metadata, SBOMs, image digests and platforms, full-version chart references, and downstream outputs. The isolated kind installation uses the staged CLI and chart with digest overrides. Its same-version upgrade disables only the version-transition check; it is not evidence of a cross-version upgrade.
 - Installation failures set `checks.installation` to `failed`, keeping publication blocked. Before deleting the verification cluster, the verifier writes `installation-diagnostics.json` beside the staged manifest; the existing `release-verification-<sha>` artifact retains it. The original upgrade error stays in the job log, and diagnostic or cleanup failures do not replace its exit code. Diagnostics include the failed stage, CLI/Helm versions, and only allowlisted encryption Secret metadata: identity, rotation and Helm ownership annotations, and managed-field owners with key/rotation ownership flags. Secret data, arbitrary annotations (including last-applied configuration), kubeconfigs, and credentials are not retained. Unavailable diagnostic reads are reported explicitly. Public-release verification, which has no manifest, writes the same diagnostics under `dist/verification` by default; `RELEASE_VERIFY_DIR` changes that directory, and `RELEASE_VERIFY_DIAGNOSTICS` overrides the output file.

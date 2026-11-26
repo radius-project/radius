@@ -501,6 +501,7 @@ generate_release_notes() {
 }
 
 write_release_plan() {
+    local siblings_file="${SIBLING_REPOSITORIES_FILE}"
     local version="$1"
     local previous_version="$2"
     local source_ref="$3"
@@ -516,13 +517,23 @@ write_release_plan() {
         release_commit_resolution+=" on release/${CHANNEL}"
     fi
 
+    if [[ "${PLAN_AWS_PIN:-false}" == true ]]; then
+        siblings_file="${OUTPUT_DIR}/planned-siblings.json"
+        cp "${SIBLING_REPOSITORIES_FILE}" "${siblings_file}"
+        node "${SCRIPT_DIR}/aws-pin-plan.mjs" capture "${siblings_file}" \
+            "${source_commit}" "${CHANNEL}"
+        if jq -e 'any(.[]; has("radiusPin"))' "${siblings_file}" >/dev/null; then
+            bash "${SCRIPT_DIR}/verify-aws-pin-readers.sh" "${source_commit}"
+        fi
+    fi
+
     VERSION="${version}" RELEASE_TYPE="${RELEASE_TYPE}" \
         CHANNEL="${CHANNEL}" RELEASE_DATE="${RELEASE_DATE}" \
         PREVIOUS_VERSION="${previous_version}" \
         SOURCE_REF="${source_ref}" SOURCE_COMMIT="${source_commit}" \
         RELEASE_COMMIT_RESOLUTION="${release_commit_resolution}" \
         TARGETS_FILE="${TARGETS_FILE}" BACKPORTS_FILE="${BACKPORTS_FILE}" \
-        SIBLINGS_FILE="${SIBLING_REPOSITORIES_FILE}" \
+        SIBLINGS_FILE="${siblings_file}" \
         TRACKED_PLAN_FILE="${tracked_plan_file}" \
         yq -n '
             {

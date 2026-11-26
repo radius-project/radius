@@ -54,10 +54,13 @@ jobs:
       pull-requests: read
       deployments: read
     steps:
+      - name: Require a main-branch dispatch
+        run: test "${GITHUB_REF}" = refs/heads/main
+
       - name: Checkout main with release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -68,6 +71,14 @@ jobs:
 
       - name: Install release tools
         run: make install-yq install-jq install-git-cliff
+
+      - name: Verify the required release plan check
+        if: github.repository == 'radius-project/radius'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { requireCheck } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-plan.mjs`)
+            await requireCheck(github, 'radius', 'main', 'Validate release plan')
 
       - name: Create release App token
         if: github.repository == 'radius-project/radius'
@@ -294,6 +305,7 @@ jobs:
           RECIPE_SOURCE_COMMIT: ${{ steps.recipe-source.outputs.commit }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           GITHUB_REPO: ${{ github.repository }}
+          PLAN_AWS_PIN: "true"
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
           PREFLIGHT_VERSION: ${{ steps.preflight.outputs.version }}

@@ -52,10 +52,45 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: make install-helm install-jq install-oras install-yq
 
+      - name: Resolve approved AWS source
+        id: aws-pin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RELEASE_PARITY_VERSION: ${{ inputs.version }}
+        with:
+          retries: 5
+          script: |
+            const { execFileSync } = await import('node:child_process')
+            const { tagCommit } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
+            const version = `v${process.env.RELEASE_PARITY_VERSION}`
+            const sha = await tagCommit(github, context, version)
+            let data
+            try {
+              ({ data } = await github.rest.repos.getContent({
+                ...context.repo, ref: sha, path: `.github/release-plans/${version}.yaml`
+              }))
+            } catch (error) {
+              if (error.status !== 404) throw error
+              core.info('No committed release plan; using historical parity inspection.')
+              return
+            }
+            const plan = JSON.parse(execFileSync('yq', ['-p=yaml', '-o=json', '.', '-'], {
+              input: Buffer.from(data.content, 'base64'), encoding: 'utf8'
+            }))
+            if (!plan.siblingRepositories?.some(entry =>
+              entry.name === 'bicep-types-aws' && Object.hasOwn(entry, 'radiusPin'))) return
+            const { default: materializeTagPlan } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-receipt.mjs`)
+            await materializeTagPlan({
+              github, core, context: {
+                repo: context.repo, ref: `refs/tags/${version}`, sha
+              }
+            })
+
       - name: Collect manifest
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_PARITY_VERSION: ${{ inputs.version }}
+          RELEASE_PARITY_PLAN_FILE: ${{ steps.aws-pin.outputs.plan-file }}
         run: make release-parity-manifest
 
       - name: Summarize manifest

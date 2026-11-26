@@ -126,6 +126,16 @@ plan_aws_change() {
 pin_aws_radius() {
     git -C "${SIBLING_ROOT}/bicep-types-aws-seed" update-index --add \
         --cacheinfo "160000,$1,radius"
+    local seed="${SIBLING_ROOT}/bicep-types-aws-seed"
+
+    if [[ ! -f "${seed}/.gitmodules" ]]; then
+        cat > "${seed}/.gitmodules" <<'EOF'
+[submodule "radius"]
+    path = radius
+    url = https://github.com/radius-project/radius.git
+EOF
+        git -C "${seed}" add .gitmodules
+    fi
     plan_aws_change
 }
 
@@ -634,7 +644,7 @@ expect_radius_pin_failure() {
 
     output="$(run_validator 2>&1)" || status=$?
     if [[ "${status}" == 0 || "${output}" != *"${expected}"* ||
-        "${output}" != *"#pin-radius-in-bicep-types-aws"* ]]; then
+        "${output}" != *"#verify-the-approved-aws-source"* ]]; then
         fail_test "expected failure containing '${expected}': ${output}"
         return
     fi
@@ -646,6 +656,46 @@ test_rejects_mismatched_radius_pin() {
 
     pin_aws_radius "${pinned}"
     expect_radius_pin_failure "pins Radius ${pinned}, but this release ships Radius ${BASE_SHA}"
+}
+
+test_verifies_proposed_radius_pin() {
+    local seed="${SIBLING_ROOT}/bicep-types-aws-seed" tree before output
+    mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
+    cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" "${REPO}/.github/scripts/"
+    cp "${SCRIPT_DIR}/stage-release-bicep.mjs" "${REPO}/.github/scripts/"
+    cp "${SCRIPT_DIR}/verify-release-publication.sh" "${REPO}/.github/scripts/"
+    cp "${SCRIPT_DIR}/../workflows/build-release.yaml" \
+        "${REPO}/.github/workflows/"
+    git -C "${REPO}" add .github
+    git -C "${REPO}" commit -qm "Install tag-owned AWS receipt readers"
+    BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    pin_aws_radius bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    before="$(git --git-dir="${SIBLING_ROOT}/bicep-types-aws.git" show-ref)"
+    tree="$(GIT_INDEX_FILE="${TEST_ROOT}/expected-pin-index" git -C "${seed}" \
+        read-tree HEAD && GIT_INDEX_FILE="${TEST_ROOT}/expected-pin-index" \
+        git -C "${seed}" update-index --cacheinfo "160000,${BASE_SHA},radius" &&
+        GIT_INDEX_FILE="${TEST_ROOT}/expected-pin-index" git -C "${seed}" write-tree)"
+    PRODUCT="${BASE_SHA}" TREE="${tree}" yq -i \
+        '.siblingRepositories[2].radiusPin = {"productCommit":strenv(PRODUCT),"expectedTree":strenv(TREE)}' \
+        "${EXPECTED_PLAN}"
+    wrap_body
+    cp "${EXPECTED_PLAN}" "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
+    if ! output="$(run_validator 2>&1)"; then
+        fail_test "valid pre-approval AWS intent failed: ${output}"
+        return
+    fi
+    if [[ "$(git --git-dir="${SIBLING_ROOT}/bicep-types-aws.git" show-ref)" != "${before}" ]]; then
+        fail_test "validating the intent changed an AWS ref"
+        return
+    fi
+    yq -i '.siblingRepositories[2].radiusPin.expectedTree = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' "${EXPECTED_PLAN}"
+    wrap_body
+    cp "${EXPECTED_PLAN}" "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
+    if output="$(run_validator 2>&1)" || [[ "${output}" != *"approved AWS pin intent"* ]]; then
+        fail_test "validator accepted a tampered AWS tree: ${output}"
+        return
+    fi
+    ((++PASS))
 }
 
 test_rejects_radius_path_without_submodule() {
@@ -717,6 +767,8 @@ main() {
     test_notes_missing_radius_pin
     setup_repo
     test_rejects_mismatched_radius_pin
+    setup_repo
+    test_verifies_proposed_radius_pin
     setup_repo
     test_rejects_radius_path_without_submodule
     setup_repo
