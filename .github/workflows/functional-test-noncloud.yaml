@@ -17,6 +17,7 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
 name: Functional Tests (with Non-Cloud Resources)
+run-name: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.correlation_id || '' }}
 
 on:
   # Enable manual trigger
@@ -38,7 +39,7 @@ on:
   repository_dispatch:
     types: [deployment-engine.run-functional-tests]
     # Expected client_payload:
-    #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
+    #   correlation_id: Unique producer run/attempt for this test request
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
     #   tag: Tag for the image (e.g. edge, 0.61.0-rc.1, pr-123)
   pull_request:
@@ -128,6 +129,10 @@ jobs:
           DEST_IMAGE: ${{ github.event.client_payload.dest_image }}
           TAG: ${{ github.event.client_payload.tag }}
         run: |
+          [[ "${DEST_IMAGE}" == "${DE_IMAGE}" && "${TAG}" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || {
+            echo "Invalid deployment-engine reference" >&2
+            exit 1
+          }
           {
             echo "DE_IMAGE=${DEST_IMAGE}"
             echo "DE_TAG=${TAG}"
@@ -768,9 +773,9 @@ jobs:
           # local registry; ignored by other legs.
           RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
-      - name: Run authz boundary tests in enforce mode
+      - name: Run authz enforce-mode tests
         # The authz leg installs dryRun above. Switch the same installation to enforce and rerun
-        # the internal authentication boundary tests, whose enforce branches differ from dryRun.
+        # the internal authentication boundary tests and the shared Applications.Core regression suite.
         id: authz-enforce-tests
         if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
         run: |
@@ -780,7 +785,7 @@ jobs:
           rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" \
             --set global.rbac.dryRun=false --set global.rbac.enabled=true
           kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedCaller|TokenReplay|WrongServerSPIFFEID)\$\$'"
+          make test-functional-authz-noncloud GOTEST_OPTS="-run '^(Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedCaller|TokenReplay|WrongServerSPIFFEID)|Test_ApplicationsCoreRegression)\$\$'"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}

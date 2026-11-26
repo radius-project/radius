@@ -43,6 +43,8 @@ While a preparation PR remains open, a rerun regenerates its source selections a
 
 Review the generated draft PR: version, product commit, sibling commits, selected backports, and expected outputs in `.github/release-plans/`. For RC/final notes, edit only **Highlights** and **Upgrading**; retain the image-pinning warning. Patch notes are fully generated.
 
+For a new final, review `recipeSourceCommit` in `resource-types-contrib` and confirm its `main` push published the signed recipe inventory. This is separate from the `recipes` sibling commit. Preparation retries retain the original recipe SHA.
+
 Root `CHANGELOG.md` contains finals and patches only. RC.1 and final notes cover the full new-version changes; later RCs show only changes since the preceding RC, and patches only changes since the preceding stable tag in that channel. Entries are newest first within each category. New plans record `changelogPolicy: stable-only`; an RC changes three metadata files, leaving the root changelog unchanged.
 
 Mark the PR ready, obtain approval, and **squash-merge into `main`**. A frozen first-RC plan does not need regeneration just because `main` advanced.
@@ -53,13 +55,13 @@ For an existing `release/X.Y` channel, also review and **rebase-merge the genera
 
 Open the automatically started [Release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml). For an existing channel, select the run started by the metadata backport merge and confirm **State: validated and ready to reconcile**, not the initial main-merge run that reports waiting. Review its version, Radius source commit, Deployment Engine commit, and frozen sibling commits. Record the exact **version and source commit** from this run's summary for recovery.
 
-- **Until v0.63.0 final ships:** confirm the Deployment Engine commit includes azure-octo/deployment-engine#705 (`e537d7e4b`). This release removes the AWS routes that older Deployment Engines call.
+- **Until v0.63.0 final ships:** confirm the Deployment Engine commit includes radius-project/deployment-engine#705 (`e537d7e4b`). This release removes the AWS routes that older Deployment Engines call.
 
 In **Review deployments**, approve **Approve release reconciliation** in the `release` environment.
 
 For a frozen first RC, the controller then creates or reuses a signed release-App commit based on the frozen product cutoff, adding only the reviewed release metadata files, including the PM notes. The release branch, tag, builds, and artifact locks use this resolved commit, not the later `main` squash commit. Record the resolved source SHA from the summary for subsequent recovery.
 
-Automation creates the Deployment Engine tag when missing, waits up to 15 minutes for its image while unlocked, locks the image digest, reconciles sibling tags, and creates the Radius tag last. **Do not manually create tags or dispatch individual publishers on the normal path.**
+Automation creates the Deployment Engine tag when missing, waits up to 15 minutes for its image while unlocked, locks the verified full-version GHCR index digest, reconciles sibling tags, and creates the Radius tag last. **Do not manually create tags or dispatch individual publishers on the normal path.**
 
 ### 4. Check the build and approve stable publication
 
@@ -79,18 +81,18 @@ Follow the exact downstream run and PR links in the release summary:
 | Type  | Maintainer action                                                                                                                                                                                                                      |
 |-------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | RC    | Review and squash-merge the docs and samples upmerge PRs into `edge`, if created. Then [resume the same release](#troubleshooting) so sample tests run. Require all three successful coordination receipts before preparing the final. |
-| Final | Confirm automated docs publication, samples publication, and sample tests succeed. Also publish the final's Bicep recipes using the command below.                                                                                     |
+| Final | Confirm docs publication, samples publication, sample tests, and the final Bicep recipe run all succeed.                                                                                                                               |
 | Patch | Confirm sample tests succeed; no docs/samples release-branch recut is needed.                                                                                                                                                          |
 
 RC upmerges affect only `edge`, not the docs/samples default release branches. Only a final publishes their new `vX.Y` branches and switches their defaults; patches only run sample tests.
 
-**Final only:** confirm `resource-types-contrib` `main` contains the intended recipe source, then run [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml). Replace `0.62.0` with the actual final version **without `v`**:
+**Finals with `recipeSourceCommit`:** follow the `bicep-recipes / vX.Y.0-<full Radius release commit>` run from the release summary. It publishes the version tags and eligible `latest` aliases from the approved recipe inventory. If the receipt has no run URL, [reconcile the unknown dispatch](./README.md#lost-dispatch-response); do not launch a second publisher.
+
+**Legacy finals approved without `recipeSourceCommit`:** Radius does not dispatch the publisher. Once the stable Radius release is public, confirm that contrib `main` contains the intended recipes and that no publication for this version is running or has succeeded. Run the command below with the final version **without `v`** (replace `0.62.0`), then record the successful run URL. Do not use this command to recover a pinned final.
 
 ```bash
 gh workflow run publish-bicep-recipes.yaml --repo radius-project/resource-types-contrib --ref main -f release_version=0.62.0
 ```
-
-Wait for success and record the run URL. This is a separate maintainer action, not dispatched by Radius; it publishes release-version recipe tags and moves recipe `latest` tags.
 
 ## Verification
 
@@ -115,7 +117,7 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 
 **Sibling GitHub Release publication failed:** resume the same version/source. Matching entries and their generated notes are reused, even when Radius is already public. Investigate source/classification conflicts rather than deleting releases or moving tags.
 
-**Dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
+**Downstream dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
 
 **Provenance attestation or verification failed:** for a transient GitHub or Sigstore error, resume the same release; signing the same staged digests again is safe. A missing or mismatched attestation means the artifact did not come from this tag build. Investigate it instead of bypassing verification.
 

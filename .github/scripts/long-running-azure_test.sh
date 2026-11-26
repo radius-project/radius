@@ -45,12 +45,12 @@ printf 'package fixture\nimport "testing"\n' \
 excluded=(
     Test_ACI
     Test_RadiusCore_AzureMySql_PortalLink
-    Test_RabbitMQ
-    Test_RedisCache
-    Test_Container_ManagedSecretConnection
     Test_AuthzMode_LoggedByEveryComponent
 )
 included=(
+    Test_RabbitMQ
+    Test_RedisCache
+    Test_Container_ManagedSecretConnection
     Test_AuthzMode_LoggedByEveryComponent_AdditionalCheck
     Test_Prefix_Test_AuthzMode_LoggedByEveryComponent
     Test_Boundary_UnauthenticatedCallToApplicationsRP
@@ -236,12 +236,12 @@ chmod +x "${GITHUB_WORKSPACE}/bin/helm"
 : >"${MOCK_CALLS}"
 bash "${WORK_DIR}/enforce.sh" >"${WORK_DIR}/enforce.log" 2>&1 || {
     cat "${WORK_DIR}/enforce.log" >&2
-    fail "enforce mode should reinstall with rad and run boundary tests"
+    fail "enforce mode should reinstall with rad and run boundary and Applications.Core tests"
 }
 cat >"${WORK_DIR}/enforce-expected" <<'EXPECTED'
 rad-enforce
 kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedCaller|TokenReplay|WrongServerSPIFFEID)$$'
+make test-functional-authz-noncloud GOTEST_OPTS=-run '^(Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedCaller|TokenReplay|WrongServerSPIFFEID)|Test_ApplicationsCoreRegression)$$'
 EXPECTED
 diff -u "${WORK_DIR}/enforce-expected" "${MOCK_CALLS}"
 

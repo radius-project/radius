@@ -100,18 +100,14 @@ jobs:
         with:
           bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
 
-      # The Deployment Engine repository is private and belongs to azure-octo,
-      # so neither GITHUB_TOKEN nor the release App can read its tags. The
-      # publisher App is the cross-organization identity; its installation
-      # must include deployment-engine with Contents read.
       - name: Create Deployment Engine read token
         if: github.repository == 'radius-project/radius'
         id: de-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
-          owner: azure-octo
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
           repositories: deployment-engine
           permission-metadata: read
           permission-contents: read
@@ -119,6 +115,7 @@ jobs:
       - name: Validate release prerequisites
         id: preflight
         env:
+          REQUIRE_BICEP_RECIPES: ${{ inputs.release-type == 'final' }}
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
@@ -137,7 +134,7 @@ jobs:
           git rev-parse --verify --quiet "${release_ref}^{commit}" \
             >/dev/null || release_ref=HEAD
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${release_ref}" --require-sibling-releases --require-current-bicep \
+            "${release_ref}" --require-sibling-releases --require-current-bicep --require-current-engine \
             --expected-targets .github/release-parity/targets.json
 
           # A final promotes the channel's last release candidate.
@@ -223,7 +220,30 @@ jobs:
             args=(--allow-absent "${RELEASE_CANDIDATE}" "${VERSION}"
               "${RC_DE_COMMIT:?the release candidate lock has no commit}")
           fi
-          bash ./.github/scripts/verify-deployment-engine-tag.sh "${args[@]}"
+          bash ./.github/scripts/verify-deployment-engine-tag.sh --require-publisher "${args[@]}"
+
+      - name: Freeze final Bicep recipe source
+        if: inputs.release-type == 'final'
+        id: recipe-source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          EXISTING: ${{ steps.preflight.outputs.existing }}
+          EXISTING_HEAD: ${{ steps.preflight.outputs.existing-head }}
+        run: |
+          if [[ "${EXISTING}" == false ]]; then
+            commit="$(gh api repos/radius-project/resource-types-contrib/git/ref/heads/main --jq .object.sha)"
+          else
+            [[ "${EXISTING_HEAD}" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "Cannot identify the existing final plan." >&2
+              exit 1
+            }
+            prior="${RUNNER_TEMP}/existing-final-plan.yaml"
+            gh api -H 'Accept: application/vnd.github.raw+json' \
+              "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${VERSION}.yaml?ref=${EXISTING_HEAD}" >"${prior}"
+            commit="$(bash .github/scripts/resolve-recipe-source.sh "${prior}")"
+          fi
+          echo "commit=${commit}" >>"${GITHUB_OUTPUT}"
 
       - name: Read curated notes from existing release pull request
         if: >-
@@ -282,6 +302,7 @@ jobs:
       - name: Prepare release changes and plan
         id: prepare
         env:
+          RECIPE_SOURCE_COMMIT: ${{ steps.recipe-source.outputs.commit }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           GITHUB_REPO: ${{ github.repository }}
           PLAN_AWS_PIN: "true"

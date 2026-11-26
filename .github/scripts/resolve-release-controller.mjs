@@ -252,7 +252,8 @@ export async function verifyReleaseBuildSource({
   ];
   if (plan.changelogPolicy === "stable-only")
     args.push("--require-sibling-releases");
-  if (!manifest) args.push("--require-current-bicep");
+  if (!manifest)
+    args.push("--require-current-bicep", "--require-current-engine");
   await run(args);
   if (engine) {
     core.setOutput("de-source-commit", engine.sourceSha);

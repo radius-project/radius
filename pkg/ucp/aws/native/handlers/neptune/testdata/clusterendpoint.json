@@ -1,0 +1,260 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_NEPTUNE_CLUSTER": "radius-rec-graph",
+    "RADIUS_REC_NEPTUNE_INSTANCE": "radius-rec-graph-1",
+    "RADIUS_REC_RUN": "rn1e2b"
+  },
+  "interactions": [
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "CreateDBClusterEndpoint",
+      "request": "Action=CreateDBClusterEndpoint&DBClusterEndpointIdentifier=radius-rec-rn1e2b&DBClusterIdentifier=radius-rec-graph&EndpointType=READER&StaticMembers.member.1=radius-rec-graph-1&Tags.Tag.1.Key=radius-recording&Tags.Tag.1.Value=rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<CreateDBClusterEndpointResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <CreateDBClusterEndpointResult><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>creating</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>READER</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></CreateDBClusterEndpointResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</CreateDBClusterEndpointResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>creating</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>READER</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>available</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>READER</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>available</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>READER</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "ListTagsForResource",
+      "request": "Action=ListTagsForResource&ResourceName=arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<ListTagsForResourceResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <ListTagsForResourceResult><TagList><Tag><Key>radius-recording</Key><Value>rn1e2b</Value></Tag></TagList></ListTagsForResourceResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</ListTagsForResourceResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>available</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>READER</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "ModifyDBClusterEndpoint",
+      "request": "Action=ModifyDBClusterEndpoint&DBClusterEndpointIdentifier=radius-rec-rn1e2b&EndpointType=ANY&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<ModifyDBClusterEndpointResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <ModifyDBClusterEndpointResult><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>modifying</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>ANY</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></ModifyDBClusterEndpointResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</ModifyDBClusterEndpointResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>modifying</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>ANY</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>available</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>ANY</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>available</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>ANY</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "ListTagsForResource",
+      "request": "Action=ListTagsForResource&ResourceName=arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<ListTagsForResourceResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <ListTagsForResourceResult><TagList><Tag><Key>radius-recording</Key><Value>rn1e2b</Value></Tag></TagList></ListTagsForResourceResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</ListTagsForResourceResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>available</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>ANY</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DeleteDBClusterEndpoint",
+      "request": "Action=DeleteDBClusterEndpoint&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DeleteDBClusterEndpointResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DeleteDBClusterEndpointResult><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>deleting</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>ANY</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DeleteDBClusterEndpointResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DeleteDBClusterEndpointResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints><DBClusterEndpointList><DBClusterEndpointIdentifier>radius-rec-rn1e2b</DBClusterEndpointIdentifier><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><DBClusterEndpointResourceIdentifier>cluster-endpoint-ABCDEFGHIJKLMNOPQRSTUVWXYZ</DBClusterEndpointResourceIdentifier><Endpoint>radius-rec-rn1e2b.cluster-custom-cexample0000.us-west-2.neptune.amazonaws.com</Endpoint><Status>deleting</Status><EndpointType>CUSTOM</EndpointType><CustomEndpointType>ANY</CustomEndpointType><StaticMembers><member>radius-rec-graph-1</member></StaticMembers><ExcludedMembers/><DBClusterEndpointArn>arn:aws:rds:us-west-2:123456789012:cluster-endpoint:radius-rec-rn1e2b</DBClusterEndpointArn></DBClusterEndpointList></DBClusterEndpoints></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusters",
+      "request": "Action=DescribeDBClusters&DBClusterIdentifier=radius-rec-graph&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClustersResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClustersResult><DBClusters><DBCluster><DBClusterIdentifier>radius-rec-graph</DBClusterIdentifier><Engine>neptune</Engine><Status>available</Status><DBClusterArn>arn:aws:rds:us-west-2:123456789012:cluster:radius-rec-graph</DBClusterArn></DBCluster></DBClusters></DescribeDBClustersResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClustersResponse>\n"
+    },
+    {
+      "service": "Neptune",
+      "operation": "DescribeDBClusterEndpoints",
+      "request": "Action=DescribeDBClusterEndpoints&DBClusterEndpointIdentifier=radius-rec-rn1e2b&Version=2014-10-31",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "<DescribeDBClusterEndpointsResponse xmlns=\"http://rds.amazonaws.com/doc/2014-10-31/\">\n  <DescribeDBClusterEndpointsResult><DBClusterEndpoints/></DescribeDBClusterEndpointsResult>\n  <ResponseMetadata><RequestId>00000000-0000-0000-0000-000000000000</RequestId></ResponseMetadata>\n</DescribeDBClusterEndpointsResponse>\n"
+    }
+  ]
+}

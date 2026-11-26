@@ -310,13 +310,47 @@ test_accepts_curated_note_sections() {
     ((++PASS))
 }
 
+# Execute the preparation step with a local contrib main and a fixed PR head.
+final_recipe_step() (
+    cd "${SCRIPT_DIR}/../.."
+    export EXISTING="$1" EXISTING_HEAD="${BASE_SHA}" VERSION=v0.61.0
+    export GITHUB_REPOSITORY=radius-project/radius RUNNER_TEMP="${TEST_ROOT}"
+    export GITHUB_OUTPUT="${TEST_ROOT}/recipe-output" PLAN_FROM_API="${2:-}"
+    export SIBLING_REPOSITORY_ROOT="${SIBLING_ROOT}"
+    # shellcheck disable=SC2329 # Invoked by the workflow step in a child shell.
+    gh() {
+        if [[ "$*" == 'api repos/radius-project/resource-types-contrib/git/ref/heads/main --jq .object.sha' ]]; then
+            git --git-dir="${SIBLING_REPOSITORY_ROOT}/resource-types-contrib.git" rev-parse main
+            return
+        fi
+        [[ "${!#}" == "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${VERSION}.yaml?ref=${EXISTING_HEAD}" ]] || return 1
+        cat "${PLAN_FROM_API}"
+    }
+    export -f gh
+    : > "${GITHUB_OUTPUT}"
+    bash -euo pipefail -c "$(yq -r '.jobs.prepare.steps[] |
+        select(.id == "recipe-source") | .run' .github/workflows/prepare-release.yaml)" || exit 1
+    sed -n 's/^commit=//p' "${GITHUB_OUTPUT}"
+)
+
 test_real_preparation_contract() {
+    local release_type="${1:-rc}" version="v0.61.0-rc.1" recipe_commit="" mutation
     local output="${TEST_ROOT}/prepared"
     local siblings="${TEST_ROOT}/planned-siblings.json"
-    local notes="docs/release-notes/v0.61.0-rc.1.md"
-    local plan=".github/release-plans/v0.61.0-rc.1.yaml"
     local log="${TEST_ROOT}/validation.log"
 
+    if [[ "${release_type}" == final ]]; then
+        version="v0.61.0"
+        yq -i '.supported[0] = {"channel":"0.61","version":"v0.61.0-rc.1"}' \
+            "${REPO}/versions.yaml"
+        printf '["CHANGELOG.md",".github/release-plans/%s.yaml","docs/release-notes/%s.md","versions.yaml"]\n' \
+            "${version}" "${version}" > "${REPO}/files.json"
+        create_sibling_repository resource-types-contrib
+        recipe_commit="$(final_recipe_step false)"
+        advance_sibling_main resource-types-contrib
+    fi
+    local notes="docs/release-notes/${version}.md"
+    local plan=".github/release-plans/${version}.yaml"
     mkdir -p "${REPO}/docs/release-notes" "${REPO}/.github/release-parity"
     cp "${SCRIPT_DIR}/../../cliff.toml" "${REPO}/cliff.toml"
     cp "${SCRIPT_DIR}/../../docs/release-notes/"template*.md \
@@ -330,24 +364,26 @@ test_real_preparation_contract() {
 
 [Unreleased]: https://github.com/radius-project/radius/compare/v0.60.0...HEAD
 EOF
-    git -C "${REPO}" add CHANGELOG.md cliff.toml docs .github
+    git -C "${REPO}" add CHANGELOG.md cliff.toml docs .github versions.yaml
     git -C "${REPO}" commit -q -m "Legacy release change (#201)"
     BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    if [[ "${release_type}" == final ]]; then
+        git -C "${REPO}" tag v0.61.0-rc.1
+        git -C "${REPO}" update-ref refs/remotes/origin/release/0.61 HEAD
+    fi
     yq -o=json '.siblingRepositories' "${EXPECTED_PLAN}" > "${siblings}"
     FAKE_PREPARE="${SCRIPT_DIR}/prepare-release.sh"
-    (
-        cd "${REPO}" || exit 1
-        GITHUB_TOKEN="" bash "${FAKE_PREPARE}" \
-            --release-type rc --channel 0.61 \
+    if ! GITHUB_TOKEN="" RECIPE_SOURCE_COMMIT="${recipe_commit}" \
+        run_with_fixture bash "${FAKE_PREPARE}" \
+            --release-type "${release_type}" --channel 0.61 \
             --release-date 2026-08-24 \
             --backports-file "${EXPECTED_BACKPORTS}" \
             --sibling-repositories-file "${siblings}" \
-            --output-dir "${output}"
-    ) > "${log}" 2>&1 || {
+            --output-dir "${output}" > "${log}" 2>&1; then
         cat "${log}"
         fail_test "real release preparation failed"
         return
-    }
+    fi
     cp "${output}/release-plan.yaml" "${EXPECTED_PLAN}"
     wrap_body
     cp "${REPO}/versions.yaml" "${REPO}/CHANGELOG.md" "${HEAD_DIR}/"
@@ -358,6 +394,42 @@ EOF
     if ! GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
         cat "${log}"
         fail_test "real prepared output must pass trusted regeneration"
+        return
+    fi
+    if [[ "${release_type}" == final ]]; then
+        if [[ "$(final_recipe_step true "${EXPECTED_PLAN}")" != "${recipe_commit}" ]]; then
+            fail_test "an open final must reuse its recipe source after contrib main advances"
+            return
+        fi
+        # A conflicting first value is lost if the committed YAML is parsed as a JSON object.
+        sed -i '1i recipeSourceCommit: main' "${HEAD_DIR}/${plan}"
+        if GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
+            fail_test "an ambiguous committed recipe pin passed validation"
+            return
+        fi
+        cp "${HEAD_DIR}/${plan}" "${EXPECTED_PLAN}"
+        wrap_body
+        if GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
+            fail_test "matching duplicate recipe pins in the body and file passed validation"
+            return
+        fi
+        for mutation in 'del(.recipeSourceCommit)' \
+            '.recipeSourceCommit = "main"' \
+            '.recipeSourceCommit = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"'; do
+            yq "${mutation}" "${output}/release-plan.yaml" > "${EXPECTED_PLAN}"
+            wrap_body
+            cp "${EXPECTED_PLAN}" "${HEAD_DIR}/${plan}"
+            if GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
+                fail_test "final regeneration accepted ${mutation}"
+                return
+            fi
+            if ! grep -Eq 'recipeSourceCommit|not reachable from resource-types-contrib' "${log}"; then
+                cat "${log}"
+                fail_test "final regeneration must reject ${mutation}"
+                return
+            fi
+        done
+        ((++PASS))
         return
     fi
     if ! GITHUB_TOKEN="" run_snapshot_tests \
@@ -647,6 +719,8 @@ main() {
     test_accepts_curated_note_sections
     setup_repo
     test_real_preparation_contract
+    setup_repo
+    test_real_preparation_contract final
     setup_repo
     test_rejects_product_commit_drift
     setup_repo

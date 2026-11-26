@@ -46,6 +46,7 @@ write_pipeline() {
     cp "${ROOT}/.github/release-parity/targets.json" "${REPO}/.github/release-parity/targets.json"
     mkdir -p "${REPO}/.github/scripts"
     cp "${ROOT}/.github/scripts/release-parity-manifest.sh" \
+        "${ROOT}/.github/scripts/publish-sibling-releases.mjs" \
         "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
         "${ROOT}/.github/scripts/promote-release-bicep.mjs" "${REPO}/.github/scripts/"
     # Both run on tag pushes without publishing a release.
@@ -168,6 +169,27 @@ main() {
     write_pipeline
     expect pass "new preparations require sibling publication" HEAD --require-sibling-releases
     expect pass "new mutation requires GHCR-only publication" HEAD --require-current-bicep
+    expect pass "new release uses the transferred Deployment Engine" HEAD --require-current-engine
+    local publisher="${REPO}/.github/scripts/publish-sibling-releases.mjs"
+    sed 's/target.repo === "deployment-engine"/target.owner === "radius-project"/' \
+        "${ROOT}/.github/scripts/publish-sibling-releases.mjs" > "${publisher}"
+    expect "does not select the Deployment Engine client by repository" \
+        "reject an owner-only backport" HEAD --require-current-engine
+    write_pipeline
+    yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "engine-token")).with.owner = "azure-octo"' "${WORKFLOWS}/build-release.yaml"
+    expect "does not publish the transferred Deployment Engine" "reject old installation" HEAD --require-current-engine
+    write_pipeline
+    # shellcheck disable=SC2016 # Literal workflow secrets on the historical tag.
+    yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "engine-token")).with |=
+        (."client-id" = "${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}" |
+         ."private-key" = "${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}")' "${WORKFLOWS}/build-release.yaml"
+    expect pass "published source can retain its original publisher credentials"
+    expect "scoped radius-release token" "new releases must not use publisher credentials" HEAD --require-current-engine
+    write_pipeline
+    # shellcheck disable=SC2016 # Literal workflow token reference.
+    yq -i '(.jobs."publish-sibling-releases".steps[] | select(.id == "publish")).env.ENGINE_RELEASE_TOKEN =
+        "${{ steps.sibling-token.outputs.token }}"' "${WORKFLOWS}/build-release.yaml"
+    expect "scoped radius-release token" "new release must use its engine-only token" HEAD --require-current-engine
 
     write_pipeline
     yq -i 'del(.jobs."publish-sibling-releases") |
@@ -347,6 +369,20 @@ main() {
         "missing release build (release/0.60)"
 
     expect "release commit does not exist" "unknown release commit" refs/heads/missing
+
+    write_pipeline
+    mkdir -p "${REPO}/.github/scripts"
+    cp "${ROOT}/.github/scripts/coordinate-release.mjs" "${REPO}/.github/scripts/"
+    REQUIRE_BICEP_RECIPES=true expect pass "new finals require the recipe coordinator" HEAD --require-sibling-releases
+
+    rm "${REPO}/.github/scripts/coordinate-release.mjs"
+    REQUIRE_BICEP_RECIPES=true expect "does not coordinate the Bicep recipe publisher" \
+        "new final cannot use an old coordination script"
+    yq -i 'del(.jobs."coordinate-release".steps[].env.RECIPE_TOKEN)' \
+        "${WORKFLOWS}/build-release.yaml"
+    expect pass "existing plans need no recipe coordinator"
+    REQUIRE_BICEP_RECIPES=true expect "has no final Bicep recipe coordinator" \
+        "new final cannot use an old tagged workflow"
 
     if ((FAIL > 0)); then
         echo "Release build contract tests failed: ${PASS} passed, ${FAIL} failed"

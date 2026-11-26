@@ -38,6 +38,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
+	backoff "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
 )
 
@@ -424,6 +425,72 @@ func TestTerraformCloudAzureFederatedAssertion(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "HTTP 403")
 		require.NotContains(t, err.Error(), "do-not-log")
+	})
+
+	t.Run("transient failures are retried", func(t *testing.T) {
+		t.Parallel()
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			if calls < 3 {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = io.WriteString(w, `{"value":"fresh-token"}`)
+		}))
+		defer server.Close()
+
+		assertion, err := azureFederatedAssertionWithBackoff(t.Context(), server.URL, "request-token",
+			backoff.WithMaxRetries(2, backoff.NewConstant(time.Millisecond)))
+		require.NoError(t, err)
+		require.Equal(t, "fresh-token", assertion)
+		require.Equal(t, 3, calls)
+	})
+
+	t.Run("the credential retries twice with 2 and 4 second waits", func(t *testing.T) {
+		t.Parallel()
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		defer server.Close()
+
+		start := time.Now()
+		_, err := azureFederatedAssertion(t.Context(), server.URL, "request-token")
+		require.ErrorContains(t, err, "HTTP 503")
+		require.Equal(t, 3, calls)
+		require.GreaterOrEqual(t, time.Since(start), 6*time.Second)
+	})
+
+	t.Run("retries stop after two", func(t *testing.T) {
+		t.Parallel()
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.WriteHeader(http.StatusBadGateway)
+		}))
+		defer server.Close()
+
+		_, err := azureFederatedAssertionWithBackoff(t.Context(), server.URL, "request-token",
+			backoff.WithMaxRetries(2, backoff.NewConstant(time.Millisecond)))
+		require.ErrorContains(t, err, "HTTP 502")
+		require.Equal(t, 3, calls)
+	})
+
+	t.Run("permanent failures are not retried", func(t *testing.T) {
+		t.Parallel()
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls++
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer server.Close()
+
+		_, err := azureFederatedAssertionWithBackoff(t.Context(), server.URL, "request-token",
+			backoff.WithMaxRetries(2, backoff.NewConstant(time.Millisecond)))
+		require.ErrorContains(t, err, "HTTP 403")
+		require.Equal(t, 1, calls)
 	})
 
 	t.Run("an empty token is rejected", func(t *testing.T) {

@@ -191,6 +191,7 @@ run_prepare() {
     LAST_OUTPUT="$(
         cd "${REPO}" \
                      && GIT_CLIFF="${renderer}" \
+                RECIPE_SOURCE_COMMIT="${RECIPE_SOURCE_COMMIT-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee}" \
                 CHANGELOG_RANGE_SCRIPT="${range_script}" \
                 bash "${SCRIPT}" \
                 --release-type "${release_type}" \
@@ -358,6 +359,8 @@ test_first_rc() {
     git -C "${REPO}" tag v0.60.0
     run_prepare rc 0.61
     assert_version "v0.61.0-rc.1" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        'has("recipeSourceCommit")' false || return
     assert_yq_value "${REPO}/versions.yaml" '.supported[0].version' \
         'v0.61.0-rc.1' || return
     if ! git -C "${REPO}" diff --quiet -- CHANGELOG.md; then
@@ -690,10 +693,19 @@ test_final() {
         "${REPO}/docs/release-notes/template.md"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.0-rc.3
+    RECIPE_SOURCE_COMMIT="" run_prepare final 0.60
+    if [[ "${LAST_STATUS}" == 0 || "${LAST_OUTPUT}" != *RECIPE_SOURCE_COMMIT* ]]; then
+        fail_test "final preparation must not guess a missing recipe source"
+        return
+    fi
     run_prepare final 0.60
     assert_version "v0.60.0" || return
     assert_file_contains "${REPO}/out/release-plan.yaml" \
         'releaseType: final' || return
+    assert_yq_value "${REPO}/.github/release-plans/v0.60.0.yaml" \
+        '.recipeSourceCommit' 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' || return
+    assert_file_contains "${REPO}/out/release-pr-body.md" \
+        'recipeSourceCommit: eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' || return
     assert_file_contains "${REPO}/out/requires-backport.txt" 'true' || return
     assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
         '## Upgrading to Radius v0.60.0' || return
@@ -797,6 +809,8 @@ test_patch() {
     git -C "${REPO}" tag v0.61.0
     run_prepare patch 0.60
     assert_version "v0.60.3" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        'has("recipeSourceCommit")' false || return
     assert_file_contains "${REPO}/docs/release-notes/v0.60.3.md" \
         'Restarting pods no longer picks up later patches implicitly' || return
     assert_file_contains "${REPO}/CHANGELOG.md" \

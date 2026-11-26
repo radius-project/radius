@@ -109,10 +109,15 @@ test_entry_triggers() {
 }
 
 test_shared_controller_contract() {
+    local workflow
     assert_yq "${ENTRY}" \
         '.jobs.reconcile.uses ==
         "./.github/workflows/__release-controller.yaml"' \
         "default-branch entry must call the shared controller"
+    for workflow in "${ENTRY}" "${CONTROLLER}"; do
+        assert_not_contains "${workflow}" "RADIUS_PUBLISHER_BOT_" \
+            "current release controller must not pass or require publisher credentials"
+    done
     assert_yq "${APPROVE}" \
         '.jobs.dispatch.uses ==
         "./.github/workflows/__dispatch-release-controller.yaml"' \
@@ -156,7 +161,7 @@ test_approval_gate_and_bindings() {
         "publication must reject a Deployment Engine tag moved after approval"
     assert_yq "${CONTROLLER}" \
         '.jobs."publish-deployment-engine".steps[] |
-        select(.id == "existing-image") |
+        select(.id == "staged") |
         ((has("continue-on-error") | not) and
         (.run | contains("--allow-absent")) and
         (.run | contains("--allow-stale") | not))' \
@@ -206,23 +211,11 @@ test_stage_order() {
         'verify-deployment-engine-tag.sh' \
         "controller must verify the Deployment Engine tag"
     assert_contains "${CONTROLLER}" \
-        'monitor-remote-workflow.mjs' \
-        "controller must use correlated Deployment Engine publication"
-    assert_contains "${CONTROLLER}" \
         'verify-deployment-engine-image.sh' \
         "controller must verify the Deployment Engine destination"
     assert_contains "${CONTROLLER}" \
         'reconcile-release-controller-lock.mjs' \
         "controller must persist the Deployment Engine digest lock"
-    assert_contains "${CONTROLLER}" \
-        'INPUT_DISPATCH_IF_MISSING:' \
-        "valid unlocked Deployment Engine state must use query-only monitoring"
-    assert_contains "${CONTROLLER}" \
-        "steps.existing-image.outputs.state == 'complete'" \
-        "valid unlocked Deployment Engine state must suppress dispatch"
-    assert_contains "${CONTROLLER}" \
-        'steps.existing-image.outputs.digest' \
-        "valid unlocked Deployment Engine state must be locked by digest"
     assert_contains "${CONTROLLER}" \
         ".github/release-plans/\${VERSION}.yaml" \
         "controller must read the immutable committed plan"
@@ -297,7 +290,7 @@ test_frozen_output_contract() {
         [.[].steps[] | select(.run // "" |
         contains("verify-deployment-engine-image.sh")) |
         .env.GORELEASER_PARITY_TARGETS]' \
-        "[\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\"]" \
+        "[\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\",\"\${{ runner.temp }}/release-controller/release-targets.json\"]" \
         "every image verification must use the approved output contract"
     for job in publish-deployment-engine create-radius-tag; do
         assert_json "${CONTROLLER}" \
@@ -310,56 +303,13 @@ test_frozen_output_contract() {
     done
 }
 
-test_unknown_dispatch_summary() {
-    assert_json "${CONTROLLER}" \
-        '.jobs."publish-deployment-engine".outputs."run-state"' \
-        "\"\${{ steps.monitor-de-workflow.outputs.run_state }}\"" \
-        "publisher job must expose an uncertain dispatch outcome"
-    assert_json "${CONTROLLER}" \
-        '.jobs.summary.steps[] |
-        select(.name == "Summarize release state and recovery") |
-        .env.DE_RUN_STATE' \
-        "\"\${{ needs.publish-deployment-engine.outputs.run-state }}\"" \
-        "summary must inspect the publisher dispatch outcome"
-    assert_contains "${CONTROLLER}" \
-        "elif [[ \"\${DE_RUN_STATE}\" == \"unknown\" ]]" \
-        "unknown publisher outcomes must not suggest an immediate resume"
-    if ! (
-        summary_root="$(mktemp -d "${TMPDIR:-/tmp}/controller-summary-XXXXXX")"
-        trap 'rm -rf "${summary_root}"' EXIT
-        summary_script="$(yq -r '
-            .jobs.summary.steps[] |
-            select(.name == "Summarize release state and recovery") | .run
-        ' "${CONTROLLER}")"
-        for state in unknown found; do
-            VERSION=v0.61.0 SOURCE_COMMIT=1111111111111111111111111111111111111111 \
-                READY=true VALIDATE_RESULT=success APPROVE_RESULT=success \
-                DE_RESULT=failure DE_RUN_STATE="${state}" DE_RUN_URL="" \
-                DE_LOCK_BRANCH="" SIBLINGS_RESULT=skipped RADIUS_RESULT=skipped \
-                GITHUB_STEP_SUMMARY="${summary_root}/${state}.md" \
-                bash -euo pipefail -c "${summary_script}" || exit 1
-        done
-        grep -Fq 'before retrying' "${summary_root}/unknown.md" || exit 1
-        if grep -Fq 'gh workflow run resume-release.yaml' \
-            "${summary_root}/unknown.md"; then
-            exit 1
-        fi
-        grep -Fq 'gh workflow run resume-release.yaml --ref main' \
-            "${summary_root}/found.md" || exit 1
-    ); then
-        fail_test "summary must require inspection only for unknown outcomes"
-        return
-    fi
-    ((++PASS))
-}
-
 test_release_build_contract() {
     assert_json "${CONTROLLER}" \
         '[.jobs.validate.steps[] | select((.with.script // "") |
         contains("verifyReleaseBuildSource")) |
-        [.if, .env.INPUT_SOURCE_SHA]]' \
-        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\"]]" \
-        "validation must check the tag workflows of the exact release commit"
+        [.if, .env.INPUT_SOURCE_SHA, .env.REQUIRE_BICEP_RECIPES]]' \
+        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ inputs.source-commit }}\",\"\${{ steps.plan.outputs.recipe-source-commit != '' }}\"]]" \
+        "validation must check the exact release commit and require recipes only for pinned plans"
     assert_contains "${WORKFLOWS}/prepare-release.yaml" \
         'verify-release-build-contract.sh' \
         "Prepare Release must reject an unmigrated release branch before opening a pull request"
@@ -408,14 +358,22 @@ test_deployment_engine_tag_automation() {
                 contains("reconcile-release-controller-lock.mjs")))' \
             "$(basename "${workflow}") must bind a final to its RC's trusted lock"
         assert_yq "${workflow}" \
-            "[.jobs[].steps[] |
-                select(.with.repositories == \"deployment-engine\") |
-                .with.\"client-id\"] |
-            ((length > 0) and
-            ((map(select(. !=
-                \"\${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}\")) |
-                length) == 0))" \
-            "$(basename "${workflow}") must reach Deployment Engine only as the publisher App"
+            '[.jobs[].steps[] | select(.with.repositories == "deployment-engine" and
+                .with.owner != "radius-project")] | length == 0' \
+            "$(basename "${workflow}") must not request the old installation"
+    done
+    local spec job id access
+    for spec in 'prepare-release.yaml prepare de-token read' \
+        '__release-controller.yaml validate de-read-token read' \
+        '__release-controller.yaml publish-deployment-engine de-read-token read' \
+        '__release-controller.yaml publish-deployment-engine de-write-token write' \
+        'build-release.yaml publish-sibling-releases engine-token write'; do
+        read -r workflow job id access <<< "${spec}"
+        assert_json "${WORKFLOWS}/${workflow}" \
+            "[.jobs.\"${job}\".steps[] | select(.id == \"${id}\") |
+              [.with.owner, .with.repositories, .with.\"client-id\", .with.\"private-key\", .with.\"permission-contents\"]]" \
+            "[[\"radius-project\",\"deployment-engine\",\"\${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}\",\"\${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}\",\"${access}\"]]" \
+            "${job}.${id} must request the scoped release App token"
     done
     assert_yq "${WORKFLOWS}/prepare-release.yaml" \
         ".jobs.prepare.steps[] |
@@ -439,9 +397,9 @@ test_deployment_engine_tag_automation() {
         .env.APPROVED_DE_COMMIT ==
             \"\${{ needs.validate.outputs.de-source-commit }}\" and
         .env.APP_SLUG == \"\${{ steps.de-write-token.outputs.app-slug }}\" and
-        (.run | contains(\"== \\\"radius-publisher\\\"\")) and
+        (.run | contains(\"== \\\"radius-release\\\"\")) and
         (.run | contains(\"release-create-tag-and-branch.sh\")))" \
-        "only the Radius Publisher App may create the approved Deployment Engine tag"
+        "only the Radius Release App may create the approved Deployment Engine tag"
     assert_yq "${CONTROLLER}" \
         '.jobs."publish-deployment-engine".steps[] | select(.id == "de-tag") |
         (.run | contains("--allow-absent") | not)' \
@@ -457,7 +415,7 @@ test_deployment_engine_tag_automation() {
     create="$(publish_step_index "Create approved Deployment Engine tag")"
     verify="$(publish_step_index "Reverify approved Deployment Engine tag")"
     wait="$(publish_step_index "Wait for the Deployment Engine tag build")"
-    inspect="$(publish_step_index "Inspect unlocked Deployment Engine image")"
+    inspect="$(publish_step_index "Verify published Deployment Engine image")"
     if [[ -z "${create}" || -z "${verify}" || -z "${wait}" || -z "${inspect}" ]] ||
         ((create >= verify || verify >= wait || wait >= inspect)); then
         fail_test "tag creation, verification, and build wait must precede image inspection"
@@ -481,6 +439,7 @@ checks=$(($(cat "${CHECKS}" 2>/dev/null || echo 0) + 1))
 echo "${checks}" >"${CHECKS}"
 while [[ "$1" != "--state-output" ]]; do shift; done
 if ((checks < 3)); then echo absent; else echo complete; fi >"$2"
+echo '{"digest":"sha256:test"}' >"${RUNNER_TEMP}/de-image-wait.json"
 EOF
         script="$(yq -r '.jobs."publish-deployment-engine".steps[] |
             select(.name == "Wait for the Deployment Engine tag build") |
@@ -489,48 +448,13 @@ EOF
         sleep() { :; }
         export -f sleep
         cd "${root}" || exit 1
-        CHECKS="${root}/checks" RUNNER_TEMP="${root}" \
+        CHECKS="${root}/checks" RUNNER_TEMP="${root}" GITHUB_OUTPUT="${root}/outputs" \
             DE_IMAGE_TAG=0.62.0-rc.1 RELEASE_VERSION=v0.62.0-rc.1 \
             DE_SOURCE_COMMIT=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
             bash -euo pipefail -c "${script}" >/dev/null || exit 1
-        [[ "$(<"${root}/checks")" == "3" ]]
+        [[ "$(<"${root}/checks")" == "3" && "$(<"${root}/outputs")" == "digest=sha256:test" ]]
     ); then
         fail_test "a resumed attempt must poll until the tag build stages the image"
-        return
-    fi
-    ((++PASS))
-}
-
-test_de_bridge_uses_immutable_destinations() {
-    if ! (
-        directory="$(mktemp -d "${TMPDIR:-/tmp}/de-bridge-test-XXXXXX")"
-        trap 'rm -rf "${directory}"' EXIT
-        script="$(yq -r '.jobs."dispatch-publish".steps[] |
-            select(.id == "payload") | .run' "${WORKFLOWS}/publish-de-image.yaml")"
-        for tag in edge pr-42 0.61.0-rc.1 0.61.2; do
-            source_tag="${tag}"
-            [[ "${tag}" != "edge" ]] || source_tag=latest
-            [[ "${tag}" != "0.61.2" ]] || source_tag=0.61
-            SRC_IMAGE=example.azurecr.io/deployment-engine \
-                DEST_IMAGE=ghcr.io/radius-project/deployment-engine \
-                TAG="${tag}" SOURCE_TAG="${source_tag}" \
-                EXPECTED_REVISION=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
-                EXPECTED_REF=refs/tags/v0.61.2 \
-                GITHUB_OUTPUT="${directory}/${tag}" \
-                bash -euo pipefail -c "${script}" || exit 1
-            grep -Fxq "tag=${tag}" "${directory}/${tag}" || exit 1
-            grep -Fxq "source_tag=${source_tag}" "${directory}/${tag}" || exit 1
-        done
-        for tag in 0.61 latest; do
-            if TAG="${tag}" GITHUB_OUTPUT="${directory}/channel" \
-                bash -euo pipefail -c "${script}" >"${directory}/error" 2>&1; then
-                exit 1
-            fi
-            grep -Fq "promoted only by the approved release finalizer" \
-                "${directory}/error" || exit 1
-        done
-    ); then
-        fail_test "the DE bridge can move stable aliases or lose its source tag"
         return
     fi
     ((++PASS))
@@ -693,13 +617,11 @@ main() {
     test_shared_controller_contract
     test_approval_gate_and_bindings
     test_frozen_output_contract
-    test_unknown_dispatch_summary
     test_stage_order
     test_controller_checks_radius_pin
     test_release_build_contract
     test_deployment_engine_tag_automation
     test_resume_waits_for_running_tag_build
-    test_de_bridge_uses_immutable_destinations
     test_identity_and_cleanup
     test_bicep_evidence_boundary
 
