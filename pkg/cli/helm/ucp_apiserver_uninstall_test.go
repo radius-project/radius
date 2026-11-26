@@ -592,6 +592,30 @@ func Test_RadiusUninstallLeftovers_KeepsReferencedTrustSecret(t *testing.T) {
 	require.True(t, apierrors.IsNotFound(err), "got %v", err)
 }
 
+// A resumed uninstall leaves out a release-marked ucp-apiserver-tls, whose Certificate is gone, while the ucp pod
+// template references it, and warns once that it kept it.
+func Test_RadiusUninstallLeftovers_WarnsAboutReferencedSecret(t *testing.T) {
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTLSSecretName, Namespace: RadiusSystemNamespace, UID: "uid-1",
+		ResourceVersion: "1", Annotations: issuedSecretAnnotations(ucpAPIServerCertificateName)}}
+	deployment := ucpDeployment(true)
+	deployment.Spec.Template.Spec.Containers = []corev1.Container{{Name: "ucp", EnvFrom: []corev1.EnvFromSource{{
+		SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTLSSecretName}}}}}}
+	kubeClient := kubefake.NewSimpleClientset(secret, deployment)
+	impl := trustImpl(kubeClient, fakeCertManagerDynamicClient(nil))
+	warnings := []string{}
+	impl.logger = func(format string, args ...any) {
+		if message := fmt.Sprintf(format, args...); strings.HasPrefix(message, "Warning:") {
+			warnings = append(warnings, message)
+		}
+	}
+
+	leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), NewDefaultClusterOptions(), "test-context")
+	require.NoError(t, err)
+	require.Empty(t, leftovers)
+	require.Len(t, warnings, 1)
+	require.Contains(t, warnings[0], "Secret radius-system/"+ucpAPIServerTLSSecretName+", which the pod template")
+}
+
 // A radius-apiserver-ca Certificate that the Radius release does not own may still use the Secret of that name, which
 // holds its CA private key, even when it names another Secret, so neither uninstall nor a retried uninstall deletes it.
 func Test_UninstallRadius_KeepsSecretOfForeignCertificate(t *testing.T) {

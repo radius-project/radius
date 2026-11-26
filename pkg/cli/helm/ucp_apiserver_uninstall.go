@@ -147,6 +147,10 @@ func (i *Impl) RadiusUninstallLeftovers(ctx context.Context, clusterOptions Clus
 		if err != nil {
 			return nil, err
 		}
+		if found.state == ucpOffSecretReferenced {
+			i.warnReferencedUCPSecret(radiusNamespace, leftover.secret)
+			continue
+		}
 		// A Secret whose Certificate rad deletes with this list is a leftover once that delete succeeds.
 		if found.object != nil && found.object.DeletionTimestamp == nil && (found.state == ucpOffSecretLeftover ||
 			(found.state == ucpOffSecretKeep && planned("Certificate", leftover.certificate) && ownsUCPOffSecret(found.object, leftover))) {

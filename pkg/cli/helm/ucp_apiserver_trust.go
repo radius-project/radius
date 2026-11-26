@@ -444,9 +444,14 @@ func (i *Impl) keepReferencedUCPSecret(ctx context.Context, kubeClient kubernete
 	if err != nil || !referenced {
 		return false, err
 	}
+	i.warnReferencedUCPSecret(radiusNamespace, secretName)
+	return true, nil
+}
+
+// warnReferencedUCPSecret warns that rad kept Secret secretName because the live UCP pod template references it.
+func (i *Impl) warnReferencedUCPSecret(radiusNamespace, secretName string) {
 	i.logInfo("Warning: rad did not delete Secret %s/%s, which the pod template of Deployment %s/ucp still references. Run the command again to delete it once nothing references it",
 		radiusNamespace, secretName, radiusNamespace)
-	return true, nil
 }
 
 // deleteOwnedUCPAPIServerTrust deletes the trust Secret if rad owns it, as ownsUCPAPIServerTrust decides, pinned to

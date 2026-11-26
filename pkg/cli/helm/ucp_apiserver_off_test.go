@@ -458,15 +458,57 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			impl := c.impl(nil)
+			warnings := []string{}
+			impl.logger = func(format string, args ...any) {
+				if message := fmt.Sprintf(format, args...); strings.HasPrefix(message, "Warning:") {
+					warnings = append(warnings, message)
+				}
+			}
+			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 			c.requireOffAPIService(t)
 			if projected {
 				require.NotNil(t, c.secret(t, ucpAPIServerTLSSecretName), "UCP still projects Secret %s", ucpAPIServerTLSSecretName)
+				require.Len(t, warnings, 1, "rad must warn once that it kept the Secret UCP references")
+				require.Contains(t, warnings[0], "Secret radius-system/"+ucpAPIServerTLSSecretName+", which the pod template")
 			} else {
 				require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName), "nothing uses Secret %s", ucpAPIServerTLSSecretName)
 			}
 		})
 	}
+
+	// A trust Secret that cleanup keeps for the ucp pod template still holds the CAs of authorization on, so rad
+	// retires it: a later upgrade must not take it for a handoff and trust them again.
+	t.Run("retires a trust Secret ucp references", func(t *testing.T) {
+		c := newOffAfterOnCluster(t)
+		c.putTrustSecret(t, true)
+		deployments := c.kube.AppsV1().Deployments(RadiusSystemNamespace)
+		deployment, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+		require.NoError(t, err)
+		deployment.Spec.Template.Spec.Containers = append(deployment.Spec.Template.Spec.Containers, corev1.Container{Name: "sidecar",
+			Env: []corev1.EnvVar{{Name: "TRUST", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{Name: ucpAPIServerTrustSecretName}, Key: caCertificateKey}}}}})
+		_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+		require.NoError(t, err)
+		impl := c.impl(nil)
+		warnings := []string{}
+		impl.logger = func(format string, args ...any) {
+			if message := fmt.Sprintf(format, args...); strings.HasPrefix(message, "Warning:") {
+				warnings = append(warnings, message)
+			}
+		}
+
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+		c.requireOffAPIService(t)
+		trust := c.secret(t, ucpAPIServerTrustSecretName)
+		require.NotNil(t, trust, "UCP still references Secret %s", ucpAPIServerTrustSecretName)
+		require.NotContains(t, trust.Annotations, allowDirectInjectionAnnotation)
+		trusted, _, err := readUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace)
+		require.NoError(t, err)
+		require.Empty(t, trusted, "a later upgrade must not trust the CAs of a retired trust Secret")
+		require.Len(t, warnings, 1)
+		require.Contains(t, warnings[0], "Secret radius-system/"+ucpAPIServerTrustSecretName+", which the pod template")
+	})
 
 	// A rollback to a chart before radius-apiserver-ca with authorization on renders the Radius release's Certificate
 	// ucp-cert, which writes ucp-mtls; only a ucp-cert Certificate that still writes ucp-apiserver-tls keeps it.
