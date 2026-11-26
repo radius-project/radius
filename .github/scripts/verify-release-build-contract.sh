@@ -27,11 +27,11 @@ readonly -a REQUIRED_JOBS=(
     verify-release approve-publication coordinate-release
 )
 COMMIT=""
+REQUIRE_AWS_PIN_RECEIPT=false
 REQUIRE_SIBLING_RELEASES=false
 BICEP_DUAL_PIPELINE=false
 GHCR_ONLY=false
 REQUIRE_CURRENT_BICEP=false
-REQUIRE_AWS_PIN_RECEIPT=false
 REQUIRE_CURRENT_ENGINE=false
 
 fail() {
@@ -485,15 +485,15 @@ verify_historical_bicep_resume_gate() {
 main() {
     local job name
 
-    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep] [--require-aws-pin-receipt] [--require-current-engine]"
+    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep] [--require-current-engine]"
     local revision="$1"
     shift
     EXPECTED_TARGETS=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --require-aws-pin-receipt) REQUIRE_AWS_PIN_RECEIPT=true; shift ;;
             --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true; shift ;;
             --require-current-bicep) REQUIRE_CURRENT_BICEP=true; shift ;;
-            --require-aws-pin-receipt) REQUIRE_AWS_PIN_RECEIPT=true; shift ;;
             --require-current-engine) REQUIRE_CURRENT_ENGINE=true; shift ;;
             --expected-targets)
                 [[ $# -ge 2 && -f "$2" ]] || fail "expected targets JSON is required"

@@ -51,17 +51,17 @@ async function findReleasePull(github, owner, repo, version) {
     base: "main",
     head: `${owner}:${branch}`,
     state: "closed",
-    per_page: 100,
+    per_page: 100
   });
   const repository = `${owner}/${repo}`;
   const matches = pulls.filter(
     (pull) =>
       pull.head.ref === branch &&
-      releasePullVersion(pull, repository) === version,
+      releasePullVersion(pull, repository) === version
   );
   if (matches.length !== 1) {
     throw new Error(
-      `Expected one merged generated release pull request for ${version}, found ${matches.length}`,
+      `Expected one merged generated release pull request for ${version}, found ${matches.length}`
     );
   }
   return matches[0];
@@ -83,7 +83,7 @@ function setSelection(core, sourcePull, version, releaseCommit, trigger) {
 export default async function resolveReleaseController({
   github,
   context,
-  core,
+  core
 }) {
   const mode = core.getInput("MODE", { required: true });
   const repository = `${context.repo.owner}/${context.repo.repo}`;
@@ -105,7 +105,7 @@ export default async function resolveReleaseController({
       github,
       context.repo.owner,
       context.repo.repo,
-      version,
+      version
     );
     trigger = "dispatch";
   } else if (mode === "event") {
@@ -133,7 +133,7 @@ export default async function resolveReleaseController({
       const { data } = await github.rest.pulls.get({
         owner: context.repo.owner,
         repo: context.repo.repo,
-        pull_number: Number(backport[1]),
+        pull_number: Number(backport[1])
       });
       sourcePull = data;
       version = releasePullVersion(sourcePull, repository);
@@ -157,7 +157,7 @@ export async function verifyReleaseBuildSource({
   github,
   core,
   run = tool,
-  resolveTagPlan = tagPlan,
+  resolveTagPlan = tagPlan
 }) {
   const version = core.getInput("VERSION", { required: true });
   const sourceSha = core.getInput("SOURCE_SHA", { required: true });
@@ -169,7 +169,7 @@ export async function verifyReleaseBuildSource({
   const manifest = await readPublishedReleaseManifest(
     github,
     version,
-    sourceSha,
+    sourceSha
   );
   let engine;
   if (manifest) {
@@ -191,7 +191,7 @@ export async function verifyReleaseBuildSource({
       `ghcr.io/radius-project/deployment-engine:${version.slice(1)}`
     );
     const siblings = plan.siblingRepositories.filter(
-      (entry) => entry.name === "bicep-types-aws",
+      (entry) => entry.name === "bicep-types-aws"
     );
     assert.equal(siblings.length, 1, "Expected exactly one planned AWS source");
     assert.equal(siblings[0].repository, "radius-project/bicep-types-aws");
@@ -203,58 +203,56 @@ export async function verifyReleaseBuildSource({
         context: {
           repo: { owner: "radius-project", repo: "radius" },
           ref: `refs/tags/${version}`,
-          sha: sourceSha,
-        },
+          sha: sourceSha
+        }
       });
       const taggedAwsSources = taggedPlan.siblingRepositories.filter(
-        (entry) => entry.name === "bicep-types-aws",
+        (entry) => entry.name === "bicep-types-aws"
       );
       assert.equal(taggedAwsSources.length, 1);
       const normalizedPlan = structuredClone(taggedPlan);
       const normalizedAwsSource = normalizedPlan.siblingRepositories.find(
-        (entry) => entry.name === "bicep-types-aws",
+        (entry) => entry.name === "bicep-types-aws"
       );
       normalizedAwsSource.sourceCommit = plannedAwsSource.sourceCommit;
       normalizedAwsSource.sourceRef = plannedAwsSource.sourceRef;
       assert.deepEqual(
         normalizedPlan,
         plan,
-        "Published tag plan differs from the approved release plan",
+        "Published tag plan differs from the approved release plan"
       );
       expectedAwsSource = taggedAwsSources[0].sourceCommit;
     }
     const { data: tag } = await github.rest.repos.getCommit({
       owner: "radius-project",
       repo: "bicep-types-aws",
-      ref: `refs/tags/${version}`,
+      ref: `refs/tags/${version}`
     });
     assert.equal(
       tag.sha,
       expectedAwsSource,
-      "Published release AWS tag is missing or differs from the approved source; never recreate it",
+      "Published release AWS tag is missing or differs from the approved source; never recreate it"
     );
   }
   const targetsFile = join(dirname(planFile), "approved-targets.json");
   await writeFile(targetsFile, JSON.stringify(plan.expectedOutputs));
+  const requiresAwsPinReceipt =
+    manifest &&
+    plan.siblingRepositories.some(
+      (entry) =>
+        entry.name === "bicep-types-aws" && Object.hasOwn(entry, "radiusPin")
+    );
   const args = [
     "bash",
     "./.github/scripts/verify-release-build-contract.sh",
     sourceSha,
     "--expected-targets",
     targetsFile,
+    ...(requiresAwsPinReceipt ? ["--require-aws-pin-receipt"] : [])
   ];
   if (plan.changelogPolicy === "stable-only")
     args.push("--require-sibling-releases");
-  if (
-    manifest &&
-    plan.siblingRepositories.some(
-      (entry) =>
-        entry.name === "bicep-types-aws" && Object.hasOwn(entry, "radiusPin"),
-    )
-  )
-    args.push("--require-aws-pin-receipt");
-  if (!manifest)
-    args.push("--require-current-bicep", "--require-current-engine");
+  if (!manifest) args.push("--require-current-bicep");
   await run(args);
   if (engine) {
     core.setOutput("de-source-commit", engine.sourceSha);
