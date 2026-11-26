@@ -171,9 +171,25 @@ export async function verifyReleaseBuildSource({
     version,
     sourceSha,
   );
+  let engine;
   if (manifest) {
     assert.equal(manifest.channel, plan.channel);
     assert.equal(manifest.releaseType, plan.releaseType);
+    const engines = manifest.observed?.imageLocks?.filter(
+      (entry) => entry.name === "deployment-engine"
+    );
+    assert.equal(
+      engines?.length,
+      1,
+      "Missing published Deployment Engine lock"
+    );
+    [engine] = engines;
+    assert.match(engine.sourceSha, commitPattern);
+    assert.match(engine.digest, /^sha256:[0-9a-f]{64}$/);
+    assert.equal(
+      engine.reference,
+      `ghcr.io/radius-project/deployment-engine:${version.slice(1)}`
+    );
     const siblings = plan.siblingRepositories.filter(
       (entry) => entry.name === "bicep-types-aws",
     );
@@ -237,7 +253,12 @@ export async function verifyReleaseBuildSource({
     )
   )
     args.push("--require-aws-pin-receipt");
-  if (!manifest) args.push("--require-current-bicep");
+  if (!manifest)
+    args.push("--require-current-bicep", "--require-current-engine");
   await run(args);
+  if (engine) {
+    core.setOutput("de-source-commit", engine.sourceSha);
+    core.setOutput("de-digest", engine.digest);
+  }
   core.setOutput("published", String(Boolean(manifest)));
 }

@@ -32,6 +32,7 @@ BICEP_DUAL_PIPELINE=false
 GHCR_ONLY=false
 REQUIRE_CURRENT_BICEP=false
 REQUIRE_AWS_PIN_RECEIPT=false
+REQUIRE_CURRENT_ENGINE=false
 
 fail() {
     echo "Error: $*" >&2
@@ -484,7 +485,7 @@ verify_historical_bicep_resume_gate() {
 main() {
     local job name
 
-    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep] [--require-aws-pin-receipt]"
+    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--expected-targets <json>] [--require-current-bicep] [--require-aws-pin-receipt] [--require-current-engine]"
     local revision="$1"
     shift
     EXPECTED_TARGETS=""
@@ -493,6 +494,7 @@ main() {
             --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true; shift ;;
             --require-current-bicep) REQUIRE_CURRENT_BICEP=true; shift ;;
             --require-aws-pin-receipt) REQUIRE_AWS_PIN_RECEIPT=true; shift ;;
+            --require-current-engine) REQUIRE_CURRENT_ENGINE=true; shift ;;
             --expected-targets)
                 [[ $# -ge 2 && -f "$2" ]] || fail "expected targets JSON is required"
                 EXPECTED_TARGETS="$2"; shift 2 ;;
@@ -525,6 +527,27 @@ main() {
     verify_publication_gate
     verify_historical_bicep_resume_gate
     verify_sibling_publication_gate
+    if [[ "${REQUIRE_CURRENT_ENGINE}" == true ]]; then
+        # shellcheck disable=SC2016 # Match literal workflow expressions.
+        git show "${COMMIT}:${BUILD_WORKFLOW}" |
+            yq -o=json '.jobs."publish-sibling-releases".steps' |
+            jq -e '[.[] | select(.id == "engine-token" and
+                (.uses // "" | test("^actions/create-github-app-token@[0-9a-f]{40}$"))) | .with] == [{
+                "owner": "radius-project", "repositories": "deployment-engine",
+                "client-id": "${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}",
+                "private-key": "${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}",
+                "permission-contents": "write", "permission-workflows": "write"
+            }] and any(.[]; .name == "Reconcile sibling release entries" and
+                .env.ENGINE_RELEASE_TOKEN == "${{ steps.engine-token.outputs.token }}")' >/dev/null ||
+            reject "does not publish the transferred Deployment Engine release with the scoped radius-release token"
+        local publisher
+        publisher="$(git show "${COMMIT}:.github/scripts/publish-sibling-releases.mjs")" ||
+            reject "is missing the sibling release publisher"
+        [[ "${publisher}" != *azure-octo* ]] ||
+            reject "still targets the old Deployment Engine owner"
+        grep -Eq '^[[:space:]]*github: target\.repo === "deployment-engine" \? engine : siblings,$' <<<"${publisher}" ||
+            reject "does not select the Deployment Engine client by repository"
+    fi
     verify_attestation_gate
 
     # Path-only push triggers also run for tags; only a tag filter marks a publisher.
@@ -537,6 +560,19 @@ main() {
             reject "also runs .github/workflows/${name} on tag pushes"
         fi
     done < <(git ls-tree --name-only "${COMMIT}:.github/workflows")
+
+    if [[ "${REQUIRE_BICEP_RECIPES:-false}" == true ]]; then
+        yq_true "${BUILD_WORKFLOW}" '
+            [.jobs."coordinate-release".steps[] |
+                select(.id == "coordinate" and .if == null and
+                    .env.RECIPE_TOKEN != null and
+                    (."continue-on-error" // false) == false)] |
+                length == 1' || reject "has no final Bicep recipe coordinator"
+        if ! git grep -q -F 'publish-bicep-recipes.yaml' "${COMMIT}" -- \
+            .github/scripts/coordinate-release.mjs; then
+            reject "does not coordinate the Bicep recipe publisher"
+        fi
+    fi
 
     echo "Release commit ${COMMIT} starts ${BUILD_WORKFLOW} on its tag."
 }
